@@ -44,16 +44,22 @@ genomspelning 6 (`p4_play.json`). Fynd per ägare: `p4_owner_*.json`, `p4_gamepl
 | rendering (auto-kvalitet, batchad värld 1375 → 493 draw calls, billigare pass, svärta, fx) | a34a5fd + krasch-fix d42e414 |
 | **gameplay A** (robusthet, input, save, UI/titel, kvalitetsväljare, `car.dispose`, broadphase, småprat, docs) | e82f4a6 |
 
-## Pågår (session 4cca0e8c, 2026-10-10 ~18:00)
+## Pågår (session 4cca0e8c, 2026-10-10 ~22:15)
 
-Workflow `saab-p4r2-verify-review` (run `wf_d4a2fbc7-43a`, skript i
-`~/.claude/projects/-home-ran-src-html-everything-and-run-saab-and-run--en-man-som-heter-ove/4cca0e8c-1d61-4e6b-b00d-2f4634f8b0df/workflows/scripts/`):
-flake-fix av `placeCast` (kopia `story`, port 8807) → slutverifiering i GAME (`OUT=out/final`, port 8798),
-parallellt med runda 2 av de fem granskarna i egna kopior `qa_art qa_lang qa_code qa_perf qa_play`
-(portar 8841–8845, svar i `reviews/p4r2_<lins>.json`), skeptiker på kodfynd "from reading", sedan
-sortering till `reviews/p4r2_owner_<ägare>.json` + förslag på fixargrupper. Om sessionen dör: titta
-vilka `p4r2_*.json` som finns och kör bara det som saknas; flake-fixen syns som diff i missions.js.
-`browserslot` har nu **3** platser och `EXCLUSIVE=1` (väntar in alla platser, för tidsmätningar).
+- ✅ Flake-fixen (dag 6, `placeCast` deterministisk) — 6aa7e2e. Slutverifiering i GAME: allt grönt
+  (story ×2, m1, m5race, m7chase, m4cat, lotwalk, hospdrive, retry, report, pursuit, interrupt,
+  errands, rperf/rload, carcost; `out/final/`).
+- ✅ Runda 2-granskningar: art 7, svenska 8,5, kod 7, prestanda 6,5, ny spelare 7,5 (runda 1: 6/8/6/4/6).
+  `reviews/p4r2_<lins>.json`, per ägare `reviews/p4r2_owner_<ägare>.json` (cars 5, people 3,
+  world 9, rendering 9, ui 4, gameplay_story 14, gameplay_systems 23; 0 blocking, 18 major).
+- ⏳ Workflow `saab-p4r2-fix-land` (run `wf_9dab802f-3d3`): sju fixare parallellt i egna kopior
+  (`cars people world render ui story systems`, disjunkt ägarskap; DESIGN.md landas som patch
+  `reviews/p4r2_design_<namn>.patch` mot `DESIGN.orig.md`), en seriell landningsgrind (kopiera
+  tillbaka → story + områdestester i GAME med `OUT=out/land_<namn>` port 8799 → commit, annars
+  revert + reparatör, max 3 försök), sist en integrationsagent (`OUT=out/final2`, commit).
+  Om sessionen dör: `git log` visar vilka områden som landat; kör resten med samma upplägg.
+- Skript för båda workflows: `~/.claude/projects/-home-ran-src-html-everything-and-run-saab-and-run--en-man-som-heter-ove/4cca0e8c-1d61-4e6b-b00d-2f4634f8b0df/workflows/scripts/`.
+  `browserslot` har **3** platser och `EXCLUSIVE=1` (väntar in alla, för tidsmätningar).
 
 ## Nästa steg
 
