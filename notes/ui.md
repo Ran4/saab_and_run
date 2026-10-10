@@ -5,6 +5,70 @@ Everything here implements DESIGN.md section 9 and the UI part of section 2. All
 text is Swedish. Every old `hud.*` / `audio.*` call still works (the old main.js boots and plays
 with no errors; `story` was run against it).
 
+## Phase 4, round 2 (the last fix round) — what changed
+
+- **Portraits** (art review, major): from flat studio light on a gradient to a window portrait.
+  `PORTRAIT` = env 0.35, key 4.8 at [-1.7, 0.9, 0.55] (warm, soft 1024 px shadow), fill 0.22 at
+  [2, -0.1, 1.4], rim 7.5 at [1.3, 1.0, -1.7] (0xcfe0ff, from behind the other side), exposure 1,
+  warm 0.03. New fields: `rimPos`, `fillPos`, `keyColor`, `rimColor`, `fillColor` (the rim and fill
+  used to be hard-coded). The backdrop is a **blurred winter street** (`portraitBackdrop`): a row-house
+  wall across the street (stående panel, a window with a warm-lit pane, a corner board, the snowy
+  eave), a dark spruce past the corner, pale sky and the snow bank, lit from the left like the key
+  (warm there, cool shade on the right where the rim draws its edge); one of three house colours
+  (falu red, ochre, grey-green; window and spruce mirrored) picked by a hash of `model.def.name`.
+  Drawn sharp, blurred by a down/up-sample pyramid to S/16 (no `ctx.filter`, works everywhere),
+  a 0.5 vignette, cached as ImageData (one per variant per game). **Software canvases**
+  (`willReadFrequently`): on an accelerated canvas the readback waited 1.2 s for the GPU, which is
+  uploading the town at that moment of the load. The final picture gets a light 0.2 lens vignette.
+  Numbers (`uiportraits`, all 11 cast portraits, measured on the linear float render): key-to-shadow
+  across the face (p90 / p10 of luminance under the eyes) median 2.51 → 4.06–4.11 over three runs
+  (adults 3.4–4.3; the box catches Patrick's beard and the children's scarves, hence their
+  outliers); rim (brightest 3 % of the head's far edge over the face median) 1.05 → 2.44–2.61. Cost: ~10 ms per portrait as before;
+  the load's portrait step (11 portraits, old and new hud.js interleaved, 3 runs each) cold 498 →
+  503 ms, warm 148 → 154 ms (medians); each backdrop 5–11 ms once.
+- **Toasts and the report ticket hold back during scenes** (play + verify): `hud.clearToasts(cls)`
+  (new, fades the toasts of a class or all, and drops queued ones; gameplay_story calls
+  `hud.clearToasts?.('phone')` in `MissionRunner.begin()`). A scene is up while `hud.letterbox(true)`,
+  `hud.curtain(true)` or `game.inDialog` (polled every frame from `tickBubbles`: that catches UPPDRAG
+  KLART's held shot and the finale, which have no letterbox). Then `#hud.cine` hides `#toasts` and
+  `#notebook` (opacity), the toasts on screen fade out and are dropped (they belong to the moment
+  before: the giver's "vill dig något" toast must not come back after his own intro), and new
+  `hud.toast` calls queue (max 4) and slide in 0.5 s after the scene, 0.35 s apart. The ticket keeps
+  its own timers (it has left by the time the scene ends). Nobody used `toast()`'s return value; it
+  still returns the (possibly queued) element.
+- **Pause menu: Avbryt dagens uppdrag** (`#opt-abort`, `.btn.minor` above Radera sparat spel, in
+  `.pm-acts`): `syncMenu()` shows it only while `window.__game.missions.state === 'running'` (not in
+  the intro, outro or after a failure); two clicks ("Säker? Klicka igen", falls back after 3.5 s,
+  the shared `twice()` helper that Radera sparat spel now uses too); then `missions.abort()` (cleans
+  up, marks the day given up: the short intro next time, toasts who is still waiting) and
+  `game.pause(false)`. No main.js change. Half-confirmed buttons reset whenever the menu opens.
+- **Gamepad in the pause menu** (new, so the abort is a real way out for a pad player): while the
+  menu is open hud.js polls the first standard-mapping pad; d-pad or left stick up/down moves the
+  focus over the menu's buttons (amber ring, `#pause.pad`), A presses the focused one on release
+  (so the press that resumes doesn't reach the game as a jump). Start still toggles the pause
+  (main.js). No pad: no focus, nothing changes; moving the mouse drops the ring.
+- **Favicon**: an inline SVG P-förbud sign (blue disc, red ring and bar) instead of `data:,` (the
+  play review saw two /favicon.ico 404s per non-test load). Our harness never requested the icon
+  with either version, so `uifavicon` checks that no favicon / 4xx request happens and draws the icon.
+- **Controls table** Q row: "ge upp (håll medan ett uppdrag pågår, tryck när det misslyckats)", to
+  match gameplay_story's hold-Q give-up (the pause menu's copy is cloned from it).
+- Tests in `tools/scenarios/ui.mjs` (new): `uiportraits` (sheet at full, dialogue 84x100 and
+  round 58/38 px sizes, the numbers above, `PL='{json}'` overrides PORTRAIT, several named sets side
+  by side, `PLDBG=1` draws the sample box), `uitoasts` (clearToasts, letterbox / curtain / held shot
+  hold-back and the flush, and the real case: a phone call going when day 1's intro starts),
+  `uiabort` (non-test game: hidden in free roam and the intro, shown while running, confirm and its
+  time-out, abort → idle + unpaused + day given up + the toast, the day taken up again; then the same
+  with a mocked gamepad), `uifavicon`. Failed checks go to the run's errors.
+- Changed behaviour others' tests see: gameplay.mjs `p4ui` now logs `toastTop: null` (toasts wait
+  while the letterbox is down: by design). The old "toasts below the letterbox's top bar" CSS stays
+  (harmless).
+- Tested (UI copy, after a refresh from GAME): `story` → `#7 idle`, `no errors` (intro2/3/7_0,
+  outro6_0, klart1/6 and story_d3_element now show no toast and no ticket); `start` (60 fps),
+  `title`, `pausemenu`, `uicheck`, `talk`, `portraitlight`, `uiportraits`, `uitoasts`, `uiabort`,
+  `uifavicon`: every check ok, no console errors. (One `uifavicon` run timed out waiting for a load
+  while the machine was busy - `fresh()` itself took 12 s then; three later runs passed; it now logs
+  the loading text if that happens.)
+
 ## Look
 
 - Fonts: **Barlow** 400/400i/500/600 (body), **Barlow Condensed** 500/600/700 (labels, numbers,
@@ -54,7 +118,8 @@ with no errors; `story` was run against it).
   under them `#loading` and, with a save, the link-style **Nytt spel** (`#newgame`, two clicks:
   "Säker? Klicka igen", then `resetSave`). The shade is white on the left 30 %, gone by 70 %. Pause (`#pause`): Fortsätt, Musik /
   Ljud / Grafik toggles, **Kontroller** (Visa/Dölj: swaps the notebook page for a copy of the
-  title's controls table, `#pause-controls`, cloned by hud.js), Radera sparat spel, and Oves
+  title's controls table, `#pause-controls`, cloned by hud.js), **Avbryt dagens uppdrag** (only
+  while a mission runs, phase 4 round 2), Radera sparat spel, and Oves
   anteckningsbok (a paper page, `hud.renderLog`). The card is a fixed grid (300 + 548 px); the
   log page and the controls share one cell (the hidden one is `visibility: hidden`), so the
   toggle never moves or resizes the card.
@@ -68,8 +133,8 @@ with no errors; `story` was run against it).
 ready; main.js's `setupTitle` turns it into Fortsätt), `#title-ctl` (hud.js), `#newgame` (main.js,
 hidden without a save), `#loading` (main.js writes loading text), `#pause`
 (main.js toggles class `show`), `#resume`. `#pause-controls` and `#opt-controls` are hud.js's.
-The visible toggles `#opt-music`, `#opt-sound`, `#opt-gfx`, `#opt-reset` are **wired by hud.js
-itself** (no main.js code needed). `#music`, `#sound`, `#reset` still exist but are hidden — only
+The visible toggles `#opt-music`, `#opt-sound`, `#opt-gfx`, `#opt-reset` and `#opt-abort` are
+**wired by hud.js itself** (no main.js code needed; `#opt-abort` uses `window.__game`). `#music`, `#sound`, `#reset` still exist but are hidden — only
 so the old main.js's `getElementById(...).addEventListener` doesn't crash; the new main.js should
 not wire them (they can be deleted once main.js no longer references them).
 Settings persist in `localStorage['saab-and-run-settings']` (`music`, `sound`, and `quality` once the
@@ -149,9 +214,11 @@ Prompt / toasts / banners / misc
 - `hud.setPrompt(html, hold?)` — `<b>F</b>` renders as a key cap; optional `hold` 0..1 draws a
   small progress bar (for hold-E / hold-F).
 - `hud.toast(html, cls = '', ms = auto)` — cls `radio` | `phone` | `good` | `bad` | `warn`;
-  duration scales with text length (2.6–7 s); max 4 on screen. While the letterbox is down the stack
-  starts below its top bar (`body:has(#letterbox.on) #toasts`; in dialogue the bar is max(9vh, 118 px
-  × ui)): the cards used to slide under it, half cut.
+  duration scales with text length (2.6–7 s); max 4 on screen. **While a scene is up** (letterbox,
+  curtain or `game.inDialog`) a new toast waits in a queue (max 4) and slides in after it (phase 4
+  round 2; see below); the element is returned either way.
+- `hud.clearToasts(cls = '')` (phase 4 round 2) — fades out the toasts of class `cls` (all if empty)
+  and drops queued ones of that class.
 - `#prompt .pr-warn` (phase 4) — a warning chip in the prompt line (red diamond, warm text): main.js's
   "Bilfritt område · −1 Ordning/s · Kliv ur och gå".
 - `hud.showBanner(main, sub, cls, ms = 2600, kicker = '')` — cls `good` | `bad` | `mission` |
@@ -227,11 +294,13 @@ Portraits
   (tested with their `models.js`: all 11 cast members): `model.head` is an eye-level marker there,
   so it aims at it and uses `model.headTop` (top of hair/hat) and `model.D.headH`; for a `head`
   group with geometry (old models) it frames that group's bounding box. Cartoon heads are
-  clamped. Lit by the world HDRI (`scene.environment`, intensity 0.4), a warm key (4.4) from
-  camera-left **that casts a 1024 px shadow** (brows, noses, hat brims model the face), a cool rim
-  (2.4) and a faint fill (0.2) — a ~2.5–3:1 key/shadow ratio, so pale faces and white hair (Anita,
-  Rune) still separate — and a 3 % warm midtone lift after tone mapping (`PORTRAIT.warm`); rendered to a float MSAA target and tone mapped in JS with three's ACES, over a
-  muted blue-grey studio backdrop with a vignette. ~10 ms each (the first ~100–400 ms: shader
+  clamped. Lit like a window portrait (phase 4 round 2): the world HDRI at 0.35, a warm key (4.8)
+  well to camera-left (`keyPos` [-1.7, 0.9, 0.55]) **that casts a 1024 px shadow** (brows, noses, hat
+  brims model the face), a faint fill (0.22) and a cool rim (7.5) from behind the other side
+  ([1.3, 1.0, -1.7]) — about 3.5–4:1 across the face and a bright edge on the far cheek, ear, hair
+  and shoulder — and a 3 % warm midtone lift after tone mapping (`PORTRAIT.warm`); rendered to a
+  float MSAA target and tone mapped in JS with three's ACES, over a blurred winter street (see the
+  round-2 section) and a light lens vignette. ~10 ms each (the first ~100–400 ms: shader
   compile). Lighting constants: exported `PORTRAIT` object. Round crops (`.radio-face` 38 px, call
   card 58 px) zoom on the head via `object-view-box`. The people agent's note ("distance 0.9 ×
   scale") is not needed: framing is computed from the head.

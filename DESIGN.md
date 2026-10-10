@@ -441,8 +441,19 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
 - Pause menu **Grafik**: Auto → Hög → Låg (gfx `setQuality`); the label shows what Auto picked
   ("Auto (Hög)" / "Auto (Låg)"). Saved as `quality` in `saab-and-run-settings` once chosen (an old
   `gfx: 'low'` still counts, `gfx: 'high'` is ignored); the URL's `q` / `lowgfx` win.
-- Banners sit on a light band (rgba 0.45, no blur, 70 px fades); toasts move below the letterbox's top
-  bar while it is down.
+- Banners sit on a light band (rgba 0.45, no blur, 70 px fades).
+- Scenes hold the HUD's chatter back (phase 4 round 2): while the letterbox or the curtain is up, or the
+  game holds a shot (`game.inDialog`: UPPDRAG KLART, the finale), the toast column and the report
+  ticket are hidden (`#hud.cine`); toasts on screen when it starts are dropped, new ones queue and
+  slide in one by one after it. `hud.clearToasts(cls?)` fades the toasts of a class ('phone', ...)
+  or all, queued ones too (missions.begin() clears 'phone').
+- Pause menu **Avbryt dagens uppdrag** (`#opt-abort`, two clicks like Radera sparat spel): shown only
+  while `missions.state === 'running'`; calls `missions.abort()` and unpauses (the way out for a
+  gamepad player and for a stuck stage).
+- Portraits (`renderPortrait`, `PORTRAIT`): a window portrait, not studio light - a warm key well to
+  camera-left casting a soft shadow, little fill and sky (~3.5-4:1 across the face), a cool rim from
+  behind the other side; behind the sitter a blurred winter street (a row-house wall, window, snowy
+  eave, spruce; one of three house colours picked from the character's name) with a vignette.
 
 ## 10. Rendering contract (`src/gfx.js`, `src/game/fx.js`, `src/game/markers.js`)
 

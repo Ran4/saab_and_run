@@ -19,6 +19,8 @@ const SETTINGS_KEY = 'saab-and-run-settings';
 
 let root, mapCanvas, mapCtx, baseMap;
 const byDist = (a, b) => a.d - b.d;
+// A two-click button back to its first state (see _initMenus' twice()).
+const unconfirm = (b) => { clearTimeout(b._confirmT); if (b.classList.contains('confirm')) { b.classList.remove('confirm'); if (b._label) b.textContent = b._label; } };
 
 // The whole HUD is laid out for 1280x720 and zoomed by --ui (CSS `zoom`) so it keeps its
 // proportions on other screens: min(w/1280, h/720), kept between 0.8 and 2. index.html sets it too
@@ -189,20 +191,32 @@ export const hud = {
     bind('opt-music', () => { audio.setMusic(!audio.musicOn); this._saveSettings(); this.syncMenu(); });
     bind('opt-sound', () => { audio.setMuted(!audio.muted); this._saveSettings(); this.syncMenu(); });
     bind('opt-gfx', () => { this._quality = setQuality({ auto: 'high', high: 'low', low: 'auto' }[getQuality()] || 'auto').setting; this._saveSettings(); this.syncMenu(); });
-    bind('opt-reset', (e) => {
+    // Two clicks for anything that throws work away: "Säker? Klicka igen" first (for 3.5 s).
+    const twice = (id, fn) => bind(id, (e) => {
       const b = e.currentTarget;
+      b._label ||= b.textContent;
+      clearTimeout(b._confirmT);
       if (!b.classList.contains('confirm')) {
         b.classList.add('confirm');
         b.textContent = 'Säker? Klicka igen';
-        clearTimeout(this._resetT);
-        this._resetT = setTimeout(() => { b.classList.remove('confirm'); b.textContent = 'Radera sparat spel'; }, 3500);
+        b._confirmT = setTimeout(() => unconfirm(b), 3500);
         return;
       }
-      clearTimeout(this._resetT);
-      b.classList.remove('confirm');
-      b.textContent = 'Radera sparat spel';
+      unconfirm(b);
+      fn(b);
+    });
+    twice('opt-reset', () => {
       if (this.onResetSave) this.onResetSave();
       else window.__game?.resetSave?.();
+    });
+    // The day's mission, while it runs (Q only gives up after a failure, and a gamepad has no other
+    // way out): the runner cleans up, marks the day given up (a short intro next time) and says
+    // who is still waiting; then back to the game.
+    twice('opt-abort', (b) => {
+      const g = window.__game;
+      b.hidden = true;
+      if (g?.missions?.state === 'running') g.missions.abort();
+      g?.pause?.(false);
     });
     // The title's "Kontroller": the controls table over the right of the scene, on request (it used
     // to cover the scene all the time).
@@ -216,14 +230,49 @@ export const hud = {
       ctl.appendChild(table.cloneNode(true));
     }
     bind('opt-controls', () => { pause?.classList.toggle('ctl'); this.syncMenu(); });
+    pause?.addEventListener('mousemove', () => pause.classList.remove('pad'));
     let wasShown = false;
     if (pause) new MutationObserver(() => {
       const shown = pause.classList.contains('show');
-      if (shown && !wasShown) { pause.classList.remove('ctl'); this.syncMenu(); this.renderLog(this._log); }
+      if (shown && !wasShown) { pause.classList.remove('ctl'); for (const b of pause.querySelectorAll('.confirm')) unconfirm(b); this.syncMenu(); this.renderLog(this._log); }
+      if (shown !== wasShown) this._padMenu(shown);
       wasShown = shown;
     }).observe(pause, { attributes: true, attributeFilter: ['class'] });
     this.syncMenu();
     this.renderLog(this._log);
+  },
+  // The pause menu with a gamepad (standard mapping): d-pad or left stick up/down moves the focus
+  // over the menu's buttons, A presses the focused one - on release, so the press that resumes the
+  // game doesn't also reach it as a jump. Start still toggles the pause (main.js). Without a pad,
+  // nothing changes (no focus is set).
+  _padMenu(on) {
+    cancelAnimationFrame(this._padRaf);
+    const pause = $('pause');
+    if (!pause) return;
+    if (!on) { pause.classList.remove('pad'); if (pause.contains(document.activeElement)) document.activeElement.blur(); return; }
+    let prev = null, rep = 0;
+    const step = () => {
+      this._padRaf = requestAnimationFrame(step);
+      let pad = null;
+      try { for (const p of navigator.getGamepads?.() || []) if (p && p.connected && p.mapping === 'standard') { pad = p; break; } } catch (e) { pad = null; }
+      if (!pad) return;
+      const b = (i) => { const v = pad.buttons[i]; return !!(v && (typeof v === 'object' ? v.pressed || v.value > 0.5 : v > 0.5)); };
+      const ay = +pad.axes[1] || 0;
+      const cur = { up: b(12) || ay < -0.6, down: b(13) || ay > 0.6, a: b(0) };
+      if (!prev) { prev = cur; return; }   // a button already held when the menu opened doesn't count
+      const list = [...pause.querySelectorAll('.pause-menu button')].filter((e) => !e.hidden && e.offsetParent);
+      const now = performance.now();
+      if ((cur.up || cur.down) && (!(prev.up || prev.down) || now > rep)) {
+        rep = now + (prev.up || prev.down ? 160 : 420);
+        let i = list.indexOf(document.activeElement);
+        i = i < 0 ? 0 : (i + (cur.down ? 1 : -1) + list.length) % list.length;
+        pause.classList.add('pad');
+        list[i]?.focus();
+      }
+      if (prev.a && !cur.a && list.includes(document.activeElement)) document.activeElement.click();
+      prev = cur;
+    };
+    step();
   },
   _saveSettings() {
     const o = { music: audio.musicOn, sound: !audio.muted };
@@ -240,6 +289,9 @@ export const hud = {
     set('opt-gfx', true, q === 'auto' ? `Auto (${tierName(qualityInfo().tier)})` : tierName(q));
     const ctl = !!$('pause')?.classList.contains('ctl');
     set('opt-controls', true, ctl ? 'Dölj' : 'Visa');
+    // "Avbryt dagens uppdrag" only while a mission runs (not in its intro, outro or after a failure).
+    const ab = $('opt-abort');
+    if (ab) { const on = window.__game?.missions?.state === 'running'; if (ab.hidden === on) { ab.hidden = !on; unconfirm(ab); } }
   },
 
   // ------------------------------------------------------------------------------------------
@@ -478,16 +530,57 @@ export const hud = {
     this.prompt.classList.toggle('show', !!text);
   },
 
+  // While a scene is up (letterbox, curtain, a held shot: see _cineSet) a toast waits in a queue
+  // and slides in after it; the element is returned either way.
   toast(text, cls = '', ms = 0) {
     const plain = String(text).replace(/<[^>]*>/g, '');
     const dur = ms || clamp(1800 + plain.length * 45, 2600, 7000);
-    while (this.toastsEl.children.length >= 4) this.toastsEl.firstChild.remove();
     // One flex item: plain text with <b> key caps in it must not fall apart into columns.
     const html = /^\s*<(img|div|span class="radio-face")/.test(text) ? text : `<span>${text}</span>`;
-    const t = el('div', 'toast card ' + cls, this.toastsEl, html);
+    const t = el('div', 'toast card ' + cls, null, html);
+    if (this._cine) {
+      const q = (this._toastQ ||= []);
+      q.push({ t, dur });
+      if (q.length > 4) q.shift();
+    } else this._showToast(t, dur);
+    return t;
+  },
+  _showToast(t, dur) {
+    while (this.toastsEl.children.length >= 4) this.toastsEl.firstChild.remove();
+    this.toastsEl.appendChild(t);
     setTimeout(() => t.classList.add('out'), dur);
     setTimeout(() => t.remove(), dur + 600);
-    return t;
+  },
+  // Fades out the toasts on screen - only those of class `cls` ('phone', 'radio', 'warn', ...) if
+  // given - and drops queued ones. missions.begin() clears 'phone' (a call cut short by the intro).
+  clearToasts(cls = '') {
+    const hit = (t) => !cls || t.classList.contains(cls);
+    for (const t of [...this.toastsEl.children]) if (hit(t)) { t.classList.add('out'); setTimeout(() => t.remove(), 600); }
+    if (this._toastQ) this._toastQ = this._toastQ.filter((q) => !hit(q.t));
+  },
+  // A scene is up while the letterbox or the curtain is, or the game holds a shot (game.inDialog:
+  // UPPDRAG KLART, the finale), polled every frame from tickBubbles. Then the toast column and the
+  // report ticket fade out (`#hud.cine`): what was on screen belonged to the moment before and is
+  // dropped; toasts that arrive meanwhile are queued and slide in one by one once the scene is over.
+  _cineSet(src, on) {
+    const s = (this._cineSrc ||= {});
+    if (s[src] === !!on) return;
+    s[src] = !!on;
+    const cine = !!(s.lb || s.cu || s.dlg);
+    if (cine === !!this._cine) return;
+    this._cine = cine;
+    root?.classList.toggle('cine', cine);
+    clearTimeout(this._flushT);
+    if (cine) this.clearToasts();
+    else if (this._toastQ?.length) {
+      const flush = () => {
+        if (this._cine) return;
+        const q = this._toastQ.shift();
+        if (q) this._showToast(q.t, q.dur);
+        if (this._toastQ.length) this._flushT = setTimeout(flush, 350);
+      };
+      this._flushT = setTimeout(flush, 500);
+    }
   },
   // A radio / phone message with the speaker's portrait.
   radio(who, name, text, cls = 'radio') {
@@ -529,13 +622,14 @@ export const hud = {
     this._collectT = setTimeout(() => this.collectEl.classList.remove('show'), ms);
   },
 
-  letterbox(on) { $('letterbox').classList.toggle('on', on); },
+  letterbox(on) { $('letterbox').classList.toggle('on', !!on); this._cineSet('lb', on); },
   // A cut: the scene fades to black (0.6 s) with an optional caption ("Senare samma dag"), and back.
   // Under the HUD cards (objective, prompt, banner stay readable), over the world and its tags.
   curtain(on, caption = '') {
     const c = $('curtain');
     if (on) c.querySelector('.cu-text').textContent = caption || '';
     c.classList.toggle('on', !!on);
+    this._cineSet('cu', on);
   },
 
   // ------------------------------------------------------------------------------------------
@@ -602,6 +696,8 @@ export const hud = {
     if (this._bubbles) this._bubbles.length = 0;
   },
   tickBubbles() {
+    // (called every frame by main.js: also where a held shot without letterbox is noticed)
+    this._cineSet('dlg', !!window.__game?.inDialog);
     const list = this._bubbles || [];
     if (!list.length) return;
     const now = performance.now();
@@ -1261,14 +1357,17 @@ function speedoFace(S) {
 // Portraits: a head-and-shoulders photograph of a character, lit like a winter window portrait
 // (the world's sky as image-based light, a soft warm key, a cool rim), tone mapped like the game.
 
-// Lighting setup (exported so look-dev pages can tune it).
-// env 0.4 / key 4.4 / fill 0.2 gives a ~2.5-3:1 key-to-shadow ratio, so pale faces and white hair
-// still model; `warm` lifts the midtones a little towards warm (skin), after tone mapping.
-// Fix round 1: the key more frontal and a bit lower, with more fill and sky: it models cheeks and
-// brows instead of making the nose's lit flank the brightest thing in every face. (Compared side by
-// side with the people area's [-1.3, 0.7, 1.5] / fill 0.7 at dialogue size and in the call card's
-// crop, `portraitlight` scenario: this one keeps a little more shape in pale faces.)
-export const PORTRAIT = { env: 0.5, key: 4.4, rim: 2.4, fill: 0.55, exposure: 1.0, warm: 0.03, shadow: true, keyPos: [-1.4, 0.8, 1.3] };
+// Lighting setup (exported so look-dev pages can tune it; positions are metres from the face).
+// Phase 4 round 2: a window-portrait set-up instead of flat studio light - a warm key from well to
+// camera-left (it casts a soft shadow: brows, noses and hat brims model the face), little fill and
+// sky, so the far cheek falls off to about a third (`uiportraits` measures it), and a cool rim from
+// behind on the other side that draws a bright edge on hair and shoulder. `warm` lifts the
+// midtones a little towards warm (skin), after tone mapping.
+export const PORTRAIT = {
+  env: 0.35, key: 4.8, fill: 0.22, rim: 7.5, exposure: 1.0, warm: 0.03, shadow: true,
+  keyPos: [-1.7, 0.9, 0.55], rimPos: [1.3, 1.0, -1.7], fillPos: [2, -0.1, 1.4],
+  keyColor: 0xffe6cc, rimColor: 0xcfe0ff, fillColor: 0xdfe8f5,
+};
 export function renderPortrait(renderer, model, R = 0.3) {
   const L = PORTRAIT;
   const S = 256;
@@ -1312,16 +1411,16 @@ export function renderPortrait(renderer, model, R = 0.3) {
   cam.position.set(ctr.x + dist * 0.06, cy + hH * 0.12, ctr.z + dist);
   cam.lookAt(ctr.x, cy, ctr.z);
   // Lights: warm soft key from camera-left and above (it casts a soft shadow, so brows, noses and
-  // hat brims model the face), cool rim from behind, faint fill.
+  // hat brims model the face), cool rim from behind the other side, faint fill.
   const at = new THREE.Vector3(ctr.x, eyeY, ctr.z);
-  const key = new THREE.DirectionalLight(0xffe6cc, L.key); key.position.set(at.x + L.keyPos[0], at.y + L.keyPos[1], at.z + L.keyPos[2]); key.target.position.copy(at);
+  const key = new THREE.DirectionalLight(L.keyColor, L.key); key.position.set(at.x + L.keyPos[0], at.y + L.keyPos[1], at.z + L.keyPos[2]); key.target.position.copy(at);
   key.castShadow = L.shadow;
   key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -0.45, right: 0.45, top: 0.45, bottom: -0.45, near: 0.5, far: 6 });
   key.shadow.camera.updateProjectionMatrix();
   key.shadow.bias = -0.0004; key.shadow.normalBias = 0.006; key.shadow.radius = 3;
-  const rim = new THREE.DirectionalLight(0xcfe0ff, L.rim); rim.position.set(at.x + 1.7, at.y + 1.0, at.z - 1.9); rim.target.position.copy(at);
-  const fill = new THREE.DirectionalLight(0xdfe8f5, L.fill); fill.position.set(at.x + 2, at.y - 0.1, at.z + 1.4); fill.target.position.copy(at);
+  const rim = new THREE.DirectionalLight(L.rimColor, L.rim); rim.position.set(at.x + L.rimPos[0], at.y + L.rimPos[1], at.z + L.rimPos[2]); rim.target.position.copy(at);
+  const fill = new THREE.DirectionalLight(L.fillColor, L.fill); fill.position.set(at.x + L.fillPos[0], at.y + L.fillPos[1], at.z + L.fillPos[2]); fill.target.position.copy(at);
   for (const l of [key, rim, fill]) { scene.add(l); scene.add(l.target); }
   const rt = new THREE.WebGLRenderTarget(S, S, { type: THREE.FloatType, samples: 4 });
   const oldClear = renderer.getClearColor(new THREE.Color()), oldAlpha = renderer.getClearAlpha();
@@ -1350,15 +1449,12 @@ export function renderPortrait(renderer, model, R = 0.3) {
     model.root.rotation.copy(savedRot);
     if (parent) parent.add(model.root);
   }
-  // Compose: a muted studio backdrop, then the tone-mapped portrait over it.
+  // Compose: a blurred winter street behind (drawn once per variant), then the tone-mapped portrait.
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const ctx = cv.getContext('2d');
-  const bg = ctx.createRadialGradient(S * 0.42, S * 0.3, S * 0.05, S * 0.5, S * 0.5, S * 0.78);
-  bg.addColorStop(0, '#8d9aa5'); bg.addColorStop(0.55, '#66727d'); bg.addColorStop(1, '#3c454e');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, S, S);
+  const img = new ImageData(new Uint8ClampedArray(portraitBackdrop(backdropFor(model), S).data), S, S);
   if (px) {
-    const img = ctx.getImageData(0, 0, S, S);
     const d = img.data;
     const exposure = L.exposure, warm = L.warm || 0;
     for (let y = 0; y < S; y++) {
@@ -1376,13 +1472,101 @@ export function renderPortrait(renderer, model, R = 0.3) {
         for (let ch = 0; ch < 3; ch++) d[dst + x + ch] = Math.round(d[dst + x + ch] * (1 - k) + srgb8(Math.pow(rgb[ch], 0.86)) * k);
       }
     }
-    ctx.putImageData(img, 0, 0);
   }
-  // Soft vignette.
-  const vg = ctx.createRadialGradient(S / 2, S * 0.45, S * 0.35, S / 2, S / 2, S * 0.75);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,14,18,0.35)');
+  ctx.putImageData(img, 0, 0);
+  // A light lens vignette over the whole picture (the backdrop has its own, stronger one).
+  const vg = ctx.createRadialGradient(S / 2, S * 0.45, S * 0.4, S / 2, S / 2, S * 0.75);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,14,18,0.2)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, S, S);
   return cv.toDataURL('image/jpeg', 0.9);
+}
+
+// The portrait's background: a winter street a few metres behind the sitter, far out of focus - the
+// wall of a row house across the street (stående panel, a white window, a corner board), its snowy
+// eave, pale sky, a dark spruce past the corner and the snow bank at the foot of the wall. The low
+// sun comes from the left like the key, so the wall is warm on the left and in a cool shadow on the
+// right (where the rim light draws its edge). Drawn sharp, blurred by a down/up-sample pyramid (no
+// canvas filter needed), vignetted, and cached as pixels: drawn once per variant for the game. The
+// variant (house colour, where the window is) is picked from the character's name, so neighbours
+// don't all stand in front of the same house.
+const BACKDROPS = [
+  { wall: [112, 50, 42], lit: [156, 82, 62], win: 0.8, tree: 0.07 },    // falu red
+  { wall: [140, 116, 74], lit: [182, 150, 100], win: 0.2, tree: 0.93 },  // ochre yellow
+  { wall: [100, 112, 102], lit: [140, 150, 134], win: 0.8, tree: 0.06 }, // grey-green
+];
+const _backdrops = new Map();
+function backdropFor(model) {
+  const name = String(model?.def?.name || model?.def?.key || '');
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return BACKDROPS[h % BACKDROPS.length];
+}
+function portraitBackdrop(v, S) {
+  const id = BACKDROPS.indexOf(v) + ':' + S;
+  if (_backdrops.has(id)) return _backdrops.get(id);
+  // Software canvases (willReadFrequently): an accelerated one would make the final getImageData
+  // wait for the GPU, which is busy uploading the town at this point of the load.
+  const mk = (n) => { const c = document.createElement('canvas'); c.width = c.height = n; c.getContext('2d', { willReadFrequently: true }); return c; };
+  const a = mk(S), x = a.getContext('2d');
+  const rgb = (c, k = 1) => `rgb(${Math.round(c[0] * k)},${Math.round(c[1] * k)},${Math.round(c[2] * k)})`;
+  // Sky, paler towards the horizon.
+  let gr = x.createLinearGradient(0, 0, 0, S * 0.45);
+  gr.addColorStop(0, '#b4c4d4'); gr.addColorStop(1, '#e2e7ea');
+  x.fillStyle = gr; x.fillRect(0, 0, S, S);
+  // The wall spans the frame except a strip at the tree's side (past the house corner).
+  const left = v.tree < 0.5;
+  const w0 = left ? S * 0.17 : 0, w1 = left ? S : S * 0.83;
+  // A spruce past the corner: dark, cool, a soft triangle stack.
+  x.fillStyle = '#26332f';
+  for (let k = 0; k < 6; k++) {
+    const ty = S * (0.08 + k * 0.1), hw = S * (0.035 + k * 0.022);
+    x.beginPath(); x.moveTo(v.tree * S, ty); x.lineTo(v.tree * S - hw, ty + S * 0.16); x.lineTo(v.tree * S + hw, ty + S * 0.16); x.fill();
+  }
+  // Snowy roof edge, the eave's shadow, then the wall: lit warm on the sun side, cooler shade beyond.
+  x.fillStyle = '#dfe4e8'; x.fillRect(w0, S * 0.02, w1 - w0, S * 0.05);
+  x.fillStyle = '#2b2a2c'; x.fillRect(w0, S * 0.07, w1 - w0, S * 0.035);
+  gr = x.createLinearGradient(0, 0, S, 0);
+  gr.addColorStop(0, rgb(v.lit)); gr.addColorStop(0.42, rgb(v.lit, 0.9)); gr.addColorStop(0.62, rgb(v.wall)); gr.addColorStop(1, rgb(v.wall, 0.82));
+  x.fillStyle = gr; x.fillRect(w0, S * 0.105, w1 - w0, S * 0.72);
+  // Board joints (they survive the blur only as a faint texture).
+  x.fillStyle = 'rgba(0,0,0,0.12)';
+  for (let bx = w0 + 5; bx < w1; bx += 11) x.fillRect(bx, S * 0.105, 2, S * 0.72);
+  // Under the eave the wall is darker still.
+  gr = x.createLinearGradient(0, S * 0.105, 0, S * 0.24);
+  gr.addColorStop(0, 'rgba(10,12,16,0.4)'); gr.addColorStop(1, 'rgba(10,12,16,0)');
+  x.fillStyle = gr; x.fillRect(w0, S * 0.105, w1 - w0, S * 0.14);
+  // The corner board.
+  x.fillStyle = '#d6d6d0'; x.fillRect(left ? w0 : w1 - S * 0.03, S * 0.07, S * 0.03, S * 0.76);
+  // A window: white frame and mullion, dark glass with the sky in its top.
+  const wx = v.win * S, ww = S * 0.26, wy = S * 0.3, wh = S * 0.32;
+  x.fillStyle = '#c8cacb'; x.fillRect(wx - ww / 2, wy, ww, wh);
+  gr = x.createLinearGradient(0, wy, 0, wy + wh);
+  gr.addColorStop(0, '#6f7e8c'); gr.addColorStop(0.45, '#3e4954'); gr.addColorStop(1, '#323a42');
+  x.fillStyle = gr;
+  const f = S * 0.025;
+  x.fillRect(wx - ww / 2 + f, wy + f, ww / 2 - f * 1.5, wh - 2 * f);
+  x.fillRect(wx + f / 2, wy + f, ww / 2 - f * 1.5, wh - 2 * f);
+  // Warm light inside one pane (somebody is home).
+  x.fillStyle = 'rgba(255,196,120,0.35)'; x.fillRect(wx + f / 2, wy + wh * 0.45, ww / 2 - f * 1.5, wh * 0.45);
+  // The snow bank along the foot of the wall, bluish in the shade.
+  gr = x.createLinearGradient(0, 0, S, 0);
+  gr.addColorStop(0, '#eef1f2'); gr.addColorStop(0.55, '#dfe6ec'); gr.addColorStop(1, '#c4d0dc');
+  x.fillStyle = gr;
+  x.beginPath(); x.moveTo(0, S * 0.84);
+  for (let k = 0; k <= 8; k++) x.lineTo(k / 8 * S, S * (0.8 + 0.025 * Math.sin(k * 1.7 + v.win * 9)));
+  x.lineTo(S, S); x.lineTo(0, S); x.fill();
+  // Out of focus: halve down to S/16, then back up (bilinear each step: a smooth, wide blur).
+  let c = a;
+  for (let n = S >> 1; n >= S >> 4; n >>= 1) { const d = mk(n); const dx = d.getContext('2d'); dx.imageSmoothingQuality = 'high'; dx.drawImage(c, 0, 0, n, n); c = d; }
+  for (let n = c.width << 1; n <= S; n <<= 1) { const d = mk(n); const dx = d.getContext('2d'); dx.imageSmoothingQuality = 'high'; dx.drawImage(c, 0, 0, n, n); c = d; }
+  const cx2 = c.getContext('2d');
+  // The vignette, a little off-centre towards the face.
+  gr = cx2.createRadialGradient(S * 0.5, S * 0.42, S * 0.22, S * 0.5, S * 0.5, S * 0.8);
+  gr.addColorStop(0, 'rgba(14,18,24,0)'); gr.addColorStop(1, 'rgba(14,18,24,0.5)');
+  cx2.fillStyle = gr; cx2.fillRect(0, 0, S, S);
+  const data = cx2.getImageData(0, 0, S, S);
+  _backdrops.set(id, data);
+  return data;
 }
 
 // three.js' ACESFilmicToneMapping (RRT+ODT fit), per pixel in JS.
