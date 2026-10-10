@@ -91,8 +91,8 @@ changed in round 6, why, and the numbers.
   starts one for the world while cars and people are built; the first renderFrame issues the rest.
 - Surface textures are uploaded (with mipmaps) when they load (`renderer.initTexture`).
 - First frame 1.85 s / 101 programs -> ~1.0 s / 135 programs (0.56-0.70 s with the main.js step
-  requested below). JS ArrayBuffer backing 473 -> 233 MB; JS-side vertex + index arrays 410 -> 134 MB
-  (people 62, cars ~62 remain).
+  requested below). JS ArrayBuffer backing 473 -> 264 MB (233 MB at the landing; since the crash fix
+  the world's batches keep positions + index for raycasts, ~78 MB, see below).
 - Not done: bloom from a lower mip (a quarter-resolution bright pass misses pixel-size snow glints and
   makes them flicker; bloom is off on low anyway), KTX2 (needs an encoder / build step).
 
@@ -163,6 +163,21 @@ compiled in the background).
   box (if it persists) is snow cover over the yellow paint.
 - **people:** the far-level SkinnedMeshes get the 'skin' copies of the shared materials automatically;
   keep `TRI_SPECK` / `gBump` / `gVx` hooks as they are (unchanged here).
+
+## Fix after landing: `story` crashed the headless tab at a day transition
+- **Cause (mine):** story.mjs (phase 4) raycasts every dialogue shot against the visible meshes within
+  40 m. The world batches have town-sized bounds, so every ray went into BatchedMesh's own raycast,
+  which walks *all* of the surface's triangles in the town (one instance) - over vertex arrays that
+  makeStatic had already dropped. Each test read an empty array (undefined -> NaN) through three's
+  slow paths: ~100 M boxed-number iterations per shot check, minutes per check, the renderer process
+  at 185 % CPU and 3.2 GB RSS, and at some day transition (several checks in a row) it died ("Target
+  closed"). It also meant walls could no longer block a line of sight.
+- **Fix:** `StaticBatch.raycast` tests only the runs (blocks) the ray passes near, with real data:
+  the batches keep positions + index (`userData.raycastable`); other static meshes keep them too
+  unless they are `noAO` (cards, haze, far hills), which become non-raycastable (no-op) instead of
+  NaN-looping. RSS during `FROM=4 story` now ~1.3 GB flat, each shot check a fraction of a second.
+- Memory cost: positions + index of the world's batches stay in JS (78 MB; ArrayBuffers 233 -> 264 MB,
+  still 473 before round 6). Verified: `FROM=4 story` and `story` twice end `#7 idle`, no errors.
 
 ## Known weaknesses
 - Moving things beyond 30 m update their shadows at 30 Hz (high) / 20 Hz (low).

@@ -591,8 +591,11 @@ Unknown names fall back to `plain`. `SURFACES` (exported) holds the table (scale
   materials on an InstancedMesh / SkinnedMesh / BatchedMesh are swapped for that kind's own copy by
   the renderer (same shader and programs); don't compare `mesh.material` against the shared one.
 - **`makeStatic(root, { freeArrays = true })`**: matrices fixed (`matrixAutoUpdate` false) and the
-  geometry's CPU arrays dropped once uploaded (bounds computed first; no raycasts or re-uploads
-  afterwards). buildTown applies it to everything it adds.
+  geometry's CPU arrays dropped once uploaded (bounds computed first; no re-uploads afterwards).
+  Positions and the index stay, so raycasts still hit it, unless the mesh is `userData.noAO` (cards,
+  haze, far hills) or sets `userData.raycastable = false`: those become non-raycastable (`raycast` is a
+  no-op). buildTown applies it to everything it adds. The world's batches raycast per block (only the
+  blocks a ray passes near are tested).
 - **`precompile(root = scene)`** -> promise: compiles every program `root` needs against the scene
   (lights, fog, environment) **as the composer's scene pass sees it** (linear HDR target, no tone
   mapping - a plain `renderer.compileAsync` while the screen is bound compiles tone-mapped variants

@@ -1844,7 +1844,10 @@ function renderShadows(Q) {
   if (full) { lastFull = frameNo; lastMap = sh.map; lastFullPos.copy(cp); lastFullDir.copy(_dir); }
 }
 function renderNormals() {
-  aoCam.copy(camera, false);
+  // (field by field: Object3D.copy would also JSON-clone userData every frame)
+  aoCam.fov = camera.fov; aoCam.aspect = camera.aspect; aoCam.near = camera.near; aoCam.zoom = camera.zoom;
+  aoCam.filmGauge = camera.filmGauge; aoCam.filmOffset = camera.filmOffset; aoCam.view = camera.view;
+  aoCam.layers.mask = camera.layers.mask;
   aoCam.far = Math.min(camera.far, AO_FAR);
   aoCam.updateProjectionMatrix();
   camera.matrixWorld.decompose(aoCam.position, aoCam.quaternion, aoCam.scale);
@@ -1914,10 +1917,14 @@ export function uploadGeometry(root = scene) {
 }
 
 // Static meshes: their matrices never change after this (one updateMatrix now), and their CPU-side
-// vertex arrays are dropped once uploaded to the GPU (bounds are computed first; raycasts and
-// re-uploads are not possible afterwards). Used by the world for everything buildTown makes.
+// vertex arrays are dropped once uploaded to the GPU (bounds are computed first). Positions and the
+// index stay (so line-of-sight raycasts still hit it) unless the mesh is `userData.noAO` (cards,
+// haze, far hills: not solid) or says `userData.raycastable = false`; those are no longer raycastable
+// (raycast() is a no-op - looping over a dropped index would only produce NaNs, slowly).
+// Used by the world for everything buildTown makes.
 const EMPTY = new Map();
 function dropArray() { this.array = EMPTY.get(this.array.constructor) || EMPTY.set(this.array.constructor, new this.array.constructor(0)).get(this.array.constructor); }
+const noRaycast = () => {};
 export function makeStatic(root, { freeArrays = true } = {}) {
   root.traverse((o) => {
     o.matrixAutoUpdate = false;
@@ -1928,8 +1935,12 @@ export function makeStatic(root, { freeArrays = true } = {}) {
     if (!g.boundingSphere) g.computeBoundingSphere();
     if (!g.boundingBox) g.computeBoundingBox();
     if (o.isBatchedMesh) { o.computeBoundingSphere(); o.computeBoundingBox(); }
-    for (const a of Object.values(g.attributes)) if (a.isBufferAttribute && !a.isInterleavedBufferAttribute && a.array?.length) a.onUpload(dropArray);
-    if (g.index?.array?.length) g.index.onUpload(dropArray);
+    const keep = o.userData.raycastable ?? !o.userData.noAO;
+    for (const [k, a] of Object.entries(g.attributes)) if (!(keep && k === 'position') && a.isBufferAttribute && !a.isInterleavedBufferAttribute && a.array?.length) a.onUpload(dropArray);
+    if (!keep) {
+      if (g.index?.array?.length) g.index.onUpload(dropArray);
+      o.raycast = noRaycast;
+    }
   });
 }
 

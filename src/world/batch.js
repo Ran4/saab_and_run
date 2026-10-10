@@ -50,7 +50,7 @@ function maxColor(geo, r) {
   return m;
 }
 
-const _m = new THREE.Matrix4(), _f = new THREE.Frustum();
+const _m = new THREE.Matrix4(), _f = new THREE.Frustum(), _rm = new THREE.Mesh(), _hits = [], _inv = new THREE.Matrix4(), _ray = new THREE.Ray();
 // One surface of one category for the whole town: a THREE.BatchedMesh whose buffers are filled
 // directly (one "geometry", one instance with the identity matrix), plus `runs`: the index range and
 // bounds of each block's part, in buffer order. onBeforeRender (and onBeforeShadow, which calls it)
@@ -71,6 +71,28 @@ export class StaticBatch extends THREE.BatchedMesh {
     this._indirectTexture.needsUpdate = true;   // uploaded once (BatchedMesh re-uploads it every draw)
     this.runs = runs;
     this.sortObjects = false;
+  }
+  // Raycasts test only the runs (blocks) the ray passes near (BatchedMesh's own raycast would walk the
+  // whole town's triangles of this surface per ray). Positions and index stay in memory for this
+  // (userData.raycastable: makeStatic keeps them).
+  raycast(raycaster, intersects) {
+    const g = this.geometry;
+    if (!g.index.array.length || !g.attributes.position.array.length) return;
+    _rm.geometry.index = g.index;
+    _rm.geometry.attributes = g.attributes;
+    _rm.material = this.material;
+    _rm.matrixWorld.copy(this.matrixWorld);
+    _inv.copy(this.matrixWorld).invert();
+    _ray.copy(raycaster.ray).applyMatrix4(_inv);
+    for (const r of this.runs) {
+      if (!_ray.intersectsSphere(r.sphere)) continue;
+      _rm.geometry.setDrawRange(r.start, r.count);
+      _rm.geometry.boundingSphere = r.sphere;
+      _rm.geometry.boundingBox = r.box;
+      _rm.raycast(raycaster, _hits);
+      for (const h of _hits) { h.object = this; intersects.push(h); }
+      _hits.length = 0;
+    }
   }
   onBeforeRender(renderer, scene, camera, geometry) {
     _m.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).multiply(this.matrixWorld);
@@ -154,6 +176,7 @@ export function batchStatic(scene, cats) {
       bm.name = `batch:${cat.name}:${s}`;
       bm.castShadow = !!cat.cast;
       bm.receiveShadow = true;
+      bm.userData.raycastable = true;   // makeStatic keeps positions + index (line-of-sight checks)
       if (cat.noAO) bm.userData.noAO = true;
       bm.computeBoundingSphere(); bm.computeBoundingBox();
       scene.add(bm); out.push(bm);

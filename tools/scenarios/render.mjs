@@ -5,7 +5,8 @@
 //   rshots  - A/B stills from fixed poses with the world frozen (RTAG=name -> out/r_<tag>_<pose>.png;
 //             RSTATIC=1 also hides cars and people so only the static world is compared)
 //   rauto   - the automatic quality: what tier/scale it picks (RTHROTTLE=n slows the CPU n x)
-export default ({ page, ev, shot, frames, sleep, OUT }) => {
+export default (helpers) => {
+  const { page, ev, shot, frames, sleep, OUT } = helpers;
   const POSES = {
     start: [[-12.5, 1.7, 4.2], [8, 1.5, 4.0]],
     lot_e: [[-30, 1.7, -22], [30, 1.0, -24]],
@@ -168,6 +169,26 @@ export default ({ page, ev, shot, frames, sleep, OUT }) => {
       await sleep(3000);
       await shot('rfx_exhaust_idle');
       await ev(() => clearInterval(window.__ex));
+    },
+
+    // the story with a memory / renderer log every 5 s (diagnosis of renderer crashes)
+    async rstory() {
+      const cdp = await page.target().createCDPSession();
+      let t0 = Date.now(), alive = true;
+      const tick = setInterval(async () => {
+        if (!alive) return;
+        try {
+          const h = await cdp.send('Runtime.getHeapUsage');
+          const r = await page.evaluate(async () => {
+            const g = window.__game, gfx = await import('/src/gfx.js'), i = gfx.renderer.info;
+            const pm = performance.memory || {};
+            return { day: g?.missions?.day ?? g?.missions?.idx, st: g?.missions?.state, geos: i.memory.geometries, tex: i.memory.textures, progs: i.programs.length, calls: gfx.gfxStats.calls, ms: +gfx.gfxStats.ms.toFixed(1), last: +(gfx.gfxStats.last || 0).toFixed(1), q: gfx.qualityInfo(), jsMB: Math.round((pm.usedJSHeapSize || 0) / 1e6), objs: (() => { let n = 0; gfx.scene.traverse(() => n++); return n; })() };
+          });
+          console.log(`[mem] t=${((Date.now() - t0) / 1000).toFixed(0)}s heap ${(h.usedSize / 1e6).toFixed(0)}MB backing ${((h.backingStorageSize || 0) / 1e6).toFixed(0)}MB ${JSON.stringify(r)}`);
+        } catch (e) { console.log('[mem] err', e.message); }
+      }, 5000);
+      page.on('error', (e) => console.log('[mem] page error (crash?)', e.message));
+      try { await (await import('./story.mjs')).default(helpers).story(); } finally { alive = false; clearInterval(tick); }
     },
 
     async rauto() {
