@@ -103,12 +103,12 @@ borta. Granskningarna finns kvar i journalen ovan. Nu körs stegen som enskilda 
 
 | fas 4-fix | status |
 |---|---|
-| rendering (gfx/fx/markers + world/town.js, batch.js; auto-kvalitet, batching, pre-pass, laddning, avgaser, svärta, snö) | ✅ landad 14:42 (start 1375 → 493 draw calls, JS-buffertar 473 → 233 MB). **Regression:** tillsammans med B kraschar `story` fliken vid en dagövergång — renderingsagenten felsöker (commit a34a5fd har felet) |
+| rendering (gfx/fx/markers + world/town.js, batch.js; auto-kvalitet, batching, pre-pass, laddning, avgaser, svärta, snö) | ✅ landad 14:42 (start 1375 → 493 draw calls, JS-buffertar 473 → 233 MB). Regressionen (story-flikkrasch vid dagövergång: testets raycasts loopade över frisläppta arrayer i batcharna) fixad i d42e414 |
 | värld (häckar, adventsstjärna/lampor, kyrkogårdsgrind, planteringar, snögubbe, kvistkort, 2 texter) | ✅ klar ~06:30 (loft-ändlock stängda = skåran, `kit.glow` under bloom-tröskeln, grind, granris-plantering, snögubbe, kvistkort tonas 9–20 m, anslagstavlan vänd rätt) |
 | bilar (instansade LOD-kroppar, sovande bilar, Car.dispose, förvärmning, hjulhusflik, avgaser) | ✅ klar ~07:40: bil-draw calls ungefär halverade (start 316 → 134), 137/159 bilar sover, `car.dispose()` + `warmCars()` (main.js ska anropa — gameplay A) |
 | folk (runtime-LOD, ansikten, Jimmys luva, knäböj) | ✅ klar ~06:00: THREE.LOD per person (folk 7.05 → 2.14 M tris summerat över 6 poser), oljekarta/relief/köldrodnad, tre unga män åtskilda, `st.kneel` + `kneelPoint`. OBS: hudshadern använder gfx.js-interna (`gBump`, `TRI_SPECK` …) |
 | gameplay B (story/filmkamera/tid på dygnet/dag 6/kontinuitet; `reviews/p4_gameplay_B.json`) | ✅ landad 14:36 (commit 8281a67) |
-| gameplay A (robusthet, input, save, UI/titel, småprat, loop-prestanda, docs; `reviews/p4_gameplay_A.json`) | startar när kraschen är fixad. Ska även: koppla Grafik-knappen till setQuality auto/high/low (se reviews/p4_fix_render.md), uploadGeometry()+precompile() vid 'Tar porträtt', car.dispose() i removeCar, broadphase som hoppar över sovande bilar, giveUp-knapp |
+| gameplay A (robusthet, input, save, UI/titel, småprat, loop-prestanda, docs; `reviews/p4_gameplay_A.json`) | startad ~16:10 i `saab_work/systems`. Ska även: koppla Grafik-knappen till setQuality auto/high/low (se reviews/p4_fix_render.md), uploadGeometry()+precompile() vid 'Tar porträtt', car.dispose() i removeCar, broadphase som hoppar över sovande bilar, giveUp-knapp |
 
 Granskningar sparas som JSON i `saab_work/reviews/<område>_review_rN.json`.
 
