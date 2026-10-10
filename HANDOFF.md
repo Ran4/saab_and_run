@@ -1,6 +1,6 @@
 # Handoff — Saab & Run (En man som heter Ove)
 
-Läge **2026-10-10 ~16:30**. Läs den här filen, sedan `CLAUDE.md` (motorkonventioner, tester),
+Läge **2026-10-10 ~18:00**. Läs den här filen, sedan `CLAUDE.md` (motorkonventioner, tester),
 `DESIGN.md` (designbibeln och alla modulkontrakt) och `notes/*.md` (per område). Historiken
 (fas 0–4 steg för steg) ligger i `handoff/history.md`.
 
@@ -43,6 +43,17 @@ genomspelning 6 (`p4_play.json`). Fynd per ägare: `p4_owner_*.json`, `p4_gamepl
 | gameplay B (filmkamera med siktkontroll, finalen, klocka 10:30/14:30, karta N = +z, dag 6, kontinuitet) | 8281a67 |
 | rendering (auto-kvalitet, batchad värld 1375 → 493 draw calls, billigare pass, svärta, fx) | a34a5fd + krasch-fix d42e414 |
 | **gameplay A** (robusthet, input, save, UI/titel, kvalitetsväljare, `car.dispose`, broadphase, småprat, docs) | e82f4a6 |
+
+## Pågår (session 4cca0e8c, 2026-10-10 ~18:00)
+
+Workflow `saab-p4r2-verify-review` (run `wf_d4a2fbc7-43a`, skript i
+`~/.claude/projects/-home-ran-src-html-everything-and-run-saab-and-run--en-man-som-heter-ove/4cca0e8c-1d61-4e6b-b00d-2f4634f8b0df/workflows/scripts/`):
+flake-fix av `placeCast` (kopia `story`, port 8807) → slutverifiering i GAME (`OUT=out/final`, port 8798),
+parallellt med runda 2 av de fem granskarna i egna kopior `qa_art qa_lang qa_code qa_perf qa_play`
+(portar 8841–8845, svar i `reviews/p4r2_<lins>.json`), skeptiker på kodfynd "from reading", sedan
+sortering till `reviews/p4r2_owner_<ägare>.json` + förslag på fixargrupper. Om sessionen dör: titta
+vilka `p4r2_*.json` som finns och kör bara det som saknas; flake-fixen syns som diff i missions.js.
+`browserslot` har nu **3** platser och `EXCLUSIVE=1` (väntar in alla platser, för tidsmätningar).
 
 ## Nästa steg
 
