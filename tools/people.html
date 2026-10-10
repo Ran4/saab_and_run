@@ -76,9 +76,10 @@
     const castB = ['jimmy', 'adrian', 'anita', 'rune', 'anders', 'vitskjorta'];
     const gCast = area('cast', 0, 0, 12);
     const info = [];
-    castA.forEach((k, i) => { const m = add(gCast, CHARS[k], -2.6 + i * 1.04, 0); info.push([k, tris(m), m.mesh.geometry.userData.surfaces.join('/')]); });
-    castB.forEach((k, i) => { const m = add(gCast, CHARS[k], -2.6 + i * 1.04, -3.2); info.push([k, tris(m), m.mesh.geometry.userData.surfaces.join('/')]); });
-    console.log('[t] cast', JSON.stringify(info));
+    const cardTris = (m) => (m.cardMesh ? m.cardMesh.geometry.index.count / 3 : 0);
+    castA.forEach((k, i) => { const m = add(gCast, CHARS[k], -2.6 + i * 1.04, 0); info.push([k, tris(m), cardTris(m), m.mesh.geometry.userData.surfaces.join('/')]); });
+    castB.forEach((k, i) => { const m = add(gCast, CHARS[k], -2.6 + i * 1.04, -3.2); info.push([k, tris(m), cardTris(m), m.mesh.geometry.userData.surfaces.join('/')]); });
+    console.log('[t] cast [key, tris, card tris, surfaces]', JSON.stringify(info));
 
     // --- heads: the cast's faces at eye height 1.6 m, front / profile (facing +X) / three-quarter
     const headKeys = ['ove', 'parvaneh', 'patrick', 'jimmy', 'adrian', 'anita', 'rune', 'anders', 'vitskjorta', 'sara', 'nasanin', 'ped'];
@@ -187,32 +188,36 @@
     window.__kneelBalls = () => { for (const m of kneelM) { m.root.updateMatrixWorld(true); m.ball.position.copy(kneelPoint(m, new THREE.Vector3())).sub(gKneel.position); } };
     window.__kneelBalls();
 
-    // --- levels of detail: the cast at lod 0 (left) and at the far level (right), forced; seen from
-    // the distances where the game switches (LOD_DIST.cast 15 m, LOD_DIST.ped 40 m)
-    const gLod = area('lods', 1140, 0, 24);
+    // --- levels of detail: the cast at lod 0 (left), the mid level (middle) and the far level (right),
+    // forced; seen from the distances where the game switches (LOD_DIST.mid 6 m, cast 15 m, ped 40 m;
+    // pedestrians: lod 1 left, far right)
+    const gLod = area('lods', 1140, 0, 34);
     const lodKeys = ['ove', 'parvaneh', 'patrickCast', 'jimmy', 'anita', 'rune', 'vitskjorta', 'sara'];
     const lodInfo = [];
-    for (const [side, far] of [[-1, false], [1, true]]) {
+    const LX = [-10, 0, 10];
+    const lvTris = (o) => (o ? o.geometry.index.count / 3 : 0);
+    for (const [g, lvName] of [[0, 'near'], [1, 'mid'], [2, 'far']]) {
       lodKeys.forEach((k, i) => {
-        const m = add(gLod, CHARS[k], side * 5.2 + (i - 3.5) * 1.15, 0, 0, { t: 1.3 + i }, { far: LOD_DIST.cast, lazyFar: false });
+        const m = add(gLod, CHARS[k], LX[g] + (i - 3.5) * 1.15, 0, 0, { t: 1.3 + i }, { far: LOD_DIST.cast, mid: LOD_DIST.mid, lazyFar: false });
         m.lodNode.autoUpdate = false;
-        m.lodNode.levels.forEach((l, j) => { l.object.visible = j === (far ? 1 : 0); });
-        if (far) lodInfo.push([k, m.mesh.geometry.index.count / 3, m.farMesh.geometry.index.count / 3, m.farMesh.geometry.userData.surfaces.join('/')]);
+        const want = g === 0 ? m.mesh : g === 1 ? m.midMesh : m.farMesh;
+        m.lodNode.levels.forEach((l) => { l.object.visible = l.object === want; });
+        if (g === 2) lodInfo.push([k, lvTris(m.mesh), lvTris(m.midMesh), lvTris(m.farMesh), m.midMesh.geometry.userData.surfaces.join('/'), m.farMesh.geometry.userData.surfaces.join('/')]);
       });
     }
     {
       const rl = mulberry32(9);
       for (let i = 0; i < 8; i++) {
         const d = randomPed(rl);
-        for (const [side, far] of [[-1, false], [1, true]]) {
-          const m = add(gLod, d, side * 5.2 + (i - 3.5) * 1.15, -2.4, 0, { t: 2.1 + i }, { far: LOD_DIST.ped, lazyFar: false });
+        for (const [g, far] of [[0, false], [2, true]]) {
+          const m = add(gLod, d, LX[g] + (i - 3.5) * 1.15, -2.4, 0, { t: 2.1 + i }, { far: LOD_DIST.ped, lazyFar: false });
           m.lodNode.autoUpdate = false;
           m.lodNode.levels.forEach((l, j) => { l.object.visible = j === (far ? 1 : 0); });
-          if (far && i < 3) lodInfo.push(['ped' + i, m.mesh.geometry.index.count / 3, m.farMesh.geometry.index.count / 3, m.farMesh.geometry.userData.surfaces.join('/')]);
+          if (far && i < 3) lodInfo.push(['ped' + i, lvTris(m.mesh), 0, lvTris(m.farMesh), '-', m.farMesh.geometry.userData.surfaces.join('/')]);
         }
       }
     }
-    console.log('[t] lod tris [key, near, far, far surfaces]', JSON.stringify(lodInfo));
+    console.log('[t] lod tris [key, near, mid, far, mid surfaces, far surfaces]', JSON.stringify(lodInfo));
 
     // --- Rune and his wheelchair, Anita pushing; the cat
     const gRune = area('rune', 240, 0, 10);
@@ -292,7 +297,12 @@
         ['f34_' + k, { area: 'heads34', at: [-0.9 + (i % 4) * 0.6, 1.6, -Math.floor(i / 4) * 3 + 0.62], look: [-0.9 + (i % 4) * 0.6, 1.585, -Math.floor(i / 4) * 3], fov: 26, label: k + ' snett' }],
         ['b_' + k, { area: 'heads', at: [-0.9 + (i % 4) * 0.6 + 0.25, 1.62, -Math.floor(i / 4) * 3 - 0.6], look: [-0.9 + (i % 4) * 0.6, 1.5, -Math.floor(i / 4) * 3], fov: 30, label: k + ' bakifrån' }],
         // the eyes and brows close up (~0.1 mm per pixel)
-        ['e_' + k, { area: 'heads', at: [-0.9 + (i % 4) * 0.6, 1.605, -Math.floor(i / 4) * 3 + 0.42], look: [-0.9 + (i % 4) * 0.6, 1.6, -Math.floor(i / 4) * 3], fov: 12, label: k + ': ögon' }]])),
+        ['e_' + k, { area: 'heads', at: [-0.9 + (i % 4) * 0.6, 1.605, -Math.floor(i / 4) * 3 + 0.42], look: [-0.9 + (i % 4) * 0.6, 1.6, -Math.floor(i / 4) * 3], fov: 12, label: k + ': ögon' }],
+        // p4r2: head and shoulders at dialogue range (~1 m), alone (the neighbours hidden): scarves,
+        // collars, hoods, fur trims and the hair's outline; front, three-quarter, from behind
+        ['c_' + k, { area: 'heads', solo: i, at: [-0.9 + (i % 4) * 0.6 + 0.12, 1.55, -Math.floor(i / 4) * 3 + 1.05], look: [-0.9 + (i % 4) * 0.6, 1.43, -Math.floor(i / 4) * 3], fov: 32, label: k + ': huvud och axlar' }],
+        ['c34_' + k, { area: 'heads34', solo: i, at: [-0.9 + (i % 4) * 0.6 + 0.12, 1.55, -Math.floor(i / 4) * 3 + 1.05], look: [-0.9 + (i % 4) * 0.6, 1.43, -Math.floor(i / 4) * 3], fov: 32, label: k + ': huvud och axlar, snett' }],
+        ['cb_' + k, { area: 'heads', solo: i, at: [-0.9 + (i % 4) * 0.6 + 0.55, 1.62, -Math.floor(i / 4) * 3 - 0.85], look: [-0.9 + (i % 4) * 0.6, 1.45, -Math.floor(i / 4) * 3], fov: 34, label: k + ': huvud och axlar, bakifrån' }]])),
       ove_side: { area: 'profiles', at: [-0.9, 1.6, 0.75], look: [-0.9, 1.59, 0], fov: 26, label: 'Ove från sidan' },
       ove_34: { area: 'heads34', at: [-0.9, 1.6, 0.75], look: [-0.9, 1.59, 0], fov: 26, label: 'Ove snett' },
       ear_ove: { area: 'profiles', at: [-0.93, 1.6, 0.42], look: [-0.93, 1.585, 0], fov: 22, label: 'Ove: örat' },
@@ -332,10 +342,16 @@
       hood_b: { area: 'heads34', at: [0.9, 1.42, 0.95], look: [0.9, 1.32, 0], fov: 30, label: 'Jimmy: luvan, snett' },
       hood_c: { area: 'heads', at: [1.25, 1.55, -0.85], look: [0.9, 1.35, 0], fov: 30, label: 'Jimmy: luvan, bakifrån' },
       // the near (left) and far (right) levels side by side from the switch distances and closer
-      lods_15: { area: 'lods', at: [0, 1.7, 15], look: [0, 0.9, -1], fov: 52, label: 'lod 0 (vänster) / fjärran (höger), 15 m' },
-      lods_40: { area: 'lods', at: [0, 1.7, 40], look: [0, 0.9, -1], fov: 52, label: 'lod 0-1 (vänster) / fjärran (höger), 40 m' },
-      lods_l: { area: 'lods', at: [-5.2, 1.5, 6], look: [-5.2, 0.9, -1], fov: 52, label: 'lod 0 / lod 1, 6 m' },
-      lods_r: { area: 'lods', at: [5.2, 1.5, 6], look: [5.2, 0.9, -1], fov: 52, label: 'fjärran, 6 m (visas från 15 / 40 m)' },
+      lods_6: { area: 'lods', at: [0, 1.6, 6], look: [0, 0.9, -1], fov: 52, label: 'mellan, 6 m (lod 0 till vänster, fjärran till höger)' },
+      lods_15: { area: 'lods', at: [0, 1.7, 15], look: [0, 0.9, -1], fov: 52, label: 'lod 0 (vänster) / mellan / fjärran (höger), 15 m' },
+      lods_40: { area: 'lods', at: [0, 1.7, 40], look: [0, 0.9, -1], fov: 52, label: 'lod 0-1 (vänster) / mellan / fjärran (höger), 40 m' },
+      lods_l: { area: 'lods', at: [-10, 1.5, 6], look: [-10, 0.9, -1], fov: 52, label: 'lod 0 / lod 1, 6 m' },
+      lods_m: { area: 'lods', at: [0, 1.5, 6], look: [0, 0.9, -1], fov: 52, label: 'mellannivån, 6 m (visas från 6 m)' },
+      lods_r: { area: 'lods', at: [10, 1.5, 6], look: [10, 0.9, -1], fov: 52, label: 'fjärran, 6 m (visas från 15 / 40 m)' },
+      // the mid level against level 0 where it takes over: Ove, Parvaneh and Patrick from 6 m through
+      // a 30-degree lens (the faces ~1.8x the game's: the mid level's worst case)
+      lods_f0: { area: 'lods', at: [-12.9, 1.6, 6], look: [-12.9, 1.35, 0], fov: 30, label: 'lod 0 från 6 m (30 grader)' },
+      lods_fm: { area: 'lods', at: [-2.9, 1.6, 6], look: [-2.9, 1.35, 0], fov: 30, label: 'mellannivån från 6 m (30 grader)' },
       kneel_a: { area: 'kneel', at: [0, 1.2, 4.2], look: [0, 0.55, 0], fov: 45, label: 'knäböj: håller blommorna, sträcker sig, lägger dem, vilar' },
       kneel_b: { area: 'kneel', at: [4.5, 1.0, 1.0], look: [0, 0.5, 0.2], fov: 45, label: 'knäböj från sidan' },
       kneel_c: { area: 'kneel', at: [-1.8, 1.3, 2.0], look: [-1.8, 0.5, 0.1], fov: 40, label: 'knäböj: sträcker sig (0.5) / lägger (1)' },
@@ -411,6 +427,7 @@
       document.getElementById('lbl').textContent = v.label;
       for (const k in areas) areas[k].visible = k === v.area;
       gCast.children.forEach((c, i) => { c.visible = !(v.hideRow === 0 && i < 6); });
+      for (const k of ['heads', 'heads34', 'profiles']) areas[k].children.forEach((c, i) => { c.visible = v.solo === undefined || i === v.solo; });
       document.getElementById('ports').style.display = v.ports ? 'flex' : 'none';
       if (v.ports) return makePortraits(!!v.soft, v.big);
       if (name === 'slip') console.log('[t] slip', JSON.stringify([0.6, 1.2, 1.5, 1.8, 2.2, 3.2, 4.5, 5.5].map((v) => [v, window.__slip(v)])));

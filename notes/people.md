@@ -3,7 +3,16 @@
 Realistic, PBR-lit winter people for DESIGN.md §3 and §8. No cartoon heads, no flapping mouths,
 no monsters. Look-dev page: `PORT=88xx ../browserslot node tools/pageshot.mjs tools/people.html`
 (views below); in-game checks: `PORT=88xx ../browserslot node tools/shot.mjs people pplsmash peopledrive`
-(`tools/scenarios/people.mjs`).
+(`tools/scenarios/people.mjs`; also `pplperf`, `pplkneel`, and since p4r2 `pplanim` (the animation LOD,
+A/B + checks) and `pplcine` (dialogue shots stay at level 0)).
+
+Phase 4, round 2 (the whole-game review's last fix round): see "Phase 4, round 2" below — close-up
+clothing and hair (scarves rebuilt as a knit band wound twice round the neck with folds, a knot and a
+fringe; alpha-tested strand cards along the hair shells' outlines, fins that break the helmet
+silhouette; fur tufts on Patrick's parka trim; Jimmy's hoodie band hugging the neck with a rolled hem;
+rounder lapels), an animation level of detail in `Character.sync` (far people posed every 2nd/4th
+frame, their matrices skipped while they stand still) and a mid level of detail for the cast from
+6 m (screen-size distances, so dialogue shots stay at level 0).
 
 Round 4 (final polish, after the p4 reviews): see "Round 4" below — runtime level of detail (every
 person is a `PersonLOD` with a far level on the same skeleton: the cast beyond 15 m, pedestrians beyond
@@ -174,12 +183,12 @@ at lod 1–2 and in mittens one block (on `fing`/`tip`).
 
 ```js
 import { CHARS, buildCharacter, animateCharacter, randomPed, buildBust, buildCat, carryPoint } from './actors/models.js';
-const m = buildCharacter(def, { lod, bust, remap, headLod, faceTex, lazyFace, far, lazyFar });   // lod 0 (cast), 1 (peds, default for name 'ped'), 2
+const m = buildCharacter(def, { lod, bust, remap, headLod, faceTex, lazyFace, far, mid, lazyFar, cards });   // lod 0 (cast), 1 (peds, default for name 'ped'), 2
 animateCharacter(m, st, dt);                             // st: see below; call every frame (Character.sync does)
 carryPoint(m, outVec3);                                  // world point for the carried cat's ROOT (carry pose)
 kneelPoint(m, outVec3);                                  // world point between the hands in the kneel (the bouquet)
-LOD_DIST                                                 // { cast: 15, ped: 40, shadow: 60, hyst: 0.1 } (metres)
-buildFarLevels();                                        // build every far level still waiting (tests)
+LOD_DIST                                                 // { cast: 15, mid: 6, ped: 40, shadow: 60, hyst: 0.1 } (metres, screen size: see Phase 4, round 2)
+buildFarLevels();                                        // build every mid / far level still waiting (tests)
 faceTuning({ pore, crease, relief });                    // look-dev: the faces' micro-detail (before building)
 ```
 `far: metres` gives the model a far level (lod-2 body, lod-1 head for the cast / lod-2 head for
@@ -194,7 +203,8 @@ shows a half-baked face, and cast members out of view at load cost nothing then
 (`lazyFace: false` bakes at once).
 
 Model fields: `root` (Group; position/yaw it), `body`, `mesh` (the level-0 SkinnedMesh), `meshes` ([mesh,
-farMesh once built]), `lodNode` (the `PersonLOD`), `farMesh`,
+midMesh, farMesh once built]), `lodNode` (the `PersonLOD`), `midMesh`, `farMesh`, `cardMesh` (level 0's
+hair / fur cards, a child of `mesh`; p4r2),
 `bones`, `hips` (= `pelvis` bone), `spine`, `chest`, `neck` (bone; `rotation.y` = look),
 `headBone`, **`head` (an Object3D marker at eye level in the middle of the face — portraits and
 look-at code aim here)**, `mouth` (= `jaw` bone; rotation.x 0..0.16), `arms[0|1]` (upper-arm
@@ -255,6 +265,10 @@ API and physics unchanged from phase 2 (radius/height from the model, toned-down
 time with the get-up animation, `game.onGetUp` when standing again). Round 4: the constructor builds
 the model with its far level (`far: LOD_DIST.cast`, or `LOD_DIST.ped` for `name: 'ped'`;
 `new Character(def, { model: { ...buildCharacter opts } })` overrides), `anim.kneel` / `anim.kneelReach`.
+Phase 4, round 2: the cast also gets `mid: LOD_DIST.mid`; `sync(dt)` has an animation level of detail
+(`export const ANIM_LOD = { on, near: 30, off: 12 }`; per character `animLod` (false for Ove: set it
+false on anyone who must be posed every frame), `lodEvery` (1 / 2 / 4, this frame's), `animStride(dt)`);
+see "Phase 4, round 2".
 
 ## The cast (`CHARS`)
 
@@ -393,6 +407,11 @@ Round 2:
   reaching, laying, resting; red balls at `kneelPoint`, a plinth 0.62 m ahead), `hood_a|b|c` (Jimmy's
   hood over his open jacket: front, 3/4, back); `&far=1` gives everybody the game's far level (the
   `perf` view then measures it); `&pore=&crease=&relief=` tune the faces (`faceTuning`).
+- p4r2: `c_<key>`, `c34_<key>`, `cb_<key>` (head and shoulders at dialogue range, ~1 m, alone: front,
+  three-quarter, from behind: scarves, collars, the hood, the fur trim, the hair's outline);
+  `lods_6`, `lods_m` (the mid level), `lods_f0` / `lods_fm` (level 0 vs mid from 6 m, 30-degree lens);
+  the `lods_*` views now show level 0 / mid / far side by side. The `[t] cast` log gives each cast
+  member's level-0 and card triangles.
 - round 3: `e_<key>` (eyes and brows at ~0.1 mm per pixel), `b_<key>` (the head from behind),
   `portraits_big1|2` (the portraits 1:1 at 300 px), `cat_side`, `cat_face`, `cat_held`, `cat_held2`
   (Ove carrying the cat exactly as main.js does: root at `carryPoint`, yaw + 90°, `hold(true)`),
@@ -596,21 +615,162 @@ bones by CORE position); `buildCharacter` now sorts the core bones first. Bald m
 - No console errors in pplperf, people, pplsmash, peopledrive, pplkneel, start, talk, errands (all 9
   ok), story (ends `#7 idle`), the look-dev page (all views).
 
+## Phase 4, round 2 (the whole-game review's last fix round)
+
+| review item | status |
+|---|---|
+| close-up clothing and hair (art, major) | mostly: scarves rebuilt, hair and fur cards, Jimmy's hood band, lapels; long hair's back panel and the cat are still shells |
+| animation and matrices every frame for every person (perf, major) | fixed: animation LOD in `Character.sync` + skipped matrix updates |
+| no mid LOD for the cast (perf, minor) | fixed: a mid level from 6 m (screen size), each level casting its own shadow |
+
+### Scarves (`buildScarf`, rebuilt)
+
+- **The wrap** is the band wound twice round the neck: one `sweep` along a helix starting at the end
+  that hangs out in front, the lower turn bigger and lying on the collar, the upper one closer round
+  the neck and dipping under the chin, so a crease runs between the turns and the band climbs
+  across one side. Its section is an ellipse (height ~0.31 H, depth 1.7–2.8 cm with `bulk`) rippling
+  three or four times a turn in radius and height, with creases drifting round it; 14 × 110 at lod 0
+  (10 × 48, 7 × 24). A second colour shows only as bands near the ends (stripes across the wound
+  band read as blotches).
+- **The ends** are sweeps of 14 sides with lengthwise folds, thicker and gathered where they leave
+  the wrap, two-colour bands near the end (one colour: a darker ribbed band), and **a fringe**: 11
+  short strands (6 at lod 1) of 4.5–6.5 cm across the end.
+- **'loop'** (Parvaneh): a soft roll across the front of the wrap (the folded loop) with both ends
+  pulled through it, instead of the old sphere. **'tucked'** (Rune) is the wrap alone.
+- The knit is 3× finer: `SkinBuilder.triK` scales a part's triplanar coordinates (the `fabric`
+  texture's scale) — 3 for every scarf part.
+- A lapel coat's V is no longer filled with the scarf's colour (that read as a flat bib behind the
+  ends): a dark knit (`under`, default 0x2c2a2a) unless the scarf is tucked.
+- Triangles: Parvaneh 44.4 → 48.3 k, Rune 45.3 → 47.9 k, peds with a scarf ~+0.8 k.
+
+### Hair and fur cards (level 0 of the cast)
+
+- Alpha-tested strips with a strand atlas (`cardTexture()`: 256 × 384, three bands: long fine
+  strands, sparse wisps, dense fur dark at the root; the root at the top of each band; mipmaps built
+  by hand so each band keeps its coverage above the test as it shrinks), `cardMat()`: a unique
+  instance of the `hair` surface (specular following the albedo, roughness 0.55) with the atlas as
+  map, `alphaTest` 0.3 and **alpha to coverage** (soft strands under MSAA, a cut-out without).
+  Double-sided by duplicated triangles, so both sides shade with the normal of the surface they grow
+  from (a flipped back-face normal made them dark).
+- They are **one more `SkinnedMesh` per cast member on the same skeleton, a child of level 0** (shown
+  only with it), `castShadow` false and `userData.noAO` (left out of the shadow and AO pre-passes): one
+  extra draw call in the main pass only, nothing at the mid / far levels or for pedestrians.
+  `buildCharacter(def, { cards: false })` builds none. Built with the near level (D.cards, a second
+  `SkinBuilder` with real UVs; `shellMesh` now records its grid in `geo.userData.grid`).
+- `shellCards(D, shellGeo, { edge, fins })`: **edge cards** start a row or two up the shell and hang
+  past its lower edge (1–3 cm, two staggered layers, a little curl towards the head) — the nape and
+  behind the ears for short cuts (not the temples), the fringe shells of the bob and long hair, the
+  ends of the bob and long curtains, Jimmy's whole messy rim, a beard's lower edge; **fins** stand up
+  along the hair's flow on the upper shell (0.4–1.6 cm, leaning back along the flow): edge-on seen
+  face on, they break the outline where the head turns away. Not under hats, not under Anders'
+  sunglasses. `loftEndCards` breaks long hair's back panel into strands at its end; `tubeFurCards`
+  puts three layers of 2.5–5.5 cm tufts (fins along the trim, turned a little) round a parka's fur
+  trim, over the trim tube darkened to 0.8 as their root.
+- Per head: Patrick 7.5 k card triangles (fur and beard), Parvaneh 4.1 k, Anita 3.6 k, Jimmy 2.6 k,
+  Adrian 0.4 k, Nasanin 0.3 k; Ove's crew cut and Sara (hat) none.
+- Portraits (hud.js renders the model in its own MSAA target) pick them up; the composite by alpha
+  is fine (checked `portraits_big1|2`).
+
+### Jimmy's hood, the lapels
+
+- A hoodie under an open coat: the hood's opening is a band standing up behind the neck and hugging
+  its base (radius nR + 4 cm instead of + 5–6), bunched in soft folds, narrowing towards the front
+  where its two ends meet in the neckline 5 cm lower (was 10: the ends ran down the chest and read
+  as a sling, in the portraits too), its lining darker on the inner face, a rolled hem along its
+  upper edge (a second sweep). Drawstrings unchanged.
+- Lapels (lod 0): 12 sides instead of 6, rounder edges, the outer edge rolled forward 4 mm, the
+  underside darker.
+
+### Animation level of detail (`character.js`)
+
+- `Character.sync(dt)` poses (`animateCharacter`) every k-th frame with the accumulated dt:
+  k = 1 within `ANIM_LOD.off` (12 m) of the camera or when dt is 0 (a snap) or on the frame after a
+  level-of-detail switch, k = 4 off screen (a sphere test against the last rendered frustum) or
+  hidden beyond 12 m, k = 2 on screen beyond `ANIM_LOD.near` (30 m), 4 for seated people in cars
+  beyond 30 m. Who skips which frame is staggered. Never Ove (`animLod` false).
+- On a frame without a new pose the root's whole matrix update is skipped as well:
+  `buildCharacter` gives every root an `updateMatrixWorld` that returns early while `root._skipFrom`
+  is its parent and its world matrix still sits within 25 cm of its position (a portrait reparents
+  the root, a teleport moves it: both update as usual). `sync` sets `_skipFrom` only while the root
+  is within 2 cm × max(1, distance / 30 m) (twice that off screen) and 0.01 of its yaw of where its
+  matrices were last computed, and only for roots directly in the scene (seated people in a car
+  always update). Walking people beyond 30 m therefore update their matrices on the posed frames.
+  (`matrixWorldAutoUpdate = false` would not have helped: r186 still traverses the children.)
+- Measured (`pplanim`, A/B interleaved, see Numbers below).
+
+### Mid level of detail (`models.js`)
+
+- The cast has three levels: level 0 to `LOD_DIST.mid` (6 m), the **mid level** (a lod-1 body and a
+  lod-1 head, its `hair` and `leather` kept apart: 4–5 draw calls, Ove 8.8 k, Parvaneh 12.0 k, Rune
+  14.8 k triangles) to `LOD_DIST.cast` (15 m), then the far level. Built in idle time with the far
+  levels (`LOD_JOBS`, mid first). Each level casts its own shadow, so the shadow pass draws level 0
+  only for the one or two people within 6 m.
+- `PersonLOD.update` now measures **screen size**: the distance over the camera's zoom times
+  tan(fov / 2) / tan(27.5°), i.e. as seen through the game's 55-degree lens. A 42-degree dialogue
+  shot from 6.8 m sees its speakers as from 5 m: level 0 (`pplcine` checks it: every subject within
+  8 m of the lens at level 0, the speakers posed every frame). The portrait camera (24°) is always
+  level 0. Shadows stop at 60 m of the same measure.
+- `lods_6`, `lods_m`, `lods_f0` / `lods_fm` (Ove, Parvaneh, Patrick at level 0 vs mid from 6 m
+  through a 30-degree lens: the worst case) in the look-dev page.
+
+### Numbers (RTX 4070, 1280×720; the machine shared with other agents)
+
+- `pplperf` with `QUERY='&farevery=1'` (the far shadow cascade every frame, so the shadow numbers
+  hold still), people's triangles a frame, all passes, before → after:
+  start 0.90 → 0.33 M (shadow 0.46 → 0.18, AO 0.22 → 0.08, main 0.23 → 0.08; 5 cast at level 0 →
+  5 at mid), lot_e 0.36 → 0.39 (one person at level 0 + cards, the scarves), street_trees 0.19 →
+  0.23, drone_nw 0.20 → 0.19, aerial 0.09 → 0.09; sum 1.75 → 1.23 M; people's calls 190 → 190.
+- `pplanim` (EXCLUSIVE, 3 interleaved 90-frame windows per side, median; ms per frame off → on):
+  | pose | Character.sync (all people) | scene matrices | game.update | posed every 1 / 2 / 4 frames | roots skipping |
+  |---|---|---|---|---|---|
+  | start | 0.95 → 0.59 | 1.28 → 0.98 | 2.24 → 1.90 | 8 / 7 / 9 | 16 |
+  | lot_e | 0.73 → 0.43 | 1.01 → 0.96 | 1.95 → 1.64 | 2 / 12 / 7 | 7 |
+  | street_trees | 0.78 → 0.36 | 1.19 → 1.01 | 1.95 → 1.58 | 1 / 4 / 20 | 24 |
+  | drone_nw | 0.56 → 0.36 | 1.02 → 0.94 | 1.67 → 1.47 | 1 / 13 / 4 | 17 |
+  | in the Saab | 0.77 → 0.45 | 1.07 → 1.02 | 2.10 → 1.85 | 1 / 10 / 12 | 12 |
+  i.e. -0.2 to -0.4 ms of `Character.sync` and -0.2 to -0.4 ms of `game.update` a frame; the matrix
+  update saves -0.02 to -0.25 ms (most far people walk or turn, and those update on their posed
+  frames). Nobody is drawn more than 10 cm from where they are (the check fails at 25 cm); Ove is
+  posed every frame (checked).
+- Programs +1 (the card material). Build: cast ~14 ms cached (was 13), ped ~5 ms.
+- No console errors in start, talk, walk, people, pplcine, pplkneel, peopledrive, pplsmash, pplperf,
+  pplanim, the look-dev page; `story` ended `#7 idle`, no errors, in 2 of 3 runs (one full run and
+  `FROM=4`); the third failed the day-5 outro check (Adrian `shown=false`: his root invisible, not
+  his level of detail - see "For the other owners").
+- Also checked through screenshots: the cast's portraits (`portraits_big1|2`: Jimmy's hood no longer
+  reads as a sling), dialogue shots (`talk`, `pplcine`), the kneel, the smash, the driver in the Saab.
+
+### For the other owners
+
+- Nothing to call. A scene that must pose someone every frame although they are far from the camera
+  can set `ch.animLod = false` (Ove already is). Code that reads a far NPC's bone matrices on a frame
+  where they were skipped gets them as of the last posed frame (≤ 3 frames old, within the 2 cm-scaled
+  tolerance); `getWorldPosition` and the portraits are unaffected.
+- Rendering: the cards rely on the `hair` surface material taking a `map` with `alphaTest` and
+  `alphaToCoverage` (the twig cards' recipe), on `userData.noAO` keeping a mesh out of both
+  pre-passes, and on `TRI_SPECK` as before.
+- The `people` scenario's close-ups now switch off main.js' `hideNearCamera` (it hid the neighbour
+  0.9 m from the lens).
+- Systems / story (seen once in three story runs, not caused here): Adrian stood invisible through
+  the day-5 outro. `hideNearCamera` hides someone near the lens and restores them next frame only if
+  `!ch.car`; if they are seated in a car in between (the race grid), they drop off its list and stay
+  invisible (`unseat` and `placeCast` do not set `root.visible`). Restoring regardless of `ch.car`
+  (or `placeCast` setting `n.root.visible = true`) closes it.
+
 ## Known weaknesses
 
 - Faces read as well-made CG, not photographs, inside ~1 m: the skin has no subsurface scattering or
   wrap (grey-beige shade, a hard terminator: rendering request), the wrinkles and lid creases are
   colour only (no normal map: rendering request), expressions stop at frown/blink/jaw/nod.
-- Hair is still shells (now with lock ridges, clumps, ragged layered ends, slabs with a dark inside
-  and a strand front lock): no strand cards at the silhouettes and no anisotropic highlight (both
-  need the rendering side). Jimmy's `messy` cut is still a lumpy cap.
+- Hair is shells with strand cards along their outlines (p4r2): long hair's back panel is still a
+  slab with strands only at its end, the bob's top reads a little fluffy on grey hair, alpha-tested
+  strands alias without MSAA (the low tier), and there is no anisotropic highlight.
 - The cat's fur is a jittered shell (no fur cards); its face is good at gameplay and carry distance,
   a little toy-like at 30 cm.
-- Level of detail (round 4) has two levels: a cast member within 15 m of the camera is the full lod-0
-  model (33–45 k triangles, drawn in all four passes), so a scene with five or six neighbours close by
-  (the start) still costs ~1 M triangles. A middle level (lod-0 head, lod-1 body) would halve that;
-  not done. The switch at 15 m is a level-0 → far pop of the face colours (texture → vertex colours)
-  at ~11 px of face, which reads as nothing in stills; not judged in motion.
+- Level of detail: three levels for the cast since p4r2 (0–6 m, mid to 15 m, far). The switch at
+  6 m is a level-0 → mid change of the face (texture → vertex colours, lod-0 → lod-1 eyes, the hair
+  cards gone) at ~20 px of face through the game's lens; checked in stills (`lods_f0` / `lods_fm`),
+  not judged in motion.
 - The relief from the oil map is texel-sized (~0.9 mm): at ~0.1 mm per pixel (the `e_` views) pores
   are blocky and slightly stretched across; at dialogue and portrait distances it reads as skin grain.
   Portraits are still lit by hud.js' flat studio light (a warm rim light there is the UI's).

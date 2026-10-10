@@ -1,10 +1,37 @@
-import { buildCharacter, animateCharacter, LOD_DIST } from './models.js';
+import { buildCharacter, animateCharacter, LOD_DIST, CHARS } from './models.js';
+import { THREE, camera, gfxStats } from '../gfx.js';
 import { queryBlocks, circleVsBlock, groundAt, groundInfo, topAt, RAMP } from '../world/collision.js';
 import { dampAngle, yawTo } from '../util.js';
 
 export const STEP = 0.45;
 const GRAV = 24;
 const _blocks = [], _hit = {};
+
+// Animation level of detail (p4r2). Posing a person (animateCharacter) and updating the ~50
+// matrices of their skeleton every frame cost ~0.5-1 ms for everybody in view of the 190 m ring, at
+// any distance. So: visible people beyond ANIM_LOD.near (30 m) are posed every 2nd frame, people off
+// screen beyond ANIM_LOD.off (12 m) and seated people in cars beyond 30 m every 4th, with the dt
+// accumulated (the motion is the same, just sampled less often; who skips which frame is staggered).
+// On a frame without a new pose the root's matrix update is skipped too (models.js gives the root
+// an updateMatrixWorld that honours root._skipFrom), unless the person moved more than 2 cm (that
+// angle beyond 30 m, twice it off screen) or turned since their matrices were last updated. Never
+// skipped: Ove (or any
+// Character with animLod = false), anyone within 12 m of the camera (every dialogue, cinematic and
+// on-foot camera), a frame with dt = 0 (a snap), and the frame after a level-of-detail switch.
+// ANIM_LOD.on = false turns it off (A/B measurements).
+export const ANIM_LOD = { on: true, near: 30, off: 12 };
+const _frustum = new THREE.Frustum(), _pv = new THREE.Matrix4(), _sph = new THREE.Sphere();
+let lodFrame = -1, lodN = 0;
+function viewFrustum() {
+  // once per rendered frame: the camera as the last render saw it (people sync before the camera
+  // moves this frame; the sphere's margin covers the difference)
+  if (gfxStats.frames !== lodFrame) {
+    lodFrame = gfxStats.frames;
+    _pv.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    _frustum.setFromProjectionMatrix(_pv);
+  }
+  return _frustum;
+}
 
 // A walking (or rolling) person with simple capsule physics. The model (models.js) is a skinned mesh
 // per level of detail on one skeleton; everything about how it moves on screen lives in this.anim, which animateCharacter reads:
@@ -15,9 +42,11 @@ const _blocks = [], _hit = {};
 export class Character {
   constructor(def, opts = {}) {
     this.def = def;
-    // level of detail: the cast is lod 0 near and a far level beyond LOD_DIST.cast, pedestrians lod 1
-    // and far beyond LOD_DIST.ped (three.js picks the level per render camera; see models.js)
-    this.model = buildCharacter(def, { far: def.name === 'ped' ? LOD_DIST.ped : LOD_DIST.cast, ...(opts.model || {}) });
+    // level of detail: the cast is lod 0 near, a mid level beyond LOD_DIST.mid and a far level beyond
+    // LOD_DIST.cast; pedestrians lod 1 and far beyond LOD_DIST.ped (three.js picks the level per
+    // render camera; see models.js)
+    const ped = def.name === 'ped';
+    this.model = buildCharacter(def, { far: ped ? LOD_DIST.ped : LOD_DIST.cast, mid: ped ? 0 : LOD_DIST.mid, ...(opts.model || {}) });
     this.root = this.model.root;
     this.x = opts.x ?? 0; this.z = opts.z ?? 0; this.yaw = opts.yaw ?? 0;
     this.y = opts.y ?? groundAt(this.x, this.z, 0.2, 0.6);
@@ -45,6 +74,9 @@ export class Character {
     // Rune does not get knocked out of his wheelchair; cars just shove him.
     this.invulnerable = this.wheelchair;
     this.solid = true;
+    // animation level of detail (see ANIM_LOD): never for Ove
+    this.animLod = def !== CHARS.ove;
+    this.lodAcc = 0; this.lodN = lodN++ & 3; this.lodEvery = 1; this.lodLevel = -1; this.lodDist = 0; this.lodVis = true;
     this.sync(0);
   }
 
@@ -158,6 +190,27 @@ export class Character {
     }
   }
 
+  // How often this person is posed (1 = every frame, 2, 4), from the camera's distance and view.
+  animStride(dt) {
+    if (!(dt > 0) || !ANIM_LOD.on || !this.animLod || !camera) return 1;
+    const lv = this.model.lodNode ? this.model.lodNode.getCurrentLevel() : 0;
+    if (lv !== this.lodLevel) { this.lodLevel = lv; return 1; }
+    const seated = this.state === 'seated' && this.car;
+    const x = seated ? this.car.x : this.x, z = seated ? this.car.z : this.z, y = seated ? (this.car.y ?? this.y) : this.y;
+    const cp = camera.position, d2 = (x - cp.x) ** 2 + (z - cp.z) ** 2 + (y + 1 - cp.y) ** 2;
+    const near = ANIM_LOD.near, off = ANIM_LOD.off;
+    this.lodDist = Math.sqrt(d2);
+    if (d2 < off * off) return 1;
+    this.lodVis = false;
+    if (!this.root.visible) return 4;
+    _sph.center.set(x, y + this.height * 0.5, z);
+    _sph.radius = this.height * 0.75 + 0.6;
+    if (!viewFrustum().intersectsSphere(_sph)) return 4;
+    this.lodVis = true;
+    if (d2 < near * near) return 1;
+    return seated ? 4 : 2;
+  }
+
   sync(dt) {
     const a = this.anim;
     a.t += dt;
@@ -171,9 +224,26 @@ export class Character {
     a.seated = this.state === 'seated';
     a.driving = a.seated && !!this.car && this.car.driver === this;
     if (a.kick > 0) a.kick = Math.max(0, a.kick - dt * 3.2);
-    animateCharacter(this.model, a, dt);
-    if (this.state === 'seated') return;
-    this.root.position.set(this.x, this.y, this.z);
-    this.root.rotation.set(0, this.yaw, 0);
+    // animation level of detail: pose every k-th frame with the accumulated dt
+    const k = this.animStride(dt);
+    this.lodEvery = k;
+    this.lodAcc += dt;
+    const posed = k === 1 || ++this.lodN >= k;
+    if (posed) { animateCharacter(this.model, a, this.lodAcc); this.lodAcc = 0; this.lodN = 0; }
+    const r = this.root;
+    if (this.state === 'seated') { r._skipFrom = null; return; }
+    r.position.set(this.x, this.y, this.z);
+    r.rotation.set(0, this.yaw, 0);
+    // no new pose: skip the skeleton's matrices as well while the root is still where they were
+    // last computed (its parent is the scene, so its world matrix is position + yaw)
+    // (2 cm at 30 m, the same angle further out: ~1 px; twice that off screen)
+    let skip = false;
+    if (!posed && r.parent && r.parent.isScene) {
+      const tl = 0.02 * Math.max(1, this.lodDist / ANIM_LOD.near) * (this.lodVis ? 1 : 2), tol = tl * tl;
+      const e = r.matrixWorld.elements;
+      const dx = e[12] - this.x, dy = e[13] - this.y, dz = e[14] - this.z;
+      skip = dx * dx + dy * dy + dz * dz < tol && Math.abs(e[8] - Math.sin(this.yaw)) < 0.01 && Math.abs(e[0] - Math.cos(this.yaw)) < 0.01;
+    }
+    r._skipFrom = skip ? r.parent : null;
   }
 }

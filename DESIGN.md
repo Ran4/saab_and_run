@@ -404,9 +404,17 @@ Added in phase 2 (details and the bone order in `notes/people.md`):
   lays them ~0.42 m ahead of the root (~0.27 m above it) and rests the hands on the knee (~3 s);
   `kneelPoint(model, outVec3)` is the bouquet between the hands. The caller sets and clears it.
 - Level of detail: a model's meshes hang under `model.lodNode` (a `THREE.LOD` picked per render
-  camera, so `renderPortrait` always gets level 0); `Character` gives the cast a far level beyond
-  15 m and pedestrians beyond 40 m on the same skeleton (`LOD_DIST`), no shadow beyond 60 m.
-  Nothing to call.
+  camera, so `renderPortrait` always gets level 0); `Character` gives the cast a mid level beyond
+  6 m and a far level beyond 15 m, pedestrians a far level beyond 40 m, all on the same skeleton
+  (`LOD_DIST`), no shadow beyond 60 m. The distances are screen sizes (over the camera's zoom and
+  relative to the game's 55-degree lens: a 42-degree dialogue shot keeps its speakers at level 0).
+  Level 0 of the cast carries alpha-tested hair and fur cards (one extra skinned mesh, main pass
+  only). Nothing to call.
+- Animation level of detail (`character.js` `ANIM_LOD`): beyond 30 m visible people are posed every
+  2nd frame, off-screen people beyond 12 m (and seated people in cars beyond 30 m) every 4th, with
+  the dt accumulated, and their skeleton's matrices are skipped while they stand still. Never Ove,
+  never within 12 m of the camera, never on `sync(0)`. A character can opt out with
+  `ch.animLod = false`. Nothing to call.
 
 ## 9. HUD & audio contract (`src/game/hud.js`, `style.css`, `index.html`, `src/audio.js`)
 

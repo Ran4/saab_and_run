@@ -101,7 +101,8 @@ class SkinBuilder {
   // uvOn: the mesh gets a 'uv' attribute (the lod-0 face texture): parts flagged geo.userData.faceUV
   // keep theirs, everything else points at the texture's neutral texel; skinK brightens every 'skin'
   // part's colour (the face texture stores its multipliers / TEXK).
-  constructor(remap = null) { this.parts = []; this.surface = 'fabric'; this.remap = remap; this.uvOn = false; this.skinK = 1; }
+  // triK scales the parts' triplanar coordinates (the surface texture's scale: 3 = a 3x finer knit).
+  constructor(remap = null) { this.parts = []; this.surface = 'fabric'; this.remap = remap; this.uvOn = false; this.skinK = 1; this.triK = 1; }
   use(surface) { this.surface = surface; return this; }
   // geo: position, normal, optional color (multiplied with `color`), optional skinIndex/skinWeight.
   // m: optional Matrix4 placing it (the triplanar frame is the part's own, as in GeoBuilder);
@@ -131,7 +132,7 @@ class SkinBuilder {
       _v.fromBufferAttribute(P, i);
       if (m) _v.applyMatrix4(m);
       pos[i * 3] = _v.x; pos[i * 3 + 1] = _v.y; pos[i * 3 + 2] = _v.z;
-      _t.copy(_v).applyQuaternion(_mqi);
+      _t.copy(_v).applyQuaternion(_mqi).multiplyScalar(this.triK);
       tri[i * 4] = _t.x; tri[i * 4 + 1] = _t.y; tri[i * 4 + 2] = _t.z; tri[i * 4 + 3] = seed;
       _v.fromBufferAttribute(N, i);
       if (m) _v.applyMatrix3(_nm).normalize();
@@ -1200,12 +1201,13 @@ function shellMesh(P, o) {
   const inner = o.inner && !per ? o.inner : 0;
   const nv = NV * (inner ? 2 : 1);
   const pos = new Float32Array(nv * 3), col = o.color ? new Float32Array(nv * 3) : null;
-  const pt = [0, 0, 0], nn = [0, 0, 0], mp = [0, 0, 0];
+  const pt = [0, 0, 0], nn = [0, 0, 0], mp = [0, 0, 0], hs = new Float32Array(R * J);
   let k = 0;
   for (const row of rows) for (let j = 0; j < J; j++, k++) {
     const th = ths[j];
     const hl = o.hLo(th), hh = Math.min(o.hHi(th), 0.985);
     const h = row.tuck ? Math.min(hh, hl + 0.03) : lerp(hl, hh, row.t);
+    hs[k] = h;
     headPt(P, th, h, pt); headN(P, th, h, nn);
     let T = o.thick(th, h, row.t);
     let fe = 1;
@@ -1262,6 +1264,8 @@ function shellMesh(P, o) {
   if (col) geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setIndex(idx);
   geo.computeVertexNormals();
+  // (the outer layer's grid, for the hair cards: rows from the lower edge up, columns ths)
+  geo.userData.grid = { R, J, per, ths, hs, tuck: o.edgeLo === 'roll' };
   return geo;
 }
 
@@ -1362,7 +1366,34 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
   // cap's surface and silhouette are not a smooth helmet
   const rk = lod === 0 ? ({ short: 0.8, side: 0.8, slick: 0.45, bob: 1, long: 1, pony: 0.7, bun: 0.7, balding: 0.5 }[style] ?? 0) : 0;
   const ridge = (th, h) => rk * 0.0055 * (Math.abs(Math.sin(th * 21 + 2.5 * vnoise(th * 4 + seed, h * 6, 11))) - 0.62) * sstep(0.5, 0.72, h) * (1 - sstep(0.9, 0.97, h));
-  const cap = (thick, extra = {}) => sb.use('hair').add(shellMesh(P, { n, K, rampH: 0.07, hLo: (th) => hairlineFor(P, th) + ragged(th) + lift, hHi: () => 1, edgeHi: 'pole', thick: (th, h, t) => under(th, h, Math.max(0.003, thick(th, h, t) + lump(th, h) * Math.min(1, thick(th, h, t) * 25) + ridge(th, h))), color: (th, h, t) => scl(vcol(th, h, t), 1 + 6 * ridge(th, h)), ...extra }), col, null, wHead);
+  // p4r2, lod 0: strand cards along the shells' outlines (shellCards): edge cards past the lower
+  // edges (nape, over the ears, fringes, the curtains' ends, a beard's lower edge) and fins standing
+  // up along the flow on the upper shell, so the silhouette breaks into hair instead of a helmet's rim
+  const cards = !!(tex && D.cards), cw = [[wHead, 1]];
+  const noHat = (th, h) => !hat || h < hatLo(hat, th) - 0.05;
+  const noShades = (th, h) => !d.sunglassesOnHead || !(wrapAbs(th) < 1.0 && h > 0.76);
+  const front = (th) => wrapAbs(th) < 1.5;   // (the temples and sideburns: in front of the ears)
+  const CAPC = {
+    short: { edge: { over: 0.012, keep: (th, h) => !front(th) && noHat(th, h) }, fins: { h: 0.009, len: 0.022, lean: 0.9 } },
+    side: { edge: { over: 0.011, keep: (th, h) => !front(th) && noHat(th, h) }, fins: { h: 0.008, len: 0.024, lean: 1.0 } },
+    slick: { edge: { over: 0.009, keep: (th, h) => !front(th) && noHat(th, h) }, fins: { h: 0.005, len: 0.026, lean: 1.7 } },
+    messy: { edge: { over: 0.02, curl: 0.002, keep: noHat }, fins: { h: 0.016, len: 0.026, lean: 0.45, from: 0.2 } },
+    curly: { edge: { over: 0.016, keep: noHat }, fins: { h: 0.014, len: 0.02, lean: 0.3, from: 0.2 } },
+    long: { fins: { h: 0.006, len: 0.03, lean: 1.3, from: 0.4 } },
+    bob: { fins: { h: 0.006, len: 0.03, lean: 1.3, from: 0.4 } },
+    pony: { fins: { h: 0.004, len: 0.03, lean: 1.6, from: 0.4 } },
+    bun: { fins: { h: 0.004, len: 0.03, lean: 1.6, from: 0.4 } },
+  }[style];
+  const shellC = (g, c, extra) => {
+    if (!cards || !c) return;
+    const fins = c.fins && { ...c.fins, keep: (th, h) => noHat(th, h) && noShades(th, h) && (!c.fins.keep || c.fins.keep(th, h)) };
+    shellCards(D, g, { col, wts: cw, seed: seed + 3, ...c, fins, ...extra });
+  };
+  const cap = (thick, extra = {}) => {
+    const g = shellMesh(P, { n, K, rampH: 0.07, hLo: (th) => hairlineFor(P, th) + ragged(th) + lift, hHi: () => 1, edgeHi: 'pole', thick: (th, h, t) => under(th, h, Math.max(0.003, thick(th, h, t) + lump(th, h) * Math.min(1, thick(th, h, t) * 25) + ridge(th, h))), color: (th, h, t) => scl(vcol(th, h, t), 1 + 6 * ridge(th, h)), ...extra });
+    sb.use('hair').add(g, col, null, wHead);
+    shellC(g, CAPC);
+  };
   // hair falling from the widest part of the skull, held off the cheeks; ends at lo(th)
   const curtain = (lo, T, o = {}) => {
     const wMax = P.W(0.62) + (hat ? 0.018 : o.off ?? 0.04), bMax = P.B(0.6) - (hat ? 0.018 : o.off ?? 0.04);
@@ -1373,11 +1404,14 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
       if (c < 0) { const tz = bMax * Math.pow(-c, 0.6); if (p[2] > tz) p[2] = lerp(p[2], tz, k * 0.92); }
       if (o.turn) { const tu = sstep(lo(th) + 0.07, lo(th), h) * o.turn; p[0] *= 1 - 0.05 * tu; p[2] = p[2] * (1 - 0.05 * tu); }
     };
-    sb.use('hair').add(shellMesh(P, {
+    const g = shellMesh(P, {
       n, K: Math.max(4, K - 1), periodic: false, th0: hat ? Math.max(1.3, o.th0 ?? 0.82) : o.th0 ?? 0.82, th1: TAU - (hat ? Math.max(1.3, o.th0 ?? 0.82) : o.th0 ?? 0.82), hLo: lo, hHi: () => 0.72,
       thick: (th, h, t) => under(th, h, T(th, h, t)), edgeLo: o.edge ?? 'roll', edgeHi: 'feather', post: fall, color: vcol, sideMin: o.sideMin ?? 0.35, sideW: 0.08,
       ao: 0.06, inner: lod < 2 ? 0.01 : 0,
-    }), col, null, wHead);
+    });
+    sb.use('hair').add(g, col, null, wHead);
+    // the ends: strands hanging past the curtain's edge (a bob's turned under)
+    shellC(g, { edge: { over: o.turn ? 0.02 : 0.03, rows: 2, curl: o.turn ? 0.008 : 0.003, droop: o.turn ? 0 : 0.004, layers: 2, keep: o.endKeep } });
   };
   let beardOk = true;
   switch (style) {
@@ -1397,7 +1431,11 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
     // curly: a mass of springy lumps
     case 'curly': cap((th, h) => 0.052 + 0.055 * Math.pow(vnoise(th * 8 + seed, h * 18, 7), 1.6) + 0.02 * vnoise(th * 20, h * 40, 2)); break;
     case 'balding':
-      sb.use('hair').add(shellMesh(P, { n, K: Math.max(3, K - 3), periodic: false, th0: 0.95, th1: TAU - 0.95, hLo: (th) => hairline(th) + lift * 0.5, hHi: (th) => lerp(0.58, 0.68, sstep(PI / 2, PI, wrapAbs(th))), thick: (th, h) => under(th, h, 0.014), rampH: 0.05, edgeHi: 'feather', color: vcol }), col, null, wHead);
+      {
+        const g = shellMesh(P, { n, K: Math.max(3, K - 3), periodic: false, th0: 0.95, th1: TAU - 0.95, hLo: (th) => hairline(th) + lift * 0.5, hHi: (th) => lerp(0.58, 0.68, sstep(PI / 2, PI, wrapAbs(th))), thick: (th, h) => under(th, h, 0.014), rampH: 0.05, edgeHi: 'feather', color: vcol });
+        sb.use('hair').add(g, col, null, wHead);
+        shellC(g, { edge: { over: 0.008, rows: 1, curl: 0.002, keep: (th, h) => !front(th) && noHat(th, h) }, fins: { h: 0.006, len: 0.02, lean: 1.0, from: 0.3, keep: (th) => !front(th) } });
+      }
       break;
     case 'bob': {
       // a side parting, a soft side-swept fringe, the hair falling from the widest part of the skull
@@ -1405,7 +1443,11 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
       const part = 0.32;
       cap((th, h) => 0.04 - 0.02 * G2((th - part) / 0.09, 0) * sstep(0.8, 0.92, h) + 0.01 * (vnoise(th * 5 + seed, h * 8, 3) - 0.4));
       const sweepF = (th) => 0.05 * G2((th + 0.45) / 0.45, 0);
-      if (!hat) sb.use('hair').add(shellMesh(P, { n, K: Math.max(3, K - 3), periodic: false, th0: -1.15, th1: 0.25, hLo: (th) => hairlineFor(P, th) - sweepF(th) + ragged(th) * 0.5, hHi: (th) => hairlineFor(P, th) + 0.07, thick: (th) => 0.014 + 0.16 * sweepF(th), edgeHi: 'feather', rampH: 0.05, color: vcol }), col, null, wHead);
+      if (!hat) {
+        const g = shellMesh(P, { n, K: Math.max(3, K - 3), periodic: false, th0: -1.15, th1: 0.25, hLo: (th) => hairlineFor(P, th) - sweepF(th) + ragged(th) * 0.5, hHi: (th) => hairlineFor(P, th) + 0.07, thick: (th) => 0.014 + 0.16 * sweepF(th), edgeHi: 'feather', rampH: 0.05, color: vcol });
+        sb.use('hair').add(g, col, null, wHead);
+        shellC(g, { edge: { over: 0.012, rows: 1, curl: 0.002, layers: 2 } });
+      }
       // layered ends: the length steps by ~1 cm from lock to lock (choppy, not one straight panel);
       // clumps of strands as ridges down the curtain, so the back is not a smooth helmet
       const lo = (th) => lerp(0.13, 0.2, sstep(1.3, PI, wrapAbs(th))) + 0.045 * (Math.pow(vnoise(th * 9 + seed, 2, 5), 1.5) - 0.3) + 0.012 * (vnoise(th * 31 + seed, 4, 6) - 0.5);
@@ -1420,7 +1462,9 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
       cap((th, h) => (T0 - 0.02 * G2((wrapAbs(th) - (style === 'long' ? 0.35 : 0)) / 0.12, 0) * sstep(0.78, 0.9, h) + 0.6 * sweepF(th) * (1 - sstep(0.7, 0.85, h))) * (style === 'long' ? 1.2 : lerp(0.6, 1.25, Math.min(1, sstep(0.62, 0.78, h) + sstep(2.0, 2.6, wrapAbs(th))))) + (style === 'long' ? 0.012 * (vnoise(th * 9 + seed, h * 10, 3) - 0.3) : 0));
       if (style === 'long' && D.fem && !hat) {
         // the swept fringe comes lower over the temple (a second, thin shell over the cap's edge)
-        sb.use('hair').add(shellMesh(P, { n, K: Math.max(3, K - 3), periodic: false, th0: 0.05, th1: 1.25, hLo: (th) => hairlineFor(P, th) - sweepF(th) + ragged(th), hHi: (th) => hairlineFor(P, th) + 0.07, thick: (th, h, t) => 0.016 + 0.16 * sweepF(th), edgeHi: 'feather', rampH: 0.05, color: vcol }), col, null, wHead);
+        const g = shellMesh(P, { n, K: Math.max(3, K - 3), periodic: false, th0: 0.05, th1: 1.25, hLo: (th) => hairlineFor(P, th) - sweepF(th) + ragged(th), hHi: (th) => hairlineFor(P, th) + 0.07, thick: (th, h, t) => 0.016 + 0.16 * sweepF(th), edgeHi: 'feather', rampH: 0.05, color: vcol });
+        sb.use('hair').add(g, col, null, wHead);
+        shellC(g, { edge: { over: 0.014, rows: 1, curl: 0.002, layers: 2 } });
       }
       if (style === 'long') {
         // long hair falls over the ears down the sides of the face to the jaw, then on down the back
@@ -1428,7 +1472,8 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
         // close to the cheeks, thinner, clumps of strands down it, the ends ragged and the front edge thin
         const lo = (th) => lerp(0.02, 0.1, sstep(1.0, 2.0, wrapAbs(th))) + 0.04 * (Math.pow(vnoise(th * 8 + seed, 3, 5), 1.4) - 0.35) + 0.015 * (vnoise(th * 29 + seed, 5, 7) - 0.5);
         const clump = (th, h) => 0.008 * (Math.abs(Math.sin(th * 11 + 3 * vnoise(th * 3 + seed, h * 3, 8))) - 0.5) * sstep(0.62, 0.45, h);
-        curtain(lo, (th, h, t) => 0.016 + 0.014 * (1 - t) + 0.01 * (Math.pow(vnoise(th * 9 + seed, h * 7, 4), 1.4) - 0.3) + clump(th, h), { th0: 1.1, off: 0.022, edge: 'feather', sideMin: 0.15 });
+        // (no strands off the curtain's back: the length goes on down the back there)
+        curtain(lo, (th, h, t) => 0.016 + 0.014 * (1 - t) + 0.01 * (Math.pow(vnoise(th * 9 + seed, h * 7, 4), 1.4) - 0.3) + clump(th, h), { th0: 1.1, off: 0.022, edge: 'feather', sideMin: 0.15, endKeep: (th) => wrapAbs(th) < 2.1 });
         longHair(sb, P, D, d, bi, lod, col);
         if (!hat || D.fem) D.pendingLock = () => frontLock(sb, P, D, d, bi, lod, col, seed);
       }
@@ -1463,7 +1508,7 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
     // the mouth: no beard over the lips (a gap round them, a little wider than the mouth)
     const mouth = (th, h) => { const x = Math.sin(th) * P.W(h) * 0.95; return sstep(1.35, 1.05, Math.abs(x) / (0.1 * P.mw)) * sstep(0.045, 0.02, Math.abs(h - P.mh - 0.003 + (h < P.mh ? 0.012 : 0))) * sstep(0.5, 0.9, Math.cos(th)); };
     const top = (th) => { const a = Math.abs(th); return mo ? P.nb - 0.008 : a < 0.42 ? P.nb - 0.012 : lerp(P.nb - 0.04, 0.44, sstep(0.42, 1.45, a)) + (vnoise(th * 9 + seed, 4, 3) - 0.5) * 0.012; };
-    sb.use('hair').add(shellMesh(P, {
+    const bg = shellMesh(P, {
       n: lod ? n : 64, K: Math.max(3, K - 2), periodic: false, th0: mo ? -0.6 : -1.62, th1: mo ? 0.6 : 1.62,
       hLo: (th) => (mo ? P.mh + 0.022 : 0.0), hHi: top,
       thick: (th, h) => {
@@ -1473,7 +1518,10 @@ function buildHair(sb, P, D, d, bi, lod, tex) {
       },
       post: mo ? null : (p, th, h) => { if (h < 0.04) p[1] -= 0.02 * (vnoise(th * 11 + seed, 1, 7)) * sstep(0.04, 0.0, h); },
       edgeHi: 'feather', color: (th, h, t) => scl(vcol(th, h, t), 0.85 + 0.25 * vnoise(th * 30 + seed, h * 40, 2)),
-    }), bc, null, bi.head);
+    });
+    sb.use('hair').add(bg, bc, null, bi.head);
+    // a ragged lower edge: strands past the jaw line
+    if (cards && !mo) shellCards(D, bg, { col: bc, wts: [[bi.head, 1]], seed: seed + 9, edge: { over: full ? 0.016 : 0.009, rows: 1, curl: 0.002, w: 2 } });
   }
 }
 const top3 = [0, 0, 0];
@@ -1496,8 +1544,9 @@ function longHair(sb, P, D, d, bi, lod, col) {
   });
   const w = (v) => { const t = sstep(yHead + 0.02, D.shoulderY - 0.02, v.y); return [[bi.head, 1 - t], [bi.chest, t]]; };
   const seed = hash1((d.name || 'x').length * 7.7) * 40;
-  sb.use('hair').add(loft(rings, {
-    n: [22, 14, 9][lod], weights: w, capBot: 0.006, capTop: 0.0,
+  const ln = [22, 14, 9][lod];
+  const lg = loft(rings, {
+    n: ln, weights: w, capBot: 0.006, capTop: 0.0,
     mod: (v) => {
       // locks: the back surface ripples into strands, the end is ragged
       const lock = Math.sin(v.th * 9 + seed) * 0.5 + (vnoise(v.th * 6 + seed, v.y * 8, 4) - 0.5);
@@ -1506,7 +1555,14 @@ function longHair(sb, P, D, d, bi, lod, col) {
       if (v.i === 0) v.y += (vnoise(v.th * 5 + seed, 0, 5) - 0.6) * 0.05;
     },
     color: (v) => scl([1, 1, 1], 0.88 + 0.22 * vnoise(v.th * 16 + seed, v.y * 4, 9) + 0.1 * (vnoise(v.th * 40, v.y * 9, 3) - 0.5)),
-  }), col);
+  });
+  sb.use('hair').add(lg, col);
+  // (lod 0) the ragged end breaks into strands, and fins along the panel break its outline (the
+  // loft's rings are the rows of a shell's grid: the end ring first)
+  if (D.cards) {
+    lg.userData.grid = { R: rings.length, J: ln, per: true, ths: evenThetas(ln), hs: new Float32Array(rings.length * ln), tuck: false };
+    shellCards(D, lg, { col, seed: seed + 5, edge: { over: 0.035, vary: 1.3, rows: 1, curl: 0.002, droop: 0.004, w: 1.5, bright: 1.15 }, fins: { h: 0.006, len: 0.03, lean: 1.5, from: 0.1, every: 2 } });
+  }
 }
 
 // A lock of long hair falling forward over the right shoulder, in front of the scarf and the coat,
@@ -1729,7 +1785,9 @@ function buildTorso(sb, d, D, bi, lod, m) {
     }
   };
   const base = lin(c.color);
-  const vcol = c.open || c.collar === 'lapel' ? lin(d.scarf ? d.scarf.color : c.under ?? d.under ?? 0x6a6a6a) : base;
+  // (p4r2: a scarf with hanging ends no longer fills the V with its colour - that read as a flat
+  // bib behind the ends: a dark knit is under the coat; a tucked scarf still fills it)
+  const vcol = c.open || c.collar === 'lapel' ? lin(d.scarf ? (d.scarf.style === 'tucked' ? d.scarf.color : c.under ?? d.under ?? 0x2c2a2a) : c.under ?? d.under ?? 0x6a6a6a) : base;
   const yV0 = D.chestY - 0.03;
   // a cardigan under a lapel coat (no scarf): its own, narrower V with a blouse in it
   const cardi = c.collar === 'lapel' && !d.scarf && d.under != null;
@@ -1912,8 +1970,9 @@ function buildCollar(sb, d, D, bi, lod, c, surf) {
     // and the empty hood lying flat on the upper back with soft folds; a parka's fur trim on the rim.
     // Nothing of it may sink into the coat: rim and hood are kept outside the torso's surface.
     const hc = c.hoodColor ?? (c.open ? c.under ?? col : col);
-    const y0 = D.shoulderY + 0.02, rr = nR + 0.05 + b * 0.8, rz0 = nR + 0.055 + b * 0.8;
-    const furR = !!c.fur, tr = (furR ? 0.026 : hoodUnder ? 0.02 : 0.017) + b * (hoodUnder ? 0.1 : 0.25), tz = (furR ? 0.03 : hoodUnder ? 0.006 : 0.02) + b * (hoodUnder ? 0.05 : 0.3);
+    // (a hoodie's band hugs the base of the neck: p4r2)
+    const y0 = D.shoulderY + 0.02, rr = nR + (hoodUnder ? 0.04 : 0.05) + b * (hoodUnder ? 0.55 : 0.8), rz0 = nR + (hoodUnder ? 0.045 : 0.055) + b * (hoodUnder ? 0.55 : 0.8);
+    const furR = !!c.fur, tr = (furR ? 0.026 : hoodUnder ? 0.026 : 0.017) + b * (hoodUnder ? 0.1 : 0.25), tz = (furR ? 0.03 : hoodUnder ? 0.008 : 0.02) + b * (hoodUnder ? 0.05 : 0.3);
     const rim = [], outs = [];
     const A = hoodUnder ? 2.85 : 2.5;
     for (let q = 0; q <= 12; q++) {
@@ -1921,7 +1980,7 @@ function buildCollar(sb, d, D, bi, lod, c, surf) {
       const fr = sstep(1.4, 2.5, Math.abs(a));
       // (under an open coat the ends converge into the opening, lying on the hoodie's front)
       const p = hoodUnder
-        ? [sa * rr * (1 - 0.5 * fr), y0 + 0.035 * Math.max(0, ca) - 0.1 * fr * fr, cz - ca * rz0 * (1 - 0.2 * fr) + 0.01 * fr]
+        ? [sa * rr * (1 - 0.55 * fr), y0 + 0.035 * Math.max(0, ca) - 0.05 * fr * fr, cz - ca * rz0 * (1 - 0.15 * fr) + 0.01 * fr]
         : [sa * rr * (1 - 0.25 * fr), y0 + 0.035 * Math.max(0, ca) - 0.045 * fr, cz - ca * rz0 + 0.012 * fr];
       // (never into the coat: lifted onto the shoulders, laid on the chest)
       outsideTorso(D, p, Math.max(tr, tz) + 0.004);
@@ -1929,11 +1988,39 @@ function buildCollar(sb, d, D, bi, lod, c, surf) {
       outs.push([sa, 0.35, -ca]);
     }
     const wR = (t) => { const fr = sstep(0.3, 0.0, Math.min(t, 1 - t)); return [[bi.chest, 0.55 + 0.45 * fr], [bi.neck, 0.45 * (1 - fr)]]; };
-    sb.use(furR ? 'hair' : 'fabric').add(sweep(rim, outs, {
-      n: [10, 8, 6][lod], steps: [36, 20, 12][lod], rx: () => tr, rz: () => tz, capBot: 0.01, capTop: 0.01, weights: wR,
+    const furCards = furR && !!D.cards;
+    // a hoodie's hood (p4r2): not a round tube but the hood's opening lying round the neck as a band
+    // standing up behind it, bunched in soft folds, narrowing to the front where its two ends meet in
+    // the neckline (no longer running down the chest like a sling), the lining showing darker on its
+    // inner face and a rolled hem along its upper edge (below)
+    const hb = hoodUnder && !furR;
+    const rxR = hb ? (t) => tr * lerp(0.55, 1, sstep(0, 0.38, Math.min(t, 1 - t))) * (1 + 0.13 * Math.sin(t * 29 + 1.3) * sstep(0.08, 0.3, Math.min(t, 1 - t))) : () => tr;
+    const rzR = hb ? (t) => tz * lerp(0.7, 1, sstep(0, 0.3, Math.min(t, 1 - t))) : () => tz;
+    const rimG = sweep(rim, outs, {
+      n: [hb ? 14 : 10, 8, 6][lod], steps: [36, 20, 12][lod], rx: rxR, rz: rzR, capBot: 0.01, capTop: 0.01, weights: wR,
       mod: (p, t, a) => { if (furR) p[1] += 0.006 * (vnoise(a * 4, t * 40, 2) - 0.3); outsideTorso(D, p, 0.003); },
-      color: (t, a) => scl([1, 1, 1], furR ? 0.85 + 0.25 * vnoise(a * 6, t * 50, 3) : 0.9 + 0.1 * Math.cos(a)),
-    }), furR ? c.fur : hc);
+      // (with fur cards the tube is the fur's dense, darker root)
+      color: (t, a) => scl([1, 1, 1], furR ? (0.85 + 0.25 * vnoise(a * 6, t * 50, 3)) * (furCards ? 0.8 : 1) : hb ? (Math.cos(a) < -0.3 ? 0.68 : 0.86 + 0.12 * Math.cos(a)) * (0.94 + 0.06 * Math.sin(t * 29 + 1.3)) : 0.9 + 0.1 * Math.cos(a)),
+    });
+    sb.use(furR ? 'hair' : 'fabric').add(rimG, furR ? c.fur : hc);
+    if (hb) {
+      // the rolled hem along the band's upper edge (the band's up-and-across direction: T x out)
+      const hem = [], ho = [];
+      for (let q = 0; q <= 12; q++) {
+        const T = v3norm(v3sub(rim[Math.min(12, q + 1)], rim[Math.max(0, q - 1)], [0, 0, 0])), O = v3norm([...outs[q]]);
+        const Bv = v3norm(v3cross(T, O, [0, 0, 0])); if (Bv[1] < 0) { Bv[0] = -Bv[0]; Bv[1] = -Bv[1]; Bv[2] = -Bv[2]; }
+        const t = q / 12, w = rxR(t) * 0.93, o = rzR(t) * 0.35;
+        hem.push([rim[q][0] + Bv[0] * w + O[0] * o, rim[q][1] + Bv[1] * w + O[1] * o, rim[q][2] + Bv[2] * w + O[2] * o]);
+        ho.push(outs[q]);
+      }
+      sb.use('fabric').add(sweep(hem, ho, {
+        n: [8, 6, 5][lod], steps: [36, 20, 12][lod], rx: (t) => tz * 0.75 * lerp(0.6, 1, sstep(0, 0.3, Math.min(t, 1 - t))), rz: (t) => tz * 0.8 * lerp(0.6, 1, sstep(0, 0.3, Math.min(t, 1 - t))), capBot: 0.004, capTop: 0.004, weights: wR,
+        mod: (p) => outsideTorso(D, p, 0.003),
+        color: (t, a) => scl([1, 1, 1], 0.92 + 0.08 * Math.cos(a)),
+      }), hc);
+    }
+    // (lod 0) the fur: two layers of tufts, 3-6 cm, standing out of the trim
+    if (furCards) tubeFurCards(D, rimG, [10, 8, 6][lod], { col: c.fur, len: 0.042 * Math.min(1.1, D.k + 0.1), seed: 11 });
     // the hood itself, flat on the back: from under the rim down ~22 cm, its sides rounding off, never
     // wider than the back under it (the corners stood out over the shoulders)
     const yT = y0 + 0.01, yB = D.shoulderY - 0.21 * D.k;
@@ -1973,9 +2060,14 @@ function buildCollar(sb, d, D, bi, lod, c, surf) {
       const rings = yy.map((y) => {
         const thv = lerp(0.05, 0.62, sstep(yV0, D.shoulderY + 0.05, y));
         const p = surf(s * (thv + 0.08), y), r = Math.hypot(p.x, p.z) || 1;
-        return { y, cx: p.x + (p.x / r) * 0.005, cz: p.z + (p.z / r) * 0.005, rx: lerp(0.018, 0.04, sstep(yV0, D.shoulderY, y)) * D.k, rz: 0.006, p: 2.5, w: y > D.chestY ? bi.chest : [[bi.spine, 0.5], [bi.chest, 0.5]] };
+        return { y, cx: p.x + (p.x / r) * 0.005, cz: p.z + (p.z / r) * 0.005, rx: lerp(0.018, 0.04, sstep(yV0, D.shoulderY, y)) * D.k, rz: lod ? 0.006 : 0.0075, p: lod ? 2.5 : 2.2, w: y > D.chestY ? bi.chest : [[bi.spine, 0.5], [bi.chest, 0.5]] };
       });
-      sb.use('fabric').add(loft(rings, { n: 6, capBot: 0.0, capTop: 0.0, weights: (v, r) => r.w }), darker(col, 0.95));
+      // (p4r2, lod 0: rounder edges, the outer edge rolled forward a little, its underside darker - not a flat slab)
+      sb.use('fabric').add(loft(rings, {
+        n: [12, 6, 6][lod], capBot: 0.0, capTop: 0.0, weights: (v, r) => r.w,
+        mod: lod ? null : (v, r) => { const e = sstep(0.2, 1, ((v.x - r.cx) * s) / r.rx); v.z += 0.004 * e; },
+        color: lod ? null : (v, r) => scl([1, 1, 1], v.c < -0.3 ? 0.8 : 0.96 + 0.04 * v.c),
+      }), darker(col, 0.95));
     }
   }
   if (type === 'shirt') {
@@ -2000,34 +2092,57 @@ function buildCollar(sb, d, D, bi, lod, c, surf) {
   }
 }
 
-// Scarves: a wrap round the neck (bulk: chunky or slim) and its ends. style: 'end' (one end hanging
-// in front), 'two' (both ends, different lengths), 'tucked' (into the coat, no ends), 'loop' (folded
-// in half, the ends pulled through the loop at the throat). The ends follow the chest and the
-// belly, twist a little and end in a fringe.
+// Scarves (p4r2, rebuilt): the wrap is the band wound twice round the neck - one swept tube along a
+// helix, the lower turn bigger and lying on the collar, the upper one closer round the neck, dipping
+// under the chin, so a crease runs between the turns and the band climbs across one side - with soft
+// folds along it (its height and depth rippling three or four times a turn, creases round its
+// section), smooth normals and a 3x finer knit (the fabric texture's scale); a second colour shows
+// as bands near the ends (stripes across the wound band read as blotches). Its ends (style: 'end' one hanging in front, 'two' both, different lengths,
+// 'tucked' none, 'loop' folded in half with the ends pulled through the loop at the throat: a soft
+// knot across the front) follow the chest and the belly with lengthwise folds, gathered where they
+// leave the wrap, and end in a fringe of short strands.
 function buildScarf(sb, d, D, bi, lod, surf) {
   const sc = d.scarf, nR = D.neckR, bk = sc.bulk ?? 1, b = (d.coat.bulk ?? 0.02) * 0.4, cz = D.neckZ;
   const style = sc.style || 'end';
   const y0 = D.shoulderY - 0.005, H = (0.1 + 0.02 * bk) * Math.min(1, D.k + 0.25);
   const g = (v) => nR + v * bk + b;
-  const keys = [
-    { y: y0, rx: g(0.062), rzF: g(0.066), rzB: g(0.055), cz },
-    { y: y0 + H * 0.45, rx: g(0.074), rzF: g(0.076), rzB: g(0.064), cz },
-    { y: y0 + H * 0.82, rx: nR + 0.05 * bk + b * 0.5, rzF: nR + 0.05 * bk, rzB: nR + 0.045 * bk, cz },
-    { y: y0 + H, rx: nR + 0.026, rzF: nR + 0.026, rzB: nR + 0.022, cz },
-  ];
-  const c1 = lin(sc.color), c2 = sc.color2 != null ? lin(sc.color2) : c1;
+  const c1 = lin(sc.color), c2 = sc.color2 != null ? lin(sc.color2) : c1, two = sc.color2 != null;
   const seed = hash1(sc.color * 1e-6 + (d.age ?? 1) * 0.37) * 30;
-  const wf = (v) => { const t = sstep(y0 + 0.02, y0 + H * 0.95, v.y); return [[bi.chest, 1 - t * 0.6], [bi.neck, t * 0.6]]; };
-  const knit = (v) => 0.94 + 0.06 * Math.sin(v.y * 700 + v.th * 3);
-  sb.use('fabric').add(loft(sampleRings(keys, rangeYs(y0, y0 + H, [0.012, 0.02, 0.03][lod])), {
-    n: [24, 16, 10][lod], weights: wf, capTop: -0.03,
-    mod: (v) => { const k = 1 + 0.07 * Math.sin(3 * v.th + v.y * 45 + seed) + 0.035 * Math.sin(7 * v.th + seed); v.x *= k; v.z = cz + (v.z - cz) * k; },
-    color: (v) => scl(Math.sin(v.y * 160 + v.th * 2) > 0.6 ? c2 : c1, knit(v)),
+  const triK = sb.triK; sb.triK = 3;
+  // the wrap: a helix from the end hanging in front (th0), twice round
+  const th0 = style === 'two' ? 0.22 : style === 'loop' ? 0.1 : style === 'tucked' ? 0.4 : 0.16;
+  const turns = 1.94, NP = 48;
+  const rz0 = (0.017 + 0.011 * bk) * Math.min(1, D.k + 0.2);   // the band's depth (radial half-thickness)
+  const outer1 = g(0.074), outer2 = nR + 0.05 * bk + b * 0.5 + 0.004;
+  const pts = [], outs = [];
+  for (let q = 0; q <= NP; q++) {
+    const u = q / NP, ph = th0 + u * turns * TAU, su = sstep(0.25, 0.75, u);
+    const fold = 1 + 0.07 * Math.sin(3.5 * ph + seed) + 0.03 * Math.sin(7.3 * ph + seed * 2);
+    const rp = (lerp(outer1, outer2, su) - rz0 * lerp(1, 0.85, su)) * fold;
+    const cf = Math.max(0, Math.cos(ph));
+    const x = Math.sin(ph) * rp, z = cz + Math.cos(ph) * rp * (Math.cos(ph) > 0 ? 1.04 : 0.93);
+    const y = y0 + H * lerp(0.3, 0.68, su) - 0.012 * cf * cf * su + 0.004 * Math.sin(2.3 * ph + seed);
+    pts.push([x, y, z]);
+    outs.push([Math.sin(ph), 0, Math.cos(ph)]);
+  }
+  const wf = (t) => { const y = lerp(y0 + H * 0.3, y0 + H * 0.68, sstep(0.25, 0.75, t)), w = sstep(y0 + 0.02, y0 + H * 0.95, y); return [[bi.chest, 1 - w * 0.6], [bi.neck, w * 0.6]]; };
+  const hW = (t) => H * 0.31 * (1 + 0.14 * Math.sin(2.6 * (th0 + t * turns * TAU) + seed)) * lerp(1, 0.85, sstep(0.25, 0.75, t));
+  sb.use('fabric').add(sweep(pts, outs, {
+    n: [14, 10, 7][lod], steps: [110, 48, 24][lod], capBot: 0.01, capTop: 0.01, weights: wf,
+    rx: hW, rz: (t) => rz0 * lerp(1, 0.85, sstep(0.25, 0.75, t)),
+    // creases round the band's section, drifting along it
+    mod: (p, t, a, N, Bv) => {
+      if (lod > 1) return;
+      const k = 0.11 * Math.sin(3 * a + t * 31 + seed) + 0.05 * Math.sin(5 * a - t * 17);
+      const rx = hW(t) * Math.sin(a) * k, rz = rz0 * Math.cos(a) * k;
+      p[0] += Bv.x * rx + N.x * rz; p[1] += Bv.y * rx + N.y * rz; p[2] += Bv.z * rx + N.z * rz;
+    },
+    color: (t, a) => scl(c1, (0.9 + 0.08 * Math.cos(a)) * (0.94 + 0.06 * Math.sin(3 * a + t * 31 + seed)) * (0.97 + 0.03 * Math.sin(t * 900 + a * 3))),
   }), 0xffffff);
-  if (style === 'tucked') return;
+  if (style === 'tucked') { sb.triK = triK; return; }
   // an end hanging from the wrap at angle th0, to height yb, its width w; follows the coat's surface
   const end = (th0, yb, w, twist) => {
-    const yTop = y0 + H * 0.4, pts = [], outs = [], N = 6;
+    const yTop = y0 + H * 0.3, pts = [], outs = [], N = 6;
     for (let q = 0; q <= N; q++) {
       const t = q / N, y = lerp(yTop, yb, t), th = th0 * (1 - 0.35 * t) + 0.05 * Math.sin(t * 3 + seed);
       const p = surf(th, Math.min(y, D.shoulderY - 0.02)), r0 = Math.hypot(p.x, p.z) || 1;
@@ -2035,28 +2150,61 @@ function buildScarf(sb, d, D, bi, lod, surf) {
       pts.push([p.x + (p.x / r0) * Math.max(0.006, off), y, p.z + (p.z / r0) * Math.max(0.006, off)]);
       outs.push([Math.sin(th + twist * t), 0, Math.cos(th + twist * t)]);
     }
-    const len = yTop - yb;
+    const len = yTop - yb, wd = (t) => w * D.k * lerp(0.55, 1, sstep(0, 0.3, t)), th = 0.0065 * bk + 0.003;
     sb.use('fabric').add(sweep(pts, outs, {
-      n: [12, 8, 6][lod], steps: Math.max(6, Math.round(len / [0.02, 0.035, 0.05][lod])), rx: (t) => w * D.k * lerp(0.62, 1, sstep(0, 0.3, t)), rz: () => 0.0065 * bk + 0.0025, capBot: 0.0, capTop: 0.0,
+      n: [14, 8, 6][lod], steps: Math.max(6, Math.round(len / [0.018, 0.035, 0.05][lod])), rx: wd, rz: (t) => th * lerp(1.6, 1, sstep(0, 0.3, t)), capBot: 0.0, capTop: 0.0,
       weights: (t) => { const y = lerp(yTop, yb, t); return y > D.chestY ? [[bi.chest, 1]] : [[bi.spine, 0.5], [bi.chest, 0.5]]; },
-      // soft lengthwise folds rippling across the width (more towards the free end, gathered where it
-      // comes out of the wrap); a fringe: the last couple of centimetres ragged
+      // soft lengthwise folds rippling across the width (gathered where it leaves the wrap, opening out
+      // towards the free end), the edges rolled a little
       mod: (p, t, a, N) => {
-        const fo = (lod < 2 ? 0.005 : 0) * Math.sin(Math.sin(a) * PI * 1.6 + seed + t * 2.5) * (0.35 + 0.65 * t);
+        if (lod > 1) return;
+        const fo = 0.0055 * Math.sin(Math.sin(a) * PI * 1.7 + seed + t * 2.5) * (0.4 + 0.6 * t) + 0.006 * (1 - sstep(0, 0.25, t)) * Math.cos(Math.sin(a) * PI * 3);
         p[0] += N.x * fo; p[1] += N.y * fo; p[2] += N.z * fo;
-        if (t > 0.97) p[1] -= 0.018 * vnoise(a * 9 + seed, t * 3, 4);
       },
-      color: (t, a) => { const y = lerp(yTop, yb, t), sh = 0.93 + 0.07 * Math.sin(Math.sin(a) * PI * 1.6 + seed + t * 2.5); return scl(y < yb + 0.05 && sc.color2 != null ? c2 : Math.floor((y - yb) * 18) % 4 === 0 ? c2 : c1, (t > 0.95 ? 0.85 : 0.97) * sh); },
+      color: (t, a) => {
+        const y = lerp(yTop, yb, t), sh = 0.92 + 0.08 * Math.sin(Math.sin(a) * PI * 1.7 + seed + t * 2.5);
+        // two-colour: bands near the end; one colour: a darker ribbed band above the fringe
+        const band = two ? (y < yb + 0.05 ? 1 : 1 - sstep(0.004, 0.009, Math.abs(((y - yb) % 0.07) - 0.035))) * sstep(yb + 0.24, yb + 0.16, y) : 0;
+        return scl(mixc(c1, c2, band), sh * (two ? 1 : y < yb + 0.03 ? 0.88 : 1));
+      },
     }), 0xffffff);
+    // the fringe: short twisted strands across the end, a little apart and of different lengths
+    const nf = [11, 6, 0][lod];
+    const pe = pts[N], pp = pts[N - 1], ou = outs[N];
+    const sx = Math.cos(th0 * 0.65 + twist), sz = -Math.sin(th0 * 0.65 + twist);   // across the end
+    for (let f = 0; f < nf; f++) {
+      const u = (f / (nf - 1) - 0.5) * 1.84 * wd(1), fl = (0.045 + 0.02 * hash1(seed + f * 3.1)) * Math.min(1, D.k + 0.1);
+      const top = [pe[0] + sx * u + ou[0] * 0.001, pe[1] + 0.004, pe[2] + sz * u + ou[2] * 0.001];
+      const dir = v3norm([pe[0] - pp[0], pe[1] - pp[1], pe[2] - pp[2]]);
+      const sw = 0.006 * (hash1(seed + f * 7.7) - 0.5);
+      const bot = [top[0] + dir[0] * fl + sx * sw, top[1] + dir[1] * fl, top[2] + dir[2] * fl + sz * sw];
+      const [tg, M] = tubeGeo(top, bot, 0.0028 * Math.min(1.2, bk + 0.3), 0.0016, lod ? 3 : 4, 0.4);
+      tg.applyMatrix4(M);
+      _col.setRGB(...scl(two ? c2 : c1, 0.9));
+      sb.use('fabric').add(weighted(tg, top[1] > D.chestY ? [[bi.chest, 1]] : [[bi.spine, 0.5], [bi.chest, 0.5]]), _col.getHex());
+    }
   };
   const yLong = D.spineY - 0.06, yShort = D.chestY + 0.01;
   if (style === 'two') { end(0.22, sc.long ? yLong : yShort - 0.03, 0.052 * bk + 0.01, 0.2); end(-0.3, sc.long ? yLong + 0.09 : yShort + 0.05, 0.05 * bk + 0.01, -0.25); }
   else if (style === 'loop') {
-    // the folded loop at the throat, the two ends pulled through it hanging close together
-    const p = surf(0.05, D.shoulderY - 0.035), r0 = Math.hypot(p.x, p.z) || 1;
-    sb.use('fabric').add(weighted(sphereGeo(10, 7), [[bi.chest, 1]]), sc.color, mat(p.x, D.shoulderY - 0.03, p.z + 0.03 * bk, 0.3, 0, 0, 0.045 * bk + 0.008, 0.035, 0.03 * bk + 0.008));
+    // the folded loop at the throat: a soft roll across the front of the wrap, the ends pulled through
+    // it hanging close together below
+    const kp = [], ko = [], rK = outer1 + 0.008;
+    for (let q = 0; q <= 8; q++) {
+      const ph = lerp(-0.62, 0.62, q / 8);
+      kp.push([Math.sin(ph) * rK, y0 + H * 0.2 - 0.008 * Math.cos(ph * 2.5), cz + Math.cos(ph) * rK * 1.04 + 0.006]);
+      ko.push([Math.sin(ph), 0.2, Math.cos(ph)]);
+    }
+    const kr = 0.03 * bk + 0.01, kd = 0.02 * bk + 0.008;
+    sb.use('fabric').add(sweep(kp, ko, {
+      n: [12, 8, 6][lod], steps: [20, 10, 6][lod], capBot: 0.012, capTop: 0.012, weights: () => [[bi.chest, 1]],
+      rx: (t) => kr * (0.75 + 0.25 * Math.sin(PI * t)), rz: (t) => kd * (0.7 + 0.3 * Math.sin(PI * t)),
+      mod: (p, t, a, N, Bv) => { const k = 0.12 * Math.sin(3 * a + t * 9 + seed); p[0] += (Bv.x * kr * Math.sin(a) + N.x * kd * Math.cos(a)) * k; p[1] += (Bv.y * kr * Math.sin(a) + N.y * kd * Math.cos(a)) * k; p[2] += (Bv.z * kr * Math.sin(a) + N.z * kd * Math.cos(a)) * k; },
+      color: (t, a) => scl(c1, (0.88 + 0.1 * Math.cos(a)) * (0.94 + 0.06 * Math.sin(3 * a + t * 9 + seed))),
+    }), 0xffffff);
     end(0.1, yShort - 0.02, 0.045 * bk + 0.008, 0.15); end(-0.08, yShort + 0.015, 0.045 * bk + 0.008, -0.2);
   } else end(0.16, sc.long ? yLong : yShort, 0.055 * bk + 0.01, 0.25);
+  sb.triK = triK;
 }
 
 function sleeveWeights(D, bi, i) {
@@ -2612,6 +2760,232 @@ function hairMat() {
   }
   return HAIR_MAT;
 }
+// ---------------------------------------------------------------------------------------------
+// Hair and fur cards (p4r2; level 0 of the cast only). Close up, the shells' smooth outlines read as
+// helmets and the fur trims as sausages: so the silhouettes get alpha-tested strips with a strand
+// texture - edge cards hanging past a shell's lower edge (nape, over the ears, a fringe, the ends of
+// a bob or of long hair, a beard's lower edge), fins standing up from the upper shell along the hair's
+// flow (they show only where the surface turns away: the outline breaks into strands; seen face on
+// they are edge-on), and two layers of tufts round a fur trim. They are one more SkinnedMesh on the
+// same skeleton under level 0 (one draw call, main pass only: no shadow, not in the AO pre-pass,
+// userData.noAO), double-sided by duplicated triangles (so both sides take the surface's normal, not
+// a flipped one), shaded with the normal of the surface they grow from.
+// The atlas: three 128-texel bands (hair: long fine strands; fuzz: sparse wisps for fins; fur: dense
+// tufts, dark at the root), the root at the top of each band; mipmaps keep each band's coverage (an
+// alpha test on plain box-filtered mips would thin the strands away with distance).
+const CARD_W = 256, CARD_RH = 128;
+const CARD_V = { fur: [0.004, 1 / 3 - 0.004], fuzz: [1 / 3 + 0.004, 2 / 3 - 0.004], hair: [2 / 3 + 0.004, 1 - 0.004] };
+let CARD_TEX = null, CARD_MAT = null;
+function cardTexture() {
+  if (CARD_TEX) return CARD_TEX;
+  const W = CARD_W, H = CARD_RH * 3, A = new Float32Array(W * H), Lw = new Float32Array(W * H), Wt = new Float32Array(W * H);
+  const rnd = mulberry32(4242);
+  // a strand in band b (0 fur, 1 fuzz, 2 hair) from x0 at the band's top (the root) down `len` texels
+  const strand = (b, x0, len, wid, bend, bright, tipFade) => {
+    const y1 = (b + 1) * CARD_RH - 1, n = Math.max(1, Math.ceil(len));
+    for (let k = 0; k <= n; k++) {
+      const t = k / n, y = y1 - k;
+      if (y < b * CARD_RH) break;
+      const xc = x0 + bend * t * t, hw = Math.max(0.5, wid * 0.5 * (1 - 0.6 * t));
+      const fade = t > tipFade ? 1 - (t - tipFade) / (1 - tipFade) : 1, br = typeof bright === 'function' ? bright(t) : bright;
+      for (let x = Math.floor(xc - hw - 1); x <= Math.ceil(xc + hw + 1); x++) {
+        const a = clamp(hw + 0.5 - Math.abs(x + 0.5 - xc), 0, 1) * fade;
+        if (a <= 0) continue;
+        const i = y * W + (((x % W) + W) % W);
+        A[i] = 1 - (1 - A[i]) * (1 - a); Lw[i] += a * br; Wt[i] += a;
+      }
+    }
+  };
+  for (let q = 0; q < 150; q++) strand(2, rnd() * W, CARD_RH * (0.5 + 0.5 * rnd()), 2.6 + 2.0 * rnd(), (rnd() - 0.5) * 22, 0.74 + 0.28 * rnd(), 0.7);
+  for (let q = 0; q < 52; q++) strand(1, rnd() * W, CARD_RH * (0.35 + 0.65 * rnd()), 2.2 + 1.4 * rnd(), (rnd() - 0.5) * 40, 0.8 + 0.25 * rnd(), 0.6);
+  for (let q = 0; q < 330; q++) { const b0 = 0.88 + 0.22 * rnd(); strand(0, rnd() * W, CARD_RH * (0.3 + 0.7 * rnd()), 3.0 + 2.2 * rnd(), (rnd() - 0.5) * 36, (t) => b0 * lerp(0.72, 1.1, t), 0.6); }
+  // solid roots: the strip's root edge sinks into the surface it grows from
+  for (const [b, rows] of [[2, 8], [1, 6], [0, 8]]) for (let y = (b + 1) * CARD_RH - rows; y < (b + 1) * CARD_RH; y++) for (let x = 0; x < W; x++) { const i = y * W + x; A[i] = 1; if (!Wt[i]) { Lw[i] = 0.75; Wt[i] = 1; } }
+  // levels: box-filtered, alpha scaled per band so the share above the 0.5 test stays the same
+  const levels = [];
+  let w = W, h = H, a = A, lw = Lw, wt = Wt;
+  const cover = (arr, w, h, b, k) => { let c = 0, n = 0; const y0 = Math.floor((b * h) / 3), y1 = Math.floor(((b + 1) * h) / 3); for (let y = y0; y < y1; y++) for (let x = 0; x < w; x++) { n++; if (Math.min(1, arr[y * w + x] * k) >= 0.5) c++; } return n ? c / n : 0; };
+  const cov0 = [0, 1, 2].map((b) => cover(A, W, H, b, 1));
+  for (;;) {
+    const data = new Uint8Array(w * h * 4), ks = [0, 1, 2].map((b) => {
+      if (w === W) return 1;
+      let lo = 1, hi = 8;
+      for (let it = 0; it < 14; it++) { const mid = (lo + hi) / 2; if (cover(a, w, h, b, mid) < cov0[b]) lo = mid; else hi = mid; }
+      return hi;
+    });
+    for (let y = 0; y < h; y++) {
+      const k = ks[Math.min(2, Math.floor((y * 3) / h))];
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x, l = wt[i] > 0 ? lw[i] / wt[i] : 0.8;
+        data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = Math.round(clamp(l, 0, 1) * 255);
+        data[i * 4 + 3] = Math.round(clamp(a[i] * k, 0, 1) * 255);
+      }
+    }
+    levels.push({ data, width: w, height: h });
+    if (w === 1 && h === 1) break;
+    const w2 = Math.max(1, w >> 1), h2 = Math.max(1, h >> 1), a2 = new Float32Array(w2 * h2), l2 = new Float32Array(w2 * h2), t2 = new Float32Array(w2 * h2);
+    for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+      let sa = 0, sl = 0, st = 0;
+      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) { const xx = Math.min(w - 1, x * 2 + dx), yy = Math.min(h - 1, y * 2 + dy), i = yy * w + xx; sa += a[i]; sl += lw[i]; st += wt[i]; }
+      const i = y * w2 + x; a2[i] = sa / 4; l2[i] = sl; t2[i] = st;
+    }
+    w = w2; h = h2; a = a2; lw = l2; wt = t2;
+  }
+  const tex = new THREE.DataTexture(levels[0].data, W, H, THREE.RGBAFormat, THREE.UnsignedByteType);
+  tex.mipmaps = levels;
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearMipmapLinearFilter; tex.magFilter = THREE.LinearFilter;
+  tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return (CARD_TEX = tex);
+}
+// The cards' material: the shared hair material's look (specular following the albedo) with the
+// strand atlas as map, alpha-tested with alpha to coverage (soft strand edges under MSAA, like the
+// world's twig cards; without MSAA a plain cut-out).
+function cardMat() {
+  if (CARD_MAT) return CARD_MAT;
+  const m = surfaceMaterial('hair', { snow: false, unique: true });
+  m.map = cardTexture();
+  m.alphaTest = 0.3;
+  m.alphaToCoverage = true;
+  m.roughness = 0.55;
+  m.defines.TRI_SPECK = '( 0.2 + 0.7 * min( 1.0, dot( diffuseColor.rgb, vec3( 0.75 ) ) ) )';
+  m.needsUpdate = true;
+  return (CARD_MAT = m);
+}
+// Cards collected for one SkinBuilder part: strips from a root edge along a direction.
+class CardBatch {
+  constructor() { this.pos = []; this.nrm = []; this.uv = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.n = 0; }
+  // root p, unit dir, length len, unit across ax, width w, bend (a vector reached at the tip, x t^2),
+  // shading normal nrm, band kind ('hair' | 'fuzz' | 'fur'), u0 + du of the atlas, colour c (rgb
+  // multiplier), weights wts ([[bone, w], ...]), seg segments, taper (the tip's width share).
+  card(p, dir, len, ax, w, bend, nrm, kind, u0, du, c, wts, seg = 2, taper = 0.8) {
+    const [v0, v1] = CARD_V[kind], base = this.n;
+    for (let q = 0; q <= seg; q++) {
+      const t = q / seg, hw = w * 0.5 * lerp(1, taper, t), b = t * t;
+      for (const sd of [-1, 1]) {
+        this.pos.push(p[0] + dir[0] * len * t + bend[0] * b + ax[0] * hw * sd, p[1] + dir[1] * len * t + bend[1] * b + ax[1] * hw * sd, p[2] + dir[2] * len * t + bend[2] * b + ax[2] * hw * sd);
+        this.nrm.push(nrm[0], nrm[1], nrm[2]);
+        this.uv.push(u0 + du * (sd + 1) * 0.5, lerp(v1, v0, t));
+        this.col.push(c[0], c[1], c[2]);
+        for (let k = 0; k < 4; k++) { this.si.push(wts[k] ? wts[k][0] : 0); this.sw.push(wts[k] ? wts[k][1] : 0); }
+        this.n++;
+      }
+    }
+    for (let q = 0; q < seg; q++) {
+      const a = base + q * 2;
+      this.idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3, a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+  }
+  geometry() {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nrm, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+    // (weights normalised: a card's weights may not sum to 1)
+    for (let i = 0; i < this.n; i++) { let t = 0; for (let k = 0; k < 4; k++) t += this.sw[i * 4 + k]; for (let k = 0; k < 4; k++) this.sw[i * 4 + k] /= t || 1; }
+    g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(this.si, 4));
+    g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(this.sw, 4));
+    g.setIndex(this.idx);
+    g.userData.faceUV = true;
+    return g;
+  }
+}
+const _c1 = [0, 0, 0], _c2 = [0, 0, 0], _c3 = [0, 0, 0], _cn = [0, 0, 0], _ca = [0, 0, 0], _cb = [0, 0, 0];
+const v3sub = (a, b, o) => { o[0] = a[0] - b[0]; o[1] = a[1] - b[1]; o[2] = a[2] - b[2]; return o; };
+const v3norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; a[0] /= l; a[1] /= l; a[2] /= l; return a; };
+const v3cross = (a, b, o) => { const x = a[1] * b[2] - a[2] * b[1], y = a[2] * b[0] - a[0] * b[2], z = a[0] * b[1] - a[1] * b[0]; o[0] = x; o[1] = y; o[2] = z; return o; };
+// Cards on a hair shell (shellMesh's geometry, model space; its grid in userData.grid), into the
+// character's card builder D.cards (level 0 only). o: { col (hex), wts, seed,
+//   edge: { over (m past the edge), rows (how far up the root sits), curl (towards the head, m),
+//           every, w (width x column spacing), keep(th, h) },
+//   fins: { h (m), len (m along the flow), lean, from (row share), every, keep(th, h) } }.
+function shellCards(D, g, o) {
+  if (!D.cards || !g.userData.grid) return;
+  const gr = g.userData.grid, P = g.attributes.position.array, N = g.attributes.normal.array, C = g.attributes.color?.array;
+  const { R, J, per, ths, hs } = gr, r0 = gr.tuck ? 1 : 0, cb = new CardBatch(), rnd = mulberry32(((o.seed ?? 1) * 7919) | 0);
+  // (weights: o.wts for everything, or each card the weights of the vertex it grows from)
+  const SI = g.attributes.skinIndex?.array, SW = g.attributes.skinWeight?.array;
+  const wAt = (r, j) => { if (o.wts || !SI) return o.wts ?? [[0, 1]]; const k = r * J + (((j % J) + J) % J); return [0, 1, 2, 3].map((q) => [SI[k * 4 + q], SW[k * 4 + q]]); };
+  const get = (r, j, out, arr = P) => { const k = (r * J + (((j % J) + J) % J)) * 3; out[0] = arr[k]; out[1] = arr[k + 1]; out[2] = arr[k + 2]; return out; };
+  const colAt = (r, j, k) => { if (!C) return [k, k, k]; const i = (r * J + j) * 3; return [C[i] * k, C[i + 1] * k, C[i + 2] * k]; };
+  const jn = per ? J : J - 1;
+  const e = o.edge;
+  if (e && R > r0 + 2) {
+    const rr = Math.min(R - 1, r0 + (e.rows ?? 1));
+    for (let j = 0; j < jn; j += e.every ?? 1) {
+      if (e.keep && !e.keep(ths[j], hs[r0 * J + j])) continue;
+      for (let layer = 0; layer < (e.layers ?? 2); layer++) {
+        const f = rnd(), j2 = j + 1;
+        // root (rr rows up) and the edge point, between columns j and j+1
+        get(rr, j, _c1); get(rr, j2, _c2); const root = [lerp(_c1[0], _c2[0], f), lerp(_c1[1], _c2[1], f), lerp(_c1[2], _c2[2], f)];
+        get(r0, j, _c1); get(r0, j2, _c2); const edge = [lerp(_c1[0], _c2[0], f), lerp(_c1[1], _c2[1], f), lerp(_c1[2], _c2[2], f)];
+        get(rr, j, _cn, N); get(rr, j2, _c3, N); const n = v3norm([lerp(_cn[0], _c3[0], f), lerp(_cn[1], _c3[1], f), lerp(_cn[2], _c3[2], f)]);
+        get(r0, j, _c1); get(r0, j2, _c2); const sp = Math.hypot(_c2[0] - _c1[0], _c2[1] - _c1[1], _c2[2] - _c1[2]) || 0.01;
+        const dir = v3norm(v3sub(edge, root, [0, 0, 0])), dl = Math.hypot(edge[0] - root[0], edge[1] - root[1], edge[2] - root[2]);
+        const ax = v3norm(v3cross(n, dir, [0, 0, 0]));
+        const lift = 0.0012 + 0.001 * layer;
+        root[0] += n[0] * lift; root[1] += n[1] * lift; root[2] += n[2] * lift;
+        const vr = e.vary ?? 0.6, over = e.over * (1 - vr * 0.45 + vr * rnd()) * (layer ? 0.75 : 1), curl = (e.curl ?? 0.003) * (0.6 + 0.8 * rnd());
+        // (the colour from a few rows up: the shell's own edge is darkened as in its own shadow)
+        cb.card(root, dir, dl + over, ax, sp * (e.w ?? 1.8) * (0.8 + 0.4 * rnd()), [-n[0] * curl, -n[1] * curl - (e.droop ?? 0), -n[2] * curl], n, 'hair', rnd(), 0.28 + 0.14 * rnd(), colAt(Math.min(R - 1, r0 + 4), j, (0.78 + 0.2 * rnd()) * (layer ? 0.92 : 1) * (e.bright ?? 1)), wAt(rr, j), e.seg ?? 3, 0.8);
+      }
+    }
+  }
+  const fn = o.fins;
+  if (fn) {
+    const rs = Math.max(r0 + 1, Math.floor(R * (fn.from ?? 0.3)));
+    for (let r = rs; r < R - 1; r++) for (let j = (r & 1) * Math.max(1, (fn.every ?? 2) >> 1); j < jn; j += fn.every ?? 2) {
+      const th = ths[j], h = hs[r * J + j];
+      if (fn.keep && !fn.keep(th, h)) continue;
+      get(r, j, _c1); get(r, j, _cn, N); get(r - 1, j, _c2);
+      const flow = v3norm(v3sub(_c2, _c1, [0, 0, 0])), n = [_cn[0], _cn[1], _cn[2]];
+      const lean = fn.lean ?? 0.8, dir = v3norm([n[0] + flow[0] * lean, n[1] + flow[1] * lean, n[2] + flow[2] * lean]);
+      const L = fn.len * (0.75 + 0.5 * rnd()), Hh = fn.h * (0.6 + 0.7 * rnd());
+      const root = [_c1[0] - n[0] * 0.002 - flow[0] * L * 0.2, _c1[1] - n[1] * 0.002 - flow[1] * L * 0.2, _c1[2] - n[2] * 0.002 - flow[2] * L * 0.2];
+      // (a little darker than the shell: lit like it, they would read as grey flecks over it)
+      cb.card(root, dir, Hh, flow, L, [flow[0] * Hh * 0.3, flow[1] * Hh * 0.3, flow[2] * Hh * 0.3], n, 'fuzz', rnd(), 0.22 + 0.12 * rnd(), colAt(r, j, 0.68 + 0.2 * rnd()), wAt(r, j), 1, 0.9);
+    }
+  }
+  if (cb.n) D.cards.use('hair').add(cb.geometry(), o.col);
+}
+
+// Fur round a swept tube (a parka's hood trim): two layers of tufts standing out of the half of the
+// tube that faces away from the body (its normal not pointing down into the coat), leaning up and
+// along. g: sweep()'s geometry (steps + 1 rings of n vertices); o: { col, len, seed, out(p) ->
+// whether a point's normal faces out }.
+function tubeFurCards(D, g, n, o) {
+  if (!D.cards) return;
+  const P = g.attributes.position.array, N = g.attributes.normal.array, SI = g.attributes.skinIndex.array, SW = g.attributes.skinWeight.array;
+  const rings = Math.floor((P.length / 3 - 2) / n), cb = new CardBatch(), rnd = mulberry32(((o.seed ?? 1) * 7) | 0);
+  const cen = (s, out) => { out[0] = out[1] = out[2] = 0; for (let j = 0; j < n; j++) { const k = (s * n + j) * 3; out[0] += P[k] / n; out[1] += P[k + 1] / n; out[2] += P[k + 2] / n; } return out; };
+  for (let s = 0; s < rings; s++) {
+    cen(Math.max(0, s - 1), _ca); cen(Math.min(rings - 1, s + 1), _cb);
+    const tan = v3norm(v3sub(_cb, _ca, [0, 0, 0]));
+    const endK = sstep(0, 2.5, Math.min(s, rings - 1 - s));   // thinner towards the tube's ends
+    for (let j = 0; j < n; j++) {
+      const k = s * n + j, nn = [N[k * 3], N[k * 3 + 1], N[k * 3 + 2]];
+      if (nn[1] < -0.45) continue;
+      for (let layer = 0; layer < 3; layer++) {
+        if (rnd() > 0.85 * endK + 0.15) continue;
+        const sd = (rnd() - 0.5) * 0.9, up = layer === 2 ? 0.6 : layer ? 0.4 : 0.2;
+        const dir = v3norm([nn[0] + tan[0] * sd, nn[1] + tan[1] * sd + up, nn[2] + tan[2] * sd]);
+        const len = o.len * (layer === 2 ? 1.0 + 0.35 * rnd() : layer ? 0.8 + 0.25 * rnd() : 0.6 + 0.2 * rnd()) * lerp(0.6, 1, endK);
+        const root = [P[k * 3] - nn[0] * 0.008, P[k * 3 + 1] - nn[1] * 0.008, P[k * 3 + 2] - nn[2] * 0.008];
+        // (mostly along the tube, turned a little: a fin across it would read as a cross)
+        const tw = (rnd() - 0.5) * 1.0, ac = v3norm(v3cross(dir, tan, [0, 0, 0]));
+        const ax = v3norm([tan[0] + ac[0] * tw, tan[1] + ac[1] * tw, tan[2] + ac[2] * tw]);
+        const wts = [0, 1, 2, 3].map((q) => [SI[k * 4 + q], SW[k * 4 + q]]);
+        const c = (0.84 + 0.3 * rnd()) * (layer ? 1.05 : 0.95);
+        cb.card(root, dir, len, ax, len * (0.8 + 0.4 * rnd()), [0, -len * 0.25, 0], nn, 'fur', rnd(), 0.25 + 0.12 * rnd(), [c, c, c], wts, 2, 0.85);
+      }
+    }
+  }
+  D.cards.use('hair').add(cb.geometry(), o.col);
+}
+
 // The cast's eyes (and phone, pencil): the 'lamp' surface with a thinner clear coat, its base
 // specular following the albedo, so dark irises stay brown instead of mirroring the sky grey.
 let EYE_MAT = null;
@@ -2885,50 +3259,76 @@ function faceSkinMat(tex, d) {
 // SkinnedMesh bound to the one skeleton with the same bind matrix, so animation, seating,
 // carryPoint and the props work whichever level is drawn. Beyond LOD_DIST.shadow a person casts no
 // shadow. The shadow and AO passes draw what the main camera chose (the pre-pass renders with it).
-export const LOD_DIST = { cast: 15, ped: 40, shadow: 60, hyst: 0.1 };
-const _lv1 = new THREE.Vector3(), _lv2 = new THREE.Vector3();
+// The cast has three levels (p4r2): level 0 (the dense head with the baked face, hair cards) to
+// LOD_DIST.mid, a mid level (a lod-1 body and head) to LOD_DIST.cast, then the far level; each level
+// casts its own shadow, so the shadow pass draws level 0 only for the one or two people within 6 m.
+// The distances are screen sizes: measured over the camera's zoom and through the game's 55-degree
+// lens (a 42-degree dialogue shot from 6.8 m sees its speakers as from 5 m: level 0).
+export const LOD_DIST = { cast: 15, mid: 6, ped: 40, shadow: 60, hyst: 0.1 };
+const _lv1 = new THREE.Vector3(), _lv2 = new THREE.Vector3(), TAN_REF = Math.tan(27.5 * DEG);
 class PersonLOD extends THREE.LOD {
   constructor() { super(); this.shadowOn = true; this.dist = 0; }
   update(camera) {
-    super.update(camera);
     _lv1.setFromMatrixPosition(camera.matrixWorld); _lv2.setFromMatrixPosition(this.matrixWorld);
-    this.dist = _lv1.distanceTo(_lv2) / camera.zoom;
-    const on = this.dist < LOD_DIST.shadow * (this.shadowOn ? 1 + LOD_DIST.hyst : 1);
-    if (on !== this.shadowOn) { this.shadowOn = on; for (const l of this.levels) l.object.castShadow = on; }
+    const lens = camera.isPerspectiveCamera ? Math.tan(camera.fov * DEG * 0.5) / TAN_REF : 1;
+    const dd = (this.dist = (_lv1.distanceTo(_lv2) / camera.zoom) * lens);
+    const L = this.levels;
+    if (L.length > 1) {
+      // (THREE.LOD.update with that distance)
+      L[0].object.visible = true;
+      let i = 1;
+      for (; i < L.length; i++) {
+        let ld = L[i].distance;
+        if (L[i].object.visible) ld -= ld * L[i].hysteresis;
+        if (dd >= ld) { L[i - 1].object.visible = false; L[i].object.visible = true; } else break;
+      }
+      this._currentLevel = i - 1;
+      for (; i < L.length; i++) L[i].object.visible = false;
+    }
+    const on = dd < LOD_DIST.shadow * (this.shadowOn ? 1 + LOD_DIST.hyst : 1);
+    if (on !== this.shadowOn) { this.shadowOn = on; for (const l of L) l.object.castShadow = on; }
   }
 }
-// The far level: a lod-2 body and a lod-1 head (as the busts; pedestrians, far from 40 m: a lod-2
-// head), its surfaces folded into fabric + skin
-// (2 draw calls; 'metal' stays for wheelchairs and rollators). Built in idle time (~3-5 ms each, so
-// loading costs nothing); until it exists the person stays at its near level.
+// The cheaper levels, built in idle time (~4-6 ms each, so loading costs nothing); until one exists
+// the person stays at the level before it.
+// - mid (the cast, from LOD_DIST.mid): a lod-1 body and a lod-1 head (as a pedestrian: the face in
+//   vertex colours), its hair and leather kept apart (3-4 draw calls; ~11-16 k triangles);
+// - far (from LOD_DIST.cast / LOD_DIST.ped): a lod-2 body and a lod-1 head (as the busts;
+//   pedestrians: a lod-2 head), its surfaces folded into fabric + skin (2 draw calls; 'metal' stays
+//   for wheelchairs and rollators).
 const FAR_REMAP = { hair: 'fabric', leather: 'fabric', painted: 'fabric', lamp: 'fabric', rubber: 'fabric', plastic: 'fabric' };
-const FAR_JOBS = [];
-let farIdle = 0;
+const MID_REMAP = { lamp: 'leather', rubber: 'leather', plastic: 'fabric' };
+const LOD_JOBS = [];
+let lodIdle = 0;
 const onIdle = (f) => (globalThis.requestIdleCallback ? requestIdleCallback(f, { timeout: 1500 }) : setTimeout(() => f({ timeRemaining: () => 8, didTimeout: true }), 30));
-function addFarLevel(m) {
-  if (m.farMesh || !m.lodNode) return m.farMesh;
+function addLevel(m, kind) {
+  const key = kind + 'Mesh';
+  if (m[key] || !m.lodNode) return m[key];
+  const mid = kind === 'mid';
   const d = m.d, D2 = dims(d), P2 = headParams(d, D2);
   // the builders note fit values on the model (armOut, headP): keep the near level's
   const mm = Object.create(m);
-  const geo = personGeo(mm, d, D2, P2, m.bi, 2, m.lod >= 1 ? 2 : 1, null, { remap: FAR_REMAP });
-  const far = new THREE.SkinnedMesh(geo, personMaterials(geo, 1, null, d));
-  far.castShadow = m.lodNode.shadowOn; far.receiveShadow = true;
-  far.bind(m.mesh.skeleton, m.mesh.bindMatrix);
-  far.boundingSphere = m.mesh.boundingSphere.clone();
-  far.userData.lodName = 'far';
-  m.lodNode.addLevel(far, m.farDist, LOD_DIST.hyst);
-  m.farMesh = far;
-  m.meshes.push(far);
-  return far;
+  const geo = personGeo(mm, d, D2, P2, m.bi, mid ? 1 : 2, mid ? 1 : m.lod >= 1 ? 2 : 1, null, { remap: mid ? MID_REMAP : FAR_REMAP });
+  const lv = new THREE.SkinnedMesh(geo, personMaterials(geo, 1, null, d));
+  lv.castShadow = m.lodNode.shadowOn; lv.receiveShadow = true;
+  lv.bind(m.mesh.skeleton, m.mesh.bindMatrix);
+  lv.boundingSphere = m.mesh.boundingSphere.clone();
+  lv.userData.lodName = kind;
+  m.lodNode.addLevel(lv, mid ? m.midDist : m.farDist, LOD_DIST.hyst);
+  lv.updateMatrixWorld(true);   // (the root may be skipping its matrix updates: animation LOD)
+  m[key] = lv;
+  m.meshes.push(lv);
+  return lv;
 }
-function farIdleRun(deadline) {
-  farIdle = 0;
+const addFarLevel = (m) => addLevel(m, 'far');
+function lodIdleRun(deadline) {
+  lodIdle = 0;
   let n = 0;
-  while (FAR_JOBS.length && (deadline.timeRemaining() > 5 || (deadline.didTimeout && n === 0))) { addFarLevel(FAR_JOBS.shift()); n++; }
-  if (FAR_JOBS.length) farIdle = onIdle(farIdleRun);
+  while (LOD_JOBS.length && (deadline.timeRemaining() > 5 || (deadline.didTimeout && n === 0))) { const [m, k] = LOD_JOBS.shift(); addLevel(m, k); n++; }
+  if (LOD_JOBS.length) lodIdle = onIdle(lodIdleRun);
 }
-// Build every far level still waiting (tests, or a loading screen that has the time).
-export function buildFarLevels() { while (FAR_JOBS.length) addFarLevel(FAR_JOBS.shift()); }
+// Build every cheaper level still waiting (tests, or a loading screen that has the time).
+export function buildFarLevels() { while (LOD_JOBS.length) { const [m, k] = LOD_JOBS.shift(); addLevel(m, k); } }
 
 // The materials of a person's mesh: the shared surface materials, the shared matte hair, the cast's
 // glossy eyes (lod-0 heads) and the cast's own skin material carrying the face texture.
@@ -2942,6 +3342,19 @@ function personMaterials(geo, hl, tex, d) {
     if (si >= 0) mats[si] = faceSkinMat(tex, d);
   }
   return mats;
+}
+
+// A person's root skips its whole subtree's matrix update on frames where Character.sync left the
+// pose alone and the root where it was (character.js' animation level of detail sets root._skipFrom
+// to the parent it decided that under). Anything that moved the root since - a portrait reparents
+// it, a teleport - updates as usual: the root's world matrix must still sit on its position.
+function rootMatrixWorld(force) {
+  const f = this._skipFrom;
+  if (f && f === this.parent) {
+    const e = this.matrixWorld.elements, p = this.position;
+    if ((e[12] - p.x) ** 2 + (e[13] - p.y) ** 2 + (e[14] - p.z) ** 2 < 0.0625) return;
+  }
+  THREE.Object3D.prototype.updateMatrixWorld.call(this, force);
 }
 
 export function buildCharacter(def, opts = {}) {
@@ -2961,6 +3374,7 @@ export function buildCharacter(def, opts = {}) {
     handScale: [1, 1], fingScale: [1, 1],
   };
   m.root.add(m.body);
+  m.root.updateMatrixWorld = rootMatrixWorld;
   const bones = [], bi = {};
   const mk = (name, parent, x, y, z) => { const b = new THREE.Bone(); b.name = name; b.position.set(x, y, z); parent.add(b); bi[name] = bones.length; bones.push(b); return b; };
   const pelvis = mk('pelvis', m.body, 0, D.hipY, 0);
@@ -3028,6 +3442,8 @@ export function buildCharacter(def, opts = {}) {
   m.root.updateMatrixWorld(true);
   m.bones = bones; m.bi = bi; m.chest = chest; m.fores = fores; m.hips = pelvis;
 
+  // (p4r2) level 0 of the cast collects hair and fur cards while it is built (shellCards)
+  if (hl === 0 && !opts.bust && opts.cards !== false) { D.cards = new SkinBuilder(); D.cards.uvOn = true; }
   const geo = personGeo(m, d, D, P, bi, lod, hl, tex, opts);
   const mats = personMaterials(geo, hl, tex, d);
   if (tex) m.faceTex = tex;
@@ -3048,6 +3464,17 @@ export function buildCharacter(def, opts = {}) {
   mesh.userData.lodName = 'l' + lod + (hl !== lod ? 'h' + hl : '');
   m.mesh = mesh;
   m.meshes.push(mesh);
+  if (D.cards?.parts.length) {
+    // the cards: one more skinned mesh on the skeleton, a child of level 0 (shown with it), main
+    // pass only (no shadow, kept out of the AO pre-pass)
+    const cm = new THREE.SkinnedMesh(D.cards.build(), cardMat());
+    cm.castShadow = false; cm.receiveShadow = true; cm.userData.noAO = true; cm.userData.lodName = 'cards';
+    cm.bind(mesh.skeleton, mesh.bindMatrix);
+    cm.boundingSphere = mesh.boundingSphere.clone();
+    mesh.add(cm);
+    m.cardMesh = cm;
+  }
+  delete D.cards;
   m.bones = bones; m.bi = bi;
   m.hips = pelvis; m.pelvis = pelvis; m.spine = spine; m.chest = chest; m.neck = neck; m.headBone = headB; m.mouth = jaw; m.jaw = jaw;
   m.arms = arms; m.fores = fores; m.hands = hands; m.legs = legs; m.shins = shins; m.feet = feet;
@@ -3064,11 +3491,18 @@ export function buildCharacter(def, opts = {}) {
   m.kind = d.kind;
   m.armOut = m.armOut ?? 0.1;
   animateCharacter(m, { t: 0, speed: 0 }, 0);
-  // a far level beyond opts.far metres (in idle time; opts.lazyFar === false: now)
-  if (opts.far && !opts.bust && lod < 2) {
-    m.farDist = opts.far;
-    if (opts.lazyFar === false) addFarLevel(m);
-    else { FAR_JOBS.push(m); if (!farIdle) farIdle = onIdle(farIdleRun); }
+  // a mid level beyond opts.mid metres (the cast: lod-0 models only) and a far level beyond opts.far
+  // metres (in idle time; opts.lazyFar === false: now)
+  if (!opts.bust && lod < 2) {
+    if (opts.mid && hl === 0 && (!opts.far || opts.mid < opts.far)) {
+      m.midDist = opts.mid;
+      if (opts.lazyFar === false) addLevel(m, 'mid'); else LOD_JOBS.push([m, 'mid']);
+    }
+    if (opts.far) {
+      m.farDist = opts.far;
+      if (opts.lazyFar === false) addFarLevel(m); else LOD_JOBS.push([m, 'far']);
+    }
+    if (LOD_JOBS.length && !lodIdle) lodIdle = onIdle(lodIdleRun);
   }
   return m;
 }

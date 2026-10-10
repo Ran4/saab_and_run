@@ -5,7 +5,10 @@
 // pplsmash:    a pedestrian hit by the Saab: flung, lying, getting up.
 // peopledrive: the player seated in the Saab seen through the windscreen, a traffic driver (bust).
 // pplkneel:    Ove kneels at Sonja's grave (st.kneel) and lays the flowers.
-// pplperf:     what the people cost per frame (tris, calls, levels of detail) at fixed poses.
+// pplperf:     what the people cost per frame (tris, calls, levels of detail) at fixed poses
+//              (QUERY='&farevery=1' for steady shadow numbers: the far cascade every frame).
+// pplanim:     the animation level of detail A/B (character.js ANIM_LOD) with its checks.
+// pplcine:     a dialogue shot keeps its speakers and near extras at level 0 (the mid LOD's check).
 export default ({ page, ev, shot, frames, fps }) => {
   // Freeze the camera rig and aim the camera (world coordinates); hide the HUD.
   const camAt = (at, look, fov = 35) => ev(([at, look, fov]) => {
@@ -19,6 +22,9 @@ export default ({ page, ev, shot, frames, fps }) => {
   // A camera on a character's face: d metres out along `ang` (0 = straight in front, + = its left).
   const faceCam = (who, d = 0.85, ang = 0, fov = 30) => ev(([who, d, ang, fov]) => {
     const g = __game;
+    // (main.js hides anyone within arm's reach of the lens outside cinematics: not for close-ups)
+    g.hideNearCamera = function () {};
+    for (const ch of g._camHidden || []) if (ch.state !== 'hidden' && !ch.car) ch.root.visible = true;
     const c = who === 'player' ? g.player : who === 'ped' ? window.__ped : g.npc(who);
     c.sync(0);
     c.root.updateMatrixWorld(true);
@@ -50,7 +56,110 @@ export default ({ page, ev, shot, frames, fps }) => {
   });
   const peopleIn = () => ev(() => { for (const [r, p] of window.__pplOut) p.add(r); });
 
+  // A/B timing of the animation level of detail (character.js ANIM_LOD): interleaved windows with it
+  // off and on; per frame: Character.sync (all people), the scene's matrix update, game.update and
+  // renderFrame's CPU time; and how many people are posed every 1st / 2nd / 4th frame.
+  const animAB = async (name, win = 90, rounds = 3) => {
+    await ev(async () => {
+      if (window.__abInst) return;
+      const { Character } = await import('/src/actors/character.js');
+      const { scene, gfxStats } = await import('/src/gfx.js');
+      const g = __game, acc = window.__abAcc = { sync: 0, mat: 0, upd: 0, rf: 0, n: 0 };
+      const os = Character.prototype.sync;
+      Character.prototype.sync = function (dt) { const t0 = performance.now(); os.call(this, dt); acc.sync += performance.now() - t0; };
+      const om = scene.updateMatrixWorld;
+      scene.updateMatrixWorld = function (f) { const t0 = performance.now(); om.call(this, f); acc.mat += performance.now() - t0; };
+      const ou = g.update;
+      g.update = function (dt) { const t0 = performance.now(); ou.call(this, dt); acc.upd += performance.now() - t0; acc.rf += gfxStats.last || 0; acc.n++; };
+      window.__abInst = true;
+    });
+    const run = async (on) => {
+      await ev(async (on) => { const { ANIM_LOD } = await import('/src/actors/character.js'); ANIM_LOD.on = on; }, on);
+      await frames(10);
+      await ev(() => { const a = window.__abAcc; a.sync = a.mat = a.upd = a.rf = a.n = 0; });
+      await frames(win);
+      return ev(() => {
+        const a = window.__abAcc, g = __game, n = Math.max(1, a.n), every = {};
+        let skip = 0, err = 0, ove = g.player.lodEvery;
+        for (const c of [g.player, ...Object.values(g.npcs), ...g.peds.map((p) => p.char)]) {
+          if (!c.root.parent) continue;
+          every[c.lodEvery] = (every[c.lodEvery] || 0) + 1;
+          if (c.root._skipFrom) skip++;
+          // where it is drawn (its last matrix update) against where it is
+          if (c.root.parent.isScene) { const e = c.root.matrixWorld.elements; err = Math.max(err, Math.hypot(e[12] - c.x, e[13] - c.y, e[14] - c.z)); }
+        }
+        return { sync: a.sync / n, mat: a.mat / n, upd: a.upd / n, rf: a.rf / n, every, skip, err, ove };
+      });
+    };
+    const A = [], B = [];
+    for (let r = 0; r < rounds; r++) {
+      if (r % 2) { B.push(await run(true)); A.push(await run(false)); } else { A.push(await run(false)); B.push(await run(true)); }
+    }
+    const med = (xs) => { const s = [...xs].sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+    const row = {};
+    for (const k of ['sync', 'mat', 'upd', 'rf']) row[k] = [+med(A.map((x) => x[k])).toFixed(3), +med(B.map((x) => x[k])).toFixed(3), +med(A.map((x, i) => B[i][k] - x[k])).toFixed(3)];
+    const L = B[B.length - 1];
+    console.log('[t] pplanim', name.padEnd(13), JSON.stringify({ ...row, everyOn: L.every, skipped: L.skip, maxErr: +Math.max(...B.map((x) => x.err)).toFixed(3) }), ' [off, on, d]');
+    // checks: Ove is posed every frame; nobody is drawn more than 25 cm from where they are
+    if (B.some((x) => x.ove !== 1)) await ev(() => console.error('pplanim: Ove was not posed every frame'));
+    if (B.some((x) => x.err > 0.25)) await ev((e) => console.error('pplanim: a person drawn ' + e + ' m from their position'), Math.max(...B.map((x) => x.err)));
+    return row;
+  };
+
   return {
+    // A dialogue shot keeps its speakers (and the extras within ~8 m) at level 0 with their hair cards:
+    // Ove at Parvaneh's, a cinematic with Patrick and Sara as extras (the mid level begins at 6 m of
+    // the game's 55-degree lens; the 42-degree dialogue lens sees them closer). Checks: every subject
+    // within 8 m of the lens at level 0, the speakers posed every frame. Failures are console errors.
+    async pplcine() {
+      await frames(20);
+      const r = await ev(() => {
+        const g = __game, pv = g.npc('parvaneh'), p = g.player;
+        const fx = Math.sin(pv.yaw), fz = Math.cos(pv.yaw);
+        p.teleport(pv.x + fx * 1.4, pv.z + fz * 1.4, pv.yaw + Math.PI);
+        g.cinematic(pv, p, { extras: [g.npc('patrick'), g.npc('sara')].filter(Boolean) });
+        return { at: [+p.x.toFixed(1), +p.z.toFixed(1)] };
+      });
+      console.log('[t] cine', JSON.stringify(r));
+      await frames(60);
+      const res = await ev(() => {
+        const g = __game, cam = g.cam.cam.position, out = [];
+        for (const [k, c] of [['ove', g.player], ['parvaneh', g.npc('parvaneh')], ['patrick', g.npc('patrick')], ['sara', g.npc('sara')]]) {
+          if (!c) continue;
+          const d = Math.hypot(c.x - cam.x, c.z - cam.z);
+          out.push({ k, d: +d.toFixed(1), level: c.model.lodNode.getCurrentLevel(), cards: !!c.model.cardMesh, every: c.lodEvery, fov: +g.cam.cam.fov.toFixed(0) });
+        }
+        return out;
+      });
+      console.log('[t] cine levels', JSON.stringify(res));
+      for (const q of res) if (q.d < 8 && q.level !== 0) await ev((q) => console.error('pplcine: ' + q.k + ' at ' + q.d + ' m is at level ' + q.level + ' in a dialogue shot'), q);
+      for (const q of res.slice(0, 2)) if (q.every !== 1) await ev((q) => console.error('pplcine: speaker ' + q.k + ' posed every ' + q.every + ' frames'), q);
+      await shot('ppl_cine');
+      await ev(() => __game.endCinematic());
+    },
+
+    // The animation level of detail, A/B (off -> on) at fixed poses and in the Saab: ms per frame of
+    // Character.sync (all people), the scene's matrix update, game.update and renderFrame
+    // (PPOSES=start,lot_e picks poses; WIN=frames per window, ROUNDS=windows per side).
+    async pplanim() {
+      await frames(30);
+      const names = (process.env.PPOSES || 'start,lot_e,street_trees,drone_nw').split(',');
+      const win = +(process.env.WIN || 90), rounds = +(process.env.ROUNDS || 3);
+      const sum = { sync: [0, 0], mat: [0, 0], upd: [0, 0] };
+      const add = (r) => { for (const k in sum) { sum[k][0] += r[k][0]; sum[k][1] += r[k][1]; } };
+      for (const n of names) {
+        const [at, look, fov] = POSES[n];
+        await camAt(at, look, fov || 55);
+        await frames(20);
+        add(await animAB(n, win, rounds));
+      }
+      // in the Saab at the start, the chase camera behind it
+      await ev(() => { const g = __game; delete g.cam.update; const car = g.named.saab || g.cars.find((c) => !c.traffic); g.enterCar(car); });
+      await frames(40);
+      add(await animAB('saab', win, rounds));
+      console.log('[t] pplanim sum', JSON.stringify(Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, [+v[0].toFixed(2), +v[1].toFixed(2)]]))), ' [off, on]');
+    },
+
     // Triangles and draw calls the people cost per frame (all passes) at fixed poses, plus how many
     // of them are at which level of detail (PPOSES=start,aerial picks poses).
     async pplperf() {
@@ -62,22 +171,31 @@ export default ({ page, ev, shot, frames, fps }) => {
         await camAt(at, look, fov || 55);
         await frames(20);
         const f = +(await fps());
-        const avg = async (k) => { const a = { tris: 0, calls: 0, aoCalls: 0, cpuMs: 0 }; for (let i = 0; i < k; i++) { await frames(1); const s = await ev(() => window.__stats()); for (const q in a) a[q] += s[q] / k; } return a; };
-        const s1 = await avg(6);
+        const avg = async (k) => {
+          const a = { tris: 0, calls: 0, aoCalls: 0, cpuMs: 0, shT: 0, aoT: 0, mT: 0 };
+          for (let i = 0; i < k; i++) {
+            await frames(1);
+            const s = await ev(async () => { const { gfxStats } = await import('/src/gfx.js'); const P = gfxStats.pass; return { ...window.__stats(), shT: P.shadow[1], aoT: P.ao[1], mT: P.main[1] }; });
+            for (const q in a) a[q] += s[q] / k;
+          }
+          return a;
+        };
+        const s1 = await avg(+(process.env.AVG || 30));
         const lods = await ev(() => {
           const g = __game, cnt = {};
           for (const c of [g.player, ...Object.values(g.npcs), ...g.peds.map((p) => p.char)]) {
             if (!c.root.visible || !c.root.parent) continue;
             let k = 'none';
-            c.root.traverse((o) => { if (o.isSkinnedMesh && o.visible) k = (o.userData.lodName || 'l' + (c.model.lod ?? '?')) + (o.castShadow ? '' : '-noshadow'); });
+            for (const l of c.model.lodNode?.levels || []) { const o = l.object; if (o.visible) k = (o.userData.lodName || 'l' + (c.model.lod ?? '?')) + (o.castShadow ? '' : '-noshadow') + (o.children.some((q) => q.userData.lodName === 'cards') ? '+cards' : ''); }
             cnt[k] = (cnt[k] || 0) + 1;
           }
           return cnt;
         });
         await peopleOut();
-        const s0 = await avg(6);
+        const s0 = await avg(+(process.env.AVG || 30));
         await peopleIn();
-        const row = { fps: f, calls: Math.round(s1.calls), tris: +(s1.tris / 1e6).toFixed(2), cpuMs: +s1.cpuMs.toFixed(1), peopleCalls: Math.round(s1.calls - s0.calls), peopleTris: +((s1.tris - s0.tris) / 1e6).toFixed(3), lods };
+        const M = (v) => +(v / 1e6).toFixed(3);
+        const row = { fps: f, calls: Math.round(s1.calls), tris: +(s1.tris / 1e6).toFixed(2), cpuMs: +s1.cpuMs.toFixed(1), peopleCalls: Math.round(s1.calls - s0.calls), peopleTris: M(s1.tris - s0.tris), pass: [M(s1.shT - s0.shT), M(s1.aoT - s0.aoT), M(s1.mT - s0.mT)], lods };
         tot.tris += s1.tris; tot.calls += s1.calls; tot.pTris += s1.tris - s0.tris; tot.pCalls += s1.calls - s0.calls;
         console.log('[t] pplperf', n.padEnd(13), JSON.stringify(row));
       }
