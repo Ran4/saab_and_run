@@ -1,11 +1,14 @@
 // Breakable street furniture of a Swedish suburb: mailboxes, wheelie bins, litter bins,
-// kicksleds, bikes, benches, planters, snowmen, fences... Each type is one instanced mesh.
+// kicksleds, bikes, benches, planters, snowmen, fences... All baked into static batches, one per
+// surface (phase 4 r2; ?nobatch: one instanced mesh per type and cell, as before).
 // Smash one with a car or a kick and it bursts into debris (and kronor: `coins`).
 // Type fields: r (circle footprint) or w/d (box footprint; yaw in multiples of 90 deg), top,
 // coins, shame (Ordning cost weight), minSpeed (car speed needed to break it), color (debris).
 
-import { THREE, GeoBuilder, MAT, mat, realMaterials, surfaceMaterial, ensureSurfaceAttributes, PRIM } from '../gfx.js';
+import { THREE, GeoBuilder, MAT, mat, realMaterials, surfaceMaterial, ensureSurfaceAttributes, PRIM, prepareKind } from '../gfx.js';
 import { box, circle } from './collision.js';
+import { P, N, HALF } from './layout.js';
+import { StaticBatch } from './batch.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // (round 6) Packed snow, rolled by children: a lumpy ball (radius r, about +-8 % in and out, no two
@@ -55,6 +58,30 @@ function boughGeo() {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
   return (_bough = g);
+}
+
+// (phase 4 r2) A thin drift of snow lying on the boughs: a low, lumpy patch with a ragged outline
+// (radius about 1, 1 high in the middle, its rim at 0; scaled when placed). Round 6's drifts were
+// smooth domes 3-4 cm high: white pillows on the planter.
+const _patches = {};
+function snowPatch(seed) {
+  if (_patches[seed]) return _patches[seed];
+  const N = 22, pos = [0, 1, 0], idx = [];
+  const rim = (a) => 0.72 + 0.16 * Math.sin(a * 3 + seed) + 0.1 * Math.sin(a * 5 + seed * 2.3) + 0.06 * Math.sin(a * 9 + seed * 0.7);
+  for (const [f, y] of [[0.45, 0.82], [0.8, 0.45], [1, 0]]) for (let j = 0; j < N; j++) {
+    const a = (j / N) * Math.PI * 2, r = rim(a) * f;
+    pos.push(Math.cos(a) * r, y * (0.8 + 0.4 * Math.sin(a * 4 + seed * 1.9 + f * 3)), Math.sin(a) * r);
+  }
+  for (let j = 0; j < N; j++) idx.push(0, 1 + ((j + 1) % N), 1 + j);
+  for (let q = 0; q < 2; q++) for (let j = 0; j < N; j++) {
+    const a = 1 + q * N + j, b = 1 + q * N + ((j + 1) % N), c = a + N, d = b + N;
+    idx.push(a, b, c, b, d, c);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return (_patches[seed] = g);
 }
 
 let _thinTorus = null;
@@ -169,13 +196,16 @@ const TYPES = {
   // Concrete planter with spruce twigs (granris) for the winter.
   // (round 6: a cushion of snow on the soil with the boughs' needled tips sticking out from under it
   // and over the rim; round 5's nine dark capsules read as someone lying on the block)
+  // (phase 4 r2: the soil and the boughs were 3-6 % albedo greens, a black void with black combs
+  // over the rim; now a needle bed in a mid spruce green with a little snow in it, lighter boughs, and
+  // thin ragged drifts instead of the smooth white pillows)
   planter: {
     w: 1.1, d: 0.6, top: 0.6, coins: 1, shame: 1, minSpeed: 4, color: 0x8a8884,
     build(g) {
       g.use('concrete').boxB(0x9a9894, 0, 0, 0, 1.1, 0.45, 0.6);
-      // dark soil under the boughs, then two layers of boughs: long ones radiating from the middle
-      // over the rim, shorter ones on top at odd angles; snow lies in a few soft drifts on them
-      g.use('foliage', { snow: 0 }).box(0x26301f, 0, 0.452, 0, 1.0, 0.012, 0.5);
+      // a bed of needles under the boughs, then two layers of boughs: long ones radiating from the
+      // middle over the rim, shorter ones on top at odd angles; snow lies in a few thin drifts on them
+      g.use('foliage', { snow: 0.3 }).box(0x3a5236, 0, 0.452, 0, 1.0, 0.012, 0.5);
       // (no shader snow on the boughs: flat ones turned white all over; the drifts below are the snow)
       g.use('foliage', { snow: 0 });
       for (let k = 0; k < 18; k++) {
@@ -184,14 +214,16 @@ const TYPES = {
         // to the rim along the bough's direction, then 6-14 cm over it
         const toRim = Math.min(Math.abs(ca) > 1e-3 ? (0.55 - Math.abs(bx)) / Math.abs(ca) : 9, Math.abs(sa) > 1e-3 ? (0.3 - Math.abs(bz)) / Math.abs(sa) : 9);
         const L = toRim + 0.03 + 0.05 * ((k * 5) % 4) / 3;
-        g.add(boughGeo(), [0x2f4a2c, 0x34502f, 0x2a4428][k % 3], mat(bx, 0.47 + 0.008 * (k % 3), bz, 0, -a, -0.03 - 0.03 * (k % 2), L, 1, Math.max(0.32, L) * 1.25));
+        g.add(boughGeo(), [0x4a6a42, 0x52734a, 0x43623c][k % 3], mat(bx, 0.47 + 0.008 * (k % 3), bz, 0, -a, -0.03 - 0.03 * (k % 2), L, 1, Math.max(0.32, L) * 1.25));
       }
       for (let k = 0; k < 11; k++) {
         const a = k * 2.4 + 0.3, bx = Math.cos(k * 1.7) * 0.25, bz = Math.sin(k * 2.9) * 0.1;
-        g.add(boughGeo(), [0x34502f, 0x2f4a2c, 0x3a5634][k % 3], mat(bx, 0.495 + 0.007 * (k % 3), bz, 0.05 * Math.sin(k), -a, 0.04 * Math.cos(k * 3), 0.36, 1, 0.42));
+        g.add(boughGeo(), [0x52734a, 0x4a6a42, 0x5a7a4e][k % 3], mat(bx, 0.495 + 0.007 * (k % 3), bz, 0.05 * Math.sin(k), -a, 0.04 * Math.cos(k * 3), 0.36, 1, 0.42));
       }
       g.use('snow');
-      for (const [x, z, s, h] of [[-0.24, 0.03, 0.2, 0.035], [0.1, -0.05, 0.23, 0.04], [0.34, 0.08, 0.13, 0.028], [-0.04, 0.11, 0.12, 0.025]]) g.add(snowBall(1, x * 9 + 4.2), 0xeef0f2, mat(x, 0.515, z, 0, x * 5, 0, s, h, s * 0.75));
+      for (const [x, z, s, h, sd] of [[-0.26, 0.04, 0.17, 0.02, 1], [0.08, -0.07, 0.2, 0.024, 2], [0.33, 0.1, 0.11, 0.016, 3], [-0.05, 0.13, 0.1, 0.015, 4], [0.36, -0.14, 0.08, 0.012, 5], [-0.42, -0.15, 0.07, 0.012, 6]]) {
+        g.add(snowPatch(sd), 0xeef0f2, mat(x, 0.497, z, 0, x * 5 + sd, 0, s, h, s * 0.8));
+      }
     },
   },
   // Snowman, rolled by children: three lumpy balls of packed snow (not quite stacked straight), the
@@ -358,6 +390,12 @@ export const props = []; // runtime list
 let meshes = {};
 let debris, debrisState = [];
 const DEBRIS = 160;
+// (phase 4 r2) Broken props waiting to respawn (tickProps walks only these, not all ~1,650).
+const broken = [];
+// (phase 4 r2) Props are baked into static batches (one per surface, run-culled per 80 m block, see
+// bakeProps); ?nobatch (or &propinst: the props only) keeps round 5's instanced meshes (A/B, as for
+// the world's batches).
+const BATCH = typeof location === 'undefined' || !['nobatch', 'propinst'].some((k) => new URLSearchParams(location.search).has(k));
 
 export function placeProp(type, x, z, yaw = 0, baseY) {
   if (!TYPES[type]) throw new Error('unknown prop type ' + type);
@@ -367,29 +405,9 @@ export function placeProp(type, x, z, yaw = 0, baseY) {
 const _m = new THREE.Matrix4(), _zero = new THREE.Matrix4().makeScale(0, 0, 0);
 
 export function finalizeProps(scene) {
-  // One instanced mesh per type, and (round 5) per 200 m cell of a 3 x 3 grid for the common types
-  // (an instanced mesh is culled as a whole: one per type drew every bin and fence plank in town in
-  // the main pass, the AO pass and both shadow cascades, ~0.9 M triangles at any pose).
-  const counts = {}, geos = {}, nType = {};
-  for (const p of placements) nType[p.type] = (nType[p.type] || 0) + 1;
-  const cell = (v) => Math.max(0, Math.min(2, Math.floor((v + 300) / 200)));
-  const keyOf = (p) => (nType[p.type] > 30 ? p.type + ':' + (cell(p.x) * 3 + cell(p.z)) : p.type);
-  for (const p of placements) { p.mkey = keyOf(p); counts[p.mkey] = (counts[p.mkey] || 0) + 1; }
-  for (const [key, n] of Object.entries(counts)) {
-    const type = key.split(':')[0], def = TYPES[type];
-    if (!geos[type]) { const g = new GeoBuilder(); def.build(g); geos[type] = g.build(); }
-    const geo = geos[type];
-    const im = new THREE.InstancedMesh(geo, realMaterials(geo), n);
-    im.castShadow = true; im.receiveShadow = true;
-    im.name = 'props:' + key;
-    scene.add(im);
-    meshes[key] = { im, next: 0 };
-  }
   for (const p of placements) {
     const def = TYPES[p.type];
-    const m = meshes[p.mkey];
-    const idx = m.next++;
-    const prop = { ...p, def, idx, alive: true, respawn: 0 };
+    const prop = { ...p, def, alive: true, respawn: 0 };
     if (prop.baseY === undefined) delete prop.baseY;
     // Box footprints turn by multiples of 90 degrees, so they stay axis-aligned.
     if (def.r) prop.block = circle(p.x, p.z, def.r, (p.baseY ?? 0.15) + def.top - 0.15, 'prop', prop);
@@ -399,9 +417,8 @@ export function finalizeProps(scene) {
       prop.block = box(p.x - hw, p.z - hd, p.x + hw, p.z + hd, (p.baseY ?? 0.15) + def.top - 0.15, 'prop', prop);
     }
     props.push(prop);
-    setMatrix(prop, true);
   }
-  for (const m of Object.values(meshes)) { m.im.instanceMatrix.needsUpdate = true; m.im.computeBoundingSphere(); }
+  if (BATCH) bakeProps(scene); else instanceProps(scene);
 
   // Debris chunks share one instanced mesh with per-instance colours.
   debris = new THREE.InstancedMesh(ensureSurfaceAttributes(new THREE.BoxGeometry(1, 1, 1)), surfaceMaterial('painted', { snow: false }), DEBRIS);
@@ -416,7 +433,150 @@ export function finalizeProps(scene) {
   placements.length = 0;
 }
 
+// Round 5's instanced meshes (?nobatch): one per type, and per 200 m cell of a 3 x 3 grid for the
+// common types (an instanced mesh is culled as a whole: one per type drew every bin and fence plank
+// in town in the main pass, the AO pass and both shadow cascades, ~0.9 M triangles at any pose).
+function instanceProps(scene) {
+  const counts = {}, geos = {}, nType = {};
+  for (const p of props) nType[p.type] = (nType[p.type] || 0) + 1;
+  const cell = (v) => Math.max(0, Math.min(2, Math.floor((v + 300) / 200)));
+  const keyOf = (p) => (nType[p.type] > 30 ? p.type + ':' + (cell(p.x) * 3 + cell(p.z)) : p.type);
+  for (const p of props) { p.mkey = keyOf(p); counts[p.mkey] = (counts[p.mkey] || 0) + 1; }
+  for (const [key, n] of Object.entries(counts)) {
+    const type = key.split(':')[0], def = TYPES[type];
+    if (!geos[type]) { const g = new GeoBuilder(); def.build(g); geos[type] = g.build(); }
+    const geo = geos[type];
+    const im = new THREE.InstancedMesh(geo, realMaterials(geo), n);
+    im.castShadow = true; im.receiveShadow = true;
+    im.name = 'props:' + key;
+    scene.add(im);
+    meshes[key] = { im, next: 0 };
+  }
+  for (const p of props) { p.idx = meshes[p.mkey].next++; setMatrix(p, true); }
+  for (const m of Object.values(meshes)) { m.im.instanceMatrix.needsUpdate = true; m.im.computeBoundingSphere(); }
+}
+
+// (phase 4 r2) The props baked like the world (batch.js StaticBatch): every prop's geometry, moved to
+// its place, in one static batch per surface ('props:<surface>'), each 80 m block's props one
+// contiguous run with its own bounds; a batch draws the runs in view (neighbours merged) with one
+// multi-draw per pass. 89 instanced meshes drew once per surface each: 120-220 calls per frame (all
+// passes) at street level, the biggest static item. A prop breaks by making its index ranges
+// degenerate (every index the range's first: zero-area triangles) and respawns by restoring them;
+// its ranges are in prop.ranges ([batch entry, first index, count]).
+const dropArray = function () { this.array = new this.array.constructor(0); };
+function bakeProps(scene) {
+  const T = {};
+  const typeGeo = (type) => {
+    if (T[type]) return T[type];
+    const g = new GeoBuilder(); TYPES[type].build(g);
+    const geo = g.build();
+    if (!geo.index) geo.setIndex([...Array(geo.attributes.position.count).keys()]);
+    const I = geo.index.array, surfs = geo.userData?.surfaces || ['plain'];
+    const groups = geo.groups.length ? geo.groups : [{ start: 0, count: I.length, materialIndex: 0 }];
+    const parts = groups.filter((gr) => gr.count > 0).map((gr) => {
+      let lo = Infinity, hi = -1;
+      for (let i = gr.start; i < gr.start + gr.count; i++) { if (I[i] < lo) lo = I[i]; if (I[i] > hi) hi = I[i]; }
+      return { s: surfs[gr.materialIndex] || 'plain', i0: gr.start, ic: gr.count, v0: lo, v1: hi + 1 };
+    });
+    return (T[type] = { geo, parts });
+  };
+  const blockOf = (p) => Math.max(0, Math.min(N - 1, Math.floor((p.x + HALF) / P))) * N + Math.max(0, Math.min(N - 1, Math.floor((p.z + HALF) / P)));
+  const order = props.map((p, k) => [blockOf(p), k, p]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  // per surface: sizes first
+  const per = new Map();
+  for (const [, , p] of order) for (const q of typeGeo(p.type).parts) {
+    let e = per.get(q.s);
+    if (!e) per.set(q.s, (e = { s: q.s, verts: 0, idx: 0, hdr: false }));
+    e.verts += q.v1 - q.v0; e.idx += q.ic;
+    if (!e.hdr) { const C = typeGeo(p.type).geo.attributes.color.array; for (let i = q.v0 * 3; i < q.v1 * 3; i++) if (C[i] > 1.0001) { e.hdr = true; break; } }
+  }
+  for (const e of per.values()) {
+    const n = e.verts;
+    e.P = new Float32Array(n * 3); e.T = new Float32Array(n * 4); e.N = new Int16Array(n * 3); e.TN = new Int8Array(n * 3);
+    e.C = e.hdr ? new Float32Array(n * 3) : new Uint16Array(n * 3);
+    e.I = n > 65535 ? new Uint32Array(e.idx) : new Uint16Array(e.idx);
+    e.v = 0; e.i = 0; e.runs = []; e.run = null; e.blk = -1;
+  }
+  const lo = new THREE.Vector3(), hi = new THREE.Vector3();
+  const q16 = (v) => Math.round(Math.max(-1, Math.min(1, v)) * 32767);
+  for (const [blk, , p] of order) {
+    const { geo, parts } = typeGeo(p.type), A = geo.attributes;
+    const Pa = A.position.array, Na = A.normal.array, Ca = A.color.array, Ta = A.tri.array, TNa = A.trin.array, Ia = geo.index.array;
+    const c = Math.cos(p.yaw), sn = Math.sin(p.yaw), X = p.x, Y = p.baseY ?? 0.15, Z = p.z;
+    p.ranges = [];
+    for (const q of parts) {
+      const e = per.get(q.s), nv = q.v1 - q.v0, vb = e.v;
+      if (e.blk !== blk) { e.run = { start: e.i, count: 0, box: new THREE.Box3() }; e.runs.push(e.run); e.blk = blk; }
+      lo.set(Infinity, Infinity, Infinity); hi.set(-Infinity, -Infinity, -Infinity);
+      for (let k = 0; k < nv; k++) {
+        const o = (q.v0 + k) * 3, d = (vb + k) * 3;
+        const x = Pa[o], y = Pa[o + 1], z = Pa[o + 2];
+        const wx = X + x * c + z * sn, wy = Y + y, wz = Z - x * sn + z * c;
+        e.P[d] = wx; e.P[d + 1] = wy; e.P[d + 2] = wz;
+        if (wx < lo.x) lo.x = wx; if (wy < lo.y) lo.y = wy; if (wz < lo.z) lo.z = wz;
+        if (wx > hi.x) hi.x = wx; if (wy > hi.y) hi.y = wy; if (wz > hi.z) hi.z = wz;
+        const nx = Na[o], ny = Na[o + 1], nz = Na[o + 2];
+        e.N[d] = q16(nx * c + nz * sn); e.N[d + 1] = q16(ny); e.N[d + 2] = q16(-nx * sn + nz * c);
+        for (let a = 0; a < 3; a++) {
+          const tn = TNa[o + a], cc = Ca[o + a];
+          e.TN[d + a] = Math.round(Math.max(-1, Math.min(1, tn)) * 127);
+          e.C[d + a] = e.hdr ? cc : Math.round(Math.max(0, Math.min(1, cc)) * 65535);
+        }
+        e.T.set(Ta.subarray((q.v0 + k) * 4, (q.v0 + k) * 4 + 4), (vb + k) * 4);
+      }
+      for (let i = 0; i < q.ic; i++) e.I[e.i + i] = Ia[q.i0 + i] - q.v0 + vb;
+      e.run.box.expandByPoint(lo).expandByPoint(hi);
+      e.run.count += q.ic;
+      p.ranges.push([e, e.i, q.ic]);
+      e.v += nv; e.i += q.ic;
+    }
+  }
+  prepareKind('batch');
+  for (const e of per.values()) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(e.P, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(e.N, 3, true));
+    g.setAttribute('color', new THREE.BufferAttribute(e.C, 3, !e.hdr));
+    g.setAttribute('tri', new THREE.BufferAttribute(e.T, 4));
+    g.setAttribute('trin', new THREE.BufferAttribute(e.TN, 3, true));
+    g.setIndex(new THREE.BufferAttribute(e.I, 1));
+    for (const r of e.runs) r.sphere = r.box.getBoundingSphere(new THREE.Sphere());
+    const bm = new StaticBatch(g, e.runs, surfaceMaterial(e.s, { kind: 'batch' }));
+    g.boundingBox = bm._geometryInfo[0].boundingBox.clone();
+    g.boundingSphere = bm._geometryInfo[0].boundingSphere.clone();
+    bm.computeBoundingSphere(); bm.computeBoundingBox();
+    bm.name = 'props:' + e.s;
+    bm.castShadow = true; bm.receiveShadow = true;
+    bm.matrixAutoUpdate = false; bm.updateMatrix();
+    // (the index stays on the CPU: breaking a prop rewrites it; the vertices go once uploaded)
+    g.userData.keepArrays = true;
+    for (const k of ['position', 'normal', 'color', 'tri', 'trin']) g.attributes[k].onUpload(dropArray);
+    bm.userData.raycastable = false;
+    bm.raycast = () => {};
+    e.attr = g.index; e.batch = bm;
+    delete e.P; delete e.N; delete e.C; delete e.T; delete e.TN; delete e.run;
+    scene.add(bm);
+    meshes[e.s] = { batch: bm };
+  }
+  for (const { geo } of Object.values(T)) geo.dispose();
+}
+
 function setMatrix(p, show) {
+  if (p.ranges) {
+    // (baked: hide by degenerate triangles, show by restoring the saved indices)
+    if (show && !p.saved) return;
+    if (!show && p.saved) return;
+    if (!show) p.saved = [];
+    p.ranges.forEach(([e, start, n], k) => {
+      const I = e.I;
+      if (show) I.set(p.saved[k], start);
+      else { p.saved.push(I.slice(start, start + n)); I.fill(I[start], start, start + n); }
+      e.attr.addUpdateRange(start, n);
+      e.attr.needsUpdate = true;
+    });
+    if (show) p.saved = null;
+    return;
+  }
   const m = meshes[p.mkey];
   if (show) _m.copy(mat(p.x, p.baseY ?? 0.15, p.z, 0, p.yaw, 0));
   else _m.copy(_zero);
@@ -450,6 +610,7 @@ export function breakProp(p, vx = 0, vz = 0, game = null) {
   p.block.dead = true;
   p.respawn = 75 + Math.random() * 40;
   setMatrix(p, false);
+  broken.push(p);
   const big = p.type === 'fence' || p.type === 'woodfence' || p.type === 'mailrow';
   spawnDebris(p.x, 0.4, p.z, p.def.color, big ? 9 : 7, vx, vz);
   if (game) game.onPropBroken(p, vx, vz);
@@ -457,13 +618,16 @@ export function breakProp(p, vx = 0, vz = 0, game = null) {
 }
 
 export function tickProps(dt, px, pz) {
-  for (const p of props) {
-    if (p.alive) continue;
+  // (phase 4 r2: only the broken ones, not every prop in town each frame)
+  for (let i = broken.length - 1; i >= 0; i--) {
+    const p = broken[i];
+    if (p.alive) { broken.splice(i, 1); continue; }
     p.respawn -= dt;
     if (p.respawn <= 0 && (p.x - px) ** 2 + (p.z - pz) ** 2 > 70 * 70) {
       p.alive = true;
       p.block.dead = false;
       setMatrix(p, true);
+      broken.splice(i, 1);
     }
   }
   let any = false;

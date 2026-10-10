@@ -364,7 +364,7 @@ Jimmy's and Anders' houses are all here), `radhus` (other row-house areas), `vil
   `oveGarageSpot` (inside Ove's open garage), `parvanehDrive` (on the walkway in front of their
   house, long enough for car + trailer ≈ 9.5 × 3.2 m), `hospitalSpot` (a bay in the hospital
   car park), `saabSpot` (where the Saab stands at start, outside the garage).
-- **parkedCars names:** `saab` (type `saab900`, dark blue, at `saabSpot`), `patrickCar` (type
+- **parkedCars names:** `saab` (type `saab900`, slate-blue metallic `0x34506e`, at `saabSpot`), `patrickCar` (type
   `kombi` or `skoda`, with `trailer: true`, standing crooked on the walkway near
   `parvanehHouse`), `runeVolvo` (`volvo240`, in the garage row), `andersAudi` (`audi`, by
   `andersHouse`).

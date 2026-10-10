@@ -1,12 +1,12 @@
 // Building kit shared by every block builder: local frames, trees, hedges, lamps, sign posts,
 // snow banks, windows and doors. Everything is PBR via the section-10 surfaces.
 
-import { THREE, mat, PRIM, GeoBuilder } from '../gfx.js';
+import { THREE, mat, PRIM, GeoBuilder, SUN_DIR } from '../gfx.js';
 import { mergeVertices, mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CURB, landmarks } from './layout.js';
 import { box, circle, ramp } from './collision.js';
 import { placeProp } from './props.js';
-import { addSign, addDecal, addCard, addQuad, twigFace, PICTO_SHAPE } from './signs.js';
+import { addSign, addDecal, addCard, addQuad, addGrid, twigFace, PICTO_SHAPE } from './signs.js';
 import { parkedCars, lamps, camBlocks } from './data.js';
 import { addGround, addGroundCircle } from './surface.js';
 import { mulberry32, clamp } from '../util.js';
@@ -718,8 +718,11 @@ function spruce(G, x, z, s, r, y0 = CURB) {
     for (let k = 0; k < n; k++) {
       const w = W[k], below = k > 0 ? W[k - 1].cy : base - 0.5 * s;
       // (round 5: near trees' mass is slimmer, a dark core; the branches' frond cards make the tiers)
-      if (k > 0) ring(below - (lite ? 0 : 0.1) * s, (lite ? 0.66 : 0.44) * w.R, k * 2, 0.34, 0.25 * s);
-      ring(w.cy + 0.04 * s, 0.26 * w.R + 0.06 * s, k * 2 + 1, 0.15);
+      // (phase 4 r2: near trees' wide rings droop a third further and are a little wider up the crown,
+      // where the small tiers stood apart: a pagoda against the light)
+      if (k > 0) ring(below - (lite ? 0 : 0.1) * s, (lite ? 0.66 : 0.44 + 0.14 * w.t) * w.R, k * 2, 0.34, (lite ? 0.25 : 0.33) * s);
+      // (phase 4 r2: near trees' waists widen up the crown, so the small upper tiers merge into a cone)
+      ring(w.cy + 0.04 * s, (lite ? 0.26 : 0.26 + 0.3 * w.t * w.t) * w.R + 0.06 * s, k * 2 + 1, 0.15);
     }
     ring(top + 0.5 * s, 0.05 * s, 99, 0);
     G.use('spruce', { snow: lite ? 0.8 : 0.35 }).add(ringLoft(rings), col, null);
@@ -729,6 +732,11 @@ function spruce(G, x, z, s, r, y0 = CURB) {
     // tip too, and a short white streak of snow on the flatter inner part of some.
     const pSnowK = 0;
     const snowP = [], snowI = [];
+    // (phase 4 r2) Snow on the branch / frond cards: near trees by the tree's own snowiness and the
+    // tier's height (the upper, outer branches catch it; many carry none), not a quarter / half of
+    // all cards at random; the forest belt (lite) as before.
+    const snowy = lite ? 0 : 0.35 + 0.65 * r();
+    const snowVar = (t, dflt) => (lite ? dflt() : r() < snowy * (0.18 + 0.5 * t) ? 2 + Math.floor(r() * 2) : Math.floor(r() * 2));
     let maxR = 0.5 * s, lowY = base;
     for (let k = 0; k < n; k++) {
       const { t, cy, R } = W[k];
@@ -736,7 +744,9 @@ function spruce(G, x, z, s, r, y0 = CURB) {
       const a0 = r() * TAU;
       for (let b = 0; b < nb; b++) {
         const a = a0 + (b / nb) * TAU + (r() - 0.5) * (TAU / nb) * 0.5;
-        const Rj = R * (0.75 + r() * 0.3) * (1 + fk * Math.cos(a - fa)), dl = 0.36 + 0.22 * (1 - t) + r() * 0.12;
+        // (phase 4 r2: near trees' upper branches rise instead of drooping, as a spruce's do: flat
+        // plates of fronds up the crown were a pagoda against the light)
+        const Rj = R * (0.75 + r() * 0.3) * (1 + fk * Math.cos(a - fa)), dl = 0.36 + 0.22 * (1 - t) + r() * 0.12 - (lite ? 0 : 0.85 * sstep(0.5, 1, t));
         const ca = Math.cos(a), sa = Math.sin(a);
         const rho0 = 0.4 * Rj, rho1 = 1.04 * Rj;
         const yAt = (rho) => cy + 0.03 - Math.tan(dl) * rho * (0.55 + 0.45 * rho / Rj);
@@ -745,12 +755,12 @@ function spruce(G, x, z, s, r, y0 = CURB) {
         const P0 = [x + ca * rho0, yAt(rho0), z + sa * rho0], P1 = [x + ca * rho1, yAt(rho1), z + sa * rho1];
         const cx = (P0[0] + P1[0]) / 2, cyc = (P0[1] + P1[1]) / 2 + 0.13 * h - h / 2, cz = (P0[2] + P1[2]) / 2;
         maxR = Math.max(maxR, rho1); lowY = Math.min(lowY, cyc - h / 2);
-        // (a quarter of them with snow on the branch: half made dashed white lines along every tier)
-        quadCard(twigFace('sprucebranch', r() < 0.75 ? Math.floor(r() * 2) : 2 + Math.floor(r() * 2)), [cx, cyc, cz], [(P1[0] - P0[0]) / 2, (P1[1] - P0[1]) / 2, (P1[2] - P0[2]) / 2], [0, h / 2, 0]);
+        // (snow on some: see snowVar)
+        quadCard(twigFace('sprucebranch', snowVar(t, () => (r() < 0.75 ? Math.floor(r() * 2) : 2 + Math.floor(r() * 2)))), [cx, cyc, cz], [(P1[0] - P0[0]) / 2, (P1[1] - P0[1]) / 2, (P1[2] - P0[2]) / 2], [0, h / 2, 0]);
         // across the tip
         if (!lite && Rj > 0.5 * s && t < 0.6 && r() < 0.8) {
           const tw = Math.min(1.1 * s, 2 * Rj * Math.sin(Math.PI / nb) * 0.75 + 0.2 * s), th = h * 0.85, ty = yAt(Rj * 0.98);
-          quadCard(twigFace('sprucetuft', Math.floor(r() * 4)), [x + ca * Rj * 0.98, ty + 0.14 * th - th / 2, z + sa * Rj * 0.98], [-sa * tw / 2, 0, ca * tw / 2], [0, th / 2, 0]);
+          quadCard(twigFace('sprucetuft', snowVar(t, () => Math.floor(r() * 4))), [x + ca * Rj * 0.98, ty + 0.14 * th - th / 2, z + sa * Rj * 0.98], [-sa * tw / 2, 0, ca * tw / 2], [0, th / 2, 0]);
         }
         // (round 5) the branch seen from above: a frond card lying on it from near the stem to just
         // past the tip (needled shoots, first snow on some), so up close a tier's upper face is
@@ -758,7 +768,7 @@ function spruce(G, x, z, s, r, y0 = CURB) {
         {
           const rA = 0.2 * Rj, rB = 1.08 * Rj, A = [x + ca * rA, yAt(rA) + 0.035, z + sa * rA], B = [x + ca * rB, yAt(rB) + 0.015, z + sa * rB];
           const hw = Math.min((lite ? 0.6 : 0.75) * s, Rj * Math.sin(Math.PI / nb) * (lite ? 0.95 : 1.2) + 0.1 * s);
-          quadCard(twigFace('sprucefrond', Math.floor(r() * 4)), [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2], [(B[0] - A[0]) / 2, (B[1] - A[1]) / 2, (B[2] - A[2]) / 2], [-sa * hw, 0, ca * hw]);
+          quadCard(twigFace('sprucefrond', snowVar(t, () => Math.floor(r() * 4))), [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2], [(B[0] - A[0]) / 2, (B[1] - A[1]) / 2, (B[2] - A[2]) / 2], [-sa * hw, 0, ca * hw]);
         }
         // snow on the flatter inner half of the branch
         if (r() < pSnowK * (0.5 + 0.7 * (1 - t))) {
@@ -769,6 +779,16 @@ function spruce(G, x, z, s, r, y0 = CURB) {
             for (const sd of [-1, 0, 1]) snowP.push(x + ca * rho - sa * wv * sd * e, yy + (sd === 0 ? 0.035 * e : -0.008), z + sa * rho + ca * wv * sd * e);
           }
           for (let q = 0; q < NA - 1; q++) for (let c = 0; c < 2; c++) { const A = b0 + q * 3 + c, B = A + 1, C = A + 3, D = C + 1; snowI.push(A, C, B, B, C, D); }
+        }
+      }
+      // (phase 4 r2) under the whorl, at the stem: three crossed tuft cards hanging over the notch
+      // between this tier's skirt and the tier below (against the light the tiers stood apart with the
+      // sky between them: a pagoda)
+      if (!lite && k > 0) {
+        const tw = 0.95 * R, th = Math.min(0.75 * s, 0.85 * (cy - W[k - 1].cy) + 0.15 * s), a1 = r() * TAU;
+        for (let q = 0; q < 3; q++) {
+          const aq = a1 + q * Math.PI / 3, cq = Math.cos(aq), sq = Math.sin(aq);
+          quadCard(twigFace('sprucetuft', Math.floor(r() * 2)), [x, cy - 0.06 * s - th * 0.42, z], [-sq * tw / 2, 0, cq * tw / 2], [0, th / 2, 0]);
         }
       }
     }
@@ -1124,8 +1144,11 @@ export function hedge(G, x, z, w, d, h = 0.9, yaw = 0, color = C.hedge, o = {}) 
   const bare = o.kind === 'bare';
   const seed = Math.floor(rnd() * 9973);
   const hd = d / 2, y0 = CURB - 0.03;
+  // (phase 4 r2: an evergreen body's top stays just under the clipped line, hk: it poked through the
+  // thinner snow cap as dark blotches)
   const prof = o.square ? [[-0.95, 0], [-1.0, 0.25], [-1.0, 0.9], [-0.97, 0.98], [-0.5, 1.0], [0.5, 1.0], [0.97, 0.98], [1.0, 0.9], [1.0, 0.25], [0.95, 0]]
-    : [[-0.86, 0], [-1.02, 0.4], [-0.98, 0.82], [-0.75, 0.97], [0, 1.01], [0.75, 0.97], [0.98, 0.82], [1.02, 0.4], [0.86, 0]];
+    : bare ? [[-0.86, 0], [-1.02, 0.4], [-0.98, 0.82], [-0.75, 0.97], [0, 1.01], [0.75, 0.97], [0.98, 0.82], [1.02, 0.4], [0.86, 0]]
+      : [[-0.86, 0], [-1.02, 0.4], [-0.98, 0.82], [-0.75, 0.95], [0, 0.985], [0.75, 0.95], [0.98, 0.82], [1.02, 0.4], [0.86, 0]];
   // An evergreen hedge is a row of plants (one every ~0.7 m): each bulges out a little and has its
   // own height, with shallow grooves between them, so no face is one plane.
   const st = Math.max(2, Math.ceil(w / (bare ? 0.45 : 0.3)));
@@ -1140,30 +1163,42 @@ export function hedge(G, x, z, w, d, h = 0.9, yaw = 0, color = C.hedge, o = {}) 
   lxs.sort((a, b) => a - b);
   { const out = []; for (const v of lxs) { if (out.length && v - out[out.length - 1] < 0.025) { if (Math.abs(v - w / 2) < 1e-9) out[out.length - 1] = v; } else out.push(v); } lxs = out; }
   const pl = 0.62 + rnd() * 0.16, po = rnd() * pl;
-  for (const lx of lxs) {
-    const dEnd = Math.min(lx + w / 2, w / 2 - lx), e = sstep(0, eL, dEnd), tt = Math.min(1, dEnd / eL);
+  // The body at lx (pi: evaluate it as part of that plant, e.g. a plant's cushion near its edge):
+  // height hk, half-width wk (rounded at the ends), unrounded wr, end factor e.
+  // (phase 4 r2: the plants are not all the same width: the plant coordinate u wanders by up to a
+  // third of a plant over a couple of metres, monotonically)
+  const uOf = (lx) => (lx + w / 2 + po) / pl + (bare || o.square ? 0 : 0.34 * (vnoise(lx / 1.9, seed + 89) - 0.5));
+  const plantOf = (lx) => { const u = uOf(lx), pi = Math.floor(u); return [pi, u - pi]; };
+  const bodyAt = (lx, piF) => {
+    const dEnd = Math.min(lx + w / 2, w / 2 - lx), e = sstep(0, eL, dEnd), tt = Math.min(1, Math.max(0, dEnd) / eL);
     // plan: an ellipse quadrant to the tip (never quite a point); elevation: a little lower there
     const pr = bare ? 1 - 0.14 * (1 - e) : Math.max(0.22, Math.sqrt(Math.max(0, 1 - (1 - tt) * (1 - tt))));
     const ph = bare ? 1 - 0.1 * (1 - e) : 1 - (o.square ? 0.04 : 0.13) * Math.pow(1 - tt, 1.5);
     const sq = o.square ? 0.15 : 1;   // Ove's: clipped with a spirit level
-    const u = (lx + w / 2 + po) / pl, pi = Math.floor(u), bulge = bare ? 0 : 0.5 - 0.5 * Math.cos((u - pi) * TAU);
+    const u = uOf(lx), pi = piF ?? Math.floor(u), bulge = bare ? 0 : 0.5 - 0.5 * Math.cos((u - pi) * TAU);
     const plantH = bare ? 0 : (hash(pi, seed) - 0.5) * 0.16 * (o.square ? 0.3 : 1), plantW = bare ? 0 : (hash(pi, seed + 1) - 0.5) * 0.12 * (o.square ? 0.3 : 1);
     // (the clipped top line also steps by up to +-8 cm every 2-4 m: clipped by hand, in pieces)
     const cut = bare || o.square ? 0 : (vnoise(lx / 3.0, seed + 61) - 0.5) * 0.16 + (hash(Math.floor((lx + 40) / 2.7), seed + 63) - 0.5) * 0.06;
     const hk = (h + cut + ((vnoise(lx * 0.65, seed) - 0.5) * 0.16 + (vnoise(lx * 2.3, seed + 3) - 0.5) * 0.04) * sq + plantH + (bulge - 0.5) * 0.06 * (o.square ? 0.4 : 1)) * ph;
     const wr = hd * (1 + (vnoise(lx * 0.8, seed + 9) - 0.5) * 0.14 * sq + (bulge - 0.6) * 0.24 * (o.square ? 0.3 : 1) + plantW), wk = wr * pr;
+    return { hk, wk, wr, e };
+  };
+  for (const lx of lxs) {
+    const { hk, wk, wr, e } = bodyAt(lx);
     hs.push([hk, wk, lx, wr]);
     rings.push(prof.map(([a, b], p) => {
       // (round 6: an evergreen body's sides stay put: the leaf cards stand 1.5 cm outside its widest
       // point, and a jittered side poked through them as dark seams down the face)
       const j = (vnoise2(lx * 3.1, p * 1.7, seed + 1) - 0.5) * 0.04;
-      return [lx, y0 + b * hk + (b > 0.05 ? j : 0), a * wk + (bare && Math.abs(a) > 0.5 ? j * Math.sign(a) : 0)];
+      return [lx, y0 + b * hk + (b > 0.05 && (bare || b < 0.9) ? j : 0), a * wk + (bare && Math.abs(a) > 0.5 ? j * Math.sign(a) : 0)];
     }));
     // Snow: thicker in places, missing where it slid off; it thins out and pulls in at the ends.
+    // (the evergreen hedges' cap is built further down, finer and following the leaf faces)
+    if (!bare) continue;
     const ov = (0.03 + 0.025 * vnoise(lx * 1.7, seed + 31)) * e;
     const cov = vnoise(lx * 0.8, seed + 23);
     const t = cov < 0.28 ? -0.03 : (0.02 + 0.06 * vnoise(lx * 1.3, seed + 17)) * e - 0.02 * (1 - e);
-    const yt = y0 + hk, cx = lx - Math.sign(lx) * (bare ? 0.08 : 0.03) * (1 - e);
+    const yt = y0 + hk, cx = lx - Math.sign(lx) * 0.08 * (1 - e);
     const sw = wk * (0.75 + 0.18 * e);
     cap.push([[cx, yt - 0.05, -(sw + ov)], [cx, yt + t * 0.55, -sw * 0.84], [cx, yt + t, -sw * 0.34], [cx, yt + t * 0.95, sw * 0.32], [cx, yt + t * 0.55, sw * 0.84], [cx, yt - 0.05, sw + ov]]);
   }
@@ -1172,6 +1207,7 @@ export function hedge(G, x, z, w, d, h = 0.9, yaw = 0, color = C.hedge, o = {}) 
   const m = mat(x, 0, z, 0, yaw, 0, 1, 1, 1);
   const c = Math.cos(yaw), sn = Math.sin(yaw);
   const W = (lx, ly, lz) => [x + lx * c + lz * sn, ly, z - lx * sn + lz * c];
+  const Wn = (nx, ny, nz) => { const l = Math.hypot(nx, ny, nz) || 1; return [(nx * c + nz * sn) / l, ny / l, (-nx * sn + nz * c) / l]; };
   if (!bare) {
     G.use('foliage').add(loft(rings, { caps: true, bulge: 0, axis: [1, 0, 0], inside: [0, y0 + h * 0.45, 0] }), color, m);
     fineTex(G, o.fine ?? 8);
@@ -1179,78 +1215,132 @@ export function hedge(G, x, z, w, d, h = 0.9, yaw = 0, color = C.hedge, o = {}) 
     // patches in winter (o.bronze: 0..1 how much).
     const br = o.bronze ?? 0.5, cc = Math.cos(yaw), cs = Math.sin(yaw);
     shadeLast(G, (px, py, pz) => {
-      const lx = (px - x) * cc - (pz - z) * cs, u = (lx + w / 2 + po) / pl, gr = 0.5 - 0.5 * Math.cos((u - Math.floor(u)) * TAU);
+      const lx = (px - x) * cc - (pz - z) * cs, u = uOf(lx), gr = 0.5 - 0.5 * Math.cos((u - Math.floor(u)) * TAU);
       // (round 5: about as light as the leaf cards in front of it, which hide it but at the ends)
       const k = (0.62 + 0.2 * sstep(y0, y0 + 0.4, py)) * (0.88 + 0.12 * gr);
       const b = br * sstep(0.45, 0.8, vnoise(lx * 0.45, seed + 41) * 0.7 + vnoise(lx * 1.7, seed + 43) * 0.3);
       return [k * (1 + 0.3 * b), k * (1 + 0.04 * b), k * (1 - 0.2 * b)];
     });
-    G.use('snow').add(loft(cap, { inside: [0, -50, 0] }), 0xf0f2f4, m);
-    sst('hedgecap', G);
     // thuja (o.bronze > 0.6: the cemetery's) has flat fans of scale leaves, other hedges small sprays
     const thu = (o.bronze ?? 0.5) > 0.6, fk = thu ? 'thujagreen' : 'hedgegreen';
-    // Side cards (round 5): a solid wall of leaves (page 'leaf', opaque below the clipped line) on
-    // both faces, one per ~0.75 m, each just outside the body's widest point under it (the body never
-    // pokes through), alternately 1 cm proud (no z-fighting where neighbours overlap) and turned a
-    // hair (a clipped face is faceted, not one plane); hedges over 1.25 m get a lower row. The top
-    // card's upper 16 % is a frayed fringe over the clipped line, which sits 1 cm under the body's top
-    // (the snow cap's rim overhangs it). Sparse sprays over a dark body read as black-and-white
-    // speckle from 5-15 m.
-    // (round 6) Only along the straight part; the rounded ends get a fan of cards (below).
-    const xs0 = -w / 2 + eL * 0.97, xs1 = w / 2 - eL * 0.97;
-    const sideCards = (xa, xb, lx, wm, top, sd, side, k) => {
-      const off = sd * (wm + 0.015 + ((k + side) % 2) * 0.012);
-      const [px, , pz] = W(lx, 0, off), fy = yaw + (sd > 0 ? 0 : Math.PI) + (hash(k * 2 + side, seed + 7) - 0.5) * 0.05;
-      const vv = Math.floor(hash(k * 3 + side, seed + 5) * 4) % 4;
-      if (o.square) {
-        // (round 6) Ove's, clipped with a spirit level: no shoots over the clipped line
-        card(twigFace(fk + 'low', vv), px, y0 + (top + 0.01) / 2, pz, xb - xa, top + 0.01, fy, 0.25);
-      } else if (top > 1.25) {
-        const lh = top * 0.5 + 0.04, th = top * 0.5 / 0.84;
-        card(twigFace(fk + 'low', vv), px, y0 + lh / 2, pz, xb - xa, lh, fy, 0.25);
-        card(twigFace(fk, (vv + 1) % 4), px, y0 + top * 0.5 + th / 2, pz, xb - xa, th, fy, 0.25);
-      } else {
-        const th = top / 0.84;
-        card(twigFace(fk, vv), px, y0 + th / 2, pz, xb - xa, th, fy, 0.25);
-      }
+    // (phase 4 r2) The leaf walls: per plant and face a cushion (addGrid: 4 x 3 cells on the 'leaf'
+    // page) that bulges D out of the face in its middle and falls back into the groove between plants,
+    // its normals bent with it, so the low sun rakes across a row of lumps instead of lighting one flat
+    // green plane (round 6's flat cards read as felt in the sun and a dark slab in the shade). Each
+    // plant has its own tone (+-13 %, a little more or less bronze; the cemetery's thuja darker and
+    // olive). The faces are the fringe-less 'low' leaf walls up to the clipped top, which the snow cap
+    // covers: the fringe over the clipped line and the sprays across the top were dark flecks on the
+    // white cap.
+    const D = o.square ? 0.012 : 0.045;
+    const base = thu ? [0.68, 0.66, 0.56] : [1, 1, 1];
+    const tintOf = (pi) => {
+      const v = 1 + (hash(pi, seed + 91) - 0.5) * (o.square ? 0.1 : thu ? 0.18 : 0.24), t = (hash(pi, seed + 93) - 0.5) * (thu ? 0.14 : 0.08);
+      return [base[0] * v * (1 + t), base[1] * v, base[2] * v * (1 - t)];
     };
-    const ns = Math.max(1, Math.round((xs1 - xs0) / 0.75)), cw = (xs1 - xs0) / ns;
-    for (let k = 0; k < ns; k++) {
-      const xa = xs0 + k * cw - (k === 0 ? 0.02 : 0.05), xb = xs0 + (k + 1) * cw + (k === ns - 1 ? 0.02 : 0.05), lx = (xa + xb) / 2;
-      let wm = 0, hsum = 0, hn = 0;
-      for (const [hk_, wk_, lx_] of hs) if (lx_ >= xa - 0.1 && lx_ <= xb + 0.1) { wm = Math.max(wm, wk_); hsum += hk_; hn++; }
-      if (!hn) { const [hk_, wk_] = hAt(lx); wm = wk_; hsum = hk_; hn = 1; }
-      for (const sd of [-1, 1]) sideCards(xa, xb, lx, wm, hsum / hn - 0.01, sd, sd > 0 ? 1 : 0, k);
+    // |profile| of the body at height fraction b (0 foot .. 1 top), one side
+    const PR = prof.filter(([a]) => a <= 0).map(([a, b]) => [b, -a]).sort((p, q) => p[0] - q[0]);
+    const profAt = (b) => { for (let i = 1; i < PR.length; i++) if (b <= PR[i][0]) { const [b0, a0] = PR[i - 1], [b1, a1] = PR[i]; return a0 + (a1 - a0) * (b - b0) / (b1 - b0); } return PR[PR.length - 1][1]; };
+    // how far out of the centre line the leaf wall stands at (lx, b) on a plant's cushion: just outside
+    // the body (its profile there, at least 0.86 of its width: the cap covers the rounded top edge),
+    // plus the plant's own bulge, most at about half height
+    // (each plant bulges by its own amount, fullest at its own height, with a few lumps of +-1 cm)
+    // (the plant's width blends into its neighbour's over the last fifth on either side, so two cushions
+    // meet in the groove; and never inside the lofted body, whose rings (every 0.3 m) do not resolve
+    // the grooves: it poked through as dark slivers)
+    const wkI = (lx) => {
+      let a = 1, b = hs.length - 1;
+      while (a < b) { const m_ = (a + b) >> 1; if (hs[m_][2] < lx) a = m_ + 1; else b = m_; }
+      const [, wa, la] = hs[a - 1], [, wb, lb] = hs[a];
+      return wa + (wb - wa) * Math.min(1, Math.max(0, (lx - la) / ((lb - la) || 1)));
+    };
+    // (faceAt: what does not depend on the height, once per lx; faceOff: the offset at height b)
+    const faceAt = (lx, pi) => {
+      const B = bodyAt(lx, pi), ph = uOf(lx) - pi;
+      let wk = B.wk;
+      if (ph < 0.2) { const t = 0.5 * (1 - ph / 0.2); wk += (bodyAt(lx, pi - 1).wk - wk) * t; } else if (ph > 0.8) { const t = 0.5 * (ph - 0.8) / 0.2; wk += (bodyAt(lx, pi + 1).wk - wk) * t; }
+      return { lx, pi, ph, hk: B.hk, wk: Math.max(wk, wkI(lx)), pk: 0.38 + 0.32 * hash(pi, seed + 97), dk: 0.6 + 0.6 * hash(pi, seed + 95) };
+    };
+    // (lumps: the position only; the normals follow the plant's envelope)
+    const faceOff = (F, b, k, lumps = true) => {
+      const { lx, ph, hk, wk, pk, dk } = F;
+      const vp = b < pk ? 0.55 + 0.45 * sstep(0, pk, b) : 1 - 0.35 * sstep(pk, 1, b);
+      const lump = o.square || !lumps ? 0 : (vnoise2(lx * 3.2, b * hk * 3.2, seed + 99) - 0.5) * 0.024 * Math.sin(Math.PI * Math.min(1, b * 1.6));
+      return wk * Math.max(profAt(Math.min(b, 0.9)), 0.86) + 0.015 + D * dk * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, ph))), 0.7) * vp + lump + (k % 2) * 0.006;
+    };
+    const xs0 = -w / 2 + eL * 0.97, xs1 = w / 2 - eL * 0.97;
+    const BL = [0, 0.4, 0.78, 1];
+    // one cushion: plant pi, lx from xa to xb, heights bLo..bHi of the body (a full leaf face each)
+    const cushion = (pi, xa, xb, sd, k, bLo, bHi, dz, vv) => {
+      const cols = xb - xa > 0.4 ? 4 : 2, P = [], N = [], A = [], B = [], nr = BL.length;
+      const cf = [];
+      for (let i = 0; i <= cols; i++) cf.push(faceAt(sd > 0 ? xa + (xb - xa) * i / cols : xb - (xb - xa) * i / cols, pi));
+      // the grid's offsets and heights, then the normal at each vertex from its neighbours (along: a few
+      // cm over half a plant; up: the rounded top), exaggerated a little: the leaf mass is rougher than
+      // its envelope
+      const off = [], ys = [];
+      for (let j = 0; j < nr; j++) for (let i = 0; i <= cols; i++) { const F = cf[i], b = bLo + (bHi - bLo) * BL[j]; off.push(faceOff(F, b, k) + dz); ys.push(y0 + b * F.hk); }
+      const at = (j, i) => j * (cols + 1) + i;
+      for (let j = 0; j < nr; j++) for (let i = 0; i <= cols; i++) {
+        const i0 = Math.max(0, i - 1), i1 = Math.min(cols, i + 1), j0 = Math.max(0, j - 1), j1 = Math.min(nr - 1, j + 1);
+        const dX = (off[at(j, i1)] - off[at(j, i0)]) / (cf[i1].lx - cf[i0].lx || 1e-3);
+        const dY = (off[at(j1, i)] - off[at(j0, i)]) / (ys[at(j1, i)] - ys[at(j0, i)] || 1e-3);
+        P.push(W(cf[i].lx, ys[at(j, i)], sd * off[at(j, i)])); N.push(Wn(-1.6 * dX, -1.4 * dY + 0.05, sd));
+        A.push(i / cols); B.push(BL[j]);
+      }
+      addGrid(twigFace(fk + 'low', vv), cols, nr - 1, P, N, A, B, tintOf(pi));
+    };
+    // (where plant boundary u starts: uOf is monotonic, so a bisection)
+    const lxOf = (u) => { let a = -w / 2 - pl * 2, b = w / 2 + pl * 2; for (let q = 0; q < 32; q++) { const m_ = (a + b) / 2; if (uOf(m_) < u) a = m_; else b = m_; } return (a + b) / 2; };
+    const [p0] = plantOf(xs0), [p1] = plantOf(xs1);
+    for (let pi = p0, k = 0; pi <= p1; pi++, k++) {
+      const la = Math.max(xs0, lxOf(pi)), lb = Math.min(xs1, lxOf(pi + 1));
+      if (lb - la < 0.03) continue;
+      // (each cushion reaches 3 cm into its neighbours: no slit between plants)
+      const xa = la - (la > xs0 ? 0.03 : 0.02), xb = lb + (lb < xs1 ? 0.03 : 0.02);
+      for (const sd of [-1, 1]) {
+        const vv = Math.floor(hash(k * 3 + (sd > 0 ? 1 : 0), seed + 5) * 4) % 4;
+        let hm = 0; for (let q = 0; q <= 4; q++) hm += bodyAt(xa + (xb - xa) * q / 4, pi).hk / 5;
+        // (a hedge over 1.25 m: two faces stacked, the upper one 4 mm proud where they overlap)
+        if (hm > 1.25 && !o.square) { cushion(pi, xa, xb, sd, k, 0, 0.53, 0, vv); cushion(pi, xa, xb, sd, k, 0.5, 1, 0.004, (vv + 1) % 4); }
+        else cushion(pi, xa, xb, sd, k, 0, 1, 0, vv);
+      }
     }
     // (round 6) The rounded ends: four cards tangent to the plan's half-ellipse (eL long, as wide as
     // the unrounded body), each a little wider than its 45-degree arc, so they overlap into a closed,
     // faceted round end. (Round 5 closed the end with one flat card, and the body's end cap poked
-    // through it.)
+    // through it.) (phase 4 r2: each a 2 x 3 grid whose normals follow the ellipse: a round end, not
+    // facets; the end plant's tone)
     for (const sd of [-1, 1]) {
       const lxE = sd * (w / 2 - eL);
       let bAx = 0;
       for (const q of hs) if (sd * (q[2] - lxE) >= -0.05) bAx = Math.max(bAx, q[3]);
       const E = (ph_) => [lxE + sd * eL * Math.cos(ph_), bAx * Math.sin(ph_)];
+      const En = (ph_) => { const nx = sd * bAx * Math.cos(ph_), nz = eL * Math.sin(ph_), l = Math.hypot(nx, nz); return [nx / l, nz / l]; };
+      const [piE] = plantOf(sd * w / 2 - sd * 0.01), tE = tintOf(piE);
       for (let i = 0; i < 4; i++) {
-        const phc = (-0.375 + i * 0.25) * Math.PI, [ex, ez] = E(phc);
-        let nx = sd * bAx * Math.cos(phc), nz = eL * Math.sin(phc);
-        const nl = Math.hypot(nx, nz); nx /= nl; nz /= nl;
-        const [ax, az] = E(phc - Math.PI / 8), [bx, bz] = E(phc + Math.PI / 8);
-        const cwid = Math.abs((bx - ax) * -nz + (bz - az) * nx) * 1.3 + 0.03;
-        const top = hAt(ex)[0] - 0.01, th = o.square ? top + 0.01 : top / 0.84, out = 0.014 + (i % 2) * 0.01;
-        const [px, , pz] = W(ex + nx * out, 0, ez + nz * out);
-        card(twigFace(o.square ? fk + 'low' : fk, Math.floor(hash(i * 2 + sd + 3, seed + 9) * 4) % 4), px, y0 + th / 2, pz, cwid, th, yaw + Math.atan2(nx, nz), 0.25);
+        const phc = (-0.375 + i * 0.25) * Math.PI, out = 0.014 + (i % 2) * 0.01;
+        // from phc - 0.15 pi to phc + 0.15 pi, ordered left to right as seen from outside
+        const phs = [-0.15, 0, 0.15].map((q) => phc - q * Math.PI * sd);
+        const P = [], N = [], A = [], B = [];
+        for (let j = 0; j < BL.length; j++) phs.forEach((ph_, ii) => {
+          const [ex, ez] = E(ph_), [nx, nz] = En(ph_), top = hAt(ex)[0], b = BL[j];
+          P.push(W(ex + nx * out, y0 + b * top, ez + nz * out));
+          N.push(Wn(nx, b > 0.6 ? 0.5 * (b - 0.6) / 0.4 : -0.1, nz));
+          A.push(ii / 2); B.push(b);
+        });
+        addGrid(twigFace(fk + 'low', Math.floor(hash(i * 2 + sd + 3, seed + 9) * 4) % 4), 2, BL.length - 1, P, N, A, B, tE);
       }
     }
     // (round 6) Sprigs proud of the face: loose shoots that grew since the last clipping, leaning out
     // of both faces at 25-55 degrees and a little up, so the silhouette along the hedge is broken
-    // (Ove's, clipped with a spirit level, has only a few).
+    // (Ove's, clipped with a spirit level, has only a few). (phase 4 r2: none near the top, where
+    // they poked over the snow cap; the plant's tone)
     const spF = twigFace(thu ? 'thujasprig' : 'hedgesprig', 0), nsp = Math.round((xs1 - xs0) * (o.square ? 0.5 : 1.3));
     for (let k = 0; k < nsp; k++) {
       const lx = xs0 + (k + 0.15 + 0.7 * hash(k, seed + 71)) / Math.max(1, nsp) * (xs1 - xs0), sd = hash(k, seed + 73) < 0.5 ? -1 : 1;
       const [hk, wk] = hAt(lx), along = hash(k, seed + 75) < 0.5 ? -1 : 1;
       const gam = 0.45 + hash(k, seed + 77) * 0.5, tilt = 0.2 + hash(k, seed + 79) * 0.45;
-      const yb = y0 + hk * (hash(k, seed + 81) < 0.45 ? 0.82 + 0.12 * hash(k, seed + 83) : 0.3 + 0.5 * hash(k, seed + 83));
+      const yb = y0 + hk * (hash(k, seed + 81) < 0.45 ? 0.62 + 0.1 * hash(k, seed + 83) : 0.25 + 0.4 * hash(k, seed + 83));
       const L = (0.2 + 0.12 * hash(k, seed + 85)) * (o.square ? 0.7 : 1), Hs = L * 0.62;
       // direction out of the face (local): along the hedge by cos(gam), out by sin(gam), up by tilt
       let dx = along * Math.cos(gam), dz = sd * Math.sin(gam), dy = Math.sin(tilt);
@@ -1262,12 +1352,35 @@ export function hedge(G, x, z, w, d, h = 0.9, yaw = 0, color = C.hedge, o = {}) 
       const [cx2, , cz2] = W(bx + dx * L * 0.45, 0, bz + dz * L * 0.45);
       const wd = (vx, vz) => [vx * c + vz * sn, -vx * sn + vz * c];
       const [rx, rz] = wd(dx * L / 2, dz * L / 2), [qx, qz] = wd(ux * Hs / 2, uz * Hs / 2);
-      addQuad(spF, [cx2, yb + dy * L * 0.45, cz2], [rx, dy * L / 2, rz], [qx, uy * Hs / 2, qz]);
+      // (lit like the face it grows out of, from both sides: shaded by its own plane it was a black
+      // arrowhead on the side away from the sun)
+      addQuad(spF, [cx2, yb + dy * L * 0.45, cz2], [rx, dy * L / 2, rz], [qx, uy * Hs / 2, qz], Wn(0, 0.3, sd), tintOf(plantOf(lx)[0]), true);
     }
-    if (!o.square) for (let lx = -w / 2 + eL * 0.8; lx < w / 2 - eL * 0.6; lx += 1.6 + rnd() * 0.8) {
-      const [hk, wk] = hAt(lx), [px, , pz] = W(lx, 0, 0);
-      card(twigFace('hedgegreentop', Math.floor(rnd() * 2)), px, y0 + hk + 0.03, pz, wk * 2.1, 0.2, yaw + Math.PI / 2 + (rnd() - 0.5) * 0.3, 0.6);
+    // (the sprays across the top are gone: dark flecks on the cap; the loop still draws its random
+    // numbers, so everything built after a hedge is placed as before)
+    if (!o.square) for (let lx = -w / 2 + eL * 0.8; lx < w / 2 - eL * 0.6; lx += 1.6 + rnd() * 0.8) { rnd(); rnd(); }
+    // (phase 4 r2) The snow cap, a third thinner than round 6's and finer (a ring every ~0.15 m): its
+    // rim follows the plants' cushions just outside their top edge, hangs 2-6 cm down the face and
+    // reaches out by a ragged 0-3 cm; where the snow slid off it sinks below the clipped top.
+    const capX = [];
+    for (let i = 0; i < lxs.length; i++) { capX.push(lxs[i]); if (i + 1 < lxs.length && lxs[i + 1] - lxs[i] > 0.2) capX.push((lxs[i] + lxs[i + 1]) / 2); }
+    for (const lx of capX) {
+      const [pi] = plantOf(lx), { hk, wk, e } = bodyAt(lx);
+      const cov = vnoise(lx * 0.8, seed + 23), bareTop = cov < 0.28;
+      const t = bareTop ? -0.03 : (0.013 + 0.038 * vnoise(lx * 1.3, seed + 17)) * e - 0.02 * (1 - e);
+      const yt = y0 + hk, cx = lx - Math.sign(lx) * 0.03 * (1 - e);
+      const sw = wk * (0.75 + 0.18 * e);
+      const straight = lx > xs0 && lx < xs1;
+      const edge = (sd) => {
+        const rag = (0.004 + 0.026 * vnoise(lx * 4.3 + sd * 7, seed + 33)) * e;
+        if (bareTop) return sw * 0.9;
+        return Math.max(sw + (0.03 + 0.02 * vnoise(lx * 1.7, seed + 31)) * e, straight ? faceOff(faceAt(lx, pi), 1, pi - p0) + 0.006 + rag : 0);
+      };
+      const drop = (sd) => 0.02 + 0.045 * vnoise(lx * 3.7 + sd * 5, seed + 37);
+      cap.push([[cx, yt - drop(-1), -edge(-1)], [cx, yt + t * 0.55, -sw * 0.84], [cx, yt + t, -sw * 0.34], [cx, yt + t * 0.95, sw * 0.32], [cx, yt + t * 0.55, sw * 0.84], [cx, yt - drop(1), edge(1)]]);
     }
+    G.use('snow').add(loft(cap, { inside: [0, -50, 0] }), 0xf0f2f4, m);
+    sst('hedgecap', G);
     return;
   }
   // Bare: a dark core (the shadowed inside of the twig mass), slightly inset, wrapped in twig cards:
@@ -1312,20 +1425,55 @@ export function shrub(G, x, z, s = 1, color = 0x3d4c36) {
   fineTex(G, 2.5);
 }
 
-// A bed of spruce twigs (granris) laid over a grave or a planter in winter: a low, dark bed of
-// needles with overlapping sprigs on it (flat see-through cards: a stem with needled side shoots),
-// a little snow caught on the top ones.
+// A bed of spruce twigs (granris) laid over a grave or a planter in winter: a low bed of needles
+// with overlapping sprigs on it (see-through cards on the 'leaf' page: a stem with needled side
+// shoots), a little snow caught on the top ones.
+// (phase 4 r2) The sprigs were flat decals in a 3-8 % albedo green with a straight-up normal over a
+// dark box: black paper combs on the snow in the finale. Now two layers of sprigs (no box: the snow
+// shows between them), each lifted and tilted (one end higher, rolled a little), so they overlap
+// rather than lie in one plane, shaded by a normal leaning ~20 degrees towards the low sun (a mass of
+// needles catches the sun better than a flat board would).
+const SUN_H = (() => { const l = Math.hypot(SUN_DIR.x, SUN_DIR.z) || 1; return [SUN_DIR.x / l, SUN_DIR.z / l]; })();
+// (the sprigs' tint: their own colour, and 1.7 x the indirect light: lying on the snow they are lit
+// by it from below too; in the shade of a stone they were black)
+const SPRIG_T = [1, 1, 1, 1.7];
 export function granris(G, x, z, w, d, h = 0.18, yaw = 0, y0 = CURB) {
   const c = Math.cos(yaw), s = Math.sin(yaw);
-  // (a mid spruce green, small: it only fills the gaps between the sprigs)
-  G.use('foliage', { snow: 0.2 }).box(0x2f4a2c, x, y0 + 0.015, z, w * 0.6, 0.035, d * 0.55, yaw);
-  fineTex(G, 9);
+  // (the new parts draw from their own random numbers; the shared stream (rnd) is used as round 6 used
+  // it, so everything built after a grave is placed as before)
+  const lr = mulberry32(Math.floor(x * 131 + z * 71) & 0x7fffffff);
+  for (let q = 0; q < 3; q++) rnd();   // (round 6's needle bed: fineTex)
+  // one sprig at (lx, lz) in the bed's frame, stem along world angle a, lifted by lift
+  const sprig = (f, lx, lz, a, len, lift, tilt) => {
+    // the stem along a (image up), the shoots across it; pitch: the tip end up or down, roll: tipped
+    // onto one side
+    const pitch = (lr() - 0.5) * 0.24 * tilt, roll = (lr() - 0.5) * 0.36 * tilt, cp = Math.cos(pitch), sp = Math.sin(pitch), cr = Math.cos(roll), sr = Math.sin(roll);
+    const ax = Math.sin(a), az = Math.cos(a), bx = -Math.cos(a), bz = Math.sin(a);
+    const U = [ax * cp, sp, az * cp], Rv = [bx * cr, sr, bz * cr];
+    const hw = len * 0.42 / 2, hl = len / 2;
+    // the normal (Rv x U), then leaning towards the sun
+    let nx = Rv[1] * U[2] - Rv[2] * U[1], ny = Rv[2] * U[0] - Rv[0] * U[2], nz = Rv[0] * U[1] - Rv[1] * U[0];
+    if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    nx += SUN_H[0] * 0.35; nz += SUN_H[1] * 0.35;
+    const cy = y0 + lift + Math.abs(sp) * hl * 0.5 + Math.abs(sr) * hw * 0.5;
+    addQuad(f, [x + lx * c + lz * s, cy, z - lx * s + lz * c], [Rv[0] * hw, Rv[1] * hw, Rv[2] * hw], [U[0] * hl, U[1] * hl, U[2] * hl], [nx, ny, nz], SPRIG_T);
+  };
+  // the lower layer: sprigs laid flat from the middle outwards on a jittered grid, overlapping like
+  // shingles (it covers the bed; the snow shows between them at the rim)
+  const nx = Math.max(2, Math.round(w / 0.22)), nz = Math.max(2, Math.round(d / 0.2));
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const lx = ((i + 0.5) / nx - 0.5) * w * 0.8 + (lr() - 0.5) * 0.08, lz = ((j + 0.5) / nz - 0.5) * d * 0.75 + (lr() - 0.5) * 0.08;
+    const a = yaw + Math.atan2(lx + (lr() - 0.5) * 0.3, lz + (lr() - 0.5) * 0.3 + 0.05);
+    sprig(twigFace('sprig', Math.floor(lr() * 3)), lx, lz, a, 0.36 + lr() * 0.2, 0.012 + lr() * 0.012, 0.5);
+  }
+  // a few more at odd angles between the layers
+  for (let k = 0, m = Math.round(w * d / 0.12); k < m; k++) sprig(twigFace('sprig', Math.floor(lr() * 3)), (lr() - 0.5) * w * 0.8, (lr() - 0.5) * d * 0.75, yaw + lr() * TAU, 0.4 + lr() * 0.25, 0.022 + lr() * 0.012, 0.8);
+  // the top layer, at odd angles; the outer, top-most sprigs caught a dusting of snow
   const n = Math.max(4, Math.round((w * d) / 0.06));
   for (let k = 0; k < n; k++) {
     const lx = (rnd() - 0.5) * w * 0.85, lz = (rnd() - 0.5) * d * 0.8, a = yaw + (rnd() - 0.5) * 1.2 + (rnd() < 0.5 ? 0 : Math.PI);
     const len = 0.42 + rnd() * 0.3, outer = Math.abs(lx) / w > 0.26 || Math.abs(lz) / d > 0.24;
-    // the outer, top-most sprigs caught a dusting of snow
-    addDecal(twigFace('sprig', outer && rnd() < 0.6 ? 3 : Math.floor(rnd() * 3)), x + lx * c + lz * s, y0 + 0.045 + h * (k / n) * 0.6, z - lx * s + lz * c, len * 0.42, len, a);
+    sprig(twigFace('sprig', outer && rnd() < 0.6 ? 3 : Math.floor(rnd() * 3)), lx, lz, a, len, 0.03 + lr() * 0.02 + h * (k / n) * 0.45, 1);
   }
 }
 

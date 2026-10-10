@@ -14,17 +14,19 @@ import { THREE, injectSceneShading, SUN_DIR, LIGHTING } from '../gfx.js';
 const SIZE = 2048, PAD = 6;
 const FONT = '"Barlow Condensed", "Arial Narrow", Arial, sans-serif';
 
+// (phase 4 r2) A page is drawn on a full 2048 x 2048 work canvas while the town is built; finalizeSigns
+// copies its used rows (texH: rounded up to 256, so the first eight mip levels are the same as the
+// full page's) into the texture's own canvas and releases both canvases once uploaded. Ten full pages
+// held 213 MB of VRAM (more than half of it empty) plus 160 MB of canvases. A page drawn into after
+// that (a face added later: look-dev) gets its work canvas back with every face repainted (work()).
 class Page {
   constructor(kind) {
     this.kind = kind;
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = this.canvas.height = SIZE;
-    this.ctx = this.canvas.getContext('2d');
-    if (kind === 'decal' || kind === 'cutout' || CARD[kind]) this.ctx.clearRect(0, 0, SIZE, SIZE);
-    else { this.ctx.fillStyle = '#8a8c8e'; this.ctx.fillRect(0, 0, SIZE, SIZE); }
     this.x = 0; this.y = 0; this.rowH = 0;
     this.faces = [];
     this.quads = [];
+    this.released = true;
+    work(this);
   }
   alloc(w, h) {
     const W = w + PAD * 2, H = h + PAD * 2;
@@ -45,6 +47,33 @@ const CARD = { twig: 1, leaf: 1, conifer: 1, crown: 1 };
 const FAR_FADE = /^twig:(birchhang|limespray):/;
 const cache = new Map();
 
+const clearKind = (kind) => kind === 'decal' || kind === 'cutout' || !!CARD[kind];
+// A canvas W x H with the page's background (transparent on see-through pages, the plates' grey on
+// the others) and, with faces = true, every face of the page painted on it.
+function pageCanvas(page, H, faces) {
+  const cv = document.createElement('canvas');
+  cv.width = SIZE; cv.height = H;
+  const ctx = cv.getContext('2d');
+  if (clearKind(page.kind)) ctx.clearRect(0, 0, SIZE, H);
+  else { ctx.fillStyle = '#8a8c8e'; ctx.fillRect(0, 0, SIZE, H); }
+  if (faces) for (const f of page.faces) paint(f, ctx);
+  return cv;
+}
+// The page's full-size work canvas (back, repainted, if it was released).
+function work(page) {
+  if (!page.released) return page;
+  page.canvas = pageCanvas(page, SIZE, true);
+  page.ctx = page.canvas.getContext('2d');
+  page.released = false;
+  return page;
+}
+function release(page) {
+  if (page.released) return;
+  page.canvas.width = page.canvas.height = 1;
+  page.ctx = null;
+  page.released = true;
+}
+
 function pageFor(kind, w, h) {
   const list = pages[kind];
   for (const p of list) { const r = p.alloc(w, h); if (r) return [p, r]; }
@@ -61,19 +90,19 @@ export function face(key, wPx, hPx, draw, kind = 'plain') {
   hPx = Math.max(8, Math.min(SIZE - PAD * 2, Math.round(hPx)));
   const [page, r] = pageFor(kind, wPx, hPx);
   const f = { page, ...r, draw, key };
+  work(page);
   paint(f);
   page.faces.push(f);
   cache.set(k, f);
   return f;
 }
 
-function paint(f) {
-  const c = f.page.ctx;
+function paint(f, c = f.page.ctx) {
   c.save();
   // Bleed: paint the face a few pixels larger first (clipped to the padded cell) so mipmaps
   // don't pull in the neighbour's colours, then the face itself.
   c.beginPath(); c.rect(f.px - PAD, f.py - PAD, f.pw + PAD * 2, f.ph + PAD * 2); c.clip();
-  const clear = f.page.kind === 'decal' || f.page.kind === 'cutout' || CARD[f.page.kind];
+  const clear = clearKind(f.page.kind);
   if (clear) c.clearRect(f.px - PAD, f.py - PAD, f.pw + PAD * 2, f.ph + PAD * 2);
   c.translate(f.px - PAD, f.py - PAD);
   c.scale((f.pw + PAD * 2) / f.pw, (f.ph + PAD * 2) / f.ph);
@@ -113,26 +142,57 @@ export function addCard(f, x, y, z, w, h, yaw = 0, up = 0.7) {
 }
 
 // A see-through card of any orientation: centre c, half-extent vectors r (image right) and u
-// (image up), both faces (front normal r x u).
-export function addQuad(f, c, r, u) {
-  const n = [r[1] * u[2] - r[2] * u[1], r[2] * u[0] - r[0] * u[2], r[0] * u[1] - r[1] * u[0]], l = Math.hypot(...n) || 1;
-  f.page.quads.push({ f, c, r, u, n: n.map((v) => v / l) });
+// (image up), both faces (front normal r x u, or nrm: a shading normal of its own, e.g. a sprig
+// lying on a grave leaning towards the low sun).
+// (both: the back face is shaded with the same normal, e.g. a loose shoot lit like the hedge face it
+// grows out of, from either side)
+export function addQuad(f, c, r, u, nrm = null, tint = null, both = false) {
+  const n = nrm || [r[1] * u[2] - r[2] * u[1], r[2] * u[0] - r[0] * u[2], r[0] * u[1] - r[1] * u[0]], l = Math.hypot(...n) || 1;
+  f.page.quads.push({ f, c, r, u, n: n.map((v) => v / l), tint });
   // (the back face shows the image mirrored, as a real flat thing seen from behind: a drooping
   // branch droops the same way from both sides)
-  f.page.quads.push({ f, c, r: r.map((v) => -v), u, n: n.map((v) => -v / l), flip: true });
+  f.page.quads.push({ f, c, r: r.map((v) => -v), u, n: n.map((v) => (both ? v : -v) / l), flip: true, tint });
+}
+
+// (phase 4 r2) A curved card: a grid of cols x rows cells, its (cols + 1) x (rows + 1) vertices row by
+// row from the bottom: P positions and N normals ([x, y, z] each), A / B where each vertex sits on the
+// face (0..1 from its left / bottom edge); front face only. tint: an [r, g, b] multiplier of the
+// face's (linear) colour and optionally a 4th value, a factor on its indirect light; on the 'leaf'
+// page only (a hedge plant's own tone). kit.hedge builds every
+// plant of a clipped hedge as one: a cushion that bulges out of the face, its normals bent with it.
+export function addGrid(f, cols, rows, P, N, A, B, tint = null) {
+  let cx = 0, cz = 0;
+  for (const p of P) { cx += p[0]; cz += p[2]; }
+  f.page.quads.push({ f, grid: true, cols, rows, P, N, A, B, tint, c: [cx / P.length, 0, cz / P.length] });
 }
 
 let built = false, builtMeshes = [];
 // Debug / look-dev: drop the sign meshes and build them again (after adding faces or cards).
-export function rebuildSigns(scene) { for (const m of builtMeshes) { scene.remove(m); m.geometry.dispose(); } built = false; return finalizeSigns(scene); }
+export function rebuildSigns(scene) {
+  for (const m of builtMeshes) { scene.remove(m); m.geometry.dispose(); }
+  for (const list of Object.values(pages)) for (const p of list) if (p.tex) { p.mat.dispose(); p.tex.dispose(); p.tex = p.mat = null; }
+  built = false;
+  return finalizeSigns(scene);
+}
 export function finalizeSigns(scene) {
   if (built) return;
   built = true;
   const meshes = (builtMeshes = []);
   for (const kind of ['plain', 'glow', 'cutout', 'decal', 'twig', 'leaf', 'conifer', 'crown']) {
     for (const page of pages[kind]) {
-      if (!page.quads.length) continue;
-      const tex = new THREE.CanvasTexture(page.canvas);
+      if (!page.quads.length) { release(page); continue; }
+      // (phase 4 r2) only the rows in use: a copy of the work canvas' top texH rows (premultiplied
+      // pixels copied as they are), the work canvas released at once and the copy once uploaded
+      const H = (page.texH = Math.min(SIZE, Math.ceil((page.y + page.rowH) / 256) * 256));
+      work(page);
+      const tc = document.createElement('canvas');
+      tc.width = SIZE; tc.height = H;
+      const tcx = tc.getContext('2d');
+      tcx.globalCompositeOperation = 'copy';
+      tcx.drawImage(page.canvas, 0, 0, SIZE, H, 0, 0, SIZE, H);
+      release(page);
+      const tex = new THREE.CanvasTexture(tc);
+      tex.onUpdate = (t) => { if (t.image?.width > 1) t.image.width = t.image.height = 1; };
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 8;
       // Twig cards: upload premultiplied, so the mips average colour weighted by coverage (the
@@ -148,36 +208,56 @@ export function finalizeSigns(scene) {
       if (kind === 'decal') { m.transparent = true; m.alphaTest = 0.35; m.depthWrite = false; }
       if (kind === 'cutout') m.alphaTest = 0.5;
       // Twig / crown cards: see cardMaterial. Left out of the shadow / AO pre-pass (they would cast quads).
-      if (CARD[kind]) cardMaterial(m, kind);
+      if (CARD[kind]) cardMaterial(m, kind, undefined, H);
+      page.mat = m;
       // Card pages (hundreds of thousands of quads all over town) are split into a 3 x 3 grid of
       // meshes, so the parts outside the view are culled.
       const groups = new Map();
       if (CARD[kind]) for (const q of page.quads) { const k = Math.max(0, Math.min(2, Math.floor((q.c[0] + 300) / 200))) * 3 + Math.max(0, Math.min(2, Math.floor((q.c[2] + 300) / 200))); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(q); }
       else groups.set(0, page.quads);
       for (const quads of groups.values()) {
-        const n = quads.length;
-        const pos = new Float32Array(n * 12), nrm = new Float32Array(n * 12), uv = new Float32Array(n * 8), idx = new Uint32Array(n * 6);
+        // (a quad is 4 vertices and 6 indices, a grid (addGrid) its own)
+        let nv = 0, ni = 0;
+        for (const q of quads) { if (q.grid) { nv += (q.cols + 1) * (q.rows + 1); ni += q.cols * q.rows * 6; } else { nv += 4; ni += 6; } }
+        const pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), idx = new Uint32Array(ni);
         // (round 6) per-card far fade (twig page): the fine twig curtains / sprays of tree crowns fade
         // out from ~9 to 20 m and leave the crown to the blended haze cards; at a distance their
         // sub-pixel strokes were alpha-to-coverage crumbs against the sky
-        const far = CARD[kind] ? new Float32Array(n * 4) : null;
-        quads.forEach((q, i) => {
-          const { f, c, r, u, n: nn } = q;
-          if (far && FAR_FADE.test(f.key)) far.fill(1, i * 4, i * 4 + 4);
-          const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
-          const u0 = f.px / SIZE, u1 = (f.px + f.pw) / SIZE, vT = 1 - f.py / SIZE, vB = 1 - (f.py + f.ph) / SIZE;
-          corners.forEach(([a, b], k) => {
-            for (let d = 0; d < 3; d++) { pos[i * 12 + k * 3 + d] = c[d] + r[d] * a + u[d] * b; nrm[i * 12 + k * 3 + d] = nn[d]; }
-            uv[i * 8 + k * 2] = (a < 0) !== !!q.flip ? u0 : u1;
-            uv[i * 8 + k * 2 + 1] = b < 0 ? vB : vT;
-          });
-          idx.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
-        });
+        const far = CARD[kind] ? new Float32Array(nv) : null;
+        const tint = kind === 'leaf' ? new Float32Array(nv * 4).fill(1) : null;
+        let v = 0, ii = 0;
+        for (const q of quads) {
+          const { f } = q, v0 = v;
+          const u0 = f.px / SIZE, u1 = (f.px + f.pw) / SIZE, vT = 1 - f.py / H, vB = 1 - (f.py + f.ph) / H;
+          if (q.grid) {
+            const { cols, rows, P, N, A, B } = q;
+            for (let k = 0; k < P.length; k++, v++) {
+              pos.set(P[k], v * 3); nrm.set(N[k], v * 3);
+              uv[v * 2] = u0 + (u1 - u0) * A[k]; uv[v * 2 + 1] = vB + (vT - vB) * B[k];
+            }
+            for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+              const a = v0 + j * (cols + 1) + i, b = a + 1, c = a + cols + 1, d = c + 1;
+              idx.set([a, b, d, a, d, c], ii); ii += 6;
+            }
+          } else {
+            const { c, r, u, n: nn } = q;
+            [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b], k) => {
+              for (let d = 0; d < 3; d++) { pos[(v + k) * 3 + d] = c[d] + r[d] * a + u[d] * b; nrm[(v + k) * 3 + d] = nn[d]; }
+              uv[(v + k) * 2] = (a < 0) !== !!q.flip ? u0 : u1;
+              uv[(v + k) * 2 + 1] = b < 0 ? vB : vT;
+            });
+            idx.set([v, v + 1, v + 2, v, v + 2, v + 3], ii); ii += 6;
+            v += 4;
+          }
+          if (far && FAR_FADE.test(f.key)) far.fill(1, v0, v);
+          if (tint && q.tint) for (let k = v0; k < v; k++) { tint.set(q.tint, k * 4); if (q.tint.length < 4) tint[k * 4 + 3] = 1; }
+        }
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
         geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         if (far) geo.setAttribute('cardFar', new THREE.BufferAttribute(far, 1));
+        if (tint) geo.setAttribute('cardTint', new THREE.BufferAttribute(tint, 4));
         geo.setIndex(new THREE.BufferAttribute(idx, 1));
         geo.computeBoundingSphere();
         const mesh = new THREE.Mesh(geo, m);
@@ -198,7 +278,11 @@ export function finalizeSigns(scene) {
   try {
     if (document.fonts && !document.fonts.check(`600 24px ${FONT}`)) {
       document.fonts.load(`600 24px ${FONT}`).then(() => {
-        for (const kind of Object.keys(pages)) for (const p of pages[kind]) { for (const f of p.faces) paint(f); if (p.tex) p.tex.needsUpdate = true; }
+        // (a page already uploaded gets a fresh canvas of its texture's size, every face repainted)
+        for (const kind of Object.keys(pages)) for (const p of pages[kind]) {
+          if (p.tex) { p.tex.image = pageCanvas(p, p.texH, true); p.tex.needsUpdate = true; }
+          else if (!p.released) for (const f of p.faces) paint(f);
+        }
       }).catch(() => {});
     }
   } catch (e) { /* no font loading API: keep the fallback font */ }
@@ -231,7 +315,7 @@ const CARD_P = {
   conifer: { clamp: '0.9', comp: '0.35', sun: '0.6', dd: '0.5', desat: '0.75', edge: '0.1, 0.45' },
   crown: { clamp: '0.13', comp: '0.6', sun: '1.6', dd: '0.5', desat: '0.75', edge: '0.1, 0.45' },
 };
-function cardMaterial(m, kind, mode = kind === 'twig' || kind === 'leaf' ? 'cut' : 'blend') {
+function cardMaterial(m, kind, mode = kind === 'twig' || kind === 'leaf' ? 'cut' : 'blend', texH = SIZE) {
   const P = CARD_P[kind];
   m.roughness = 0.95;
   if (mode === 'blend') { m.transparent = true; m.depthWrite = false; m.alphaTest = 0.004; }
@@ -243,19 +327,23 @@ function cardMaterial(m, kind, mode = kind === 'twig' || kind === 'leaf' ? 'cut'
   // (gfx.js gives every MeshStandardMaterial the same program cache key: without our own, the
   // twig and crown materials would share whichever of the two programs compiled first)
   const baseKey = THREE.MeshStandardMaterial.prototype.customProgramCacheKey;
-  m.customProgramCacheKey = function () { return baseKey.call(this) + '|cards:' + kind + ':' + mode + ':6'; };
+  m.customProgramCacheKey = function () { return baseKey.call(this) + '|cards:' + kind + ':' + mode + ':7'; };
+  // (phase 4 r2) the leaf page: a per-vertex tint (a hedge plant's own tone, see addGrid)
+  const leaf = kind === 'leaf';
   m.onBeforeCompile = (sh) => {
     injectSceneShading(sh);
+    // (the page's texture size in texels, for the mip level: pages are cropped to their used height)
+    sh.uniforms.cardTexSize = { value: new THREE.Vector2(SIZE, texH) };
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying float vTopCard;\nattribute float cardFar;\nvarying float vCardFar;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTopCard = step( 0.985, normal.y );\nvCardFar = cardFar;');
+      .replace('#include <common>', '#include <common>\nvarying float vTopCard;\nattribute float cardFar;\nvarying float vCardFar;' + (leaf ? '\nattribute vec4 cardTint;\nvarying vec4 vCardTint;' : ''))
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTopCard = step( 0.985, normal.y );\nvCardFar = cardFar;' + (leaf ? '\nvCardTint = cardTint;' : ''));
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vTopCard;\nvarying float vCardFar;')
+      .replace('#include <common>', '#include <common>\nvarying float vTopCard;\nvarying float vCardFar;\nuniform vec2 cardTexSize;' + (leaf ? '\nvarying vec4 vCardTint;' : ''))
       .replace('#include <map_fragment>', `#include <map_fragment>
-        vec2 tdx = dFdx( vMapUv * ${SIZE}.0 ), tdy = dFdy( vMapUv * ${SIZE}.0 );
+        vec2 tdx = dFdx( vMapUv * cardTexSize ), tdy = dFdy( vMapUv * cardTexSize );
         float tLod = 0.5 * log2( max( max( dot( tdx, tdx ), dot( tdy, tdy ) ), 1e-8 ) );
         // (8-bit premultiplied texels of very low alpha are quantisation noise: clamp)
-        diffuseColor.rgb = min( diffuseColor.rgb / max( sampledDiffuseColor.a, 0.12 ), vec3( ${P.clamp} ) );
+        diffuseColor.rgb = min( diffuseColor.rgb / max( sampledDiffuseColor.a, 0.12 ), vec3( ${P.clamp} ) )${leaf ? ' * vCardTint.rgb' : ''};
         vec3 cRay = normalize( -vViewPosition );
         vec3 sunV = normalize( ( viewMatrix * vec4( ${v3(SUN_DIR)}, 0.0 ) ).xyz );
         vec3 upV = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
@@ -275,6 +363,10 @@ function cardMaterial(m, kind, mode = kind === 'twig' || kind === 'leaf' ? 'cut'
         // the blue sky is not all that lights a twig mass (the snow below, the twigs around): keep
         // it from turning navy
         reflectedLight.indirectDiffuse = mix( reflectedLight.indirectDiffuse, vec3( 1.06, 1.0, 0.94 ) * dot( reflectedLight.indirectDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) ) * 1.1, ${P.desat} );
+        ${leaf ? `// (phase 4 r2) the snow-covered ground lights a hedge's face from below (the sky map's lower half
+        // is a dim field colour): up to half as much again on a vertical face, none on a flat one;
+        // times the card's own factor (sprigs lying on the snow are lit from below by it too)
+        reflectedLight.indirectDiffuse *= ( 1.0 + 0.5 * ( 1.0 - abs( dot( normal, upV ) ) ) ) * vCardTint.a;` : ''}
         // forward scattering where a backlit twig mass thins out: the bright rim
         reflectedLight.directDiffuse += ${v3(sc)} * diffuseColor.rgb * ( 1.2 * pow( max( sunAl, 0.0 ), 24.0 ) * ( 1.0 - diffuseColor.a ) * ( 1.0 - diffuseColor.a ) );`)
       .replace('#include <fog_fragment>', `
@@ -289,8 +381,10 @@ function cardMaterial(m, kind, mode = kind === 'twig' || kind === 'leaf' ? 'cut'
   };
 }
 
-// Debug: the atlas pages (canvases) by kind.
+// Debug: the atlas pages by kind; signPageImage(page): a canvas with the page as uploaded (repainted:
+// the pages' own canvases are released after upload).
 export function signPages() { return pages; }
+export function signPageImage(p) { return pageCanvas(p, p.texH || SIZE, true); }
 
 export function signStats() {
   const out = {};
@@ -622,11 +716,13 @@ function fans(c, R, W, H, n, yf, bronze, lit = 1, size = 1, cm = null) {
 // bronze-olive patches (thuja); every value in sRGB, mid greens about like the hedge body.
 function leafWall(c, R, W, H, top, bronze, fan, tone = 1) {
   const TAU_ = Math.PI * 2, p1 = R() * 9, p2 = R() * 9;
+  // (phase 4 r2: the cemetery's thuja less saturated still, an olive green: it read as green felt)
+  const LR = fan ? THUJA_RGB : leafRGB;
   const patch = (x, y) => bronze ? Math.max(0, Math.sin(x * 0.021 + p1) * Math.sin(y * 0.027 + p2) + 0.35 * Math.sin(x * 0.061 + y * 0.043 + p1 * 2)) : 0;
-  // (round 6: every colour through leafRGB, and the clusters vary less: a soft leaf mass, not camouflage)
-  const col = (g, x, y, k = 1) => { const b = patch(x, y) > 0.45 && R() < 0.8; k *= tone; return leafRGB(g * (b ? 0.94 : 0.72) * k, g * k, g * (b ? 0.36 : 0.33) * k); };
+  // (round 6: every colour through LR, and the clusters vary less: a soft leaf mass, not camouflage)
+  const col = (g, x, y, k = 1) => { const b = patch(x, y) > 0.45 && R() < 0.8; k *= tone; return LR(g * (b ? 0.94 : 0.72) * k, g * k, g * (b ? 0.36 : 0.33) * k); };
   // the shadowed inside, below a clipped line that wavers by a few pixels
-  c.fillStyle = fan ? leafRGB(58, 72, 28) : leafRGB(56, 80, 26);
+  c.fillStyle = fan ? LR(58, 72, 28) : LR(56, 80, 26);
   c.beginPath(); c.moveTo(-2, H + 2);
   for (let x = -2; x <= W + 8; x += 8) c.lineTo(x, top + 3 + R() * 6);
   c.lineTo(W + 2, H + 2); c.closePath(); c.fill();
@@ -634,7 +730,7 @@ function leafWall(c, R, W, H, top, bronze, fan, tone = 1) {
   const cl = [];
   for (let k = 0; k < n; k++) cl.push([R() * W, y0 + Math.pow(R(), 0.9) * (H - y0), 3.2 + R() * 4.5, R() * TAU_]);
   // (hollows: each cluster's shadow, down and to the right, then the clusters, then their lit tops)
-  c.fillStyle = fan ? leafRGB(46, 58, 24) : leafRGB(44, 64, 22);
+  c.fillStyle = fan ? LR(46, 58, 24) : LR(44, 64, 22);
   for (const [x, y, r] of cl) { c.beginPath(); c.ellipse(x + 1.6, y + 2.2, r * 1.05, r * 0.8, 0, 0, TAU_); c.fill(); }
   for (const [x, y, r, a] of cl) {
     const g = (fan ? 90 : 112) + R() * 24 - 10 * (y / H);
@@ -643,8 +739,8 @@ function leafWall(c, R, W, H, top, bronze, fan, tone = 1) {
     if (R() < 0.55) { c.fillStyle = col(g, x, y, 1.1); c.beginPath(); c.ellipse(x - r * 0.15, y - r * 0.35, r * 0.42, r * 0.26, a, 0, TAU_); c.fill(); }
   }
   // near detail: flat sprays / thuja fans over the clusters, a few light shoot tips
-  if (fan) fans(c, R, W, H, Math.round(n * 0.16), (R_) => y0 + R_() * (H - y0), bronze, 1.2, 0.9, leafRGB);
-  else sprays(c, R, W, H, Math.round(n * 0.22), (R_) => y0 + R_() * (H - y0), bronze, 1.25, 0.85, leafRGB);
+  if (fan) fans(c, R, W, H, Math.round(n * 0.16), (R_) => y0 + R_() * (H - y0), bronze, 1.2, 0.9, LR);
+  else sprays(c, R, W, H, Math.round(n * 0.22), (R_) => y0 + R_() * (H - y0), bronze, 1.25, 0.85, LR);
   for (let k = 0; k < n * 0.1; k++) {
     const x = R() * W, y = y0 + R() * (H - y0);
     c.fillStyle = col(118 + R() * 16, x, y); c.beginPath(); c.ellipse(x, y, 1.6 + R(), 1.1, R() * 3, 0, TAU_); c.fill();
@@ -653,8 +749,8 @@ function leafWall(c, R, W, H, top, bronze, fan, tone = 1) {
   // sparse, so the snow on top stays a clean white band (leaves on snow read as speckle)
   // (round 6: sparser still, and lighter)
   if (top > 0) {
-    if (fan) fans(c, R, W, H, Math.round(W / 18), (R_) => top * (0.72 + 0.38 * R_()), bronze, 1.5 * tone, 0.8, leafRGB);
-    else sprays(c, R, W, H, Math.round(W / 16), (R_) => top * (0.7 + 0.4 * R_()), bronze, 1.55 * tone, 0.75, leafRGB);
+    if (fan) fans(c, R, W, H, Math.round(W / 18), (R_) => top * (0.72 + 0.38 * R_()), bronze, 1.5 * tone, 0.8, LR);
+    else sprays(c, R, W, H, Math.round(W / 16), (R_) => top * (0.7 + 0.4 * R_()), bronze, 1.55 * tone, 0.75, LR);
   }
 }
 // (round 6) Leaf colours for the clipped hedges: 20 % less saturated, and pulled towards the hedge's
@@ -663,22 +759,23 @@ function leafWall(c, R, W, H, top, bronze, fan, tone = 1) {
 const LEAF_MID = [0.085, 0.165, 0.03];
 const s2l = (v) => { v = Math.max(0, Math.min(255, v)) / 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
 const l2s = (v) => Math.round(255 * Math.min(1, v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
-function leafRGB(r, g, b) {
+const THUJA_RGB = (r, g, b) => leafRGB(r, g, b, 0.62);
+function leafRGB(r, g, b, sat = 0.8) {
   const L = [s2l(r), s2l(g), s2l(b)].map((v, i) => LEAF_MID[i] + (v - LEAF_MID[i]) * 0.62);
   const Y = 0.2126 * L[0] + 0.7152 * L[1] + 0.0722 * L[2];
-  const o = L.map((v) => l2s(Math.max(0, Y + (v - Y) * 0.8)));
+  const o = L.map((v) => l2s(Math.max(0, Y + (v - Y) * sat)));
   return `rgb(${o[0]}, ${o[1]}, ${o[2]})`;
 }
 // (round 6) A loose shoot standing proud of a clipped face (its base at the card's left edge, growing
 // to the right and a little up): a curving stem with small leaves along it, larger and denser towards
 // the tip; fan: a flat thuja branchlet that forks into blunt scale-leaf fans.
 function sprigShoot(c, R, W, H, fan) {
-  const TAU_ = Math.PI * 2;
+  const TAU_ = Math.PI * 2, LR = fan ? THUJA_RGB : leafRGB;
   c.lineCap = 'round'; c.lineJoin = 'round';
   const pts = [];
   let x = 1, y = H * 0.6, a = -0.1;
   while (x < W - 8) { pts.push([x, y, a]); x += Math.cos(a) * 4; y += Math.sin(a) * 4; a += (R() - 0.55) * 0.14; }
-  c.strokeStyle = leafRGB(74, 78, 44); c.lineWidth = 1.8;
+  c.strokeStyle = LR(74, 78, 44); c.lineWidth = 1.8;
   c.beginPath(); c.moveTo(pts[0][0], pts[0][1]); for (const p of pts) c.lineTo(p[0], p[1]); c.stroke();
   if (fan) {
     const fork = (x0, y0_, a0, L, wd, d, col) => {
@@ -688,7 +785,7 @@ function sprigShoot(c, R, W, H, fan) {
     };
     for (let i = 3; i < pts.length; i += 2) {
       const [px, py, pa] = pts[i], t = i / pts.length, g = 96 + R() * 26 + t * 10;
-      fork(px, py, pa + (i % 4 < 2 ? -0.7 : 0.7), 4 + t * 4, 2.6, 2, leafRGB(g * 0.72, g, g * 0.5));
+      fork(px, py, pa + (i % 4 < 2 ? -0.7 : 0.7), 4 + t * 4, 2.6, 2, LR(g * 0.72, g, g * 0.5));
     }
   } else {
     for (let i = 2; i < pts.length; i++) {
@@ -696,12 +793,12 @@ function sprigShoot(c, R, W, H, fan) {
       for (const sd of [-1, 1]) {
         if (R() < 0.25 - t * 0.2) continue;
         const la = pa + sd * (0.75 + R() * 0.5), L = 4 + R() * 3 + t * 3, g = 100 + R() * 28 + t * 8;
-        c.fillStyle = leafRGB(g * 0.72, g, g * 0.34);
+        c.fillStyle = LR(g * 0.72, g, g * 0.34);
         c.beginPath(); c.ellipse(px + Math.cos(la) * L * 0.55, py + Math.sin(la) * L * 0.55, L * 0.62, L * 0.3, la, 0, TAU_); c.fill();
       }
     }
     const [tx, ty] = pts[pts.length - 1], g = 128;
-    c.fillStyle = leafRGB(g * 0.74, g, g * 0.36);
+    c.fillStyle = LR(g * 0.74, g, g * 0.36);
     for (let q = 0; q < 4; q++) { const la = -0.9 + q * 0.6; c.beginPath(); c.ellipse(tx + Math.cos(la) * 3.5, ty + Math.sin(la) * 3.5, 4.2, 2.2, la, 0, TAU_); c.fill(); }
   }
 }
@@ -744,17 +841,19 @@ const combs = (c, R, W, H, yb, len, n, ndl) => {
     }
   }
 };
-// First snow lying on a branch drawn along y = yb(x), from x0 to x1: thin, lumpy caps with gaps,
-// white on top, a little blue-grey underneath (seen from the side).
+// First snow lying on a branch drawn along y = yb(x), from x0 to x1: thin, lumpy caps, white on top, a
+// little blue-grey underneath (seen from the side). (phase 4 r2: two or three irregular clumps per
+// branch, not lumps all along it: every snowy card's row of short white dashes read as stitching
+// along the tiers)
 function branchSnow(c, R, yb, x0, x1) {
-  for (let x = x0; x < x1;) {
-    const L = 8 + R() * 22, th = 1.6 + R() * 2.6;
+  const n = 2 + (R() < 0.4 ? 1 : 0);
+  for (let k = 0; k < n; k++) {
+    const L = 14 + R() * 20, th = 3 + R() * 3.5, x = x0 + (x1 - x0 - L) * ((k + R() * 0.8) / n);
     for (let q = 0; q < L; q += 2) {
-      const e = Math.sin((q / L) * Math.PI), px = x + q, y = yb(px);
-      c.fillStyle = 'rgb(214, 222, 234)'; c.beginPath(); c.ellipse(px, y - th * e * 0.35, 2.2, th * e * 0.6 + 0.6, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = 'rgb(242, 244, 246)'; c.beginPath(); c.ellipse(px, y - th * e * 0.7, 2.0, th * e * 0.45 + 0.5, 0, 0, Math.PI * 2); c.fill();
+      const e = Math.pow(Math.sin((q / L) * Math.PI), 0.7) * (0.75 + 0.25 * Math.sin(q * 0.9 + k * 2)), px = x + q, y = yb(px);
+      c.fillStyle = 'rgb(214, 222, 234)'; c.beginPath(); c.ellipse(px, y - th * e * 0.35, 2.4, th * e * 0.6 + 0.6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgb(242, 244, 246)'; c.beginPath(); c.ellipse(px, y - th * e * 0.7, 2.2, th * e * 0.45 + 0.5, 0, 0, Math.PI * 2); c.fill();
     }
-    x += L + 4 + R() * 18;
   }
 }
 const LEAF_TONE = [1, 0.98, 1.02, 0.99];   // per variant (more than a few % shows every card as a tile)
@@ -893,22 +992,30 @@ const TWIGS = {
     }
   }],
   // A spruce sprig seen from above (granris): a stem along the card, side shoots with needles.
+  // (phase 4 r2: page 'leaf', lit by its own normal; needles in a mid spruce green, q 95-150, with a
+  // lighter tip on half of them: at q 56-94 (3-8 % albedo) they were black combs against the snow)
   sprig: [96, 256, (c, W, H, R, v) => {
     c.lineCap = 'round';
-    const g = () => { const q = 56 + R() * 38; return `rgb(${Math.round(q * 0.68)}, ${Math.round(q)}, ${Math.round(q * 0.6)})`; };
-    c.strokeStyle = 'rgb(80, 62, 46)'; c.lineWidth = 2.2;
+    const col = (q) => `rgb(${Math.round(q * 0.68)}, ${Math.round(q)}, ${Math.round(q * 0.6)})`;
+    const needle = (x0, y0, x1, y1) => {
+      const q = 95 + R() * 40;
+      c.strokeStyle = col(q); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+      if (R() < 0.5) { c.strokeStyle = col(Math.min(150, q + 22 + R() * 12)); c.beginPath(); c.moveTo(x0 + (x1 - x0) * 0.55, y0 + (y1 - y0) * 0.55); c.lineTo(x1, y1); c.stroke(); }
+    };
+    c.strokeStyle = 'rgb(110, 86, 62)'; c.lineWidth = 2.2;
     c.beginPath(); c.moveTo(W / 2, H - 4); c.quadraticCurveTo(W / 2 + (R() - 0.5) * 10, H / 2, W / 2 + (R() - 0.5) * 6, 6); c.stroke();
     for (let y = 10; y < H - 8; y += 9) for (const sd of [-1, 1]) {
       const L = (W * 0.42) * (0.55 + 0.45 * Math.sin((y / H) * Math.PI)) * (0.8 + R() * 0.3), x0 = W / 2, a = sd * (1.0 + R() * 0.3);
-      c.strokeStyle = 'rgb(80, 62, 46)'; c.lineWidth = 1.1;
+      c.strokeStyle = 'rgb(110, 86, 62)'; c.lineWidth = 1.1;
       c.beginPath(); c.moveTo(x0, y); c.lineTo(x0 + Math.sin(a) * L, y - Math.cos(a) * L * 0.6); c.stroke();
       c.lineWidth = 1.3;
       for (let t = 0.1; t < 1; t += 0.12) {
         const px = x0 + Math.sin(a) * L * t, py = y - Math.cos(a) * L * 0.6 * t;
-        for (const nd of [-1, 1]) { c.strokeStyle = g(); c.beginPath(); c.moveTo(px, py); c.lineTo(px + nd * 2.5 + Math.sin(a) * 3, py - 4.5); c.stroke(); }
+        for (const nd of [-1, 1]) needle(px, py, px + nd * 2.5 + Math.sin(a) * 3, py - 4.5);
       }
     }
-    for (let y = 8; y < H - 6; y += 5) for (const nd of [-1, 1]) { c.strokeStyle = g(); c.lineWidth = 1.3; c.beginPath(); c.moveTo(W / 2, y); c.lineTo(W / 2 + nd * 5, y - 5); c.stroke(); }
+    c.lineWidth = 1.3;
+    for (let y = 8; y < H - 6; y += 5) for (const nd of [-1, 1]) needle(W / 2, y, W / 2 + nd * 5, y - 5);
     // variant 3: dusted with snow (flecks on the needles)
     if (v === 3) for (let k = 0; k < 70; k++) {
       const y = 8 + R() * (H - 16), hw = W * 0.4 * Math.sin((y / H) * Math.PI), x = W / 2 + (R() * 2 - 1) * hw;
@@ -972,10 +1079,16 @@ const TWIGS = {
       const f = 0.2 + R() * 0.8, x = f * W, y = ay(x) + (R() - 0.5) * 2 * half(f) * 0.9;
       c.strokeStyle = ndl(1.35); c.lineWidth = 1.3; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 3 + R() * 3, y + (R() - 0.5) * 3); c.stroke();
     }
-    if (v >= 2) for (let k = 0; k < 30; k++) {
-      const f = 0.08 + R() * 0.72, x = f * W, y = ay(x) + (R() - 0.5) * half(f) * 0.9, rx = 2.5 + R() * 5, ry = 1.8 + R() * 2.5;
-      c.fillStyle = 'rgb(196, 206, 220)'; c.beginPath(); c.ellipse(x + 0.8, y + 1.0, rx, ry, 0.2, 0, Math.PI * 2); c.fill();
-      c.fillStyle = 'rgb(238, 241, 245)'; c.beginPath(); c.ellipse(x, y, rx * 0.9, ry * 0.85, 0.2, 0, Math.PI * 2); c.fill();
+    // (phase 4 r2: two to four irregular clumps, mostly on the outer half, not thirty lumps strung
+    // along the axis: those were white dashes along every tier)
+    if (v >= 2) for (let k = 0, n = 2 + Math.floor(R() * 3); k < n; k++) {
+      const f = 0.3 + R() * 0.55, cx = f * W, cy = ay(cx) + (R() - 0.5) * half(f) * 0.7, sz = 1.1 + R() * 0.9;
+      const blobs = [];
+      for (let q = 0; q < 7 + Math.floor(R() * 5); q++) blobs.push([cx + (R() - 0.5) * 18 * sz, cy + (R() - 0.5) * 10 * sz, (2.5 + R() * 4) * sz, (1.8 + R() * 2.6) * sz, (R() - 0.5) * 0.8]);
+      c.fillStyle = 'rgb(196, 206, 220)';
+      for (const [x, y, rx, ry, a] of blobs) { c.beginPath(); c.ellipse(x + 0.8, y + 1.0, rx, ry, a, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = 'rgb(238, 241, 245)';
+      for (const [x, y, rx, ry, a] of blobs) { c.beginPath(); c.ellipse(x, y, rx * 0.88, ry * 0.82, a, 0, Math.PI * 2); c.fill(); }
     }
   }],
   // A spruce branch end seen head-on (hangs at a branch tip, card top = the branch): a shoot across
@@ -1021,6 +1134,6 @@ const TWIGS = {
 export function twigFace(kind, v = 0) {
   const t = TWIGS[kind];
   if (!t) throw new Error('unknown twig face ' + kind);
-  const page = kind === 'birch' || kind === 'lime' || kind === 'pine' || kind === 'crowntop' ? 'crown' : kind.startsWith('spruce') ? 'conifer' : kind.startsWith('hedgegreen') || kind.startsWith('thujagreen') || kind.endsWith('sprig') && kind !== 'sprig' ? 'leaf' : 'twig';   // birchhang, limespray, hedges, mesh -> 'twig'
+  const page = kind === 'birch' || kind === 'lime' || kind === 'pine' || kind === 'crowntop' ? 'crown' : kind.startsWith('spruce') ? 'conifer' : kind.startsWith('hedgegreen') || kind.startsWith('thujagreen') || kind.endsWith('sprig') ? 'leaf' : 'twig';   // birchhang, limespray, hedges, mesh -> 'twig'
   return face('twig:' + kind + ':' + v, t[0], t[1], (c, W, H) => t[2](c, W, H, seeded(1009 + v * 7919 + kind.length * 31), v), page);
 }

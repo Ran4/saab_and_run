@@ -20,7 +20,7 @@ built; DESIGN.md §6 is the contract it implements. Everything is PBR via the §
 | `places.js` | blocks `centrumBlock hospitalBlock churchBlock cemeteryBlock dealerBlock preschoolBlock kommunBlock gasBlock parkBlock fieldBlock forestBlock`, `mound` (sledding hill) |
 | `streets.js` | slabs, kerbs, sidewalks, markings, zebras (`CROSSINGS`), bus stops (`BUS_STOPS`), lamps, road signs, snow banks, street violation spots, ped loops |
 | `outskirts.js` | forest belt, noise heightfield hills (`hillHeight(x, z)`), instanced spruce silhouettes, a barn/cottage/roundpole fence, BOUND walls |
-| `props.js` | Swedish breakables (same API as before); round 5: common types are instanced per 200 m cell of a 3 × 3 grid (`props:<type>:<cell>`) |
+| `props.js` | Swedish breakables (same API as before); phase 4 r2: baked into one run-culled static batch per surface (`props:<surface>`, batch.js `StaticBatch`), `?nobatch` / `&propinst` = round 5's instanced meshes per type and 200 m cell (`props:<type>:<cell>`) |
 
 ## MAP (j = 0 is −z, i = 0 is −x; block (3,3) is centred on the origin. Since phase 4 the maps draw north = +z, so j = 0 is the SOUTH row and i = 0 the EAST column)
 
@@ -98,7 +98,7 @@ face the road. Boxes: yaw = heading of a correctly parked car.
 
 | name | type | where |
 |---|---|---|
-| saab | `saab900`, colour 0x1c2a44 | at `saabSpot` |
+| saab | `saab900`, colour 0x34506e (phase 4 r2: slate-blue metallic; was 0x1c2a44) | at `saabSpot` |
 | patrickCar | `kombi`, `trailer: true`, colour 0x5a6670 | crooked on the main walkway at (−17.2, 3.55), yaw π/2 + 0.2 — trailer will extend west (~to x −24), walkway is clear to x −31 |
 | runeVolvo | `volvo240`, 0x7a1e1e | in front of garage 4 |
 | andersAudi | `audi`, 0xd8d8d4 | Anders' reserved bay ("Reserverad – Ordförande") at (−29.2, −16.9) |
@@ -178,13 +178,15 @@ the real C2: car over a motorcycle);
 builds a pole + plates.
 **See-through cards**: `twigFace(kind, v)` (kinds `birch lime pine crowntop` → page `crown`;
 `sprucebranch sprucetuft sprucefrond` → page `conifer`; `hedgegreen hedgegreenlow hedgegreentop
-thujagreen thujagreenlow` → page `leaf` (round 5); `hedgeside fringe mesh net birchhang limespray
-sprig` → page `twig`; v = 0..3 variants, procedurally drawn; `thujagreen` v 2-3 are bronze,
+thujagreen thujagreenlow` → page `leaf` (round 5; phase 4 r2: `sprig` too); `hedgeside fringe mesh net
+birchhang limespray` → page `twig`; v = 0..3 variants, procedurally drawn; `thujagreen` v 2-3 are bronze,
 `sprucebranch`/`sprucetuft`/`sprucefrond` v 2-3 carry snow, `sprig` v 3 is snow-dusted; round 6:
 `hedgesprig` / `thujasprig` → page `leaf`, a loose shoot proud of a clipped face, its base at the
 card's left edge) and `addCard(face, x, y, z, w, h, yaw, up)` (two
 back-to-back quads), `addQuad(face, c, r, u)` (any orientation: centre, half-extent vectors; the back
-face is mirrored like a real flat thing); a horizontal card is `addDecal(face, x, y, z, w, d, yaw)`. The
+face is mirrored like a real flat thing; phase 4 r2: optional `nrm`, `tint`, `both`), `addGrid(face,
+cols, rows, P, N, A, B, tint)` (phase 4 r2: a curved card, front face only; `tint` = [r, g, b, indirect
+factor] on the leaf page); a horizontal card is `addDecal(face, x, y, z, w, d, yaw)`. The
 card materials (`cardMaterial`, round 4; per-kind parameters in `CARD_P`, round 5): `twig` and
 `leaf` = alpha-to-coverage, alphaTest 0.3, writes depth (`leaf`: the card's own normal, foliage
 colours kept, see Round 5);
@@ -611,6 +613,105 @@ tools/scenarios/world.mjs. (town.js and the new batch.js belong to the rendering
   hedges' rounded ends and closed caps), props +0.06-0.09 M (the planters' boughs, ~2 k each);
   signs/cards unchanged. Also smoke-tested against the rendering fixer's in-progress town.js /
   batch.js / gfx.js (start + views: renders, no errors).
+
+## Phase 4, round 2 (last whole-game review) — what changed
+
+Files: signs.js, kit.js, props.js, places.js, ove.js; tools/scenarios/world.mjs; DESIGN.md (the Saab's
+colour). town.js / batch.js are the rendering fixer's (props.js uses `StaticBatch` as it is).
+
+- **Granris** (`kit.granris`, signs.js `sprig`): the sprigs were flat decals in a 3-8 % albedo green
+  over a dark box, black paper combs in the finale. Now: needles q 95-150 (half of them with a lighter
+  tip), stem rgb(110, 86, 62); the face is on the **`leaf` page** (lit by its own normal); no box,
+  two layers of sprigs instead (a jittered fan from the middle outwards plus a few at odd angles, then
+  the round-6 random top layer), each lifted 1-5 cm and tilted (pitch ±0.12, roll ±0.18 rad), its
+  normal leaning ~20° towards the low sun, and 1.7 × the indirect light (the snow under it; in a
+  stone's shadow they were black). The shared `rnd` stream is used exactly as before (the new parts
+  draw from their own generator), so everything built after a grave is placed as in round 6.
+- **Planter** (props.js): needle bed 0x3a5236 with a little snow (was 0x26301f, a black void), boughs
+  0x4a6a42 / 0x52734a / 0x43623c (were 0x2f4a2c…), six thin ragged drifts (`snowPatch`) instead of four
+  3-4 cm white pillows.
+- **Evergreen hedges** (`kit.hedge`, signs.js `addGrid`): the leaf walls are now **one cushion per
+  plant and face** (`addGrid`, 4 × 3 cells on the leaf page): it stands just outside the body (never
+  inside its lofted rings, which do not resolve the grooves) and bulges up to 4.5 cm × (0.6-1.2 per
+  plant) at its own height, with ±1 cm lumps, its normals bent with the surface (×1.6 along, ×1.4 up),
+  so the low sun rakes across a row of lumps (the normals from the grid's own neighbours). Plants are
+  not all the same width (the plant coordinate
+  `uOf(lx)` wanders by up to a third of a plant). Each plant has a **tone** (`cardTint`, leaf page
+  only: ±12 % value, a little more or less bronze); the cemetery's thuja base tint is (0.68, 0.66,
+  0.56) and its leaf textures are drawn 38 % desaturated (`THUJA_RGB`), hc 0x384432, bronze 1.0.
+  Tall hedges get two stacked cushions per plant. The rounded ends: 4 grids whose normals follow the
+  ellipse. All faces are the fringe-less `…low` walls; the `hedgegreentop` sprays are gone (their
+  random numbers are still drawn); the sprigs stay below 0.72 of the height and are shaded like the
+  face from both sides (`addQuad(…, nrm, tint, both)`: they were black arrowheads on the shaded side).
+  **Snow cap**: a separate, finer loft (a ring every ~0.15 m), a third thinner (1.3-5.1 cm), its rim
+  just outside the cushions' top edge, hanging 2-6.5 cm down and reaching out by a ragged 0-3 cm; the
+  body's top now stays under the clipped line (it poked through as dark blotches). Leaf page lighting:
+  **indirect × (1 + 0.5 (1 − |n·up|))** (the snow lights a hedge face from below; shaded hedges were a
+  dark mass) × the card's own factor (`cardTint.a`). Card program key `:7`.
+- **Sign / card atlas VRAM** (signs.js): each page is drawn on a 2048² work canvas while the town is
+  built; `finalizeSigns` copies its used rows (`page.texH`, rounded up to 256 px, so mip levels 0-8 are
+  the same as before) into the texture's canvas, releases the work canvas at once and the texture's
+  canvas after its upload (`tex.onUpdate`). UVs use texH; the card shader's texel size comes from a
+  uniform (`cardTexSize`). A page drawn into later gets its work canvas back with every face repainted
+  (`work()`); the late-font path repaints into a fresh canvas of the texture's size; `rebuildSigns`
+  disposes the old textures. `signPageImage(page)` (new) repaints a page for the `atlas` dump.
+  **213 MB → 107 MB of texture memory, 160 MB → 0 of canvases** with the crop alone (10 pages:
+  2048 × 2048, 1280, 1792, 512, 256, 256, 1024, 1024, 512, 1536); **101 MB** at the end of the round
+  (the hedge faces with a fringe are no longer used: twig and leaf pages 768 high). Image: the same
+  (`wsame` pixel diff, crop alone, within run-to-run noise at 12 of 13 poses; in the aerial view 295 px
+  of 922 k differ by > 3 %: mip levels ≥ 9, texels of 512 px, on signs a fraction of a pixel wide).
+  Also checked: `rebuildSigns` (look-dev) re-crops and the signs render; `atlas` dumps the pages.
+- **Props baked** (props.js `bakeProps`): every prop's geometry moved to its place in one
+  `StaticBatch` per surface (`props:<surface>`, ~14), each 80 m block's props one contiguous run with
+  its own bounds; the batch draws the runs in view with one multi-draw per pass. Compact attributes
+  as batch.js (Int16 normals, Uint16 colours, Int8 `trin`); the index stays on the CPU, the vertex
+  arrays are dropped once uploaded. **Breaking** a prop rewrites its index ranges (`prop.ranges`:
+  `[batch entry, first index, count]`) to its first index (zero-area triangles) with `addUpdateRange`;
+  **respawn** restores the saved indices. `tickProps` walks only the broken ones. `?nobatch` or
+  `&propinst` = round 5's instanced meshes (A/B). The procedural noise of surfaces that use the
+  object-space position (snow edges, foliage) now sees world positions, so a prop's snow pattern
+  differs a little from the instanced one (the planter's bed); nothing else changes.
+  Measured (`wcalls`, EXCLUSIVE, two interleaved A/B pairs, `&propinst` → baked; calls of all passes):
+  the props' own calls (shown − hidden) start 171 → 46, Ove's lot 172 → 41, Solrosvägen 154 → 41,
+  centrum 129 → 39, drone_nw 198 → 35, aerial 222 → 14; whole frame (main/AO/shadow) start 570 →
+  456, lot 681 → 558, street 460 → 349, centrum 381 → 287, drone_nw 701 → 539, aerial 518 → 310; the
+  props' triangles (all passes, finer culling) start 0.40 → 0.19 M, street 0.36 → 0.16 M, drone_nw
+  0.46 → 0.23 M. Render CPU (median of 160 frames; ±0.5 ms run to run): the props' share fell from
+  ~0.5 to ~0.2 ms. `wprops`: kick → broken, ranges degenerate, respawn restores them; `smash` as
+  before. ?nobatch / &propinst give the old path.
+- **Spruces** (kit.js `spruce`, signs.js): snow on the branch / frond / tuft cards of near trees by the
+  tree's own snowiness (0.35-1) and the tier's height (p = snowiness × (0.18 + 0.5 t)), not a quarter /
+  half of all cards; the snowy variants carry 2-4 irregular clumps (fronds) or 2-3 lumps (branches,
+  tufts) instead of rows of short dashes (the "stitching"). Near trees' wide rings droop a third
+  further (jy 0.25 → 0.33 s), are wider up the crown (0.44 + 0.14 t) and the waists widen too
+  (0.26 + 0.3 t²); the upper half's branches rise instead of drooping (dl − 0.85 smoothstep(0.5, 1,
+  t)); three crossed `sprucetuft` cards at the stem under every whorl hang over the notch between
+  tiers (conifer quads 357 k → 398 k). Against the light the top third still shows its tiers (less
+  than before): the inner mass is a narrow column there. The forest belt (lite) is unchanged except
+  for the clump textures.
+- **Reindeer** (ove.js): an unlit white wire ('plastic' 0xe8e4dc, r 1.1 cm) with 14 warm bulbs
+  (`glow(0xffe2b0, 0.5)`) along it, instead of a glowing light tube (white chalk scribbles by day).
+- **Cemetery paths** (places.js): the main path and the entrance are shovelled gravel (`snow: 0`, a
+  ragged trodden-snow rim); the cross and perimeter paths are trodden snow (`trodPath`). The half
+  covered gravel was brown smudges between the graves in the finale.
+- **Text**: "1966–2025" (unspaced en dash), "Bio / fredag 19.30", "REA / −30 %" (U+2212, NBSP), Ove's
+  name plate "Ove & Sonja" on his door above the letter slot (beside the door it stood half inside his
+  shed's wall).
+- **Ove's Saab**: 0x34506e, a mid slate-blue metallic (0x1c2a44 was a black silhouette in shade).
+- **Build time**: an evergreen hedge takes ~2.5 × as long to build (20 × 30 m thuja: 31 → 80 ms;
+  green 23 → 51 ms), about +0.2 s for the town (townStats.buildMs 3.0 s → 3.4-3.8 s, noisy on the
+  shared machine).
+- **Checks** (end of the round, after pulling GAME): validate 0 problems (135 spots, 22 zones, 53
+  landmarks, all 14 routes clear, 0 pedLoop hits, 1467 trees with crowns, 809 camBlocks); story ends
+  `#7 idle`, no errors; `wprops ok`; `smash` breaks its prop; `wvram` 101 MB, canvases 0; 60 fps at
+  every wperf pose; wviews (81 shots) no errors.
+- **Tools** (world.mjs): `wsame` (the static world only, paused, cars and people hidden, frozen camera:
+  for pixel diffs), `wcalls` (calls / triangles per pass and render CPU at six poses, with an
+  interleaved props shown / hidden A/B), `wvram` (atlas pages: size, memory, canvases), `wprops` (a
+  prop kicked with J must break, its ranges degenerate, and respawn with its indices restored; prints
+  `wprops ok`); `cam()` also hides the title card; wviews has `p4_*` poses (kneel at Sonja's grave,
+  the thuja, Parvaneh's hedge, a garden spruce at eye level / against the light, the reindeer, Ove's
+  door plate, the Saab in the shade).
 
 ## For main.js / camera.js / the systems agent
 

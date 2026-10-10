@@ -5,7 +5,7 @@
 //   wviews    - screenshots from fixed camera poses (WVIEWS=name1,name2 to pick a subset)
 //   meshstats - triangles / draw groups per world mesh
 //   atlas     - dumps the sign atlas pages to out/atlas_*.png
-export default ({ page, ev, shot, frames, sleep, fps, OUT }) => {
+export default ({ page, ev, shot, frames, sleep, fps, tap, OUT }) => {
   // Freeze the camera rig and place the camera ourselves (no gameplay camera, no HUD).
   const cam = (at, look, fov = 55) => ev((at, look, fov) => {
     const g = window.__game;
@@ -13,6 +13,8 @@ export default ({ page, ev, shot, frames, sleep, fps, OUT }) => {
     const c = g.cam.cam;
     c.position.set(...at); c.lookAt(...look); c.fov = fov; c.updateProjectionMatrix();
     document.getElementById('hud').style.display = 'none';
+    // (the title card may still be fading out in the first seconds of a test run)
+    const t = document.getElementById('title'); if (t) t.style.display = 'none';
   }, at, look, fov);
 
   // Named camera poses: [at, look, fov?]
@@ -93,6 +95,16 @@ export default ({ page, ev, shot, frames, sleep, fps, OUT }) => {
     r6_thuja_sun: [[-226.0, 1.6, 207.6], [-232.0, 0.9, 209.3], 55],
     r6_thuja_end: [[-235.0, 1.6, 206.2], [-236.6, 0.9, 209.4], 55],
     r6_green_end: [[-15.6, 1.5, 3.2], [-13.9, 0.6, 0.6], 55],
+    // (phase 4 r2) granris on Sonja's grave, the thuja and Parvaneh's hedge, a garden spruce at eye
+    // level / against the light, Jimmy's reindeer, Ove's door plate, the Saab in the shade
+    p4_kneel: [[-234.6, 1.15, 216.4], [-233.7, 0.25, 218.3], 50],
+    p4_thuja: [[-226.0, 1.6, 207.6], [-232.0, 0.9, 209.3], 55],
+    p4_parvhedge: [[-8.6, 1.5, 2.6], [-6.2, 0.7, 0.4], 50],
+    p4_spruce: [[2.5, 1.6, 26.0], [7, 3.2, 29.3], 55],
+    p4_spruce_contra: [[-1.6, 1.7, 40.8], [7, 4, 29.3], 50],
+    p4_reindeer: [[9.6, 1.4, 2.6], [11.6, 0.8, -1.9], 50],
+    p4_plate: [[-5.9, 1.5, 6.4], [-6.1, 1.45, 8.2], 30],
+    p4_saab: [[3.5, 1.4, -27.5], [6.8, 0.8, -23.1], 45],
   };
 
   const viewShot = async (name, prefix = 'w_') => {
@@ -154,6 +166,128 @@ export default ({ page, ev, shot, frames, sleep, fps, OUT }) => {
     async wviews() {
       const pick = process.env.WVIEWS ? process.env.WVIEWS.split(',') : Object.keys(VIEWS);
       for (const n of pick) { if (!VIEWS[n]) { console.log('unknown view', n); continue; } await viewShot(n); }
+    },
+
+    // (phase 4 r2) The static world only, for pixel diffs before / after a change that must not change
+    // the image (the atlas crop, the props batches): the game paused (no traffic, no walkers moving),
+    // every car and character hidden, the camera frozen. Shots out/ws_<view>.png (WVIEWS= a subset).
+    async wsame() {
+      await ev(() => {
+        const g = window.__game;
+        g.paused = true;
+        for (const c of g.cars) if (c.root) c.root.visible = false;
+        for (const p of g.peds || []) if (p.char?.root) p.char.root.visible = false;
+        for (const n of Object.values(g.npcs || {})) if (n.root) n.root.visible = false;
+        if (g.player?.root) g.player.root.visible = false;
+      });
+      const pick = process.env.WVIEWS ? process.env.WVIEWS.split(',') : ['start', 'ove25', 'lot_e', 'drone_nw', 'centrum', 'r6_planter_near', 'sonja', 'cemetery_wide', 'hospital', 'gas', 'street_trees', 'park', 'aerial'];
+      for (const n of pick) {
+        const v = VIEWS[n];
+        await cam(v[0], v[1], v[2]);
+        await frames(16);
+        await shot('ws_' + n);
+      }
+    },
+
+    // (phase 4 r2) Draw calls / triangles per pass at a few poses and the render CPU per frame
+    // (median of 4 x 40 frames), and an interleaved A/B of the props hidden / shown (their cost).
+    // WPOSES= a subset.
+    async wcalls() {
+      const poses = (process.env.WPOSES || 'start,lot_e,street,centrum,drone_nw,aerial').split(',');
+      const propRe = /^props(:|$)/;
+      const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+      for (const n of poses) {
+        await cam(...VIEWS[n]);
+        await frames(20);
+        const row = await ev(async (src) => {
+          const G = await import('/src/gfx.js');
+          const re = new RegExp(src), sc = window.__game.player.root.parent;
+          const props = []; sc.traverse((o) => { if (re.test(o.name || '')) props.push(o); });
+          const wait = (k) => new Promise((res) => { const f0 = window.__frame; const t = () => (window.__frame >= f0 + k ? res() : requestAnimationFrame(t)); t(); });
+          // (per-frame pass numbers summed: the far shadow cascade is drawn every 2nd frame)
+          const acc = () => ({ main: [0, 0], ao: [0, 0], shadow: [0, 0], n: 0 });
+          const sample = async (ms, P) => { for (let i = 0; i < 40; i++) { await wait(1); ms.push(G.gfxStats.last); const q = G.gfxStats.pass; for (const k of ['main', 'ao', 'shadow']) { P[k][0] += q[k][0]; P[k][1] += q[k][1]; } P.n++; } };
+          const on = [], off = [], pOn = acc(), pOff = acc();
+          for (let k = 0; k < 4; k++) {
+            for (const o of props) o.visible = true; await wait(3); await sample(on, pOn);
+            for (const o of props) o.visible = false; await wait(3); await sample(off, pOff);
+          }
+          for (const o of props) o.visible = true;
+          for (const P of [pOn, pOff]) for (const k of ['main', 'ao', 'shadow']) P[k] = P[k].map((v) => Math.round(v / P.n));
+          return { props: props.length, pOn, pOff, on, off };
+        }, propRe.source);
+        const c = (p) => `${p.main[0]}/${p.ao[0]}/${p.shadow[0]}`;
+        console.log('[t] calls', n.padEnd(10), 'propMeshes', row.props, 'main/ao/shadow', c(row.pOn), 'propsHidden', c(row.pOff),
+          'propCalls', row.pOn.main[0] + row.pOn.ao[0] + row.pOn.shadow[0] - row.pOff.main[0] - row.pOff.ao[0] - row.pOff.shadow[0],
+          'propTris', ((row.pOn.main[1] + row.pOn.ao[1] + row.pOn.shadow[1] - row.pOff.main[1] - row.pOff.ao[1] - row.pOff.shadow[1]) / 1e6).toFixed(3) + 'M',
+          'cpu', med(row.on).toFixed(2), 'cpuPropsHidden', med(row.off).toFixed(2));
+      }
+    },
+
+    // (phase 4 r2) The baked props (props.js bakeProps): a prop near Ove's walkway is kicked (the J key,
+    // as a player would), must break (not alive, collider dead, its index ranges degenerate) and, once
+    // its timer runs out with Ove > 70 m away, respawn with its indices restored. Shots wpr_*.png.
+    async wprops() {
+      const pick = await ev(() => {
+        const g = window.__game, P = window.__props;
+        const ps = P.filter((p) => p.alive && ['trashcan', 'mailbox', 'kicksled', 'papperskorg', 'bench', 'box', 'snowman'].includes(p.type) && Math.hypot(p.x + 5, p.z - 4) < 45);
+        for (const p of ps) for (let a = 0; a < 8; a++) {
+          const yaw = a * Math.PI / 4, d = (p.def.r || Math.max(p.def.w, p.def.d) / 2) + 0.65;
+          const x = p.x - Math.sin(yaw) * d, z = p.z - Math.cos(yaw) * d;
+          if (g.spotFree(x, z)) return { i: P.indexOf(p), type: p.type, x, z, yaw, px: p.x, pz: p.z, batched: !!p.ranges };
+        }
+        return null;
+      });
+      console.log('[t] wprops target', JSON.stringify(pick));
+      if (!pick) { console.log('[t] wprops FAIL no target'); return; }
+      const camAt = [pick.px - Math.sin(pick.yaw) * 4 + Math.cos(pick.yaw) * 1.5, 1.7, pick.pz - Math.cos(pick.yaw) * 4 - Math.sin(pick.yaw) * 1.5];
+      const snap = () => ev((i) => { const p = window.__props[i]; return p.ranges ? p.ranges.map(([e, s, n]) => Array.from(e.I.subarray(s, s + n))) : null; }, pick.i);
+      const before = await snap();
+      await ev(({ x, z, yaw }) => { const g = window.__game; g.player.teleport(x, z, yaw); }, pick);
+      await cam(camAt, [pick.px, 0.6, pick.pz], 50);
+      await frames(10);
+      await shot('wpr_0_before');
+      await ev(({ yaw }) => { window.__game.player.yaw = yaw; }, pick);
+      await tap('KeyJ');
+      await frames(40);
+      let st = await ev((i) => { const p = window.__props[i]; return { alive: p.alive, dead: !!p.block.dead, degenerate: p.ranges ? p.ranges.every(([e, s, n]) => { const v = e.I[s]; for (let k = s; k < s + n; k++) if (e.I[k] !== v) return false; return true; }) : null }; }, pick.i);
+      console.log('[t] wprops after kick', JSON.stringify(st));
+      if (st.alive) {
+        await ev((i) => window.__game.breakProp(window.__props[i], 1, 0, 'kick'), pick.i);
+        st = await ev((i) => { const p = window.__props[i]; return { alive: p.alive, dead: !!p.block.dead }; }, pick.i);
+        console.log('[t] wprops the key did not land; breakProp directly', JSON.stringify(st));
+      }
+      await frames(30);
+      await shot('wpr_1_broken');
+      // respawn: Ove far away, timer out
+      await ev((i) => { const g = window.__game, p = window.__props[i]; p.respawn = 0; g.player.teleport(p.x + 90, p.z, 0); }, pick.i);
+      await frames(20);
+      const after = await snap();
+      st = await ev((i) => { const p = window.__props[i]; return { alive: p.alive, dead: !!p.block.dead }; }, pick.i);
+      const same = JSON.stringify(after) === JSON.stringify(before);
+      console.log('[t] wprops respawned', JSON.stringify(st), 'indices restored', same);
+      await shot('wpr_2_respawned');
+      console.log('[t] wprops', !st.alive || st.dead || (pick.batched && !same) ? 'FAIL' : 'ok');
+    },
+
+    // (phase 4 r2) What the sign / card atlas pages hold on the GPU: per page its texture size and
+    // memory (RGBA8 + mips), and the size of the canvas still held.
+    async wvram() {
+      const r = await ev(async () => {
+        const s = await import('/src/world/signs.js');
+        const pages = s.signPages(), out = [];
+        let total = 0, canv = 0;
+        for (const [k, list] of Object.entries(pages)) list.forEach((p, i) => {
+          const img = p.tex?.image, h = p.texH ?? 2048;
+          const mb = (2048 * h * 4 * 4 / 3) / 1048576;
+          total += mb; canv += (p.canvas.width * p.canvas.height + (img && img !== p.canvas ? img.width * img.height : 0)) * 4 / 1048576;
+          out.push(`${k}${i}: 2048x${h} ${mb.toFixed(1)} MB, canvas ${p.canvas.width}x${p.canvas.height}, img ${img?.width}x${img?.height}, faces ${p.faces.length}, quads ${p.quads.length}`);
+        });
+        return { pages: out, totalMB: +total.toFixed(1), canvasMB: +canv.toFixed(1) };
+      });
+      for (const l of r.pages) console.log('[t] page', l);
+      // (phase 4 r2: 213 MB of pages and 160 MB of canvases before the crop)
+      console.log('[t] atlasMB', r.totalMB, 'canvasMB', r.canvasMB, r.totalMB < 140 && r.canvasMB < 1 ? 'ok' : 'FAIL');
     },
 
     async wperf() {
@@ -218,7 +352,7 @@ export default ({ page, ev, shot, frames, sleep, fps, OUT }) => {
         const s = await import('/src/world/signs.js');
         const pages = s.signPages();
         window.__atlas = [];
-        for (const k of Object.keys(pages)) pages[k].forEach((p, i) => window.__atlas.push([k + i, p.canvas.toDataURL('image/png')]));
+        for (const k of Object.keys(pages)) pages[k].forEach((p, i) => window.__atlas.push([k + i, s.signPageImage(p).toDataURL('image/png')]));
         return window.__atlas.length;
       });
       const fs = await import('fs');

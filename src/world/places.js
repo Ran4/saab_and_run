@@ -61,7 +61,7 @@ function tglass(f, lx, y0, lz, w, h, d, ly = 0) { shared.glassG.boxB(null, f.wx(
 // A shop front in frame f (front at local z = 0 facing -z) between local x0 and x1. The building
 // behind is recessed by `depth` (flatBuilding({ recess })): see-through glass with an open, lit
 // shop behind it (a glowing back wall, shelves, ceiling lights), posters and ÖPPET on the glass.
-const POSTERS = [['REA\n-30%', '#c8102e', '#f6f6f2'], ['Veckans\nerbjudande', '#f5c518', '#1a1a1a'], ['Kaffe\n& bulle 25:-', '#f2f0e8', '#5a2a1a'], ['NYHET', '#1e5aa8', '#f6f6f2'], ['Julklappar\nhär!', '#2f5a3a', '#f6f6f2'], ['Lotto\nhär', '#f2f0e8', '#1e5aa8']];
+const POSTERS = [['REA\n\u221230\u00a0%', '#c8102e', '#f6f6f2'], ['Veckans\nerbjudande', '#f5c518', '#1a1a1a'], ['Kaffe\n& bulle 25:-', '#f2f0e8', '#5a2a1a'], ['NYHET', '#1e5aa8', '#f6f6f2'], ['Julklappar\nhär!', '#2f5a3a', '#f6f6f2'], ['Lotto\nhär', '#f2f0e8', '#1e5aa8']];
 function shopfront(f, x0, x1, name, o = {}) {
   const w = x1 - x0, cx = (x0 + x1) / 2, depth = o.depth ?? 1.6;
   const doorX = o.doorX ?? x1 - 1.4;
@@ -223,7 +223,7 @@ function adPillar(f, lx, lz) {
   f.use('painted').cyl(0xe8e4da, lx, CURB + 1.45, lz, 0.55, 2.3, 16);
   f.use('painted').cyl(0x2e3431, lx, CURB + 2.65, lz, 0.62, 0.1, 16);
   f.use('metalroof').add(PRIM.dome(), 0x3a5a48, lx, CURB + 2.7, lz, 0, 1.2, 0.5, 1.2);
-  const P = [['Konsert\nlördag 19.00\nKyrkan', '#2a3a5a', '#f2f0e8'], ['Julmarknad\n1:a advent\nTorget', '#8a1e1e', '#f6f2e6'], ['Loppis\nsöndag', '#f5c518', '#1a1a1a'], ['Bio\nFredag', '#1e1e1e', '#f2f0e8']];
+  const P = [['Konsert\nlördag 19.00\nKyrkan', '#2a3a5a', '#f2f0e8'], ['Julmarknad\n1:a advent\nTorget', '#8a1e1e', '#f6f2e6'], ['Loppis\nsöndag', '#f5c518', '#1a1a1a'], ['Bio\nfredag 19.30', '#1e1e1e', '#f2f0e8']];
   P.forEach(([t, bg, fg], k) => { const a = (k / 4) * TAU + 0.3; f.sign(textFace(t, 0.7, 1.0, { bg, fg, ppm: 220, weight: '700', scale: 0.6 }), lx + Math.sin(a) * 0.565, CURB + 1.45, lz + Math.cos(a) * 0.565, 0.7, 1.0, a); });
   f.circ(lx, lz, 0.62);
 }
@@ -570,14 +570,18 @@ function graveLantern(f, x, z) {
 export function cemeteryBlock(bf, r) {
   bf.useF('grass').flat(C.lawn, 0, 0, 62, 62, CURB + 0.015);
   // Paths: main path from the north gate, cross paths, a perimeter path.
-  bf.useF('gravel').flat(C.gravel, 0, -3, 3.2, 56, CURB + 0.03);
-  for (const z of [-18, -4, 10, 22]) bf.useF('gravel').flat(C.gravel, 0, z, 52, 2.4, CURB + 0.03);
-  bf.useF('gravel').flat(C.gravel, -26, 2, 2.4, 42, CURB + 0.03);
-  bf.useF('gravel').flat(C.gravel, 26, 2, 2.4, 42, CURB + 0.03);
-  bf.useF('gravel').flat(C.gravel, 0, -27.5, 8, 7, CURB + 0.031);
+  // (phase 4 r2) The gravel with its partial snow showed as brown smudges between the graves in the
+  // finale's wide shots. The main path and the entrance are shovelled and gravelled (no snow, a ragged
+  // rim of trodden snow along them); the cross and perimeter paths are trodden snow.
+  bf.useF('gravel', { snow: 0 }).flat(C.gravel, 0, -3, 3.2, 56, CURB + 0.03);
+  bf.useF('gravel', { snow: 0 }).flat(C.gravel, 0, -27.5, 8, 7, CURB + 0.031);
+  for (const sd of [-1, 1]) bf.fringe(sd * 1.6, -24.0, sd * 1.6, 25.0, -sd, CURB + 0.032, 41 + sd, { reach: 0.22 });
+  for (const z of [-18, -4, 10, 22]) trodPath(bf, -26, z, 26, z, 2.4, 50 + z, CURB + 0.028);
+  for (const x of [-26, 26]) trodPath(bf, x, -19, x, 23, 2.4, 60 + x, CURB + 0.029);
   // Thuja hedge around, gates in the north (to the church) and east.
-  const H = 1.7, hc = 0x33452f;
-  const ho = { bronze: 0.85 };   // thuja: bronze-olive patches in winter
+  // (phase 4 r2: a darker, olive thuja green; each plant's own tone is in kit.hedge)
+  const H = 1.7, hc = 0x384432;
+  const ho = { bronze: 1.0 };   // thuja: bronze-olive patches in winter
   // (the north hedge stops short of the gate pillars: the Kyrkogården plaque must stay readable)
   for (const [x0, x1] of [[-30.6, -3.5], [3.5, 30.6]]) bf.hedge((x0 + x1) / 2, -30.5, x1 - x0, 0.9, H, 0, hc, true, ho);
   bf.hedge(0, 30.5, 61.2, 0.9, H, 0, hc, true, ho);
@@ -622,7 +626,7 @@ export function cemeteryBlock(bf, r) {
   // Sonja's stone: dark polished granite, gilded name, a lantern and a bare little rose.
   gravestone(bf, sonja.x, sonja.z, r, { shape: 0.9, color: 0x2a2b2e, w: 0.8, h: 0.95, noFrame: true, noLantern: true });
   bf.sign(textFace('SONJA', 0.6, 0.2, { bg: null, fg: '#c8a860', ppm: 400, scale: 0.85, weight: '600', cutout: true }), sonja.x, CURB + 0.84, sonja.z - 0.085, 0.6, 0.2, Math.PI);
-  bf.sign(textFace('1966 – 2025', 0.5, 0.1, { bg: null, fg: '#c8a860', ppm: 500, scale: 0.8, weight: '500', cutout: true }), sonja.x, CURB + 0.66, sonja.z - 0.085, 0.5, 0.1, Math.PI);
+  bf.sign(textFace('1966–2025', 0.5, 0.1, { bg: null, fg: '#c8a860', ppm: 500, scale: 0.8, weight: '500', cutout: true }), sonja.x, CURB + 0.66, sonja.z - 0.085, 0.5, 0.1, Math.PI);
   granris(bf.S, bf.wx(sonja.x, sonja.z - 0.7), bf.wz(sonja.x, sonja.z - 0.7), 1.1, 0.75, 0.18, bf.yaw);
   graveLantern(bf, sonja.x + 0.3, sonja.z - 0.3);
   // a single red rose laid on the spruce twigs

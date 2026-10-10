@@ -67,7 +67,8 @@ export function oveBlock(bf) {
   area.garageFrame.sign(textFace('OVE', 0.42, 0.13, { bg: '#f2f0e8', fg: '#1a1a1a', ppm: 300, weight: '700' }), 3.05 / 2 + 0.6, CURB + 2.36, -0.065, 0.42, 0.13, Math.PI);
 
   // ----- Named cars.
-  bf.car('saab900', 6.75, -23.1, 0, { name: 'saab', color: 0x1c2a44 });
+  // (phase 4 r2: a mid slate-blue metallic, 0x1c2a44 was a black silhouette in the shade)
+  bf.car('saab900', 6.75, -23.1, 0, { name: 'saab', color: 0x34506e });
   bf.car('kombi', -17.2, 3.55, Math.PI / 2 + 0.2, { name: 'patrickCar', color: 0x5a6670, trailer: true });
   bf.car('volvo240', 3.5 + 3.05 * 3.5, -23.2, 0, { name: 'runeVolvo', color: 0x7a1e1e });
   bf.car('audi', -29.2, -16.9, 0, { name: 'andersAudi', color: 0xd8d8d4 });
@@ -135,7 +136,9 @@ function decorate(key, u, r) {
   const Y0 = CURB + 0.32;
   const plate = (text, bg = '#f2f0e8', fg = '#1a1a1a') => f.sign(textFace(text, 0.42, 0.11, { bg, fg, ppm: 340, weight: '600', scale: 0.78 }), X(dA - 0.9), Y0 + 1.55, -0.035, 0.42, 0.11, Math.PI);
   if (key === 'ove') {
-    plate('Ove');
+    // (phase 4 r2) a new widower who has not changed the plate; on the door above the letter slot
+    // (beside the door it stood half inside his shed's wall)
+    f.sign(textFace('Ove & Sonja', 0.3, 0.075, { bg: '#f2f0e8', fg: '#1a1a1a', ppm: 420, weight: '600', scale: 0.74 }), X(dA - 0.24), Y0 + 1.22, -0.072, 0.3, 0.075, Math.PI);
     u.clearPath = true;   // his walkway edge is shovelled clear (radhusArea leaves a wide gap)
     // "Ingen reklam tack" on the door, a big thermometer by the kitchen window, a kicksled, a shovel.
     f.sign(textFace('Ingen reklam\ntack', 0.2, 0.09, { bg: '#f4f2ea', fg: '#b01e1e', ppm: 400, scale: 0.8 }), X(dA + 0.15), Y0 + 1.3, -0.07, 0.2, 0.09, Math.PI);
@@ -367,19 +370,22 @@ function tractor(f) {
   f.solid(0, 0.35, 2.0, 3.8, 99, 'vehicle');
 }
 
-// A reindeer of warm-white light tube (a Christmas lawn figure), drawn as an outline in its own
-// vertical plane (z forward, y up) like the real wire-frame ones: a horizontal body with a rounded
+// A Christmas lawn reindeer (a wire frame with a string of small bulbs along it), drawn as an outline
+// in its own vertical plane (z forward, y up) like the real ones: a horizontal body with a rounded
 // rump and chest, a neck rising forward, a head with a muzzle and an ear, two branched antlers
 // (spread sideways), four legs with knees and hocks, a tail. graze: the neck and head bent down to
 // the snow (a pair, one grazing, reads as reindeer from across the walkway).
+// (phase 4 r2) The outline was a glowing light tube, white chalk scribbles behind the day 3 and 6
+// dialogues in daylight. Now an unlit white wire (as they look by day) with 14 small warm bulbs.
 function reindeer(f, x, z, yaw, graze = false) {
   const d = f.sub(x, z, yaw), y = CURB;
   // the shoulder pivot for the neck / head / antlers when grazing
   const sh = [0.42, 0.9], ga = graze ? -1.15 : 0, cg = Math.cos(ga), sg = Math.sin(ga);
   const head = ([zz, yy, xx = 0]) => { const dz = zz - sh[0], dy = yy - sh[1]; return [sh[0] + dz * cg - dy * sg, sh[1] + dz * sg + dy * cg, xx]; };
   const P = ([zz, yy, xx = 0]) => { const [wx, wz] = d.W(xx, zz); return [wx, y + yy, wz]; };
-  const line = (pts, hd = false) => { for (let i = 0; i < pts.length - 1; i++) { const a = P(hd ? head(pts[i]) : pts[i]), b = P(hd ? head(pts[i + 1]) : pts[i + 1]); limb(f.S, a[0], a[1], a[2], b[0], b[1], b[2], 0.022, 0.022, 0x9a8a72, 4); } };
-  f.use('light', { snow: 0 });
+  const segs = [];
+  const line = (pts, hd = false) => { for (let i = 0; i < pts.length - 1; i++) { const a = P(hd ? head(pts[i]) : pts[i]), b = P(hd ? head(pts[i + 1]) : pts[i + 1]); limb(f.S, a[0], a[1], a[2], b[0], b[1], b[2], 0.011, 0.011, 0xe8e4dc, 4); segs.push([a, b]); } };
+  f.use('plastic', { snow: 0.3 });
   line([[-0.5, 0.86], [-0.2, 0.9], [0.15, 0.9], [0.42, 0.92]]);                  // back
   line([[-0.5, 0.86], [-0.6, 0.76], [-0.55, 0.64], [-0.42, 0.6]]);               // rump
   line([[-0.42, 0.6], [-0.1, 0.55], [0.2, 0.56], [0.4, 0.62]]);                  // belly
@@ -398,6 +404,15 @@ function reindeer(f, x, z, yaw, graze = false) {
     line([[0.64, 1.42, sx * 0.14], [0.76, 1.52, sx * 0.17]], true);                                                  // tine
     line([[0.56, 1.55, sx * 0.21], [0.62, 1.7, sx * 0.24]], true);                                                   // tine
     line([[0.68, 1.3, sx * 0.08], [0.8, 1.33, sx * 0.09]], true);                                                    // brow tine
+  }
+  // the bulbs, evenly along the whole outline
+  const total = segs.reduce((n, [a, b]) => n + Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), 0), nb = 14;
+  f.use('light', { snow: 0 });
+  let acc = 0, next = total / nb / 2;
+  for (const [a, b] of segs) {
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    while (next <= acc + L) { const t = (next - acc) / L; f.S.sphere(glow(0xffe2b0, 0.5), a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, 0.026, 0.032, 0.026, 0, 0, 0, 6); next += total / nb; }
+    acc += L;
   }
   d.solid(0, 0.15, 0.4, 1.3, CURB + 1.4, 'figure');
 }
