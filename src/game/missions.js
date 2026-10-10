@@ -872,7 +872,8 @@ export class MissionRunner {
     this.failT += dt;
     const g = this.g;
     hud.setPrompt(this.failT > 0.8 ? '<b>E</b> Försök igen &nbsp; · &nbsp; <b>Q</b> Ge upp' : '');
-    const giveUp = g.input.keyPressed('KeyQ') || g.input.pressed('giveUp') || padPressed(1);
+    // Give up: Q or the gamepad's B (input.js's 'giveUp' action).
+    const giveUp = g.input.pressed('giveUp');
     if (this.failT > 0.8 && g.input.pressed('interact')) this.retry();
     else if (this.failT > 0.8 && giveUp) this.abort();
   }
@@ -926,14 +927,3 @@ function onRamp(x, z) {
 }
 const _rq = [];
 
-// A gamepad button pressed this frame (the failed screen's give-up: B), read directly so it works
-// whatever input.js maps.
-let _padPrev = [];
-function padPressed(i) {
-  const pads = typeof navigator !== 'undefined' && navigator.getGamepads ? navigator.getGamepads() : [];
-  const gp = pads && [...pads].find((q) => q && q.connected);
-  const now = gp ? gp.buttons.map((b) => b.value > 0.5) : [];
-  const hit = !!now[i] && !_padPrev[i];
-  _padPrev = now;
-  return hit;
-}

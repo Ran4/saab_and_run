@@ -3,7 +3,7 @@
 // minimap and big map, the Saab speedometer, dialogue with portraits, banners, toasts, speech
 // bubbles, and the title / pause screens' wiring. Contract: DESIGN.md section 9; notes/ui.md.
 
-import { THREE, camera, scene as worldScene, setQuality, getQuality } from '../gfx.js';
+import { THREE, camera, scene as worldScene, setQuality, getQuality, qualityInfo } from '../gfx.js';
 import * as LAYOUT from '../world/layout.js';
 import { blocks, BOX, CIRCLE, RAMP } from '../world/collision.js';
 import { audio } from '../audio.js';
@@ -18,6 +18,7 @@ const PARAMS = new URLSearchParams(location.search);
 const SETTINGS_KEY = 'saab-and-run-settings';
 
 let root, mapCanvas, mapCtx, baseMap;
+const byDist = (a, b) => a.d - b.d;
 
 // The whole HUD is laid out for 1280x720 and zoomed by --ui (CSS `zoom`) so it keeps its
 // proportions on other screens: min(w/1280, h/720), kept between 0.8 and 2. index.html sets it too
@@ -60,11 +61,12 @@ const CAR_NAMES = { saab: 'Saab 900', patrickCar: 'Patricks bil', runeVolvo: 'Ru
 const SPEC_SV = { 'Family Wagon': 'Kombi', Wagon: 'Kombi', Hatchback: 'Halvkombi', Sedan: 'Sedan', Van: 'Skåpbil', Pickup: 'Pickup', Hearse: 'Likbil', 'School Bus': 'Buss', Bus: 'Buss', 'Ice Cream Truck': 'Glassbil', Taxi: 'Taxi', Truck: 'Lastbil', 'Hormone Rocket': '' };
 // Auto-styling of well-known banner texts when no class is given.
 const BANNER_AUTO = { 'ANMÄLD': 'stamp', 'ANMÄLD!': 'stamp', 'TAGEN!': 'stamp', 'TAGEN': 'stamp', 'SMET!': 'bad', 'KAOS I OMRÅDET': 'chaos', 'ORDNING OCH REDA': 'good', 'UPPDRAG KLART': 'good', 'UPPDRAG KLART!': 'good', 'UPPDRAG MISSLYCKADES': 'bad', 'OMRÅDET ÄR I ORDNING': 'final' };
-// Violation kinds (DESIGN 6) -> notebook text when the caller gives none.
-const KIND_SHORT = { carfree: 'Bil i bilfritt område', lawn: 'På gräsmattan', sidewalk: 'På trottoaren', busstop: 'Busshållplats', handicap: 'Handikapplats', garbage: 'Framför soprummet', guest24: 'Gästplats över ett dygn', firelane: 'Räddningsväg', loading: 'Lastzon', corner: 'Vid korsning', crosswalk: 'Övergångsställe' };
+// Violation kinds (DESIGN 6): the words come from patrol.js's KINDS ([tag / log, notebook sentence]),
+// which sets hud.kinds - one source for the tag, the notebook and the pause log.
+const kindShort = (k) => hud.kinds?.[k]?.[0];
+const kindText = (k) => hud.kinds?.[k]?.[1];
 // World tags: [minimum opacity, minimum scale] per class as they get further away.
 const TAG_FADE = { smitare: [1, 0.9], violation: [0.9, 0.8], errand: [0.92, 0.82], neighbour: [0.6, 0.75], reported: [0.35, 0.72], plain: [0.35, 0.72] };
-const KIND_TEXT = { carfree: 'Bil inom det bilfria området', lawn: 'Parkerad på gräsmattan', sidewalk: 'Parkerad på trottoaren', busstop: 'Parkerad vid busshållplats', handicap: 'Handikapplats utan tillstånd', garbage: 'Blockerar soprummet', guest24: 'Gästparkering över 24 h', firelane: 'Står på räddningsväg', loading: 'Parkerad i lastzon', corner: 'Inom 10 m från korsning', crosswalk: 'Står på övergångsstället' };
 
 const ICON = {
   clock: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="7.6"/><path d="M10 5.5V10l3 2"/></svg>',
@@ -76,6 +78,7 @@ const ICON = {
 
 export const hud = {
   portraits: {},
+  kinds: null,             // patrol.js's KINDS (set by the patrol)
   dialogActive: false,
   onResetSave: null,       // set by main.js: called when "Radera sparat spel" is confirmed
   fontsReady: Promise.resolve(),
@@ -176,11 +179,16 @@ export const hud = {
     try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) { s = {}; }
     if (s.music === false) audio.setMusic(false);
     if (s.sound === false) audio.setMuted(true);
-    if (s.gfx === 'low' && !PARAMS.has('lowgfx') && getQuality() !== 'low') setQuality('low');
+    // Graphics: 'auto' (the default: the renderer picks the tier, gfx.js), 'high' or 'low', saved under
+    // `quality` once chosen. The old `gfx` key was written as 'high' whenever any toggle changed (no
+    // real choice: ignored); an old 'low' still counts. The URL (?q=, ?lowgfx) wins over both.
+    const saved = ['auto', 'high', 'low'].includes(s.quality) ? s.quality : s.gfx === 'low' ? 'low' : null;
+    this._quality = saved;
+    if (saved && !PARAMS.has('q') && !PARAMS.has('lowgfx') && getQuality() !== saved) setQuality(saved);
     const bind = (id, fn) => $(id)?.addEventListener('click', fn);
     bind('opt-music', () => { audio.setMusic(!audio.musicOn); this._saveSettings(); this.syncMenu(); });
     bind('opt-sound', () => { audio.setMuted(!audio.muted); this._saveSettings(); this.syncMenu(); });
-    bind('opt-gfx', () => { setQuality(getQuality() === 'low' ? 'high' : 'low'); this._saveSettings(); this.syncMenu(); });
+    bind('opt-gfx', () => { this._quality = setQuality({ auto: 'high', high: 'low', low: 'auto' }[getQuality()] || 'auto').setting; this._saveSettings(); this.syncMenu(); });
     bind('opt-reset', (e) => {
       const b = e.currentTarget;
       if (!b.classList.contains('confirm')) {
@@ -196,6 +204,10 @@ export const hud = {
       if (this.onResetSave) this.onResetSave();
       else window.__game?.resetSave?.();
     });
+    // The title's "Kontroller": the controls table over the right of the scene, on request (it used
+    // to cover the scene all the time).
+    bind('title-ctl', (e) => { const on = $('title')?.classList.toggle('ctl'); e.currentTarget.setAttribute('aria-expanded', String(!!on)); });
+    document.querySelector('#title .title-controls')?.addEventListener('click', () => { $('title')?.classList.remove('ctl'); $('title-ctl')?.setAttribute('aria-expanded', 'false'); });
     // "Kontroller": the title screen's controls table, shown in place of the notebook page.
     const pause = $('pause');
     const ctl = $('pause-controls'), table = document.querySelector('#title .controls');
@@ -214,15 +226,18 @@ export const hud = {
     this.renderLog(this._log);
   },
   _saveSettings() {
-    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({ music: audio.musicOn, sound: !audio.muted, gfx: getQuality() })); } catch (e) { /* private mode */ }
+    const o = { music: audio.musicOn, sound: !audio.muted };
+    if (this._quality) o.quality = this._quality;
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(o)); } catch (e) { /* private mode */ }
   },
   // Refresh the pause menu's toggle labels (called whenever the pause menu opens).
   syncMenu() {
     const set = (id, on, txt) => { const b = $(id); if (!b) return; b.querySelector('b').textContent = txt; b.classList.toggle('off', !on); };
     set('opt-music', audio.musicOn, audio.musicOn ? 'På' : 'Av');
     set('opt-sound', !audio.muted, audio.muted ? 'Av' : 'På');
-    const hi = getQuality() !== 'low';
-    set('opt-gfx', hi, hi ? 'Hög' : 'Låg');
+    // Auto shows what it picked: "Auto (Hög)" / "Auto (Låg)" (it may have dropped to low meanwhile).
+    const q = getQuality(), tierName = (t) => (t === 'low' ? 'Låg' : 'Hög');
+    set('opt-gfx', true, q === 'auto' ? `Auto (${tierName(qualityInfo().tier)})` : tierName(q));
     const ctl = !!$('pause')?.classList.contains('ctl');
     set('opt-controls', true, ctl ? 'Dölj' : 'Visa');
   },
@@ -617,42 +632,64 @@ export const hud = {
   // World-anchored labels, called every frame with [{ x, y, z, text, cls }] (cls: violation |
   // smitare | reported | neighbour | errand | plain). Off-screen / behind-camera items are hidden;
   // far ones shrink, and the background ones (reported, plain, neighbour) also fade. The things
-  // Ove is hunting stay readable at any distance. Pass [] or null to clear.
+  // Ove is hunting stay readable at any distance. Identical labels that would sit on top of each
+  // other (two cars on the same walkway) become one: "2 × BIL I BILFRITT OMRÅDE". Pass [] or null to
+  // clear. Nothing here allocates per frame once the pools have grown.
   tags(list) {
     const pool = this._tagPool;
     const W = window.innerWidth, H = window.innerHeight;
     const cp = camera.position;
     const u = this.ui || 1;
+    const items = (this._tagItems ||= []);
     const placed = (this._tagPlaced ||= []);
     placed.length = 0;
-    let used = 0;
+    let ni = 0;
     if (list) for (const t of list) {
       _v.set(t.x, t.y, t.z).project(camera);
       if (_v.z > 1 || Math.abs(_v.x) > 1.08 || Math.abs(_v.y) > 1.08) continue;
-      let e = pool[used];
+      const x = (_v.x * 0.5 + 0.5) * W, y = (-_v.y * 0.5 + 0.5) * H;
+      const d = Math.hypot(t.x - cp.x, t.y - cp.y, t.z - cp.z);
+      // the same label close by on screen: count it in, keep the nearer one's place
+      let same = null;
+      for (let k = 0; k < ni; k++) {
+        const q = items[k];
+        if (q.text === t.text && q.cls === (t.cls || 'plain') && Math.abs(q.x - x) < 120 * u && Math.abs(q.y - y) < 46 * u) { same = q; break; }
+      }
+      if (same) { same.n++; if (d < same.d) { same.x = x; same.y = y; same.d = d; same.op = t.opacity; } continue; }
+      const it = items[ni] || (items[ni] = {});
+      ni++;
+      it.text = t.text; it.cls = t.cls || 'plain'; it.x = x; it.y = y; it.d = d; it.n = 1; it.op = t.opacity;
+    }
+    for (let k = 0; k < ni; k++) {
+      const t = items[k];
+      let e = pool[k];
       if (!e) {
         e = el('div', 'tag3d', this.tagsEl, '<span><i></i><em></em></span>');
         e._em = e.querySelector('em'); e._em.style.fontStyle = 'normal';
+        e._pl = { e, x: 0, y: 0, w: 0, h: 0, d: 0, sc: 1 };
         pool.push(e);
       }
-      used++;
-      const cls = 'tag3d ' + (t.cls || 'plain');
+      const cls = 'tag3d ' + t.cls;
       if (e._cls !== cls) { e._cls = cls; e.className = cls; }
-      if (e._text !== t.text) { e._text = t.text; e._em.textContent = t.text; e._w = 0; }
-      const d = Math.hypot(t.x - cp.x, t.y - cp.y, t.z - cp.z);
+      const text = t.n > 1 ? `${t.n} × ${t.text}` : t.text;
+      if (e._text !== text) { e._text = text; e._em.textContent = text; e._w = 0; }
       const lim = TAG_FADE[t.cls] || TAG_FADE.plain;
-      const op = t.opacity ?? clamp(1.25 - d / 40, lim[0], 1);
-      const sc = clamp(1.12 - d / 90, lim[1], 1);
-      e.style.display = '';
-      e.style.opacity = op.toFixed(2);
-      e.style.zIndex = String(1000 - Math.round(d));
+      const op = t.op ?? clamp(1.25 - t.d / 40, lim[0], 1);
+      const sc = clamp(1.12 - t.d / 90, lim[1], 1);
+      if (e.style.display) e.style.display = '';
+      const ops = op.toFixed(2);
+      if (e._op !== ops) { e._op = ops; e.style.opacity = ops; }
+      const z = 1000 - Math.round(t.d);
+      if (e._z !== z) { e._z = z; e.style.zIndex = String(z); }
       // Unscaled on-screen size, measured once per text (the label is zoomed by --ui).
-      if (!e._w) { const r = e.firstChild.getBoundingClientRect(); const k = e._sc || 1; e._w = r.width / k || 120 * u; e._h = r.height / k || 22 * u; }
-      placed.push({ e, x: (_v.x * 0.5 + 0.5) * W, y: (-_v.y * 0.5 + 0.5) * H, w: e._w * sc, h: e._h * sc, d, sc });
+      if (!e._w) { const r = e.firstChild.getBoundingClientRect(); const k2 = e._sc || 1; e._w = r.width / k2 || 120 * u; e._h = r.height / k2 || 22 * u; }
+      const pl = e._pl;
+      pl.x = t.x; pl.y = t.y; pl.w = e._w * sc; pl.h = e._h * sc; pl.d = t.d; pl.sc = sc;
+      placed.push(pl);
     }
     // Labels that would overlap (JIMMY on top of BIL I BILFRITT OMRÅDE): the nearer one stays,
     // a farther one moves up above it (at most three labels' worth).
-    placed.sort((a, b) => a.d - b.d);
+    placed.sort(byDist);
     for (let i = 0; i < placed.length; i++) {
       const it = placed[i], y0 = it.y;
       for (let pass = 0; pass < 4; pass++) {
@@ -668,7 +705,7 @@ export const hud = {
       e._sc = it.sc;
       e.style.transform = `translate(${it.x.toFixed(1)}px, ${it.y.toFixed(1)}px) scale(${it.sc.toFixed(3)})`;
     }
-    for (let k = used; k < pool.length; k++) if (pool[k].style.display !== 'none') pool[k].style.display = 'none';
+    for (let k = ni; k < pool.length; k++) if (pool[k].style.display !== 'none') pool[k].style.display = 'none';
   },
 
   // ------------------------------------------------------------------------------------------
@@ -849,7 +886,7 @@ export const hud = {
     const rows = list.slice(-60).map((e) => {
       const cls = e.escaped ? ' escaped' : e.caught ? ' caught' : '';
       const note = e.escaped ? ' <small>(smet)</small>' : e.caught ? ' <small>(tagen)</small>' : '';
-      return `<div class="log-entry${cls}"><span class="le-time">${esc(nbTime(e.time))}</span><span class="le-plate">${esc(e.plate || '')}</span><span class="le-text"><span class="le-t">${esc(KIND_SHORT[e.kind] || e.text || e.kind || '')}</span>${note}</span><span class="le-mark">${e.escaped ? '–' : TICK_SVG}</span></div>`;
+      return `<div class="log-entry${cls}"><span class="le-time">${esc(nbTime(e.time))}</span><span class="le-plate">${esc(e.plate || '')}</span><span class="le-text"><span class="le-t">${esc(kindShort(e.kind) || e.text || e.kind || '')}</span>${note}</span><span class="le-mark">${e.escaped ? '–' : TICK_SVG}</span></div>`;
     }).join('');
     const done = list.filter((e) => !e.escaped).length;
     page.innerHTML = `<div class="log-head">Oves anteckningsbok</div><div class="log-sub">${list.length ? `Anmälda felparkeringar: ${done}` : 'Anmälda felparkeringar'}</div>${rows || '<div class="log-empty">Inga anteckningar än.<br>Misstänkt lugnt.</div>'}`;
@@ -878,7 +915,7 @@ export const hud = {
         plate: o.plate || '',
         place: o.place || 'Inom området',
         time: nbTime(o.time),
-        text: o.text || KIND_TEXT[o.kind] || o.kind || '',
+        text: o.text || kindText(o.kind) || o.kind || '',
         sign: 'Ove',
       };
       const KEYS = ['plate', 'place', 'time', 'text', 'sign'];

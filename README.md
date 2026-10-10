@@ -16,12 +16,18 @@ nysnö, riktiga texturer.
 make run           # installerar beroenden vid behov, startar http://127.0.0.1:8790 och öppnar sidan
 ```
 
-Klicka på **Spela**. `make serve` startar bara servern, `PORT=9000 make run` väljer en annan port.
+Klicka på **Spela**. Finns det ett sparat spel står det **Fortsätt** (med dagen du är på), och
+**Nytt spel** under knappen börjar om (två klick: det sparade spelet raderas). **Kontroller** visar
+tangenterna. `make serve` startar bara servern, `PORT=9000 make run` väljer en annan port.
 Modulerna kräver en HTTP-server: `file://` fungerar inte. Typsnitten ligger inbäddade, så spelet
 behöver inget nätverk.
 
-URL-val: `?fresh` struntar i det sparade spelet, `?mission=N` börjar på dag N+1 (0–6), `?lowgfx`
-ger enklare grafik (går även att växla i pausmenyn).
+URL-val: `?fresh` struntar i det sparade spelet, `?mission=N` börjar på dag N+1 (0–6), `?q=auto`,
+`?q=high` eller `?q=low` väljer grafiknivå (`?lowgfx` = låg).
+
+**Grafik** i pausmenyn växlar Auto → Hög → Låg. Auto är förvalt: spelet väljer själv efter datorn
+(låg på inbyggda grafikkretsar, och det går ner till låg om bilderna blir för långsamma) och visar
+vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 
 ## Kontroller
 
@@ -31,7 +37,7 @@ ger enklare grafik (går även att växla i pausmenyn).
 | Mus | titta | titta |
 | Shift | rask gång | |
 | Mellanslag | hoppa (ett litet hopp) | handbroms |
-| E | prata, kliva i, interagera (håll) | kliva ur |
+| E | prata, kliva in, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll, rutan nere, i krypfart) |
 | J / klick | sparka (på däcket) | |
 | H | | tuta |
@@ -39,24 +45,32 @@ ger enklare grafik (går även att växla i pausmenyn).
 | M | stor karta | stor karta |
 | N | ljud av/på | ljud av/på |
 | R | fast? tillbaka till vägen | fast? tillbaka till vägen |
-| Esc | paus (med Oves anteckningsbok) | paus |
+| Esc / P | paus (med Oves anteckningsbok) | paus |
+| Q | ge upp, när ett uppdrag har misslyckats | ge upp |
 
-En handkontroll fungerar också (A hoppa/handbroms, B anteckna, X sparka, Y interagera, triggers kör).
+En handkontroll fungerar också (A hoppa/handbroms, B anteckna, X sparka, Y interagera, avtryckarna
+gasar och bromsar, Start paus, B ger upp efter ett misslyckat uppdrag). En kontroll utan analoga
+avtryckare kör med vänster spak: framåt gasar, bakåt bromsar. Spelet pausar också när fliken döljs
+eller fönstret tappar fokus.
 
 ## Spelet
 
-- **Patrullen.** Ett tiotal felparkeringar finns alltid någonstans: bil i bilfritt område, på
+- **Saaben** står framför Oves garage vid boendeparkeringen, söder om radhusen (gå ut mot
+  Solrosvägen). Går den sönder står det en ny där när du kommer tillbaka.
+- **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket
-  (Reg.nr, Plats, Tid, Överträdelse) och stämplar ANMÄLD. +Ordning, +10 kr. Gå inte iväg, och
+  (Reg.nr, Plats, Tid, Överträdelse) och stämplar ANMÄLD. +7 Ordning, +10 kr. Gå inte iväg, och
   svara inte i telefon mitt i.
 - **Smitare.** Ibland sitter föraren kvar i bilen och gasar iväg när Ove börjar skriva. Ta en bil,
   knuffa till smitaren eller håll dig tätt bakom tills den ger upp: **TAGEN!** Tappar du den: **SMET!**
 - **Ordning i området.** Mätaren uppe till höger sjunker med varje felparkering som står kvar, och
-  med allt Ove själv ställer till med (kör inom området, har sönder saker, kör på folk). Går den till
-  noll blir det **KAOS I OMRÅDET** och extra föreningsmöte. Fyller du den: **ORDNING OCH REDA**.
-- **Avbrott.** Telefonen ringer. Anita, Parvaneh, Jimmy, Adrian, Patrick... Elementet piper,
-  någon har låst sig ute, katten har rymt, Rune har rullat iväg. Hjälp till innan tålamodet tar slut.
+  med allt Ove själv ställer till med: kör inom området (−1 Ordning i sekunden, det står nere i
+  mitten så länge bilen är där), har sönder saker, kör på folk. Går den till noll blir det **KAOS I
+  OMRÅDET** och extra föreningsmöte. Fyller du den: **ORDNING OCH REDA**, +100 kr.
+- **Avbrott.** Telefonen ringer. Anita, Parvaneh, Jimmy, Adrian, Patrick... Det klickar i
+  elementet, någon har låst sig ute, katten har rymt, Rune har rullat iväg. Hjälp till innan
+  tålamodet tar slut. Den som följer med Ove går i hans spår.
 - **Till fots** går Ove, går raskt och sparkar på däck. Han har åsikter om de flesta bilmärken.
 - **Kronor och samlarsaker.** Pantburkar (1 kr), belöningar, sju Saab-emblem och sju av Sonjas
   fotografier gömda i stan. Allt Ove har sönder betalar han själv.
@@ -66,7 +80,8 @@ En handkontroll fungerar också (A hoppa/handbroms, B anteckna, X sparka, Y inte
 
 Varje dag har en granne något Ove måste hjälpa till med. Grannen står vid sitt hus med en
 markering över huvudet; gå fram och tryck **E**. Nästa dag börjar när du har patrullerat en stund
-(två anmälningar till, eller en dryg minut).
+(tre anmälningar till, eller en och en halv minut utan ärenden). Dagen varar från halv elva till
+halv tre.
 
 1. **Släpkärran** – de nya grannarna kan inte backa med släp.
 2. **Sjukhuset** – en stege, en adventsstjärna och någon som inte har körkort.
@@ -117,6 +132,7 @@ PORT=8791 node tools/shot.mjs m5race        # dag 5:s race med tangenterna: mås
 PORT=8791 node tools/shot.mjs m7chase       # dag 7: Škodan ska hinna ikapp av sig själv
 PORT=8791 node tools/shot.mjs m4cat         # dag 4: katten med tangenterna (tålamod, inte fart)
 FROM=4 PORT=8791 node tools/shot.mjs story  # berättelsen från dag 5
+PORT=8791 node tools/shot.mjs titlecheck quality tabhide gamepad corruptsave   # titel, grafikval, paus, handkontroll, sparfiler
 ```
 
 ## Tillgångar och tack

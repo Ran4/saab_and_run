@@ -37,15 +37,22 @@ with no errors; `story` was run against it).
   under it, toasts under those, objective top-centre, minimap bottom-left (round, 210 px), Saab
   speedometer bottom-right (196 px), prompt bottom-centre, notebook rises from the bottom edge
   right of centre, banners at 31 % height on a soft dark band.
-- **Banners** sit on a flat dark band (`#banner::before`: `--band` colour, masked to fade out
-  left/right/top/bottom, `backdrop-filter: blur(3px)`), so they read over white façades and snow.
+- **Banners** sit on a light dark band (`#banner::before`: `--band` rgba(12,15,18,0.45), bad/chaos
+  rgba(28,12,12,0.5); masked to fade out left/right and over 70 px top/bottom, the band 30 px taller
+  than the banner; **no blur** since phase 4: the blurred 0.7 band read as a smoke smudge), so they
+  read over white façades and snow.
   The headline is always white; `bad`/`chaos`/`shame` tint the band dark red and colour the rules
   and kicker, `good` sage, `mission` amber. **`stamp`** (ANMÄLD / TAGEN!) is different: a red
   rubber stamp inked on a slip of notebook paper (`.banner-main` is the slip, `.stamp-ink` the
   ink; showBanner builds that markup itself).
-- Title (`#title`): left: road sign (red ring, car), "SAAB & RUN", "En man som heter Ove" in
-  Caveat, tagline "Det är förbjudet att köra bil inom området.", **Spela**; right: the controls
-  table from DESIGN 4.6 (one column, no table, under 980 px). Pause (`#pause`): Fortsätt, Musik /
+- Title (`#title`, phase 4): the scene is the picture (main.js frames Ove beside his Saab in front of
+  his garage in the right half). Left: road sign (red ring, car), "SAAB & RUN", "En man som heter
+  Ove" in Caveat, tagline "Det är förbjudet att köra bil inom området.", **Spela** (with a save:
+  **Fortsätt** with a second line "Dag N · Veckodag", `#play.cont`) and a small ghost button
+  **Kontroller** (`#title-ctl`: toggles `#title.ctl`, which fades in the controls table from DESIGN
+  4.6 on the right; a click on the table closes it; under 980 px the table takes the card's place);
+  under them `#loading` and, with a save, the link-style **Nytt spel** (`#newgame`, two clicks:
+  "Säker? Klicka igen", then `resetSave`). The shade is white on the left 30 %, gone by 70 %. Pause (`#pause`): Fortsätt, Musik /
   Ljud / Grafik toggles, **Kontroller** (Visa/Dölj: swaps the notebook page for a copy of the
   title's controls table, `#pause-controls`, cloned by hud.js), Radera sparat spel, and Oves
   anteckningsbok (a paper page, `hud.renderLog`). The card is a fixed grid (300 + 548 px); the
@@ -58,14 +65,19 @@ with no errors; `story` was run against it).
 ## index.html contract (ids main.js uses)
 
 `#app` (canvas container), `#hud` (filled by `hud.init()`), `#title`, `#play` (disabled until
-ready), `#loading` (main.js writes loading text — **still English in old main.js**), `#pause`
+ready; main.js's `setupTitle` turns it into Fortsätt), `#title-ctl` (hud.js), `#newgame` (main.js,
+hidden without a save), `#loading` (main.js writes loading text), `#pause`
 (main.js toggles class `show`), `#resume`. `#pause-controls` and `#opt-controls` are hud.js's.
 The visible toggles `#opt-music`, `#opt-sound`, `#opt-gfx`, `#opt-reset` are **wired by hud.js
 itself** (no main.js code needed). `#music`, `#sound`, `#reset` still exist but are hidden — only
 so the old main.js's `getElementById(...).addEventListener` doesn't crash; the new main.js should
 not wire them (they can be deleted once main.js no longer references them).
-Settings (music, sound, gfx) persist in `localStorage['saab-and-run-settings']` and are applied
-in `hud.init()` (a stored 'low' gfx is not applied when the URL has `?lowgfx`).
+Settings persist in `localStorage['saab-and-run-settings']` (`music`, `sound`, and `quality` once the
+player has chosen one) and are applied in `hud.init()`. **Grafik** (phase 4) cycles Auto → Hög → Låg
+(`setQuality({ auto: 'high', high: 'low', low: 'auto' }[getQuality()])`); the label is "Auto (Hög)" /
+"Auto (Låg)" from `qualityInfo().tier`, or "Hög" / "Låg", re-read whenever the menu opens. A saved
+`quality` is applied unless the URL has `q` or `lowgfx`; the old key `gfx` counts only as 'low' (it was
+written as 'high' whenever any toggle changed). index.html's default label is "Auto".
 
 ## hud API
 
@@ -137,7 +149,11 @@ Prompt / toasts / banners / misc
 - `hud.setPrompt(html, hold?)` — `<b>F</b>` renders as a key cap; optional `hold` 0..1 draws a
   small progress bar (for hold-E / hold-F).
 - `hud.toast(html, cls = '', ms = auto)` — cls `radio` | `phone` | `good` | `bad` | `warn`;
-  duration scales with text length (2.6–7 s); max 4 on screen.
+  duration scales with text length (2.6–7 s); max 4 on screen. While the letterbox is down the stack
+  starts below its top bar (`body:has(#letterbox.on) #toasts`; in dialogue the bar is max(9vh, 118 px
+  × ui)): the cards used to slide under it, half cut.
+- `#prompt .pr-warn` (phase 4) — a warning chip in the prompt line (red diamond, warm text): main.js's
+  "Bilfritt område · −1 Ordning/s · Kliv ur och gå".
 - `hud.showBanner(main, sub, cls, ms = 2600, kicker = '')` — cls `good` | `bad` | `mission` |
   `count` | `stamp` | `chaos` | `final` | `shame`; **empty cls is guessed from the text**:
   ANMÄLD / TAGEN! → stamp (rubber-stamp look), SMET! → bad, KAOS I OMRÅDET → chaos, ORDNING OCH
@@ -152,7 +168,10 @@ Prompt / toasts / banners / misc
   `offFrame`, `input.pressed('skip')`, `autoDialog`). The voice is one `audio.talk(voice)` per
   **word** (at a word start, at most one per 0.22 s): a soft murmur under the text, not a blip per
   letter (DESIGN 2: "mouths barely move").
-- `hud.tags(list)` — call every frame with `[{ x, y, z, text, cls, opacity? }]`, `cls` ∈
+- `hud.kinds` — patrol.js's `KINDS` (`{ kind: [tag / log text, notebook sentence] }`), set by the
+  patrol: the notebook's Överträdelse and the pause log's short form come from it (one wording).
+- `hud.tags(list)` — call every frame with `[{ x, y, z, text, cls, opacity? }]` (identical text + cls
+  within ~120 x 46 px on screen merge into one label, "2 × …", at the nearer one), `cls` ∈
   `violation` (blue P-förbud disc), `smitare` (red), `reported` (grey with a tick), `neighbour`,
   `errand`, `plain`. Projected with the game camera, hidden off-screen/behind, shrinking with
   distance; only the background classes fade (`TAG_FADE` in hud.js: [min opacity, min scale] =
@@ -238,6 +257,9 @@ New:
   granular snow crunch**.
 - `audio.horn(on)` — dual-tone (405/498 Hz) brassy horn. `audio.honk(vol = 1, dur = 0.3)` — short
   honk for other cars (scale `vol` by distance).
+- `audio.suspend(on)` (phase 4) — suspends / resumes the whole AudioContext (main.js: a hidden
+  tab); `audio.ringing` (the bell is going) and `audio.state` (the context's state) for tests. main.js
+  stops the bell in the pause menu and rings again after it while the call is unanswered.
 - `audio.ring(on)` — an old Swedish landline (Televerket/Ericsson Dialog): one long burr per
   cycle, two bells and a ~22 Hz clapper, 1.0 s on, 3.0 s off (the real pause is ~5 s; constants
   `RING_ON`/`RING_OFF` at `scheduleRing`), loops until `ring(false)`. Through a 4.5 kHz low-pass
@@ -314,8 +336,6 @@ Round 1:
   Don't `cat` the whole style.css: its last 8 lines are ~215 KB of base64.
 - Below ~740 px wide the objective card and the side panels start to touch (the zoom bottoms out
   at 0.8); nobody plays there, but a phone layout would need its own arrangement.
-- Old main.js/missions.js still produce English strings (loading text, "Back on the road!",
-  "MISSION COMPLETE!", map labels, …) — phase 3 replaces them.
 - Portraits now frame the people agent's models well, but those faces are simple and a little
   mannequin-like at 256 px; nothing in hud.js can fix that. Re-render after the final cast lands
   (main.js must render them after the models exist; Ove's portrait key is the player's).
@@ -326,6 +346,5 @@ Round 1:
   ~35 m (smitare/violation tags no longer fade, so a far one behind a house stays visible).
 - The ANMÄLD stamp lands over the Plats/Tid lines of the notebook (as a real stamp would); the
   page leaves 1.7 s later, so nobody needs to read under it.
-- Map labels are still the old English `MAP_LABELS` from main.js (phase 3).
-- The title screen shows whatever the game camera sees behind it; a dedicated title camera shot
-  (e.g. Ove's Saab outside the garage) would make it much nicer (main.js).
+- The title shot (phase 4) is fixed relative to the Saab's home spot and the sun's azimuth; if either
+  moves, re-check it with `PORT=88xx node tools/shot.mjs titlecam` (`TCRAW=1` hides the cards).

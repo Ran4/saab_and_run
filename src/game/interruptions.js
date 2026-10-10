@@ -12,7 +12,9 @@
 //   interrupts.call                      the ringing / talking phone call or null
 //   interrupts.onPhone                   Ove has the phone at his ear
 //   interrupts.auto                      the scheduler runs (main.js: off in ?test unless &calls)
-//   TEMPLATES                            the nine errands (id, who, title, lines, stages ...)
+//   interrupts.ringing                   the phone is ringing and nobody has answered yet
+//   TEMPLATES                            the nine errands (id, who, title, lines, stages ...; `after`:
+//                                        only once that many story days are done)
 
 import { CHARS } from '../actors/models.js';
 import { lm } from '../world/layout.js';
@@ -34,8 +36,8 @@ function snowSpots(where) {
 
 export const TEMPLATES = [
   {
-    id: 'element', who: 'anita', title: 'Elementet piper', patience: 90,
-    lines: ['Ove? Det är Anita. Förlåt att jag stör.', 'Elementet hos oss piper igen. Rune blir så orolig av det.'],
+    id: 'element', who: 'anita', title: 'Elementet klickar', patience: 90,
+    lines: ['Ove? Det är Anita. Förlåt att jag stör.', 'Det klickar i elementet hos oss igen. Rune blir så orolig av det.'],
     ove: 'Jaja. Jag kommer.',
     stages: () => [holdAt({ at: 'runeHouse', secs: 3, label: 'Lufta elementet', text: 'Lufta elementet hos Anita och Rune', work: 'wall' })],
     thanks: 'Tack, Ove. Du är snäll, vad du än säger.', fail: 'Det gör inget, Ove. Vi tar på oss en tröja till.',
@@ -73,13 +75,13 @@ export const TEMPLATES = [
     ove: 'Klart jag har.',
     stages: () => [
       fetch({ at: 'oveHouse', item: 'key', label: 'reservnyckeln', text: 'Hämta reservnyckeln hemma hos dig', rMin: 0.3, rMax: 1.0 }),
-      holdAt({ at: 'parvanehHouse', secs: 1.5, label: 'Låsa upp', text: 'Lås upp hos Parvaneh och Patrick', work: 'wall' }),
+      holdAt({ at: 'parvanehHouse', secs: 1.5, label: 'Lås upp', text: 'Lås upp hos Parvaneh och Patrick', work: 'wall' }),
     ],
     thanks: 'Tack, Ove! Jag ska aldrig mer... ja. Tack.', fail: 'Det är lugnt, Ove. Jag klättrade in genom fönstret.',
   },
   {
     id: 'rune', who: 'anita', title: 'Rune har rullat iväg', needs: ['rune'], patience: 130,
-    lines: ['Ove... Det är Anita. Rune är borta.', 'Han rullade iväg medan jag hängde tvätt. Han kan inte ha kommit långt.'],
+    lines: ['Ove... det är Anita. Rune är borta.', 'Han rullade iväg medan jag hängde tvätt. Han kan inte ha kommit långt.'],
     ove: 'Jag letar.',
     stages: () => [escort({ who: 'rune', to: 'runeHouse', push: true, max: 80, findText: 'Hitta Rune. Han kan inte ha kommit långt.', bringText: 'Rulla hem Rune till Anita', hello: '...Ove?' })],
     thanks: 'Tack, Ove. Jag vet inte vad vi skulle göra utan dig.', fail: 'Grannarna hittade honom vid busshållplatsen. Han frös.',
@@ -87,19 +89,21 @@ export const TEMPLATES = [
   {
     id: 'skotta', who: 'anita', title: 'Snöskottning', needs: ['rune'], patience: 100,
     lines: ['Ove, det är Anita igen. Förlåt.', 'Det har drivit igen framför dörren. Rune kommer inte ut med rullstolen.'],
-    ove: 'Hmpf. Var är spaden?',
+    ove: 'Hmpf. Jag tar min egen snöskyffel.',
     stages: () => [holdAt({ spots: snowSpots('runeHouse'), secs: 1.6, label: 'Skotta', text: 'Skotta framför Anitas och Runes dörr', mounds: true, work: 'shovel' })],
     thanks: 'Nu kommer han ut igen. Tack, Ove.', fail: 'Vi tar det i morgon, Ove.',
   },
   {
-    id: 'katten', who: 'sara', title: 'Katten har rymt', needs: ['sara'], patience: 120,
-    lines: ['Ove! Det är Sara. Katten har rymt igen!', 'Han sprang mot cykelförrådet! Du MÅSTE hitta honom!'],
+    // Only once the cat lives at Ove's (day 4: "Den får stanna. Tills vidare."), and it is his cat
+    // that has run off; his "Det är inte min katt." is denial now.
+    id: 'katten', who: 'sara', title: 'Katten har rymt', needs: ['sara'], patience: 120, after: 4,
+    lines: ['Ove! Det är Sara. Din katt har rymt!', 'Han sprang mot cykelförrådet! Du MÅSTE hitta honom!'],
     ove: 'Det är inte min katt.',
     stages: () => [
       catchCat({ near: 'bikeShed', text: 'Fånga katten vid cykelförrådet' }),
       goto({ who: 'sara', radius: 2.4, text: 'Bär hem katten till Sara', onFoot: true }),
     ],
-    thanks: 'Du hittade honom! Ove, du är världens bästa!', fail: 'Han kom hem själv. Men han var jättekall.',
+    thanks: 'Du hittade honom! Ove, du är världens bästa!', fail: 'Han sprang hem till dig själv. Men han var jättekall.',
   },
   {
     id: 'skjuts', who: 'jimmy', title: 'Skjuts till jobbet', patience: 150,
@@ -108,7 +112,7 @@ export const TEMPLATES = [
     stages: () => [
       // He waits at the bus stop (the bus has gone), out of sight of the Saab, and he rides: a
       // walk to centrum with Ove doesn't count.
-      pickup({ who: 'jimmy', at: 'busStop', needCar: true, text: 'Hämta Jimmy vid busshållplatsen (med bil)', carText: 'Jimmy väntar vid busshållplatsen. Ta bilen.', hello: 'Tjena! Fin Saab.' }),
+      pickup({ who: 'jimmy', at: 'busStop', needCar: true, text: 'Hämta Jimmy med bil vid busshållplatsen', carText: 'Jimmy väntar vid busshållplatsen. Ta bilen.', hello: 'Tjena! Fin Saab.' }),
       dropoff({ who: 'jimmy', at: 'centrum', radius: 14, needCar: true, carText: 'Jimmy ska åka bil, inte gå.', text: 'Skjutsa Jimmy till centrum', bye: 'Tack, Ove! Du är en klippa!' }),
     ],
     thanks: 'Jag kom i tid! För första gången!', fail: 'Jag tog bussen till slut. Den var full.',
@@ -134,6 +138,8 @@ export class Interruptions {
   }
 
   get stage() { return this.active?.stage || null; }
+  // Ringing, not yet answered (the pause menu stops the bell and starts it again after).
+  get ringing() { return !!this.call && this.call.k === 0; }
 
   update(dt) {
     const g = this.g;
@@ -184,6 +190,7 @@ export class Interruptions {
 
   available(t) {
     const g = this.g;
+    if (t.after && g.missions.index < t.after) return false;
     // Everyone involved has to be around (not riding in a mission car, not busy elsewhere).
     for (const k of [t.who, ...(t.needs || [])]) { const n = g.npc(k); if (n && (n.busy || n.car || n.state === 'hidden')) return false; }
     return true;
@@ -292,9 +299,10 @@ export class Interruptions {
     setTimeout(() => g.radio(tpl.who, tpl.fail), 900);
   }
 
-  // A story mission starts: drop the errand without blame.
+  // A story mission starts: drop the errand without blame. A call cut off by it (Ove walked up to the
+  // day's giver while it rang) is tried again a good while later, never right after the scene.
   abort() {
-    if (this.call && !this.call.radio) { audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; }
+    if (this.call && !this.call.radio) { audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; this.nextT = Math.max(this.nextT, 45); }
     if (this.active) { this.finish(); this.nextT = 45; }
   }
 

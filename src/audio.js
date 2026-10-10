@@ -332,6 +332,8 @@ export const audio = {
   musicOn: true,
   gear: 1,          // the engine's current fake gear (read-only, for anyone curious)
   get ready() { return !!ctx; },
+  get ringing() { return !!S?.ringer; },          // the landline bell is going (tests)
+  get state() { return ctx ? ctx.state : 'none'; }, // the AudioContext's state (tests)
 
   init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -340,6 +342,14 @@ export const audio = {
     ctx = new AC();
     S = setup(ctx);
     if (this.musicOn) startMusic();
+  },
+
+  // Everything stops while the tab is hidden (music, engine, a ringing phone: all of it is scheduled
+  // on the context's clock, so it simply waits) and goes on when it is shown again.
+  suspend(on) {
+    if (!ctx) return;
+    this.suspended = !!on;
+    try { const p = on ? ctx.suspend() : ctx.resume(); p?.catch?.(() => {}); } catch (e) { /* closed */ }
   },
 
   setMuted(m) {

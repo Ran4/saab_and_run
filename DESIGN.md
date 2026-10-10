@@ -113,10 +113,14 @@ bil." "Vem backar med släp så?" He secretly cares; he never says so.
   along): 40% of those, which is about a quarter of all violations. A smitare sits with the
   engine idling (headlights, exhaust); within 22 m its tag adds "· förare i bilen", and on foot
   the prompt warns that the driver is still in the car. When Ove starts writing, the engine starts and they flee (AI `flee` mode, cruise 18–22).
-  **Pursuit:** HUD shows `SMITARE` with a "motstånd" bar (100). Ramming them (impact > 3)
+  **Pursuit:** HUD shows `SMITARE` with an "Ork" bar (100). Ramming them (impact > 3)
   takes `impact × 4`; staying within 12 m drains 6/s (Ove reads the plate). At 0: they pull over
-  with hazard lights, banner **TAGEN!**, auto-anmäld: +12 Ordning, +50 kr. If they get more than
-  110 m away for 5 s: **SMET!**, −8 Ordning. One pursuit at a time.
+  with hazard lights, banner **TAGEN!**, auto-anmäld: +12 Ordning, +50 kr (day 6's Škoda, stopped,
+  gets the same TAGEN! stamp). If they get more than 110 m away for 5 s: **SMET!**, −8 Ordning. One
+  pursuit at a time.
+- Ove's notebook and the pause log share one wording per violation (patrol.js `KINDS`: the tag / log
+  form and the notebook sentence, e.g. "Gästplats > 24 tim" / "Gästparkering över 24 timmar"; hud.js
+  reads them as `hud.kinds`).
 
 ### 4.2 Ordning meter (top right; replaces the Shame meter)
 `ORDNING I OMRÅDET`, 0–100, starts at 50. Drains 0.022/s per active unreported violation; one
@@ -125,32 +129,38 @@ KAOS (0.08 was tried first: it emptied the meter in 78 s whatever Ove did).
 +7 per report, +12 per caught smitare, +10 per completed avbrott, −10 per failed avbrott,
 −12 per pedestrian hit, −3 when Ove's car shoves a neighbour or child aside, −2…−4 per broken prop, −1/s while Ove himself drives a car inside the
 car-free zone (Anders shouts "Ove! Det är förbjudet att köra bil inom området!" — once per
-minute). At 0: **KAOS I OMRÅDET** — Anders calls an extra föreningsmöte, −50 kr (amounts under
-5 kr are not shown), meter resets to 35. Reaching 100: **ORDNING OCH REDA**, +100 kr (once per free-roam stretch).
+minute — and as long as Ove's car is in there the prompt line says so: "Bilfritt område · −1
+Ordning/s · Kliv ur och gå"). At 0: **KAOS I OMRÅDET** — Anders calls an extra föreningsmöte, −50 kr
+(amounts under 5 kr are not shown), meter resets to 35. Reaching 100: **ORDNING OCH REDA**, +100 kr
+(once per free-roam stretch; saved, so a reload with a full meter doesn't pay it again).
 
 ### 4.3 Avbrott — neighbours interrupt (`src/game/interruptions.js`)
 In free roam (not during story missions, which script their own), a neighbour calls every
 70–110 s (first one ~45 s after free roam begins; never while a story mission runs, never within
 40 s after one, and never as Ove walks up to the neighbour whose day it is: within 14 m of the
-giver it waits). Phone rings (`audio.ring`), `hud.incomingCall`
+giver it waits; a call cut off because a mission began is tried again 45 s or more later). Pausing
+stops the bell (it rings on after the menu while nobody has answered). Phone rings (`audio.ring`), `hud.incomingCall`
 card with portrait ("Parvaneh ringer…"), two short lines as radio toasts, Ove answers grumpily
 ("Ja?" / "Vad är det nu då?"). If Ove was writing a report, **the call cancels it** (that's the
 joke). Then a short errand with a patience timer (90–150 s) shown with `hud.setErrand`.
 Complete: +10 Ordning, +30–60 kr, a reluctant Ove line ("Hmpf."). Time out: the neighbour is
 disappointed, −10 Ordning. Errand templates (built from the same stage kinds as missions):
-1. Anita: elementet piper igen → hold E at `runeHouse` 3 s ("Lufta elementet").
+1. Anita: det klickar i elementet igen → hold E at `runeHouse` 3 s ("Lufta elementet").
 2. Parvaneh: hämta Nasanin på förskolan → pickup at `preschool` → drop at `parvanehHouse`.
 3. Jimmy: glömt mobilen i centrum → fetch item at `centrum` → bring to `jimmyHouse`.
 4. Adrian: punktering → hold E at `bikeShed` 4 s ("Laga punkteringen").
 5. Patrick: låst sig ute → fetch spare key at `oveHouse` → hold E at `parvanehHouse` 1.5 s.
 6. Anita: Rune har rullat iväg → find Rune (45–80 m away on a sidewalk), push him home.
 7. Anita: skotta framför dörren → hold E at three spots by `runeHouse`.
-8. Parvaneh's girls: katten har rymt igen → short cat chase.
+8. Sara: Oves katt har rymt ("Det är inte min katt.") → short cat chase, carry it to Sara. Only once
+   the cat lives at Ove's (after day 4: template `after: 4`); the cat by his door is gone meanwhile.
 9. Jimmy: skjuts till jobbet → pickup Jimmy at the Solrosvägen bus stop → drive him to `centrum`
    (he must arrive in the car: dropoff option `needCar`).
 
 ### 4.4 On foot
-Walk 3.2 m/s, rask gång (Shift) 5.5 m/s, one small jump (no double jump, no stomp). Children
+Walk 3.2 m/s, rask gång (Shift) 5.5 m/s, one small jump (no double jump, no stomp). People walking
+with Ove (errands) follow his trail (a point every 0.6 m) round fences and hedges, and are still
+"with him" until they have been more than 20 m behind for 2 s (beyond 35 m they give up). Children
 (cast and pedestrians) and the neighbours are never knocked over by cars; they are shoved aside,
 like Rune. A knock-down depends only on the car's own speed into the person (> 4.5 m/s), so
 walking into a parked car just stops Ove. Pushing Rune: 3.0 m/s (3.6 with Shift). **J/click:
@@ -170,13 +180,19 @@ honom hela vägen till Göteborg."). All reachable without double jumps.
 | Mus | titta | titta |
 | Shift | rask gång | |
 | Space | hoppa | handbroms |
-| E | prata, kliva i, interagera (håll) | kliva ur |
+| E | prata, kliva in, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll) |
 | J / klick | sparka (däck) | |
 | H | | tuta |
 | B | | titta bakåt |
 | M / N / R | karta / ljud / tillbaka till vägen | |
 | Esc / P (gamepad Start) | paus och fortsätt (pausmenyn släpper musen) | |
+| Q (gamepad B) | ge upp, när ett uppdrag har misslyckats | |
+
+A hidden tab or a window that loses focus pauses the game too; a hidden tab's sound is suspended.
+Gamepad: the first connected pad with the standard mapping (else a non-standard one once a button
+on it has been pressed), missing axes and buttons read 0; the triggers are the pedals, and a pad whose triggers have never moved drives with the left
+stick (forward gas, back brake).
 
 ## 5. Story — seven days (`src/game/missions.js`)
 
@@ -404,7 +420,9 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
 - `hud.setErrand(o | null)` — the avbrott panel `{ title, text, timer, bar, barLabel }`, separate
   from the mission objective.
 - `hud.tags(list)` — called every frame with `[{ x, y, z, text, cls }]`; draws world-anchored
-  labels (projected with the camera), e.g. violation tags.
+  labels (projected with the camera), e.g. violation tags. Identical labels that would overlap on
+  screen merge into one ("2 × Bil i bilfritt område"); main.js shows a neighbour's name only within
+  5 m, or for the one an E would greet / the day's giver within 12 m.
 - `hud.setClock(text)` — in-game time ("06:42").
 - `hud.renderLog(entries)` — Ove's notebook page in the pause menu, entries
   `{ plate, kind, text, time }`.
@@ -413,7 +431,18 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
 - Audio, in addition to the existing calls (all keep working): `audio.ring(on)` (old landline
   phone), `audio.pen(on)` (pencil scratching), `audio.stamp()`, `audio.doorbell()`,
   `audio.catMeow()`, `audio.alarm()` (= old `shameBell`), engine re-voiced as a Saab four,
-  melancholic synthesized piano/strings music instead of the walking bass.
+  melancholic synthesized piano/strings music instead of the walking bass; `audio.suspend(on)` (the
+  whole context, for a hidden tab), `audio.ringing` / `audio.state` (tests).
+- Title (phase 4): the scene is the picture: Ove beside his Saab, rolled out of its bay in front of
+  his garage, in the right half; the left holds the title card with **Spela** (or, with a save,
+  **Fortsätt** + "Dag N · Veckodag" and a small two-click **Nytt spel**) and a **Kontroller** button
+  (`#title-ctl`, toggles `#title.ctl`) that brings up the controls table. The start toasts only show
+  on a new game.
+- Pause menu **Grafik**: Auto → Hög → Låg (gfx `setQuality`); the label shows what Auto picked
+  ("Auto (Hög)" / "Auto (Låg)"). Saved as `quality` in `saab-and-run-settings` once chosen (an old
+  `gfx: 'low'` still counts, `gfx: 'high'` is ignored); the URL's `q` / `lowgfx` win.
+- Banners sit on a light band (rgba 0.45, no blur, 70 px fades); toasts move below the letterbox's top
+  bar while it is down.
 
 ## 10. Rendering contract (`src/gfx.js`, `src/game/fx.js`, `src/game/markers.js`)
 

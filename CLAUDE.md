@@ -14,7 +14,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `montage a.png b.png -tile 2x2 -geometry 640x360+4+4 sheet.png` makes contact sheets.
 - Scenarios: `start views aerial drive tow walk talk smash traffic cruise title` (shot.mjs) plus
   every `tools/scenarios/<area>.mjs` (same name overrides): gameplay.mjs `report pursuit interrupt
-  errands collect patrol freeroam stages`, story.mjs `story m1..m7 gate aftermath` plus the no-warp
+  errands collect patrol freeroam stages` and phase 4's `gperf carcycle gamepad corruptsave tabhide
+  titlecheck quality recycle smalltalk tagmerge companion p4ui titlecam` (notes/integration.md), story.mjs `story m1..m7 gate aftermath` plus the no-warp
   checks `m5race m7chase m4cat lotwalk hospdrive retry`, cars.mjs, people.mjs.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
@@ -50,8 +51,13 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - The module `fx` (particles) is easy to shadow with a local `const fx = Math.sin(...)`.
   car.js and stages.js import it as `FX` for that reason.
 - One-shot inputs (jump, kick, E) are handled once per frame in `handleOneShots`, continuous
-  ones in `fixedStep` (60 Hz). `input.pressed` stays true for the whole frame. A stage whose
-  `prompt()` returns `takesE` owns the E key.
+  ones in `fixedStep` (60 Hz, at most 2 steps per frame). `input.pressed` stays true for the whole
+  frame. A stage whose `prompt()` returns `takesE` owns the E key. Give up is the `giveUp` action
+  (Q, pad B).
+- `game.removeCar(car)` disposes the car (`car.dispose()`): never add a removed car again. Move cars
+  only with `place()` or x/z/yaw + `sync()`. "Cars near x" in per-step code: `g.byX()` / `g.firstX()`
+  (the cars sorted by their west edge), not a loop over all ~160. Traffic AI and pedestrians beyond
+  120 m from Ove step at 30 Hz; pedestrians beyond 190 m are out of the scene graph.
 
 ## Gameplay systems (details in notes/integration.md and notes/story.md)
 
@@ -73,5 +79,5 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   caption)` is the cut to black (time skips, the race grid, "Ove går in och luftar elementen").
   `game.storyWorld()` applies what the story changed (Patrick's cast after day 2, the cat by Ove's
   door after day 4, Adrian's Saab in the lot after day 5) at load and after each day.
-- Save: `localStorage['saab-and-run-v1']` (kr, day, collectibles, patrol). Settings separately in
-  `saab-and-run-settings`.
+- Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`), every
+  field sanitised on load. Settings separately in `saab-and-run-settings` (`music`, `sound`, `quality`).

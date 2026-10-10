@@ -179,9 +179,16 @@ body.bigmap-open #tags, body.bigmap-open #bubbles { display: none; }
 #prompt .pr-hold { position: relative; width: 70px; height: 3px; background: rgba(255, 255, 255, 0.2); margin-left: 6px; }
 #prompt .pr-hold i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--amber); }
 body.nb-open #prompt { opacity: 0; }
+/* Ove driving in the car-free area: what it costs, as long as he is in there. */
+#prompt .pr-warn { display: inline-flex; align-items: center; gap: 8px; color: #ffd2a1; font-weight: 600; }
+#prompt .pr-warn::before { content: ""; width: 9px; height: 9px; background: var(--red); transform: rotate(45deg); flex: none; }
 
 #toasts { position: absolute; right: 18px; top: 92px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: min(400px, calc(50vw / var(--ui) - 278px)); transition: top 0.3s; }
 body.pursuit #toasts { top: 196px; }
+/* Below the letterbox's top bar in cutscenes (9vh; in dialogue max(9vh, 118 px x --ui)): the cards used
+   to slide under it, half cut. */
+body:has(#letterbox.on) #toasts { top: calc(9vh / var(--ui) + 14px); }
+body:has(#letterbox.on):has(#dialog.show) #toasts { top: calc(max(9vh / var(--ui), 118px) + 14px); }
 .toast { padding: 9px 14px 9px 12px; font: 500 15px/1.35 var(--body); color: var(--fg); animation: toastIn 0.35s cubic-bezier(.2, .8, .2, 1); transition: opacity 0.5s, transform 0.5s; display: flex; align-items: center; gap: 10px; border-left: 2px solid rgba(241, 242, 238, 0.45); }
 .toast b { font-weight: 600; }
 .toast.out { opacity: 0; transform: translateX(16px); }
@@ -194,13 +201,14 @@ body.pursuit #toasts { top: 196px; }
 .bang { display: inline-block; width: 13px; height: 13px; background: var(--amber); transform: rotate(45deg); vertical-align: -1px; margin: 0 5px; font-size: 0; color: transparent; overflow: hidden; }
 @keyframes toastIn { from { opacity: 0; transform: translateX(18px); } }
 
-/* Banners: a headline on a soft dark band (flat in the middle, fading out to the sides, top and
-   bottom) with a light blur of the scene behind it, so it reads over white façades and snow. The
-   headline itself is always white; the class only tints the band and colours the rules and kicker. */
-#banner { --band: rgba(12, 15, 18, 0.7); position: absolute; left: 50%; top: 31%; transform: translate(-50%, -50%); opacity: 0; text-align: center; transition: opacity 0.35s; pointer-events: none; padding: 34px 70px 32px; isolation: isolate; }
-#banner::before { content: ""; position: absolute; z-index: -1; inset: 0 -190px; background: var(--band); -webkit-mask-image: linear-gradient(90deg, transparent, #000 27%, #000 73%, transparent), linear-gradient(180deg, transparent, #000 45px, #000 calc(100% - 45px), transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 27%, #000 73%, transparent), linear-gradient(180deg, transparent, #000 45px, #000 calc(100% - 45px), transparent); mask-composite: intersect; -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+/* Banners: a headline on a soft, light dark band (flat in the middle, fading out to the sides and,
+   over 70 px, to the top and bottom; no blur: the old blurred 0.7 band read as a smoke smudge), so
+   it reads over white façades and snow. The headline itself is always white; the class only tints
+   the band and colours the rules and kicker. */
+#banner { --band: rgba(12, 15, 18, 0.45); position: absolute; left: 50%; top: 31%; transform: translate(-50%, -50%); opacity: 0; text-align: center; transition: opacity 0.35s; pointer-events: none; padding: 34px 70px 32px; isolation: isolate; }
+#banner::before { content: ""; position: absolute; z-index: -1; inset: -30px -190px; background: var(--band); -webkit-mask-image: linear-gradient(90deg, transparent, #000 27%, #000 73%, transparent), linear-gradient(180deg, transparent, #000 70px, #000 calc(100% - 70px), transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 27%, #000 73%, transparent), linear-gradient(180deg, transparent, #000 70px, #000 calc(100% - 70px), transparent); mask-composite: intersect; }
 /* A cool, dark red-black: the red rules and kicker carry the colour (the old red-brown read as mud). */
-#banner.bad, #banner.shame, #banner.chaos { --band: rgba(28, 12, 12, 0.66); }
+#banner.bad, #banner.shame, #banner.chaos { --band: rgba(28, 12, 12, 0.5); }
 #banner.show { opacity: 1; }
 .banner-rule { width: 100%; height: 1px; background: rgba(255, 255, 255, 0.7); transform: scaleX(0); transition: transform 0.6s cubic-bezier(.2, .8, .2, 1); }
 #banner.show .banner-rule { transform: scaleX(1); }
@@ -359,10 +367,10 @@ body:has(#letterbox.on) .dlg-text { min-height: 0; }
 #title, #pause { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
 #title { transition: opacity 0.8s; color: var(--ink); }
 #title.gone { opacity: 0; pointer-events: none; }
-.title-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(240, 241, 238, 0.93) 0%, rgba(240, 241, 238, 0.84) 36%, rgba(240, 241, 238, 0.3) 56%, rgba(240, 241, 238, 0.06) 78%, rgba(240, 241, 238, 0) 100%); }
-/* The scene shows through on the right (main.js gives the title its own slow camera shot); only the
-   text side is softened. */
-.title-shade::before { content: ''; position: absolute; inset: 0; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 40%, transparent 60%); mask-image: linear-gradient(90deg, #000 0%, #000 40%, transparent 60%); }
+.title-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(240, 241, 238, 0.92) 0%, rgba(240, 241, 238, 0.84) 30%, rgba(240, 241, 238, 0.4) 44%, rgba(240, 241, 238, 0.08) 58%, rgba(240, 241, 238, 0) 70%); }
+/* The scene shows through on the right: main.js frames Ove beside his Saab there (its own slow
+   camera shot); only the text side is softened. The controls table comes up on request. */
+.title-shade::before { content: ''; position: absolute; inset: 0; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 32%, transparent 48%); mask-image: linear-gradient(90deg, #000 0%, #000 32%, transparent 48%); }
 .title-grid { position: relative; width: min(1200px, calc(93vw / var(--ui))); display: grid; grid-template-columns: minmax(0, 1fr) 548px; gap: 36px; align-items: center; }
 .title-card { max-width: 560px; }
 .title-sign { width: 58px; height: 58px; display: block; margin-bottom: 22px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18)); }
@@ -372,7 +380,16 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
 .t-amp { color: #9a2f22; font-weight: 500; font-size: 0.7em; }
 .t-sub { margin: 18px 0 0; font: 600 44px/1 var(--hand); color: #2e3a48; transform: rotate(-1.5deg); transform-origin: left; }
 .tag { margin: 22px 0 0; padding-top: 16px; border-top: 1px solid rgba(27, 31, 36, 0.22); max-width: 440px; font: 400 italic 19px/1.4 var(--body); color: #3a4048; }
-.title-actions { display: flex; align-items: center; gap: 22px; margin-top: 30px; }
+.title-actions { display: flex; align-items: center; gap: 14px; margin-top: 30px; }
+.title-under { display: flex; align-items: center; gap: 18px; min-height: 20px; margin-top: 12px; }
+#play small { display: block; margin-top: 6px; font: 500 12.5px/1 var(--cond); letter-spacing: 0.14em; opacity: 0.78; }
+#play.cont { padding: 12px 34px 11px; }
+.btn.ghost { font-size: 14px; padding: 12px 18px 11px; border-color: rgba(27, 31, 36, 0.5); background: rgba(244, 242, 236, 0.55); }
+#title.ctl .btn.ghost { background: var(--ink); color: var(--paper); }
+.linkbtn { font: 500 14px/1 var(--body); color: #4a5059; background: none; border: 0; padding: 4px 0; cursor: pointer; text-decoration: underline; text-decoration-color: rgba(74, 80, 89, 0.45); text-underline-offset: 3px; }
+.linkbtn:hover { color: #9a2f22; text-decoration-color: currentColor; }
+.linkbtn.confirm { color: #9a2f22; font-weight: 600; }
+.linkbtn[hidden] { display: none; }
 .btn { font: 600 17px/1 var(--cond); letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink); background: transparent; border: 1.5px solid var(--ink); border-radius: 2px; padding: 13px 26px 12px; cursor: pointer; transition: background 0.15s, color 0.15s, opacity 0.2s; }
 .btn:hover { background: var(--ink); color: var(--paper); }
 .btn.primary { background: var(--ink); color: var(--paper); padding: 15px 40px 14px; font-size: 19px; }
@@ -382,9 +399,12 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
 .btn.danger:hover { background: #9a2f22; color: var(--paper); }
 .btn.danger.confirm { background: #9a2f22; color: var(--paper); border-color: #9a2f22; }
 #loading { font: 500 14px/1.3 var(--body); color: #5d636b; min-height: 20px; }
-#loading.done { visibility: hidden; }
+#loading.done { display: none; }
 .fine { margin-top: 34px; font: 400 12.5px/1.4 var(--body); color: #6d727a; }
 .title-controls { background: rgba(244, 242, 236, 0.80); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-top: 3px solid var(--ink); padding: 18px 22px 18px; box-shadow: 0 10px 34px rgba(20, 26, 32, 0.16); }
+/* On the title the table waits behind the "Kontroller" button (the pause menu has its own copy). */
+#title .title-controls { background: rgba(244, 242, 236, 0.9); opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity 0.25s, transform 0.25s, visibility 0s 0.25s; }
+#title.ctl .title-controls { opacity: 1; visibility: visible; transform: none; transition: opacity 0.25s, transform 0.25s; }
 .tc-head { font: 600 12px/1 var(--cond); letter-spacing: 0.24em; text-transform: uppercase; color: #6d727a; margin-bottom: 10px; }
 .controls { width: 100%; border-collapse: collapse; font: 400 13.5px/1.25 var(--body); color: var(--ink); white-space: nowrap; }
 .controls th { text-align: left; font: 600 11px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: #6d727a; padding: 0 0 7px; border-bottom: 1px solid rgba(27, 31, 36, 0.25); }
@@ -433,7 +453,10 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
 
 @media (max-width: 980px) {
   .title-grid { grid-template-columns: 1fr; gap: 20px; }
-  .title-controls { display: none; }
+  #title .title-controls { display: none; }
+  /* narrow: the table takes the card's place (a click on it closes it) */
+  #title.ctl .title-card { display: none; }
+  #title.ctl .title-controls { display: block; cursor: pointer; }
   .title-shade { background: rgba(240, 241, 238, 0.88); }
   h1 { font-size: min(132px, calc(13vw / var(--ui))); }
 }

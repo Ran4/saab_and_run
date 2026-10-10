@@ -2,7 +2,7 @@
 // squat / dive on a soft suspension), realistic shared models (carmodels.js), lights, Swedish
 // licence plates, an optional trailer (trailer.js). See notes/cars.md for the API.
 
-import { THREE, realMesh, surfaceMaterial, MAT, camera, scene, renderer as gfxRenderer, LIGHTING } from '../gfx.js';
+import { THREE, realMesh, surfaceMaterial, MAT, camera, scene, renderer as gfxRenderer, composer, LIGHTING } from '../gfx.js';
 import { queryBlocks, obbVsBlock, obbVsObb, groundAt, topAt, RAMP } from '../world/collision.js';
 import { isRoad } from '../world/layout.js';
 import { clamp, damp, pick } from '../util.js';
@@ -1189,10 +1189,11 @@ async function doWarm(renderer, scn, cam) {
     for (const o of [c.glass, c.lights, c.glow, c.snowCap, c.snowCapLod, c.plateMesh]) if (o) o.visible = true;
   }
   // compile (the render target decides tone mapping / output colour space in the program variants:
-  // the main pass draws into the composer's target)
+  // the main pass draws into the composer's scene target, so compile with exactly that one bound -
+  // phase 4: as gfx's precompile() does)
   const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
   const prevRT = renderer.getRenderTarget();
-  renderer.setRenderTarget(rt);
+  renderer.setRenderTarget(composer?.renderTarget1 || rt);
   const roots = [group, ...extra];
   const t1 = performance.now();
   let waits = [];

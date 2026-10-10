@@ -9,8 +9,8 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
 
 ## What the game is now (free roam)
 
-- Ove starts at `oveStart` on the main walkway, 06:00. The clock runs at 15x (an in-game hour every
-  four minutes; `game.clockText()`, `game.setClock(h, m)`).
+- Ove starts at `oveStart` on the main walkway, 10:30 (phase 4; the clock is saved). The clock runs
+  at 15x (an in-game hour every four minutes; `game.clockText()`, `game.setClock(h, m)`).
 - **Patrol**: ~8 felparkeringar at the world's `violationSpots` (random type, colour and plate,
   `car.violation`), P-förbud markers on the minimap, tags over the cars within 35 m, hold **F**
   within 4 m on foot / 7 m in a car below 3 m/s: the notebook writes for 1.8 s (pencil sound),
@@ -80,9 +80,9 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   (`hideNearCamera`). On foot it swings in behind Ove after ~2.5 s without the mouse while he walks
   forward-ish. `cam.frame(a, b)` (dialogue) tries both sides square on and turned ±17°/±34°, pulls
   each candidate in to its clear part and takes the longest clear one.
-- **Title**: a slow 40 s dolly down the main walkway towards Ove, who stands writing up Patrick's
-  car and trailer in the car-free zone. `.title-shade` is now lighter on the right (the scene shows
-  between the two cards) and only blurs behind the text.
+- **Title** (phase 4): Ove beside his Saab, rolled 4.1 m out of its bay in front of his garage
+  (`titlePose`, `titleShot`), in the low sun; a slow 40 s arc in from the lot puts the two of them in
+  the right half of the picture. `start()` puts the Saab back. See "Phase 4" below.
 
 ## Game API that stages and missions use (main.js)
 
@@ -93,10 +93,11 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
 | `g.player`, `g.playerCar`, `g.focus()`, `g.focusTarget()` | Ove / his car / where the camera's subject is |
 | `g.seat(ch, car, side)`, `g.unseat(ch, x?, z?)` | sides: 1 driver, −1 front passenger, ±2 rear (uses `car.seatLocal`) |
 | `g.addBust(def, car)` | a cheap seated driver |
-| `g.addCompanion(ch, { push })`, `g.removeCompanion(ch, { walkTo })`, `g.isWithOve(ch)`, `g.boardCompanion(ch, car)`, `g.releaseNpc(ch)` | people walking with Ove: they follow him on foot (1.4 m behind), get in when he gets in (or when he stops within 9 m), get out with him; `push` = Rune, rolled 0.78 m in front of Ove (Ove's `anim.push`, walks at 2.2 m/s, can't jump or take a car); `walkTo` sends them off on foot (then they go home when nobody is looking) |
+| `g.addCompanion(ch, { push })`, `g.removeCompanion(ch, { walkTo })`, `g.isWithOve(ch)`, `g.boardCompanion(ch, car)`, `g.releaseNpc(ch)` | people walking with Ove: they follow him on foot (1.4 m behind when close, else along his trail `g.crumbs`), get in when he gets in (or when he stops within 9 m), get out with him; `isWithOve` holds while they are within 20 m, or beyond it for less than 2 s (never beyond 35 m: they stop following); `push` = Rune, rolled 0.78 m in front of Ove (Ove's `anim.push`, walks at 2.2 m/s, can't jump or take a car); `walkTo` sends them off on foot (then they go home when nobody is looking) |
 | `g.setCarrying(obj)` | something with a `.root` in Ove's arms (the cat); hidden while he drives |
 | `g.posePlayer('push' \| 'write' \| 'work', workKind)` | hold a pose for this frame (holdAt calls `('work', 'bend' \| 'low' \| 'shovel' \| 'wall')` while E is held) |
-| `g.spawnMissionCar(m, type, x, z, yaw, opts)`, `g.ensureNamedCar(name)`, `g.addCar`, `g.removeCar` | |
+| `g.spawnMissionCar(m, type, x, z, yaw, opts)`, `g.ensureNamedCar(name)`, `g.respawnNamed(name)`, `g.homeNamedCar(name)`, `g.addCar`, `g.removeCar` | `removeCar` ends with `car.dispose()` (phase 4): never re-add a removed car. `respawnNamed` puts a new named car at home (wrecks; also Adrian's Saab, which isn't in parkedCars); `homeNamedCar` does it for a dead / missing one |
+| `g.byX()`, `g.firstX(x)` | the cars sorted by their west edge (`x - radius`), re-sorted every fixed step: `for (let i = g.firstX(x0 - 2 * g._rmax); i < a.length && a[i].x - a[i].radius <= x1; i++)` = every car whose centre can be in [x0, x1] |
 | `g.freeSpot(x, z, rMin, rMax)`, `g.spotFree(x, z)`, `g.groundAt(x, z)`, `g.exitSpot(car, side)` | |
 | `g.say(target, text, secs)`, `g.radio(who, text)`, `g.shout(who, text)` | bubble / portrait toast with murmur / bubble if near + toast |
 | `g.dialog(lines)`, `g.cinematic(a, b)`, `g.endCinematic()`, `g.onFrame(fn)`, `g.offFrame(fn)`, `g.wait(s)` | unchanged |
@@ -258,13 +259,109 @@ door framed a shed wall after the tree change; day 7's did before); footsteps us
 
 ## Known gaps
 
-- NPCs walk in straight lines (following Ove, walking home, walking off after a drop-off) and slide
-  along walls; errand NPCs are teleported to where the errand needs them (Nasanin to the preschool,
-  Jimmy to the bus stop) when it starts.
+- NPCs walk in straight lines when walking home or off after a drop-off and slide along walls
+  (companions follow Ove's trail since phase 4); errand NPCs are teleported to where the errand needs
+  them (Nasanin to the preschool, Jimmy to the bus stop) when it starts.
 - Reported cars just vanish out of sight (no tow truck, no owner walking up).
-- The clock is not saved and does not move the sun.
+- The clock does not move the sun.
 - The camera hides people it ends up inside rather than avoiding them; crowns are guessed from the
   trunk (~1-1.5 m), so a wide spruce can still brush the view.
 - The cat's legs hang through Ove's forearm until `cat.hold()` exists.
 - Resuming the pause menu with Esc can't re-lock the pointer (Esc is not a user gesture): the next
   click does.
+
+## Phase 4 (fixer A: robustness, input, save, UI, small talk, the loop's cost) — what changed
+
+The list was reviews/p4_gameplay_A.json; fixer B's story/cinematics list is in notes/story.md "Phase 4".
+
+**Input (input.js).** The pad: the first connected one with `mapping === 'standard'`, else a
+non-standard one only once one of its buttons has been pressed (an accelerometer has none, and its
+resting tilt would steer Ove and spin the camera for ever); every
+axis and button is read with a default of 0 and through `Number.isFinite` (a 3-axis "pad", e.g. a
+laptop accelerometer on Linux, made `look().y` NaN: a NaN camera, black screen; 0-1 axes made Ove's
+position NaN and "collected" every can). Buttons go into fixed Float32Arrays (no garbage per frame).
+`throttle()` / `brake()`: the triggers (RT / LT) once they have been seen moving; until then (a pad
+without analogue triggers) the left stick drives: forward = gas, back = brake. New action **`giveUp`**
+(KeyQ, pad B) - missions.js's `updateFailed` uses it. camera.js ignores a non-finite look and repairs a
+non-finite yaw / pitch / boom.
+
+**Pause.** `pause(on)` also on `visibilitychange` (hidden) and window `blur` (pointer lock isn't
+always on: a resume by Esc can't re-lock), only once the game has started. A hidden tab suspends the
+AudioContext (`audio.suspend(on)`; music, engine and ring are all scheduled on its clock, so they
+wait). Pausing stops the landline bell (`audio.ring(false)`); resuming rings it again while the call
+is unanswered (`interrupts.ringing` = `call.k === 0`; the call script waits anyway) and restarts the
+pencil if a report is being written.
+
+**Save (main.js `load`, patrol.js `fromSave`).** Every field is checked: mission an integer 0-7, kr an
+integer >= 0, clock 0-1439 (else the default), emblems / photos integer ids 0-6, unlocked strings, the
+gate only between days 1-6; Ordning a finite number 0-100 (else 50), reports an integer, the log only
+objects with string fields. `reda` (ORDNING OCH REDA paid) is saved and restored (and taken as paid if
+the meter is full): it paid +100 kr on every reload with a full meter. `game.isNewGame` (no day done,
+no report) decides the title's button and the start toasts.
+
+**Cars.** `removeCar` ends with `car.dispose()` (plate, lamps, trailer, bust; 60 spawn/remove cycles:
++90 geometries / +14 textures / +7 programs before, +21 / +2 / 0 now, flattening out: lazily built
+shared things; a control run without cars: 0). `addBust` gives the bust fixed matrices. Named cars are
+never gone: a wreck (> 20 s, > 60 m from Ove, home out of sight too, free roam) is replaced at home
+(`respawnNamed`), and `homeNamedCar` replaces a dead or missing one (the wrecked Saab used to be gone
+until a reload). A borrowed traffic car (`wasTraffic`, set in `enterCar`) is removed once Ove left it
+30 s ago and is 120 m away (free roam only; every carjack used to add a car for good). `warmCars`
+(cars) is called during loading, and car.js now compiles it with the composer's scene target bound
+(gfx's precompile does the same); the first Saab entry compiles no program.
+
+**Loading.** At "Tar porträtt…": `uploadGeometry()`, `precompile()` and `warmCars()` start, and the
+loop waits for them: first frame ~0.4 s (rload: 415 ms, 141 programs; was ~1 s).
+
+**The loop's cost.** At most 2 fixed steps per frame (`MAX_STEPS`; a 4-step catch-up made slow
+machines slower). The cars are kept sorted by their west edge (`byX`, insertion sort once per step)
+and every "cars near here" query in the step uses it: car-car contacts are a sweep along x that skips
+pairs where both cars sleep (12,720 pair tests -> a few hundred), and `carsVsPeople`, `carRoofAt`
+(every character, every step), `obstacleAhead` (AI) and `carThreat` (pedestrians) look only at cars
+in their x band. Traffic AI more than 120 m from Ove and pedestrians that far away update at 30 Hz
+(half on even, half on odd steps; car physics stays at 60 Hz; chases, smitare and mission drivers are
+never throttled). Pedestrians beyond 190 m (not drawn) are taken out of the scene graph: their ~45
+bones each were 742 of the scene's 1,887 auto-updating nodes. Fewer per-frame allocations: scratch
+lists for tags, minimap markers, the prompt; `patrol.tags(out)` / `markers(all, out)`; the route is
+planned every 4th frame; no object spread for the camera; `input.look()` returns one object; hud.tags
+pools everything.
+gperf (1280x720, RTX 4070, other agents on the machine; mean/p95 ms): stepWorld 1.46/2.50 -> 0.5-0.6/
+0.8-0.9 per step, update 2.59/4.20 -> 1.7-2.0/2.3-3.3, minor GCs 6.7/s (2.7 ms/s) -> 3.2/s (1.4 ms/s);
+at 3x CPU throttle update was 4.5 ms with up to 3 steps per frame.
+
+**Companions.** `isWithOve` with hysteresis (see the API table): the forskolan objective flipped
+between "Du glömde Nasanin!" and the drop-off ~35 times in 70 s. Companions follow Ove's trail
+(`g.crumbs`: a point every 0.6 m, the last 48) when more than 3.2 m behind; one pressed against
+something for 2.5 s while he walks on is put on the trail ~2 m behind him once neither spot is on
+screen (`onScreen`). `companion` scenario: 120 s walked by a route-following bot, 0 flips, never more
+than 3.7 m behind.
+
+**While Ove drives** player.x/z/y follow the car every step (they stayed where he got in: neighbours
+were sent home in plain view); `placeNpcs` and `syncAll` use Ove's car when he drives.
+
+**Calls.** A call cut off because a mission began (Ove walked up to the giver while it rang) is
+retried 45 s or more later (B already keeps calls 14 m from the giver and 40 s after a mission).
+
+**HUD.** Car-free chip in the prompt line while Ove's car is in the car-free area in free roam
+("Bilfritt område · −1 Ordning/s · Kliv ur och gå", `.pr-warn`). Neighbours' name tags only within
+5 m, or for the one an E would greet and the day's giver within 12 m; identical overlapping tags merge
+("2 × Bil i bilfritt område", hud.js). The cat by Ove's door is hidden during Sara's 'katten' errand.
+
+**Title** (main.js `titlePose`, `setupTitle`, `idleTitle`; index.html, style.css, hud.js). See notes/ui.md.
+
+**Words** (p4_lang via the review): small talk by day (`CHATTER` is day-blind; `CHATTER_AFTER[key] =
+[missions done, lines, replace]`, `replace` retires the base lines: Adrian after day 5), the cat lines
+from day 4, no "god morgon", "i dag / i går / i kväll", ”Saab”, "övningskörningsskylt", "Elementet
+klickar", the 'katten' errand only after day 4 (`after: 4`) and as Ove's cat, "Lås upp", "Hämta Jimmy
+med bil vid busshållplatsen", "närmaste här intill / 20 m bort", "Kliv in", "För lite luft. Som
+vanligt.", "Jaså. Här ska vi stå, minsann.", one wording per violation (`KINDS` -> `hud.kinds`, non-
+breaking spaces in "24 timmar" / "10 m").
+
+**New scenarios** (gameplay.mjs): `gperf` (update / stepWorld / syncAll / hud, steps per frame, minor
+GCs with `GPERF_GC=1`, `GPERF_THROTTLE=n`), `carcycle` (spawn/remove through removeCar, renderer.info,
+with a control phase; `CC_N`), `gamepad` (standard pads with 0 / 1 / 3 axes and NaN axes, an ignored
+accelerometer, a non-standard pad woken by a button, stick throttle), `corruptsave`
+(nine seeds), `tabhide` (hidden tab, blur, the bell behind the pause menu), `titlecheck` (new game,
+saved game, Kontroller, Nytt spel, start toasts, the rolled-out Saab shoves nobody), `quality` (Auto ->
+Hög -> Låg, persistence, old keys, URL), `recycle` (wrecked Saab back, borrowed car gone, player x/z
+while driving), `smalltalk` (forbidden lines per day, katten by day), `tagmerge`, `companion`, `p4ui`
+(banner bands, toasts under the letterbox), `titlecam` (title look-dev: `TC`, `TCJS`, `TCRAW`).

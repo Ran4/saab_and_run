@@ -504,7 +504,8 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       const r0 = await ev(() => {
         const g = __game;
         for (const o of g.cars.slice()) if (o.traffic && Math.hypot(o.x + 40, o.z + 40) < 90) g.removeCar(o);
-        const car = g.spawnTrafficCar(() => 0.3, null);
+        // (the fixed spawn spot can be taken by a felparkering: any free one then, it is placed anyway)
+        const car = g.spawnTrafficCar(() => 0.3, null) || g.spawnTrafficCar(Math.random, null);
         car.place(-80, -40 + 2.75, Math.PI / 2); car.vx = 12; car.vz = 0;
         car.ai = new car.ai.constructor(car, { mode: 'traffic', cruise: 12 });   // a lane path from here
         const ped = g.peds.find((p) => !p.char.invulnerable);
@@ -816,6 +817,443 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       await tap('KeyM');
       await frames(12);
       await shot('patrol_bigmap');
+    },
+
+    // ------------------------------------------------------------------------------------------
+    // Phase 4 (fixer A): the loop's cost and robustness.
+
+    // update / stepWorld / syncAll / updateHud per frame, fixed steps per frame, minor GCs from a
+    // trace. Poses: on foot at the start, then the Saab driven by an AI chauffeur on Solrosvägen.
+    // GPERF_THROTTLE=n slows the CPU n times (CDP), GPERF_FRAMES=n frames per pose, GPERF_GC=1 traces.
+    async gperf() {
+      const cdp = await page.target().createCDPSession();
+      const rate = +(process.env.GPERF_THROTTLE || 1);
+      const N = +(process.env.GPERF_FRAMES || 300);
+      await ev(() => {
+        const g = __game;
+        const P = (window.__gp = { on: false, upd: [], step: [], sync: [], hud: [], frame: [], steps: [], n: 0 });
+        const wrap = (name, key) => { const f = g[name].bind(g); g[name] = function (...a) { const t0 = performance.now(); const r = f(...a); if (P.on) { P[key].push(performance.now() - t0); if (key === 'step') P.n++; } return r; }; };
+        wrap('stepWorld', 'step'); wrap('syncAll', 'sync'); wrap('updateHud', 'hud');
+        const U = g.update.bind(g);
+        g.update = function (dt) { const n0 = P.n, t0 = performance.now(); U(dt); if (P.on) { P.upd.push(performance.now() - t0); P.steps.push(P.n - n0); } };
+        const L = g.loop.bind(g);
+        let last = 0;
+        g.loop = function (t) { L(t); if (P.on) P.frame.push(t - last); last = t; };
+      });
+      const stat = (a) => { if (!a.length) return '-'; const s = [...a].sort((x, y) => x - y), m = a.reduce((x, y) => x + y, 0) / a.length; return `${m.toFixed(2)}/${s[Math.floor(s.length * 0.95)].toFixed(2)}`; };
+      const measure = async (label, gc) => {
+        await frames(60);
+        if (rate > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate });
+        if (gc) await page.tracing.start({ categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'v8'] });
+        await ev(() => { const P = __gp; for (const k of ['upd', 'step', 'sync', 'hud', 'frame', 'steps']) P[k].length = 0; P.on = true; });
+        const t0 = Date.now();
+        await frames(N);
+        const secs = (Date.now() - t0) / 1000;
+        const r = await ev(() => { const P = __gp; P.on = false; return { upd: P.upd.slice(), step: P.step.slice(), sync: P.sync.slice(), hud: P.hud.slice(), frame: P.frame.slice(1), steps: P.steps.slice(), cars: __game.cars.length, asleep: __game.cars.filter((c) => c.asleep).length }; });
+        let gcs = '';
+        if (gc) {
+          const buf = await page.tracing.stop();
+          const ev2 = JSON.parse(Buffer.from(buf).toString()).traceEvents || [];
+          const minor = ev2.filter((e) => (e.name === 'MinorGC' || e.name === 'V8.GC_SCAVENGER') && e.ph === 'X');
+          const major = ev2.filter((e) => e.name === 'MajorGC' && e.ph === 'X');
+          const ms = minor.reduce((s, e) => s + (e.dur || 0), 0) / 1000;
+          gcs = ` minorGC ${(minor.length / secs).toFixed(1)}/s (${(ms / secs).toFixed(2)} ms/s, max ${(Math.max(0, ...minor.map((e) => e.dur || 0)) / 1000).toFixed(2)} ms) majorGC ${major.length}`;
+        }
+        if (rate > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+        const steps = r.steps.reduce((a, b) => a + b, 0) / Math.max(1, r.steps.length);
+        const fpsv = 1000 / (r.frame.reduce((a, b) => a + b, 0) / Math.max(1, r.frame.length));
+        console.log(`[t] gperf ${label.padEnd(6)} x${rate} update ${stat(r.upd)} stepWorld ${stat(r.step)} steps/frame ${steps.toFixed(2)} (max ${Math.max(...r.steps)}) syncAll ${stat(r.sync)} hud ${stat(r.hud)} fps ${fpsv.toFixed(1)} cars ${r.cars} asleep ${r.asleep}${gcs}`);
+      };
+      const s = await L('oveStart');
+      await ev((s) => { const g = __game; g.player.teleport(s.x, s.z, s.yaw); g.cam.yaw = s.yaw; g.cam.snapNext = true; }, s);
+      await measure('foot', !!process.env.GPERF_GC);
+      await ev(async () => {
+        const g = __game;
+        g.enterCar(g.named.saab);
+        const c = g.playerCar; c.place(30, -40 + 2.75, Math.PI / 2); g.cam.yaw = Math.PI / 2; g.cam.snapNext = true;
+        const { AIDriver } = await import('./src/actors/drivers.js');
+        c.ai = new AIDriver(c, { mode: 'traffic', cruise: 15, avoid: true });
+      });
+      await measure('drive', !!process.env.GPERF_GC);
+      await shot('gperf_drive');
+    },
+
+    // Title look-dev: the real title screen (no ?test), the title cards hidden (TCRAW=1) or shown;
+    // TC='[{"pos":[x,y,z],"look":[x,y,z],"fov":40}, ...]' overrides the camera (window.__titleCam),
+    // TCJS='js' runs first (e.g. to pose Ove). Without TC: the game's own title shot at 2 s and 12 s.
+    async titlecam() {
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?fresh=1${process.env.QUERY || ''}`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000 });
+      if (process.env.TCJS) await ev((code) => new Function(code)(), process.env.TCJS);
+      if (process.env.TCRAW) await ev(() => { document.getElementById('title').style.visibility = 'hidden'; });
+      const list = process.env.TC ? JSON.parse(process.env.TC) : null;
+      if (!list) { await sleep(2000); await shot('titlecam_2s'); await sleep(10000); await shot('titlecam_12s'); return; }
+      for (let k = 0; k < list.length; k++) {
+        await ev((c) => { window.__titleCam = c; }, list[k]);
+        await frames(8);
+        await shot('titlecam_' + k);
+      }
+    },
+
+    // Gamepads that aren't a standard 4-axis pad (a laptop accelerometer, a 3-axis stick) must never
+    // give NaN: 0, 1 and 3 axes, non-standard mapping; then a standard pad without analogue triggers
+    // drives the Saab with the left stick.
+    async gamepad() {
+      const setPad = (pad) => ev((pad) => {
+        window.__pad = pad ? { connected: true, index: 0, id: 'test', timestamp: 0, mapping: pad.mapping ?? '', axes: pad.axes, buttons: (pad.buttons || []).map((v) => ({ value: v, pressed: v > 0.5 })) } : null;
+        navigator.getGamepads = () => [window.__pad];
+      }, pad);
+      const check = (label) => ev((label) => {
+        const g = __game, c = g.cam.cam.position, p = g.player;
+        const ok = [g.cam.yaw, g.cam.pitch, c.x, c.y, c.z, p.x, p.z, p.wishX, p.wishZ].every(Number.isFinite);
+        const obj = document.querySelector('#objective .obj-text')?.textContent || '';
+        return `${label}: finite ${ok} cam [${c.x.toFixed(1)}, ${c.y.toFixed(1)}, ${c.z.toFixed(1)}] yaw ${g.cam.yaw.toFixed(2)} pitch ${g.cam.pitch.toFixed(2)} player [${p.x.toFixed(1)}, ${p.z.toFixed(1)}] objective "${obj}" NaN-text ${/NaN/.test(document.getElementById('hud').textContent)}`;
+      }, label);
+      const cases = [
+        ['standard, 0 axes', { mapping: 'standard', axes: [] }],
+        ['standard, 1 axis', { mapping: 'standard', axes: [0.6] }],
+        ['standard, 3 axes', { mapping: 'standard', axes: [0, 0, 0.5] }],
+        ['accelerometer: non-standard, no buttons (ignored)', { axes: [0.1, 0.3, 0.5] }],
+        ['non-standard, a button pressed, 3 axes', { axes: [0.4, -0.7, 0.9], buttons: [1, 0, 0, 0] }],
+        ['standard, NaN / Infinity axes', { mapping: 'standard', axes: [NaN, 0.5, NaN, Infinity] }],
+      ];
+      for (const [label, pad] of cases) {
+        const y0 = await ev(() => [__game.cam.yaw, __game.player.x, __game.player.z]);
+        await setPad(pad);
+        await frames(40);
+        const y1 = await ev(() => [__game.cam.yaw, __game.player.x, __game.player.z]);
+        console.log('[t] gamepad', await check(label), `moved: cam ${Math.abs(y1[0] - y0[0]) > 0.01} ove ${Math.hypot(y1[1] - y0[1], y1[2] - y0[2]) > 0.05}`);
+      }
+      await shot('p4_gamepad_3axes');
+      // a standard pad with no analogue triggers: left stick forward = gas
+      await setPad({ mapping: 'standard', axes: [0, -1, 0, 0], buttons: new Array(17).fill(0) });
+      await ev(() => { const g = __game; g.enterCar(g.named.saab); const c = g.playerCar; c.place(0, -40 + 2.75, Math.PI / 2); g.cam.yaw = Math.PI / 2; g.cam.snapNext = true; });
+      await sleep(2500);
+      const v1 = await ev(() => +(__game.playerCar.forwardSpeed * 3.6).toFixed(0));
+      await setPad({ mapping: 'standard', axes: [0, 1, 0, 0], buttons: new Array(17).fill(0) });
+      await sleep(1500);
+      const v2 = await ev(() => +(__game.playerCar.forwardSpeed * 3.6).toFixed(0));
+      // once the triggers have moved, they are the pedals and the stick only steers
+      await setPad({ mapping: 'standard', axes: [0, 0, 0, 0], buttons: [0, 0, 0, 0, 0, 0, 0, 0.8, 0, 0, 0, 0, 0, 0, 0, 0, 0] });
+      await sleep(1500);
+      const v3 = await ev(() => +(__game.playerCar.forwardSpeed * 3.6).toFixed(0));
+      console.log('[t] gamepad stick throttle', JSON.stringify({ afterStickForward: v1, afterStickBack: v2, afterRT: v3 }));
+      await setPad(null);
+    },
+
+    // Corrupt saves: each seed loads into a sane game (a day offered, numbers that are numbers).
+    async corruptsave() {
+      const seeds = [
+        ['mission -1', { mission: -1 }],
+        ['mission 2.5', { mission: 2.5 }],
+        ['strings', { kr: '12', mission: '3', patrol: { ordning: 'abc', reports: '7', log: 'x' } }],
+        ['nulls', { mission: null, kr: null, clock: null, patrol: { ordning: null } }],
+        ['huge', { mission: 99, kr: 1e12, clock: 1e9, emblems: [1, '2', 99, -1, null, 2.5], photos: 'abc', unlocked: 'x' }],
+        ['array', [1, 2, 3]],
+        ['garbage', 'not json at all'],
+        ['log junk', { mission: 2, patrol: { ordning: 120, log: [null, 5, { plate: { a: 1 }, kind: 7, text: 'x'.repeat(500), time: [], caught: 'yes' }] } }],
+        ['reda', { mission: 1, kr: 736, patrol: { ordning: 100, reports: 9, reda: true } }],
+      ];
+      for (const [label, seed] of seeds) {
+        await page.evaluate((seed) => { localStorage.setItem('saab-and-run-v1', typeof seed === 'string' ? seed : JSON.stringify(seed)); }, seed);
+        await page.goto(`http://127.0.0.1:${PORT}/index.html?test=1`, { waitUntil: 'load' });
+        await page.waitForFunction('window.__ready === true', { timeout: 90000, polling: 250 });
+        await sleep(2500);
+        const r = await ev(() => {
+          const g = __game, P = g.patrol, m = g.missions;
+          return { index: m.index, offered: m.offered?.id || null, kr: g.coins, krType: typeof g.coins, ordning: P.ordning, ordType: typeof P.ordning, reports: P.reports, log: P.log.length, emblems: [...g.got.emblems], clock: g.clockText(), reda: P.redaGiven };
+        });
+        const ok = Number.isInteger(r.index) && r.index >= 0 && r.index <= 7 && (r.index === 7 || r.offered || r.index > 0) && r.krType === 'number' && r.ordType === 'number' && r.ordning >= 0 && r.ordning <= 100 && Number.isInteger(r.reports);
+        console.log('[t] corruptsave', label.padEnd(10), ok ? 'OK ' : 'BAD', JSON.stringify(r));
+      }
+      await page.evaluate(() => localStorage.removeItem('saab-and-run-v1'));
+    },
+
+    // A hidden tab / a lost window focus pauses the real game, the phone stops ringing behind the
+    // pause menu and starts again after it, and a hidden tab's sound is suspended.
+    async tabhide() {
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?fresh=1`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000 });
+      await page.click('#play');
+      await sleep(1500);
+      const st2 = () => ev(async () => { const { audio } = await import('./src/audio.js'); return { paused: __game.paused, menu: document.getElementById('pause').classList.contains('show'), ctx: audio.state, ringing: audio.ringing, call: !!__interrupt.call, callT: __interrupt.call ? +__interrupt.call.t.toFixed(2) : null }; });
+      await ev(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+      await sleep(400);
+      const a = await st2();
+      await ev(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
+      await sleep(400);
+      const b = await st2();
+      await page.click('#resume');
+      await sleep(500);
+      await ev(() => window.dispatchEvent(new Event('blur')));
+      await sleep(300);
+      const c = await st2();
+      await page.click('#resume');
+      await sleep(400);
+      // the phone: ringing, then the pause menu
+      await ev(() => __interrupt.force('element'));
+      await sleep(600);
+      const d = await st2();
+      await tap('KeyP');
+      await sleep(1500);
+      const e = await st2();
+      await shot('p4_paused_while_ringing');
+      await page.click('#resume');
+      await sleep(400);
+      const f = await st2();
+      console.log('[t] tabhide', JSON.stringify({ hidden: a, shown: b, blur: c, ringing: d, pausedRinging: e, resumed: f }));
+    },
+
+    // The title screen: a new game (Spela) and a saved one (Fortsätt – Dag N · Veckodag, Nytt spel),
+    // the Kontroller toggle, and the start toasts only on a new game.
+    async titlecheck() {
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?fresh=1`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000 });
+      await sleep(1200);
+      const t1 = await ev(() => ({ play: document.getElementById('play').textContent, newgame: !document.getElementById('newgame').hidden }));
+      // the Saab rolled out for the title must not have shoved a parked car out of its bay
+      const shoved = await ev(() => { const g = __game, s = g.named.saab; return g.cars.filter((c) => c !== s && c.home && Math.hypot(c.x - s.x, c.z - s.z) < 12).map((c) => +Math.hypot(c.x - c.home.x, c.z - c.home.z).toFixed(2)); });
+      console.log('[t] title neighbours of the rolled-out Saab, metres off their spot', JSON.stringify(shoved));
+      await shot('p4_title_new');
+      await page.click('#title-ctl');
+      await sleep(500);
+      await shot('p4_title_controls');
+      const t2 = await ev(() => ({ ctl: document.getElementById('title').classList.contains('ctl'), vis: getComputedStyle(document.querySelector('#title .title-controls')).visibility }));
+      await page.click('#title-ctl');
+      await page.click('#play');
+      await sleep(8000);
+      const toastsNew = await ev(() => [...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent.slice(0, 40)));
+      // a save at day 6 (index 5, the day not yet dawned: pending gate)
+      await ev(() => localStorage.setItem('saab-and-run-v1', JSON.stringify({ v: 1, mission: 5, gate: true, clock: 840, kr: 512, patrol: { ordning: 64, reports: 23, log: [] } })));
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000 });
+      await sleep(1200);
+      const t3 = await ev(() => ({ play: document.getElementById('play').textContent, newgame: !document.getElementById('newgame').hidden }));
+      await shot('p4_title_continue');
+      await page.click('#play');
+      await sleep(8000);
+      const toastsCont = await ev(() => [...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent.slice(0, 40)));
+      // Nytt spel: two clicks erase the save
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000 });
+      await page.click('#newgame');
+      const t4 = await ev(() => document.getElementById('newgame').textContent);
+      await page.click('#newgame');
+      await page.waitForFunction('window.__ready === true', { timeout: 90000 });
+      await sleep(500);
+      const t5 = await ev(() => ({ play: document.getElementById('play').textContent, save: localStorage.getItem('saab-and-run-v1') }));
+      console.log('[t] title', JSON.stringify({ fresh: t1, controls: t2, toastsNew, saved: t3, toastsCont, newgameFirstClick: t4, afterNewGame: t5 }));
+    },
+
+    // The pause menu's Grafik button: Auto -> Hög -> Låg -> Auto, the label, and the choice kept
+    // across a reload (old settings: gfx 'high' ignored, gfx 'low' kept; the URL wins).
+    async quality() {
+      const load = async (q = '') => { await page.goto(`http://127.0.0.1:${PORT}/index.html?fresh=1${q}`, { waitUntil: 'load' }); await page.waitForFunction('window.__ready === true', { timeout: 90000 }); };
+      const read = () => ev(async () => { const g = await import('./src/gfx.js'); const { hud } = await import('./src/game/hud.js'); hud.syncMenu(); return { q: g.getQuality(), tier: g.qualityInfo().tier, label: document.querySelector('#opt-gfx b').textContent, saved: localStorage.getItem('saab-and-run-settings') }; });
+      await ev(() => localStorage.removeItem('saab-and-run-settings'));
+      await load();
+      const seq = [await read()];
+      for (let k = 0; k < 3; k++) { await ev(() => document.getElementById('opt-gfx').click()); seq.push(await read()); }
+      await ev(() => document.getElementById('opt-gfx').click());   // -> Hög
+      await ev(() => document.getElementById('opt-gfx').click());   // -> Låg
+      await load();
+      const kept = await read();
+      await load('&q=high');
+      const url = await read();
+      await ev(() => localStorage.setItem('saab-and-run-settings', JSON.stringify({ music: true, sound: true, gfx: 'high' })));
+      await load();
+      const oldHigh = await read();
+      await ev(() => localStorage.setItem('saab-and-run-settings', JSON.stringify({ music: true, sound: true, gfx: 'low' })));
+      await load();
+      const oldLow = await read();
+      await ev(() => { document.getElementById('pause').classList.add('show'); });
+      await sleep(300);
+      await shot('p4_pause_quality');
+      await ev(() => localStorage.removeItem('saab-and-run-settings'));
+      console.log('[t] quality', JSON.stringify({ seq: seq.map((r) => `${r.q}/${r.tier} "${r.label}"`), kept, url, oldHigh, oldLow }));
+    },
+
+    // Named cars come back; borrowed traffic cars don't pile up; Ove is where his car is.
+    async recycle() {
+      const r1 = await ev(() => {
+        const g = __game, s = g.named.saab;
+        g.missions.index = 7;
+        s.damage(9999, g);
+        // Ove 150 m away from both the wreck and home
+        g.player.teleport(s.x + 150, s.z - 20, 0);
+        s.deadT = 30;
+        return { dead: s.dead };
+      });
+      await sleep(3000);
+      const r2 = await ev(() => { const g = __game, s = g.named.saab; return { dead: s.dead, inWorld: g.cars.includes(s), plate: s.plate, atHome: Math.hypot(s.x - s.home.x, s.z - s.home.z) < 1 }; });
+      // borrow a traffic car, leave it, go far away
+      const r3 = await ev(() => {
+        const g = __game, c = g.cars.find((c) => c.traffic && !c.dead);
+        g.player.teleport(c.x + 3, c.z, 0);
+        g.enterCar(c);
+        const before = g.cars.length;
+        g.exitCar(true);
+        c.leftAt = g.time - 40;
+        g.player.teleport(c.x + 200, c.z, 0);
+        window.__bc = c;
+        return { wasTraffic: !!c.wasTraffic, cars: before };
+      });
+      await sleep(3000);
+      const r4 = await ev(() => ({ gone: !__game.cars.includes(window.__bc), cars: __game.cars.length, traffic: __game.cars.filter((c) => c.traffic).length }));
+      // seated: player.x/z follow the car
+      await ev(() => { const g = __game; g.enterCar(g.named.saab); g.playerCar.place(0, -40 + 2.75, Math.PI / 2); });
+      await hold(['KeyW'], 2000);
+      const r5 = await ev(() => { const g = __game, c = g.playerCar, p = g.player; return { car: [+c.x.toFixed(1), +c.z.toFixed(1)], player: [+p.x.toFixed(1), +p.z.toFixed(1)] }; });
+      console.log('[t] recycle', JSON.stringify({ wrecked: r1, saab: r2, borrowed: r3, after: r4, seated: r5 }));
+    },
+
+    // Small talk by day: nothing thanks Ove early, no cat before day 4, Adrian's car-buying lines
+    // retired after day 5, no "god morgon"; the 'katten' errand only from day 4.
+    async smalltalk() {
+      const r = await ev(() => {
+        const g = __game, out = {};
+        const bad = [
+          [/släpet\. Igen/, 0, 2], [/Katten|katten|Kissen|kattmat/, 0, 4], [/i går/, 0, 3], [/köpa bil|om Audi\?/, 5, 8], [/[Gg]od morgon|frukost|Fin morgon/, 0, 8], [/L-skylt/, 0, 8],
+        ];
+        for (let day = 0; day <= 7; day++) {
+          g.missions.index = day;
+          const seen = new Set();
+          for (const k of Object.keys(g.npcs)) for (let i = 0; i < 300; i++) for (const l of g.chatterFor(k)) seen.add(`${k}: ${l}`);
+          const hits = [];
+          for (const l of seen) for (const [re, from, to] of bad) if (re.test(l) && day >= from && day < to) hits.push(l);
+          out[day] = hits;
+        }
+        return out;
+      });
+      const k = await ev(async () => {
+        const { TEMPLATES } = await import('./src/game/interruptions.js');
+        const t = TEMPLATES.find((t) => t.id === 'katten'), g = __game, out = [];
+        for (let day = 0; day <= 7; day++) { g.missions.index = day; out.push(__interrupt.available(t)); }
+        return out;
+      });
+      console.log('[t] smalltalk', JSON.stringify(r), 'katten available by day', JSON.stringify(k));
+    },
+
+    // Two identical tags side by side merge ("2 × ..."); names only close by.
+    async tagmerge() {
+      await ev(() => {
+        const g = __game, s = window.__lm('oveStart');
+        const P = g.patrol;
+        const cars = P.forceSpawn(2, { x: s.x + 14, z: s.z }, { smitare: false, kinds: ['carfree'], radius: 30 });
+        window.__tm = cars.map((c) => [c.x.toFixed(1), c.z.toFixed(1)]);
+        g.player.teleport(s.x - 6, s.z, s.yaw); g.cam.yaw = s.yaw; g.cam.pitch = 0.12; g.cam.snapNext = true;
+      });
+      await frames(20);
+      const tags = await ev(() => [...document.querySelectorAll('#tags .tag3d')].filter((e) => e.style.display !== 'none').map((e) => e.textContent));
+      await shot('p4_tagmerge');
+      console.log('[t] tagmerge', JSON.stringify({ cars: await ev(() => window.__tm), tags }));
+    },
+
+    // Forskolan on foot, walked like a player following the arrow: Nasanin follows Ove's trail; the
+    // objective must not flip between "Du glömde Nasanin!" and the drop-off text.
+    async companion() {
+      await ev(() => { __interrupt.force('forskolan', { quick: true }); });
+      await frames(5);
+      await ev(() => { const g = __game, n = g.npc('nasanin'); const s = g.freeSpot(n.x, n.z, 1.4, 1.8); g.player.teleport(s.x, s.z, Math.atan2(n.x - s.x, n.z - s.z)); g.cam.snapNext = true; });
+      await frames(20);
+      const picked = await ev(() => __interrupt.active?.i);
+      let flips = 0, last = null, forgot = 0, maxD = 0, k = 0;
+      await page.keyboard.down('KeyW');
+      const t0 = Date.now();
+      while (Date.now() - t0 < 120000) {
+        const r = await ev(() => {
+          const g = __game, a = __interrupt.active, p = g.player, n = g.npc('nasanin');
+          if (!a) return { done: true };
+          // a player following the minimap route: the first route point more than 4 m away; pressed
+          // against something for 1.5 s: a step to the side
+          const B = (window.__bot ||= { t: 0, x: p.x, z: p.z, side: 0 });
+          const r = g.route || [];
+          let tgt = null;
+          for (const q of r) if (Math.hypot(q[0] - p.x, q[1] - p.z) > 4) { tgt = q; break; }
+          if (!tgt && r.length) tgt = r[r.length - 1];
+          if (B.side > 0) { B.side -= 0.25; g.cam.yaw += 0; }
+          else if (tgt) g.cam.yaw = Math.atan2(tgt[0] - p.x, tgt[1] - p.z);
+          B.t += 0.25;
+          if (B.t > 1.5) { if (Math.hypot(p.x - B.x, p.z - B.z) < 0.5 && B.side <= 0) { g.cam.yaw += (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2; B.side = 1; } B.t = 0; B.x = p.x; B.z = p.z; }
+          return { sub: a.stage.sub || '', i: a.i, d: Math.hypot(n.x - p.x, n.z - p.z), with: g.isWithOve(n), p: [+p.x.toFixed(0), +p.z.toFixed(0)] };
+        });
+        if (r.done) break;
+        const f = /glömde/.test(r.sub);
+        if (last !== null && f !== last) flips++;
+        if (f) forgot++;
+        last = f;
+        maxD = Math.max(maxD, r.d);
+        if (k++ % 20 === 0) console.log('[t] companion', JSON.stringify(r));
+        if (k === 60) await shot('p4_companion');
+        await sleep(250);
+      }
+      await page.keyboard.up('KeyW');
+      const res = await ev(() => ({ done: __interrupt.done, failed: __interrupt.failed, t: +__game.time.toFixed(0) }));
+      console.log('[t] companion result', JSON.stringify({ picked, flips, forgotSamples: forgot, maxDist: +maxD.toFixed(1), ...res }));
+    },
+
+    // The banner band (light, no blur) over a bright view, and toasts below the letterbox in a
+    // dialogue (they used to slide under its top bar).
+    async p4ui() {
+      await ev(() => { const g = __game, s = window.__lm('oveStart'); g.player.teleport(s.x, s.z, s.yaw); g.cam.yaw = s.yaw + 0.4; g.cam.pitch = 0.1; g.cam.snapNext = true; });
+      await frames(20);
+      await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.showBanner('KLART', 'Elementet klickar · +10 Ordning · +35 kr', 'good', 0, 'Avbrott'); });
+      await sleep(900);
+      await shot('p4_banner_good');
+      await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.showBanner('Dag 3', 'Onsdagsmorgon', 'mission', 0, 'Ny dag'); });
+      await sleep(900);
+      await shot('p4_banner_day');
+      await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.hideBanner(); hud.showBanner('KAOS I OMRÅDET', 'Anders kallar till extra föreningsmöte · −50 kr', 'chaos', 0); });
+      await sleep(900);
+      await shot('p4_banner_chaos');
+      await ev(async () => {
+        const { hud } = await import('./src/game/hud.js');
+        hud.hideBanner();
+        hud.letterbox(true);
+        __game.radio('anita', 'Det är så varmt hos oss nu, Ove.');
+        hud.toast('Ove betalar för det han förstört: 15 kr', 'bad');
+        __game.dialog([['parvaneh', 'Ove! Du kom! Patrick har... ja. Du ser ju själv.'], ['ove', 'Hmpf.']]);
+      });
+      await sleep(1200);
+      await shot('p4_letterbox_toasts');
+      const r = await ev(() => { const t = document.querySelector('#toasts .toast')?.getBoundingClientRect(), lb = document.querySelector('#letterbox .lb-top').getBoundingClientRect(); return { toastTop: t ? Math.round(t.top) : null, barBottom: Math.round(lb.bottom) }; });
+      console.log('[t] p4ui', JSON.stringify(r));
+    },
+
+    // 60 traffic cars spawned in view (with a driver bust) and removed through the game's removeCar,
+    // every 5th one carjacked first: renderer.info must stay flat (geometries, textures, programs).
+    async carcycle() {
+      const info = () => ev(() => { const r = window.__stats(); return { geos: r.geos, textures: r.textures, programs: r.programs, cars: r.cars }; });
+      await frames(30);
+      // one of each kind first, so lazily built shared things (models, plate pages) exist
+      await ev(() => { const g = __game, p = g.player; window.__cc0 = []; for (let k = 0; k < 8; k++) { const c = g.spawnTrafficCar(Math.random, null); if (c) { c.place(p.x + 5 + k, p.z + 7, 0.3); window.__cc0.push(c); } } });
+      await frames(10);
+      await ev(() => { const g = __game; for (const c of window.__cc0) if (g.cars.includes(c)) g.removeCar(c); });
+      await frames(10);
+      // control: the same time with no cars spawned (the people's far levels and other lazy things
+      // are built in idle time and count too)
+      const c0 = await info();
+      await frames(240);
+      const c1 = await info();
+      console.log('[t] carcycle control (240 frames, no cars)', 'delta geos', c1.geos - c0.geos, 'textures', c1.textures - c0.textures, 'programs', c1.programs - c0.programs);
+      const a = await info();
+      const N = +(process.env.CC_N || 60);
+      for (let k = 0; k < N; k++) {
+        if (k && k % 30 === 0) console.log('[t] carcycle at', k, JSON.stringify(await info()));
+        await ev((k) => {
+          const g = __game, p = g.player;
+          const c = g.spawnTrafficCar(Math.random, null);
+          window.__cc = c;
+          if (!c) return;
+          c.place(p.x + 5 + (k % 3), p.z + 7, 0.3);
+          if (k % 5 === 4) { g.enterCar(c); g.exitCar(true); }
+        }, k);
+        await frames(2);
+        await ev(() => { const g = __game, c = window.__cc; if (c && g.cars.includes(c)) g.removeCar(c); window.__cc = null; });
+      }
+      await frames(10);
+      const b = await info();
+      console.log('[t] carcycle before', JSON.stringify(a), 'after', N, JSON.stringify(b), 'delta geos', b.geos - a.geos, 'textures', b.textures - a.textures, 'programs', b.programs - a.programs);
     },
   };
 };

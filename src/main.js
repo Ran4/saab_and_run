@@ -2,14 +2,14 @@
 // car, and wires up the patrol (felparkeringar, smitare, the Ordning meter), the avbrott (the
 // neighbours' calls), the story missions, pickups, the neighbours and the HUD.
 
-import { THREE, initGfx, renderer, scene, camera, followSun, tickSky, renderFrame, gfxReady, gfxStats } from './gfx.js';
+import { THREE, initGfx, renderer, scene, camera, followSun, tickSky, renderFrame, gfxReady, gfxStats, precompile, uploadGeometry } from './gfx.js';
 import { input } from './input.js';
 import { audio } from './audio.js';
 import { buildTown, parkedCars, tickTown, litterSpots, collectibleSpots, mapLabels as townLabels, surfaceAt as townSurfaceAt } from './world/town.js';
 import { finalizeProps, tickProps, breakProp, propsNear, props as allProps } from './world/props.js';
 import { lm, landmarks, routeAim, N, LANE, RHW, SW, nodeX, nodeZ, neighbors, BOUND, isRoad, isCarFree, HALF, P } from './world/layout.js';
 import { groundAt, queryBlocks, contains, circleVsObb } from './world/collision.js';
-import { Car, collideCars } from './actors/car.js';
+import { Car, collideCars, warmCars } from './actors/car.js';
 import { Character } from './actors/character.js';
 import { CHARS, buildBust, randomPed, buildCat, carryPoint } from './actors/models.js';
 import { AIDriver } from './actors/drivers.js';
@@ -21,11 +21,16 @@ import { CamRig } from './game/camera.js';
 import { Patrol } from './game/patrol.js';
 import { Interruptions } from './game/interruptions.js';
 import * as stages from './game/stages.js';
-import { MissionRunner, MISSIONS } from './game/missions.js';
+import { MissionRunner, MISSIONS, DAYS } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
 import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
 
 const STEP = 1 / 60;
+// At most two fixed steps per frame: a slow frame is caught up once, never with a burst of four that
+// makes the next frame slower still (on a laptop update grew 2.5 -> 4.6 -> 9.8 ms that way).
+const MAX_STEPS = 2;
+// Traffic AI and pedestrians further than this from Ove think at 30 Hz (half of them each step).
+const FAR2 = 120 * 120;
 const SAVE_KEY = 'saab-and-run-v1';
 const params = new URLSearchParams(location.search);
 const TEST = params.has('test');
@@ -50,26 +55,31 @@ const HOMES = {
   vitskjorta: ['kommun', 1.5, 0],
 };
 
+// Day-blind lines only: nothing here thanks Ove for something that hasn't happened yet, mentions
+// the cat before day 4 or says good morning at half past two (the day runs 10:30-14:30).
 const CHATTER = {
-  parvaneh: ['Hej Ove! Vill du ha lite saffransris? Jag har gjort för mycket.', 'Ove, du ser nästan glad ut idag.', 'Patrick har klättrat upp på en stege igen. Titta inte.', 'Tack för hjälpen med släpet. Igen.'],
-  patrick: ['Hej Ove! Jag skulle bara... nej, det var inget.', 'Släpet står lite snett, va?', 'Jag är IT-konsult. Det är som ett jobb, fast...', 'Har du en insexnyckel? Jag ska bara montera en garderob. Tror jag.'],
-  sara: ['Ove! Kom och bygg snögubbe!', 'Varför är du alltid så arg?', 'Mamma säger att du är snäll inuti.', 'Katten tycker om dig.'],
-  nasanin: ['Ove! Ove! Ove!', 'Katten!', 'Snö!', 'Ove, titta!'],
-  jimmy: ['Tjena Ove! Har du ätit frukost?', 'Ove! Mannen själv!', 'Jag kör nyttigt nu. Typ.', 'Fin morgon, va?'],
+  parvaneh: ['Hej Ove! Vill du ha lite saffransris? Jag har gjort för mycket.', 'Ove, du ser nästan glad ut i dag.', 'Patrick har klättrat upp på en stege igen. Titta inte.', 'Flickorna vill att du kommer på middag. Jag med.'],
+  patrick: ['Hej Ove! Jag skulle bara... nej, det var inget.', 'Släpet står lite snett, va?', 'Jag är IT-konsult. Jag kan starta om saker. Det är ungefär allt.', 'Har du en insexnyckel? Jag ska bara montera en garderob. Tror jag.'],
+  sara: ['Ove! Kom och bygg snögubbe!', 'Varför är du alltid så arg?', 'Mamma säger att du är snäll inuti.', 'Pappa kan inte bygga snögubbar. De ramlar.'],
+  nasanin: ['Ove! Ove! Ove!', 'Snögubbe!', 'Snö!', 'Ove, titta!'],
+  jimmy: ['Tjena Ove! Har du ätit?', 'Ove! Mannen själv!', 'Jag kör nyttigt nu. Typ.', 'Fint väder, va?'],
   adrian: ['Ove, vad tycker du om Audi?', 'Jag ska köpa bil snart. Vad köper man?', 'Kan du lära mig byta däck någon gång?'],
-  anita: ['God morgon, Ove.', 'Rune sov dåligt i natt.', 'Tack för igår, Ove.', 'Han frågar efter dig ibland. På sitt sätt.'],
+  anita: ['Hej, Ove.', 'Rune sov dåligt i natt.', 'Klä dig varmt, Ove. Det är kallt i dag.', 'Han frågar efter dig ibland. På sitt sätt.'],
   rune: ['...', 'Hm.', '...Ove.', 'Volvo.'],
   anders: ['Ove! Har du sett min nya Audi?', 'Föreningen har nya regler, Ove. Jag mejlar.', 'Morsning, Ove. Fint väder för en promenad.', 'Vi borde ha en bom vid infarten, tycker du inte?'],
   vitskjorta: ['Vi har papper på allt.', 'Det här är en kommunal angelägenhet.', 'Ha en bra dag. Tills vidare.'],
 };
-// Later in the week some of them have news (from the day after the given day's mission on).
+// Later in the week some of them have news: [missions done, lines, replace]. From then on those lines
+// come 60 % of the time (with `replace`: always, the base lines are retired - Adrian has his Saab).
 const CHATTER_AFTER = {
   patrick: [2, ['Armen kliar under gipset. Hela tiden.', 'Parvaneh säger att jag inte får gå upp på stegar mer. Någonsin.', 'Tack för att du körde Parvaneh. Jag var... upptagen.']],
-  parvaneh: [2, ['Första körlektionen på måndag, Ove! Jag har köpt en L-skylt.', 'Patrick försöker knyta skorna med en hand. Det är som en film.']],
-  anita: [3, ['Det är så varmt hos oss nu, Ove.', 'Rune sa "Saab" igen i morse. Bara så där.']],
+  parvaneh: [2, ['Första körlektionen på måndag, Ove! Jag har redan köpt en övningskörningsskylt.', 'Patrick försöker knyta skorna med en hand. Det är bättre än tv.', 'Tack för hjälpen med släpet. Igen.']],
+  anita: [3, ['Det är så varmt hos oss nu, Ove.', 'Rune sa ”Saab” igen i morse. Bara så där.', 'Tack för i går, Ove.']],
+  sara: [4, ['Katten tycker om dig.', 'Får jag klappa katten?']],
+  nasanin: [4, ['Katten!', 'Kissen!']],
   rune: [3, ['...Saab.']],
   jimmy: [4, ['Hur mår katten? Har den fått ett namn än?', 'Jag köpte kattmat. Jag köpte för mycket kattmat.']],
-  adrian: [5, ['Saaben startade på första försöket i morse!', 'Jag har kollat trösklarna. Två gånger.']],
+  adrian: [5, ['Saaben startade på första försöket i morse!', 'Jag har kollat trösklarna. Två gånger.', 'Jag bytte däck själv i går! Nästan.'], true],
   anders: [5, ['Audin var på service. Det var inget fel på den. Alls.', 'Två Saabar i föreningen nu. Fantastiskt.']],
   vitskjorta: [6, ['Vi ses, Ove. Vi har tid.', 'Underskriften är på väg. Den är på väg.']],
 };
@@ -84,11 +94,11 @@ const SHOVED_KID = ['Aj!', 'Akta!', 'Ove!', 'Hallå!'];
 const TYRE = {
   saab900: ['Bra däck.', 'Så ska en bil se ut.', 'Ordentligt.'],
   volvo240: ['Volvo. Jaja.', 'Rune hade en sån. Typiskt.'],
-  volvo740: ['Volvo. Jaja.', 'Lite luft i det här.'],
+  volvo740: ['Volvo. Jaja.', 'För lite luft. Som vanligt.'],
   audi: ['Plast och elektronik.', 'Tyskt krafs.', 'Anders har en sån. Det säger väl allt.'],
   bmw: ['Plast och elektronik.', 'BMW. Hmpf.'],
   bus: ['Hmpf.'],
-  default: ['Japansk skit.', 'Slitna. Typiskt.', 'Hmpf.', 'Lite luft i det här.', 'Ingen kollar lufttrycket nu för tiden.'],
+  default: ['Japansk skit.', 'Slitna. Typiskt.', 'Hmpf.', 'För lite luft. Som vanligt.', 'Ingen kollar lufttrycket nu för tiden.'],
 };
 // Saab emblems: Ove's notes. Sonja's photographs: short memories (warm, a little sad, never more).
 const EMBLEM_NOTES = [
@@ -115,6 +125,8 @@ const FIXED_PLATES = { saab: 'SAB 900' };
 const TRAFFIC = ['volvo240', 'volvo740', 'volvo740', 'golf', 'golf', 'kombi', 'kombi', 'skoda', 'bmw', 'audi', 'saab900', 'taxi', 'van', 'volvo240', 'kombi', 'bus', 'garbage'];
 
 const _v = new THREE.Vector3();
+const _hit = {}, _hit2 = {}, _obst = { dist: 0, isPlayer: false };
+const isPerson = (c) => c.state === 'normal' || c.state === 'down' || c.state === 'flung';
 
 class Game {
   constructor() {
@@ -149,6 +161,12 @@ class Game {
     this.penaltyKr = 0; this.penaltyT = 0;
     this.lastMissionState = 'idle';
     this.stages = stages;
+    this.carsVer = 0;               // bumped whenever this.cars changes (the sorted list follows)
+    this._byX = [];                 // the cars sorted by their west edge (x - radius), see sortedCars
+    this._rmax = 7;
+    this.stepN = 0;
+    this.crumbs = [];               // Ove's trail on foot, for the people walking with him
+    this.isNewGame = true;
   }
 
   async init() {
@@ -158,6 +176,14 @@ class Game {
     await gfxReady;
     input.init(renderer.domElement);
     input.onUnlock = () => { if (this.started && !TEST) this.pause(true); };
+    // A hidden tab or a window that loses focus pauses the game too (the pointer isn't always locked:
+    // a resume by Esc can't re-lock it), and a hidden tab's sound stops altogether (music, engine, a
+    // ringing phone) until it is shown again.
+    document.addEventListener('visibilitychange', () => {
+      audio.suspend(document.hidden);
+      if (document.hidden) this.pause(true);
+    });
+    window.addEventListener('blur', () => this.pause(true));
     hud.init();
     hud.onResetSave = () => this.resetSave();
     FX.init(scene);
@@ -216,6 +242,12 @@ class Game {
     this.patrol.seed();
     setLoading('Tar porträtt…');
     await frame();
+    // While the portraits are taken: the world's vertex buffers go to the GPU now and its shaders
+    // compile in the background (both used to land in the first frame: 1 s), and every car type and
+    // variant is compiled and uploaded once (else the first Saab entry hitches).
+    uploadGeometry();
+    const pc = precompile();
+    const wc = warmCars(renderer, scene, camera).catch((e) => console.warn('warmCars', e));
     for (const key of Object.keys(HOMES)) hud.portraits[key] = renderPortrait(renderer, this.npcs[key].model);
     hud.portraits.ove = renderPortrait(renderer, this.player.model);
     this.applySaveToWorld();
@@ -224,6 +256,9 @@ class Game {
     hud.setMeter(this.patrol.ordning);
     hud.setClock(this.clockText());
     this.titlePose();
+    this.setupTitle();
+    await pc;
+    await wc;
     this.last = performance.now();
     requestAnimationFrame((t) => this.loop(t));
     window.__ready = true;
@@ -241,14 +276,53 @@ class Game {
     this.cam.snapNext = true;
   }
 
-  // Title screen: the main walkway of Ove's area, the new neighbours' car and trailer standing in
-  // the car-free zone, and Ove writing it up in his notebook.
+  // Title screen: Ove beside his Saab, rolled out of its bay in front of his garage, in the low
+  // afternoon sun. The camera drifts in slowly from the lot (south-west of them: the sun rakes across
+  // from the right) with the two of them in the right half of the picture; the title card covers the
+  // left. start() puts the Saab back in its bay.
   titlePose() {
-    const pc = this.named.patrickCar;
-    const s = landmarks.oveStart || lm('oveHouse');
-    const x = s.x - 2.6, z = s.z + 0.5;
-    const yaw = pc ? yawTo(pc.x - x, pc.z - z) : s.yaw + Math.PI;
-    this.player.teleport(x, z, yaw);
+    const car = this.named.saab, h = car?.home;
+    if (!car || !h) {
+      const s = landmarks.oveStart || lm('oveHouse');
+      this.player.teleport(s.x - 2.6, s.z + 0.5, s.yaw + Math.PI);
+      this.titleShot = null;
+      return;
+    }
+    // 4.1 m out of the bay, facing out (a man who reverses in leaves like that).
+    const yaw = h.yaw + Math.PI, fx = Math.sin(yaw), fz = Math.cos(yaw), lx = fz, lz = -fx;   // forward, left
+    const cx = h.x + fx * 4.1, cz = h.z + fz * 4.1;
+    car.place(cx, cz, yaw);
+    car.ctrl.park = true;
+    car.sync(0);
+    // Ove by the driver's door (the car's left), a little ahead of it, turned half to his car.
+    this.player.teleport(cx + lx * 1.5 + fx * 0.9, cz + lz * 1.5 + fz * 0.9, yawTo(fx * 1.08 - lx * 0.4, fz * 1.08 - lz * 0.4));
+    // The subject point between them, and the camera's slow arc: from 40 deg off the car's nose
+    // (towards its left) at 7.6 m, in to 30 deg at 6.6 m over 40 s.
+    this.titleShot = { x: cx + lx * 0.6 + fx * 0.6, z: cz + lz * 0.6 + fz * 0.6, fx, fz, lx, lz, th0: 0.70, th1: 0.52, d0: 7.6, d1: 6.6, off: 2.3 };
+  }
+
+  // The title's buttons: "Spela" for a new game; with a saved one, "Fortsätt" with the day it is at
+  // and a small "Nytt spel" (two clicks: it erases the save).
+  setupTitle() {
+    const play = document.getElementById('play'), nw = document.getElementById('newgame');
+    if (!play || this.isNewGame) return;
+    const i = this.missions.index, n = MISSIONS.length;
+    const pending = i > 0 && i < n && !this.missions.gateOpen;
+    const day = clamp(i >= n ? n : pending ? i : i + 1, 1, DAYS.length);
+    play.innerHTML = `Fortsätt <small>Dag ${day} · ${DAYS[day - 1]}</small>`;
+    play.classList.add('cont');
+    if (!nw) return;
+    nw.hidden = false;
+    nw.addEventListener('click', () => {
+      if (!nw.classList.contains('confirm')) {
+        nw.classList.add('confirm');
+        nw.textContent = 'Säker? Klicka igen';
+        clearTimeout(this._nwT);
+        this._nwT = setTimeout(() => { nw.classList.remove('confirm'); nw.textContent = 'Nytt spel'; }, 3500);
+        return;
+      }
+      this.resetSave();
+    });
   }
 
   start() {
@@ -257,9 +331,13 @@ class Game {
     document.getElementById('title').classList.add('gone');
     document.body.classList.add('playing');
     audio.init();
+    // The Saab back in its bay (the title had it rolled out).
+    const saab = this.named.saab;
+    if (saab?.home && !saab.dead && this.titleShot) { saab.place(saab.home.x, saab.home.z, saab.home.yaw); saab.ctrl.park = true; }
     this.spawnPlayer();
     if (!TEST) { input.wantLock = true; input.lock(); }
-    if (!TEST) {
+    // The start toasts only on a new game (a continued one knows all that already).
+    if (!TEST && this.isNewGame) {
       setTimeout(() => hud.toast('Felparkerade bilar i området. Gå fram och håll <b>F</b> för att anteckna.'), 1500);
       // Whoever is offering the day's mission when the toast shows (not when Spela was clicked).
       setTimeout(() => { const giver = this.missions.offered?.giver; if (giver && this.missions.state === 'idle') hud.toast(`<b>${CHARS[giver].name}</b> vill dig något <span class="bang">!</span> Gå fram och tryck <b>E</b>.`); }, 7000);
@@ -270,7 +348,7 @@ class Game {
   // gamepad's Start resume (see loop), as does the button. A resume by key re-locks the pointer
   // if the browser allows it (Esc never counts as a gesture: then the next click in the game does).
   pause(on) {
-    if (TEST || this.paused === on) return;
+    if (TEST || !this.started || this.paused === on) return;
     this.paused = on;
     this.pausedAt = performance.now();
     document.getElementById('pause').classList.toggle('show', on);
@@ -279,6 +357,13 @@ class Game {
     audio.skid(0);
     audio.horn(false);
     audio.pen(false);
+    // The phone doesn't ring on behind the menu; it rings again after it while nobody has answered
+    // (the call itself waits), and a report being written scratches on.
+    if (on) audio.ring(false);
+    else {
+      if (this.interrupts.ringing) audio.ring(true);
+      if (this.patrol.writing) audio.pen(true);
+    }
     if (on) { input.wantLock = true; input.unlock(); }
     else { input.wantLock = true; input.lock(); this.last = performance.now(); }
   }
@@ -292,15 +377,17 @@ class Game {
   // ------------------------------------------------------------------------------------------
   // World population
 
-  addCar(car) { this.cars.push(car); scene.add(car.root); car.sync(0); return car; }
+  addCar(car) { this.cars.push(car); this.carsVer++; scene.add(car.root); car.sync(0); return car; }
   removeCar(car) {
     const i = this.cars.indexOf(car);
-    if (i >= 0) this.cars.splice(i, 1);
+    if (i >= 0) { this.cars.splice(i, 1); this.carsVer++; }
     if (car === this.playerCar) this.exitCar(true);
     for (const p of [car.driver, ...car.passengers]) if (p && p.car === car) this.unseat(p);
     scene.remove(car.root);
     // A seated driver bust is a geometry of its own (its materials are the shared surfaces).
     this.dropBust(car);
+    // The car's own GPU things (plate, lamps, its trailer's): freed. Never re-add a removed car.
+    car.dispose();
   }
   // Take a seated driver bust out of a car for good (its geometry is its own; the materials are
   // the shared surfaces).
@@ -317,6 +404,8 @@ class Game {
     const obj = buildBust(def);
     car.seatLocal(1, obj.position);
     car.tilt.add(obj);
+    // It never moves in the car's frame: fixed matrices, like the car's own meshes (cars.md, round 4).
+    obj.traverse((o) => { o.matrixAutoUpdate = false; o.updateMatrix(); });
     car.driverBust = obj;
     return obj;
   }
@@ -464,6 +553,8 @@ class Game {
       this.patrol.addOrdning(-8);
     }
     car.ai = null;
+    // A borrowed traffic car stays where Ove leaves it, until nobody can see it (recycleTraffic).
+    if (car.traffic) car.wasTraffic = true;
     car.traffic = false;
     car.engineOn = null;
     this.seat(this.player, car, 1);
@@ -482,6 +573,7 @@ class Game {
     this.unseat(this.player, spot.x, spot.z);
     this.player.yaw = car.yaw;
     this.playerCar = null;
+    car.leftAt = this.time;
     car.ctrl.park = true;
     car.ctrl.throttle = 0;
     audio.door();
@@ -506,10 +598,16 @@ class Game {
     if (ch.car && (had || opts.walkTo)) { const e = this.exitSpot(ch.car, ch.seatSide || -1); this.unseat(ch, e.x, e.z); }
     if (opts.walkTo) this.walkNpc(ch, Array.isArray(opts.walkTo) ? opts.walkTo : [opts.walkTo]);
   }
+  // Someone walking with Ove is still with him while they drop a little behind (round a fence or a
+  // hedge): only 2 s beyond 20 m loses them (it used to flip at 14 m, and the errand's objective
+  // flipped with it, 35 times in 70 s). Beyond 35 m they give up following (comp.left).
   isWithOve(ch) {
     if (!ch || !this.companions.has(ch)) return false;
     if (this.playerCar) return ch.car === this.playerCar;
-    return !ch.car && dist(ch.x, ch.z, this.player.x, this.player.z) < 14;
+    if (ch.car) return false;
+    const o = this.companions.get(ch), d = dist(ch.x, ch.z, this.player.x, this.player.z);
+    if (o.push) return d < 14;
+    return !o.left && d < 35 && (d <= 20 || (o.farT || 0) < 2);
   }
   boardCompanion(ch, car) {
     const side = this.freeSeat(car);
@@ -582,22 +680,26 @@ class Game {
     return { x: o.x, z: o.z, vx: o.vx, vz: o.vz };
   }
 
+  // The nearest thing in a car's lane ahead within `range`: { dist, isPlayer } or null (the result
+  // object is reused: read it at once, as drivers.js does).
   obstacleAhead(car, range) {
     const fx = Math.sin(car.yaw), fz = Math.cos(car.yaw);
-    const halfW = car.spec.wid / 2 + 0.6;
-    let best = null;
+    const halfW = car.spec.wid / 2 + 0.6, half = car.spec.len / 2, cx = car.x, cz = car.z;
+    let bestD = Infinity, bestP = false;
     const test = (x, z, r, isPlayer) => {
-      const dx = x - car.x, dz = z - car.z;
-      const along = dx * fx + dz * fz - car.spec.len / 2 - r;
+      const dx = x - cx, dz = z - cz;
+      const along = dx * fx + dz * fz - half - r;
       if (along < -1.5 || along > range) return;
-      const lat = Math.abs(dx * -fz + dz * fx);
-      if (lat > halfW + r) return;
+      if (Math.abs(dx * -fz + dz * fx) > halfW + r) return;
       const d = Math.max(0, along);
-      if (!best || d < best.dist) best = { dist: d, isPlayer };
+      if (d < bestD) { bestD = d; bestP = isPlayer; }
     };
     const R = range + 8;
-    for (const o of this.cars) {
-      if (o === car || Math.abs(o.x - car.x) > R || Math.abs(o.z - car.z) > R) continue;
+    const a = this.byX();
+    for (let i = this.firstX(cx - R - 2 * this._rmax - 1); i < a.length; i++) {
+      const o = a[i];
+      if (o.x - o.radius > cx + R + 1) break;
+      if (o === car || Math.abs(o.x - cx) > R || Math.abs(o.z - cz) > R) continue;
       const ov = o.vx * fx + o.vz * fz;
       if (ov > car.forwardSpeed + 1.5) continue;
       if (o.traffic && Math.cos(o.yaw - car.yaw) < -0.7) continue;
@@ -606,27 +708,33 @@ class Game {
     }
     // People: standing, flying or lying on the road. A body on the road stops traffic (it used to
     // see only people on their feet and ploughed the rest along for hundreds of metres).
-    const person = (c) => c.state === 'normal' || c.state === 'down' || c.state === 'flung';
-    if (!this.playerCar && person(this.player)) test(this.player.x, this.player.z, 0.5, true);
-    for (const p of this.peds) {
-      const c = p.char;
-      if (!person(c) || Math.abs(c.x - car.x) > R || Math.abs(c.z - car.z) > R) continue;
+    const p0 = this.player;
+    if (!this.playerCar && isPerson(p0)) test(p0.x, p0.z, 0.5, true);
+    const peds = this.peds;
+    for (let i = 0; i < peds.length; i++) {
+      const c = peds[i].char;
+      if (Math.abs(c.x - cx) > R || Math.abs(c.z - cz) > R || !isPerson(c)) continue;
       test(c.x, c.z, 0.4, false);
     }
     for (const k in this.npcs) {
       const c = this.npcs[k];
-      if (c.car || !person(c) || Math.abs(c.x - car.x) > R || Math.abs(c.z - car.z) > R) continue;
+      if (c.car || Math.abs(c.x - cx) > R || Math.abs(c.z - cz) > R || !isPerson(c)) continue;
       test(c.x, c.z, c.r + 0.1, false);
     }
-    return best;
+    if (bestD === Infinity) return null;
+    _obst.dist = bestD; _obst.isPlayer = bestP;
+    return _obst;
   }
 
   carThreat(x, z) {
-    for (const c of this.cars) {
-      const sp = c.speed;
-      if (sp < 7) continue;
+    const a = this.byX();
+    for (let i = this.firstX(x - 31 - 2 * this._rmax); i < a.length; i++) {
+      const c = a[i];
+      if (c.x - c.radius > x + 31) break;
       const dx = x - c.x, dz = z - c.z;
       if (Math.abs(dx) > 30 || Math.abs(dz) > 30) continue;
+      const sp = c.speed;
+      if (sp < 7) continue;
       const vx = c.vx / sp, vz = c.vz / sp;
       const along = dx * vx + dz * vz, lat = dx * -vz + dz * vx;
       if (along > 0 && along < sp * 0.8 + 3 && Math.abs(lat) < 2.4) {
@@ -639,7 +747,10 @@ class Game {
 
   carRoofAt(x, z, ytop) {
     let best = null;
-    for (const c of this.cars) {
+    const a = this.byX();
+    for (let i = this.firstX(x - 2 * this._rmax - 1); i < a.length; i++) {
+      const c = a[i];
+      if (c.x - c.radius > x + 1) break;
       if (Math.abs(c.x - x) > c.radius || Math.abs(c.z - z) > c.radius) continue;
       const dx = x - c.x, dz = z - c.z;
       const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
@@ -650,8 +761,60 @@ class Game {
     return best;
   }
 
-  allChars() {
-    const out = [];
+  // ------------------------------------------------------------------------------------------
+  // The cars sorted by their west edge (x - radius): the broadphase for car-car contacts and for every
+  // "cars near (x, z)" query in the fixed step (cars vs people, roofs, AI obstacles, panicking
+  // pedestrians), which all used to loop over every one of the ~160 cars. Re-sorted once per step by
+  // insertion (the order barely changes); rebuilt when cars come or go.
+  byX() {
+    const a = this._byX;
+    if (this._byXVer !== this.carsVer) {
+      a.length = 0;
+      for (const c of this.cars) a.push(c);
+      this._byXVer = this.carsVer;
+      this.sortByX();
+    }
+    return a;
+  }
+  sortByX() {
+    const a = this._byX;
+    let rmax = 0;
+    for (let i = 0; i < a.length; i++) {
+      const c = a[i], k = c.x - c.radius;
+      if (c.radius > rmax) rmax = c.radius;
+      let j = i - 1;
+      while (j >= 0 && a[j].x - a[j].radius > k) { a[j + 1] = a[j]; j--; }
+      a[j + 1] = c;
+    }
+    this._rmax = rmax || 7;   // the widest car's half diagonal (the bus)
+  }
+  // Index of the first car whose west edge is at or east of x.
+  firstX(x) {
+    const a = this._byX;
+    let lo = 0, hi = a.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (a[m].x - a[m].radius < x) lo = m + 1; else hi = m; }
+    return lo;
+  }
+  // Car-car contacts: swept along x; a pair where both cars sleep is never tested (two parked cars
+  // can't start touching by themselves: a moving one wakes the other on contact).
+  collideAll() {
+    const a = this.byX();
+    this.sortByX();
+    const n = a.length;
+    for (let i = 0; i < n; i++) {
+      const c = a[i], xmax = c.x + c.radius, cs = c.asleep;
+      for (let j = i + 1; j < n; j++) {
+        const o = a[j];
+        if (o.x - o.radius > xmax) break;
+        if (cs && o.asleep) continue;
+        if (Math.abs(c.z - o.z) > c.radius + o.radius) continue;
+        collideCars(c, o, this);
+      }
+    }
+  }
+
+  allChars(out = []) {
+    out.length = 0;
     if (!this.playerCar) out.push(this.player);
     for (const p of this.peds) out.push(p.char);
     for (const k in this.npcs) out.push(this.npcs[k]);
@@ -836,9 +999,27 @@ class Game {
 
   // A named car somewhere odd (Anders' Audi left at Bilhallen): put it back home once nobody sees.
   rehome(car) { (this.rehoming ??= new Set()).add(car); }
-  // Ove's Saab back at its spot, if it is far from home and he isn't in it (a retried mission).
+  // A named car (Ove's Saab, Patrick's car, Rune's Volvo, Anders' Audi, Adrian's Saab) is never gone
+  // for good: a wreck, or one taken out of the world, is replaced by a new one at home.
+  respawnNamed(name) {
+    const old = this.named[name];
+    if (!old || parkedCars.some((p) => p.name === name)) { if (old && this.cars.includes(old) && !old.dead) return old; if (old) this.removeCar(old); this.named[name] = null; return this.ensureNamedCar(name); }
+    const h = old.home;
+    if (!h) return null;
+    this.removeCar(old);
+    const car = new Car(h.type || old.type, { color: old.color, name, engineOn: false });
+    car.place(h.x, h.z, h.yaw);
+    car.home = h;
+    car.displayName = old.displayName;
+    this.addCar(car);
+    this.named[name] = car;
+    return car;
+  }
+  // Ove's Saab back at its spot, if it is far from home and he isn't in it (a retried mission, the
+  // start of a day), or a new one if it was wrecked.
   homeNamedCar(name) {
-    const car = this.named[name];
+    let car = this.named[name];
+    if (car && car !== this.playerCar && (car.dead || !this.cars.includes(car))) car = this.respawnNamed(name);
     if (!car || car === this.playerCar || car.dead || !car.home) return;
     if (dist(car.x, car.z, car.home.x, car.home.z) > 30) { car.place(car.home.x, car.home.z, car.home.yaw); car.ctrl.park = true; }
   }
@@ -852,24 +1033,31 @@ class Game {
       localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: this.missions.index, clock: Math.round(this.clockMin), gate: !this.missions.gateOpen && this.missions.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave() }));
     } catch (e) { /* private mode: progress just won't persist */ }
   }
+  // Every field is checked: a hand-edited or half-written save must not kill the story (mission -1
+  // or 2.5 offered no day ever again) or turn the kronor and the meter into strings ('12' + 10 = 1210).
   load() {
+    this.isNewGame = true;
     if (!params.has('fresh')) {
       try {
         const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
-        if (s) {
-          this.missions.index = Math.min(MISSIONS.length, s.mission || 0);
-          this.coins = s.kr || 0;
-          this.got.emblems = new Set(s.emblems || []);
-          this.got.photos = new Set(s.photos || []);
-          this.unlocked = new Set(s.unlocked || []);
+        if (s && typeof s === 'object' && !Array.isArray(s)) {
+          const int = (v, lo, hi, d) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? clamp(n, lo, hi) : d; };
+          const ids = (a, n) => new Set((Array.isArray(a) ? a : []).filter((v) => typeof v === 'number' || typeof v === 'string').map(Number).filter((v) => Number.isInteger(v) && v >= 0 && v < n));
+          this.missions.index = int(s.mission, 0, MISSIONS.length, 0);
+          this.coins = int(s.kr, 0, 9999999, 0);
+          this.got.emblems = ids(s.emblems, this.emblems?.length || 7);
+          this.got.photos = ids(s.photos, this.photos?.length || 7);
+          this.unlocked = new Set((Array.isArray(s.unlocked) ? s.unlocked : []).filter((v) => typeof v === 'string'));
           this.patrol.fromSave(s.patrol);
-          if (Number.isFinite(s.clock)) this.clockMin = clamp(s.clock, 0, 24 * 60 - 1);
+          const clock = Number(s.clock);
+          if (s.clock != null && clock >= 0 && clock < 24 * 60) this.clockMin = clock;
           // Saved between two days: the next one still waits for a little patrolling.
-          if (s.gate === true) { this.missions.gateOpen = false; this.missions.gate = { t: 0, idle: 0, reports: this.patrol.reports }; }
+          if (s.gate === true && this.missions.index > 0 && this.missions.index < MISSIONS.length) { this.missions.gateOpen = false; this.missions.gate = { t: 0, idle: 0, reports: this.patrol.reports }; }
+          this.isNewGame = this.missions.index === 0 && !this.patrol.reports;
         }
       } catch (e) { /* corrupt save: start fresh */ }
     }
-    if (params.has('mission')) this.missions.index = +params.get('mission');
+    if (params.has('mission')) { this.missions.index = clamp(Math.floor(+params.get('mission')) || 0, 0, MISSIONS.length); this.isNewGame = false; }
   }
   applySaveToWorld() {
     for (const e of this.emblems) if (this.got.emblems.has(e.id)) e.remove();
@@ -909,6 +1097,8 @@ class Game {
 
   placeNpcs(force = false) {
     const cur = this.missions.offered;
+    // (where Ove is: in his car if he drives - player.x/z used to stay where he got in)
+    const f = this.playerCar || this.player;
     for (const key of Object.keys(HOMES)) {
       const n = this.npcs[key];
       if (n.busy || n.car || this.companions.has(n) || n.walkTo) continue;
@@ -918,7 +1108,7 @@ class Game {
       if (n.spot === h.id && !away && !force) continue;
       if (n.state !== 'normal' && !force) continue;
       // Don't pop people around in front of Ove unless a mission needs them there.
-      if (!force && !needed && dist(n.x, n.z, this.player.x, this.player.z) < 50) continue;
+      if (!force && !needed && dist(n.x, n.z, f.x, f.z) < 50) continue;
       const p = lm(h.where);
       const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
       let x = p.x - fz * h.right + fx * h.ahead, z = p.z + fx * h.right + fz * h.ahead;
@@ -955,23 +1145,33 @@ class Game {
     window.__frame = this.frame;
   }
 
-  // Title: a slow drift down the walkway towards Ove, the town ticking over behind the cards.
+  // Title: a slow drift in towards Ove and his Saab (titlePose), the town ticking over around them.
   idleTitle(dt) {
     this.time += dt;
     const s = landmarks.oveStart || lm('oveHouse');
     const t = this.time;
     const a = (1 - Math.cos(Math.min(1, t / 40) * Math.PI)) / 2;   // eases from 0 to 1 over 40 s
-    camera.position.set(s.x - 25 + a * 4, 3.1 - a * 0.5 + Math.sin(t * 0.21) * 0.05, s.z - 0.2 + Math.sin(t * 0.13) * 0.25);
-    camera.lookAt(s.x + 14, 1.6, s.z);
-    camera.fov = 44;
+    const T = this.titleShot;
+    if (T) {
+      const th = T.th0 + (T.th1 - T.th0) * a, d = T.d0 + (T.d1 - T.d0) * a;
+      const ox = T.fx * Math.cos(th) + T.lx * Math.sin(th), oz = T.fz * Math.cos(th) + T.lz * Math.sin(th);
+      camera.position.set(T.x + ox * d, 1.36 - a * 0.06 + Math.sin(t * 0.21) * 0.02, T.z + oz * d);
+      // Aimed to the camera's left of them, so they stand in the right half of the picture.
+      camera.lookAt(T.x - oz * T.off, 1.2, T.z + ox * T.off);
+      camera.fov = 40;
+    } else {
+      camera.position.set(s.x - 25 + a * 4, 3.1 - a * 0.5 + Math.sin(t * 0.21) * 0.05, s.z - 0.2 + Math.sin(t * 0.13) * 0.25);
+      camera.lookAt(s.x + 14, 1.6, s.z);
+      camera.fov = 44;
+    }
     const tc = window.__titleCam;   // look-dev override: { pos: [x,y,z], look: [x,y,z], fov }
     if (tc) { camera.position.set(...tc.pos); camera.lookAt(...tc.look); camera.fov = tc.fov || 44; }
     camera.updateProjectionMatrix();
     this.acc += dt;
     let n = 0;
-    while (this.acc >= STEP && n < 4) { this.stepWorld(STEP); this.acc -= STEP; n++; }
-    if (n === 4) this.acc = 0;
-    followSun(s.x, s.z);
+    while (this.acc >= STEP && n < MAX_STEPS) { this.stepWorld(STEP); this.acc -= STEP; n++; }
+    if (this.acc >= STEP) this.acc = 0;
+    followSun(T ? T.x : s.x, T ? T.z : s.z);
     tickSky(this.time, camera.position);
     this.syncAll(dt, true);
     FX.tick(dt);
@@ -980,12 +1180,12 @@ class Game {
   update(dt) {
     this.time += dt;
     this.clockMin += dt * CLOCK_RATE;
-    for (const h of this.hooks.slice()) h(dt);
+    if (this.hooks.length) for (const h of this.hooks.slice()) h(dt);
     this.handleOneShots();
     this.acc += dt;
     let n = 0;
-    while (this.acc >= STEP && n < 4) { this.fixedStep(STEP); this.acc -= STEP; n++; }
-    if (n === 4) this.acc = 0;
+    while (this.acc >= STEP && n < MAX_STEPS) { this.fixedStep(STEP); this.acc -= STEP; n++; }
+    if (this.acc >= STEP) this.acc = 0;
     this.syncAll(dt, false);
     const ms = this.missions.state;
     this.patrol.suspended = ms !== 'idle';
@@ -1004,7 +1204,8 @@ class Game {
     tickTown(this.time);
     this.updateMarkers();
     // On foot the camera swings in behind Ove after a few seconds without the mouse (camera.js).
-    this.cam.update(dt, { ...f, autoTurn: !this.playerCar, lookBack: input.down('lookBack') }, this.inDialog ? null : input.look(), this.cars);
+    f.autoTurn = !this.playerCar; f.lookBack = input.down('lookBack');
+    this.cam.update(dt, f, this.inDialog ? null : input.look(), this.cars);
     this.hideNearCamera();
     if (this.aerial) { camera.position.set(f.x, 420, f.z + 260); camera.lookAt(f.x, 0, f.z); camera.fov = 50; camera.updateProjectionMatrix(); }
     followSun(f.x, f.z);
@@ -1072,7 +1273,7 @@ class Game {
 
   chatterFor(key) {
     const base = CHATTER[key] || ['Hej, Ove.'], later = CHATTER_AFTER[key];
-    return later && this.missions.index >= later[0] && Math.random() < 0.6 ? later[1] : base;
+    return later && this.missions.index >= later[0] && (later[2] || Math.random() < 0.6) ? later[1] : base;
   }
 
   // Small talk with a neighbour: a line from them, a grunt from Ove.
@@ -1098,7 +1299,7 @@ class Game {
     for (const c of this.cars) {
       if (c.dead || c.locked || Math.abs(c.x - p.x) > 8 || Math.abs(c.z - p.z) > 8) continue;
       if (p.y > c.y + c.height - 0.3) continue;
-      const h = {};
+      const h = _hit2;
       if (circleVsObb(p.x, p.z, 2.2, c.obb, h)) {
         const d = 2.2 - h.depth;
         if (d < bd) { bd = d; best = { type: 'car', car: c }; }
@@ -1117,11 +1318,26 @@ class Game {
 
   // Physics for everything but the player's input (the title screen runs this too).
   stepWorld(h) {
-    for (const c of this.cars) if (c.ai) c.ai.update(h, this);
-    for (const c of this.cars) c.step(h, this);
-    const cars = this.cars;
-    for (let i = 0; i < cars.length; i++) for (let j = i + 1; j < cars.length; j++) collideCars(cars[i], cars[j], this);
-    for (const ped of this.peds) { ped.update(h, this); ped.char.step(h, this); }
+    const cars = this.cars, fp = this.playerCar || this.player, fx = fp.x, fz = fp.z;
+    const odd = (this.stepN = (this.stepN + 1) | 0) & 1;
+    // Traffic far from Ove (> 120 m) thinks at 30 Hz, half of it on each step (its physics still
+    // steps at 60); chases, smitare and mission drivers always at 60.
+    this.byX();
+    for (let i = 0; i < cars.length; i++) {
+      const c = cars[i], ai = c.ai;
+      if (!ai) continue;
+      if (ai.mode === 'traffic' && (c.x - fx) ** 2 + (c.z - fz) ** 2 > FAR2) { if ((c.id & 1) === odd) ai.update(h * 2, this); }
+      else ai.update(h, this);
+    }
+    for (let i = 0; i < cars.length; i++) cars[i].step(h, this);
+    this.collideAll();
+    // Pedestrians far away walk at 30 Hz too.
+    const peds = this.peds;
+    for (let i = 0; i < peds.length; i++) {
+      const ped = peds[i], c = ped.char;
+      if (c.state === 'normal' && (c.x - fx) ** 2 + (c.z - fz) ** 2 > FAR2) { if ((i & 1) === odd) { ped.update(h * 2, this); c.step(h * 2, this); } }
+      else { ped.update(h, this); c.step(h, this); }
+    }
     this.stepNpcs(h);
     if (!this.playerCar) this.player.step(h, this);
     this.carsVsPeople();
@@ -1137,7 +1353,7 @@ class Game {
     } else if (p.state === 'normal') {
       if (this.inDialog || this.missions.state === 'failed') { p.wishX = p.wishZ = 0; }
       else {
-        const mx = input.moveX(), my = input.moveY();
+        const mx = input.moveX() || 0, my = input.moveY() || 0;
         const fx = Math.sin(this.cam.yaw), fz = Math.cos(this.cam.yaw);
         let wx = fx * my + -fz * mx, wz = fz * my + fx * mx;
         const l = Math.hypot(wx, wz);
@@ -1154,12 +1370,27 @@ class Game {
     }
     this.kickT -= h;
     this.stepWorld(h);
+    // While Ove drives, he is where his car is (player.x/z used to stay where he got in: neighbours
+    // were sent home in plain view, and the ones by the boarding spot never were).
+    if (this.playerCar && p.car === this.playerCar) { p.x = this.playerCar.x; p.z = this.playerCar.z; p.y = this.playerCar.y; p.vx = p.vz = p.vy = 0; }
   }
 
   // The neighbours: stand at home and face Ove when he comes by, walk with him when they are
   // his companions (Rune is pushed), walk off somewhere when asked to.
   stepNpcs(h) {
     const p = this.player;
+    // Ove's trail on foot (a point every 0.6 m, the last ~29 m): people walking with him follow it
+    // round fences and hedges instead of walking straight at him into them.
+    const crumbs = this.crumbs;
+    if (this.playerCar) crumbs.length = 0;
+    else if (p.state === 'normal') {
+      const last = crumbs[crumbs.length - 1];
+      if (!last || (p.x - last.x) ** 2 + (p.z - last.z) ** 2 > 0.36) {
+        const c = crumbs.length >= 48 ? crumbs.shift() : { x: 0, z: 0 };
+        c.x = p.x; c.z = p.z;
+        crumbs.push(c);
+      }
+    }
     let idx = 0;
     for (const k in this.npcs) {
       const n = this.npcs[k];
@@ -1180,15 +1411,36 @@ class Game {
           if (dist(n.x, n.z, c.x, c.z) < 9 && c.speed < 3) this.boardCompanion(n, c);
         } else {
           const d = dist(n.x, n.z, p.x, p.z);
+          comp.farT = d > 20 ? (comp.farT || 0) + h : 0;
           if (comp.left && d < 3) comp.left = false;
           if (d > 35) comp.left = true;
           if (!comp.left) {
-            const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), side = idx % 2 ? 0.7 : -0.7;
-            const tx = p.x - fx * 1.4 - fz * side, tz = p.z - fz * 1.4 + fx * side;
+            let tx, tz;
+            if (d < 3.2 || crumbs.length < 3) {
+              // Close: 1.4 m behind him, side by side.
+              const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), side = idx % 2 ? 0.7 : -0.7;
+              tx = p.x - fx * 1.4 - fz * side; tz = p.z - fz * 1.4 + fx * side;
+            } else {
+              // Further back: along his trail, from the point of it nearest them on towards him.
+              let bi = 0, bd = Infinity;
+              for (let i = 0; i < crumbs.length; i++) { const c = crumbs[i], e = (c.x - n.x) ** 2 + (c.z - n.z) ** 2; if (e < bd) { bd = e; bi = i; } }
+              const c = crumbs[Math.min(crumbs.length - 1, bd < 1.2 ? bi + 2 : bi)];
+              tx = c.x; tz = c.z;
+            }
             const dd = dist(n.x, n.z, tx, tz);
             if (dd > 0.5) {
-              const sp = dd > 6 ? (n.wheelchair ? 3 : 4.6) : dd > 2.5 ? Math.max(2.4, p.speed) : Math.min(2.4, p.speed + 0.6);
+              const sp = d > 6 ? (n.wheelchair ? 3 : 4.6) : d > 3.2 ? Math.max(2.4, p.speed + 0.4) : dd > 2.5 ? Math.max(2.4, p.speed) : Math.min(2.4, p.speed + 0.6);
               n.wishX = ((tx - n.x) / dd) * sp; n.wishZ = ((tz - n.z) / dd) * sp;
+            }
+            // Pressed against something for 2.5 s while Ove walks on: once he can't see them they
+            // catch up by his trail (a point ~2 m behind him).
+            const chk = (comp.chk ||= { t: 0, x: n.x, z: n.z });
+            chk.t += h;
+            if (chk.t > 2.5) {
+              const stuck = d > 4 && dist(n.x, n.z, chk.x, chk.z) < 0.4;
+              chk.t = 0; chk.x = n.x; chk.z = n.z;
+              const c = crumbs[Math.max(0, crumbs.length - 4)];
+              if (stuck && c && !this.onScreen(n.x, n.y + 1, n.z) && !this.onScreen(c.x, p.y + 1, c.z) && this.spotFree(c.x, c.z, p.y)) n.teleport(c.x, c.z, p.yaw);
             }
           }
           idx++;
@@ -1226,6 +1478,12 @@ class Game {
       }
       n.step(h, this);
     }
+  }
+
+  // Could the camera see (x, y, z)? (in front of it and inside the picture, ignoring walls)
+  onScreen(x, y, z) {
+    _v.set(x, y, z).project(camera);
+    return _v.z < 1 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05;
   }
 
   // The kick lands: a car's tyre (thunk, an opinion), a prop (breaks; Ove pays), or a person
@@ -1276,12 +1534,15 @@ class Game {
   // Rune and the neighbours are never knocked over, and nobody lying on the road is pushed along in
   // front of a bumper: they are shoved out sideways and the car slows as if it hit something soft.
   carsVsPeople() {
-    const hit = {};
-    const chars = this.allChars();
+    const hit = _hit;
+    const chars = this.allChars(this._chars ||= []);
+    const a = this.byX(), R = 2 * this._rmax + 1.5;
     for (const ch of chars) {
       if (ch.state === 'seated' || ch.state === 'hidden' || ch.solid === false) continue;
       const pushed = !!this.companions.get(ch)?.push && !this.playerCar;
-      for (const car of this.cars) {
+      for (let i = this.firstX(ch.x - R); i < a.length; i++) {
+        const car = a[i];
+        if (car.x - car.radius > ch.x + 1.5) break;
         if (Math.abs(car.x - ch.x) > car.radius + 1 || Math.abs(car.z - ch.z) > car.radius + 1) continue;
         if (ch.y > car.y + car.height - 0.3) continue;
         if (!circleVsObb(ch.x, ch.z, ch.r, car.obb, hit)) continue;
@@ -1358,18 +1619,21 @@ class Game {
       c.root.visible = d2 < 320 * 320;
       if (c.root.visible) c.sync(dt);
     }
+    // Pedestrians beyond 190 m are not drawn, and are taken out of the scene graph altogether: their
+    // ~45 bones each were a third of the scene's per-frame matrix updates (they walk on regardless).
     for (const ped of this.peds) {
       const c = ped.char;
-      const d2 = (c.x - cx) ** 2 + (c.z - cz) ** 2;
-      c.root.visible = d2 < 190 * 190;
-      if (c.root.visible) c.sync(dt);
+      const d2 = (c.x - cx) ** 2 + (c.z - cz) ** 2, vis = d2 < 190 * 190;
+      c.root.visible = vis;
+      if (vis !== (c.root.parent === scene)) { if (vis) scene.add(c.root); else scene.remove(c.root); }
+      if (vis) c.sync(dt);
     }
-    const p = this.player;
+    const p = this.player, fp = this.playerCar || p;
     const talker = this.talker;
     const running = this.missions.state === 'running';
     for (const k in this.npcs) {
       const n = this.npcs[k];
-      const near = dist(n.x, n.z, p.x, p.z);
+      const near = dist(n.x, n.z, fp.x, fp.z);
       n.anim.talk = talker === k;
       const giver = this.missions.offered?.giver === k;
       // Elsewhere today: hidden at home (see npcAway). Nobody vanishes in front of Ove, and nobody
@@ -1393,7 +1657,7 @@ class Game {
     }
     // Ove: notebook, phone, pushing / carrying, footsteps.
     p.anim.talk = talker === 'ove';
-    p.anim.write = title || (!this.playerCar && !!this.patrol.writing);
+    p.anim.write = !title && !this.playerCar && !!this.patrol.writing;
     p.anim.phone = !this.playerCar && this.interrupts.onPhone;
     this.poseT -= dt;
     const posing = this.poseT > 0 && !this.playerCar;
@@ -1428,8 +1692,18 @@ class Game {
         c.animate?.(dt, 0);
       }
     }
-    if (this.homeCat && dist(this.homeCat.root.position.x, this.homeCat.root.position.z, camera.position.x, camera.position.z) < 60) this.homeCat.animate(dt, 0);
-    if (!title && this.missions.state === 'idle') this.placeNpcs();
+    if (this.homeCat) {
+      // "Din katt har rymt!": not by the door while Sara's errand has Ove looking for it.
+      const home = this.interrupts.active?.tpl.id !== 'katten';
+      this.homeCat.root.visible = home;
+      if (home && dist(this.homeCat.root.position.x, this.homeCat.root.position.z, camera.position.x, camera.position.z) < 60) this.homeCat.animate(dt, 0);
+    }
+    // (a few times a second is plenty: it only moves people Ove can't see; at once when the day's
+    // offer changes, so the giver is at the mission's spot straight away)
+    if (!title && this.missions.state === 'idle') {
+      const off = this.missions.offered?.id || null;
+      if (this.frame % 10 === 0 || off !== this._offId) { this._offId = off; this.placeNpcs(); }
+    }
   }
 
   // Nobody's head fills the screen: anyone the camera has ended up inside (a neighbour standing
@@ -1493,9 +1767,11 @@ class Game {
   }
 
   mapMarkers(all = false) {
-    const out = [];
+    // (the minimap's list is reused every other frame; the big map gets its own)
+    const out = all ? [] : (this._mm ||= []);
+    out.length = 0;
     const ms = this.missions;
-    const f = this.focus();
+    const f = this.playerCar || this.player;
     if (ms.offered) {
       const g = this.npc(ms.offered.giver);
       if (g) out.push({ type: 'mission', x: g.x, z: g.z, edge: true });
@@ -1503,9 +1779,9 @@ class Game {
     const t = ms.target();
     if (t && !t.follow) out.push({ type: 'objective', x: t.x, z: t.z, edge: true });
     if (t && t.follow) out.push({ type: ms.stage?.car?.isTarget ? 'enemy' : 'friend', x: t.x, z: t.z, edge: true });
-    out.push(...ms.markers());
-    out.push(...this.interrupts.markers());
-    out.push(...this.patrol.markers(all));
+    for (const m of ms.markers()) out.push(m);
+    for (const m of this.interrupts.markers()) out.push(m);
+    this.patrol.markers(all, out);
     for (const k in this.npcs) {
       const n = this.npcs[k];
       if (n.car || n.state === 'hidden' || ms.offered?.giver === k) continue;
@@ -1538,24 +1814,37 @@ class Game {
       if (t.follow || t.noBeacon || this.inDialog) this.beacon.hide();
       else this.beacon.set(t.x, y, t.z, this.time, t.r || 3.2);
     } else this.beacon.hide();
-    this.route = null;
     if (target && !this.inDialog && dist(target.x, target.z, f.x, f.z) > 6) {
-      const aim = routeAim(f.x, f.z, target.x, target.z);
+      // The way there (street nodes) is planned every 4th frame, not every frame.
+      let aim = this._aim;
+      if (!aim || this.frame - this._aimF >= 4 || Math.abs(this._aimX - target.x) + Math.abs(this._aimZ - target.z) > 1.5) {
+        aim = this._aim = routeAim(f.x, f.z, target.x, target.z);
+        this._aimF = this.frame; this._aimX = target.x; this._aimZ = target.z;
+        const r = (this.route ||= []);
+        r.length = 0;
+        for (const n of aim.nodes) r.push([nodeX(n), nodeZ(n)]);
+        r.push([target.x, target.z]);
+      }
       const top = this.playerCar ? f.y + this.playerCar.height + 1.5 : f.y + this.player.height + 0.9;
       this.arrow.set(f.x, top, f.z, yawTo(aim.x - f.x, aim.z - f.z), this.time);
-      this.route = [...aim.nodes.map((n) => [nodeX(n), nodeZ(n)]), [target.x, target.z]];
-    } else this.arrow.hide();
+    } else { this.arrow.hide(); this._aim = null; if (this.route) this.route.length = 0; }
   }
 
   // Free roam with nothing else on: a quiet standing objective (what to do, and how far the
   // nearest felparkering is), so the screen never goes blank once the start toasts are gone.
   patrolObjective() {
     if (this.missions.state !== 'idle' || this.interrupts.active || this.interrupts.call || this.patrol.pursuit || this.inDialog) return null;
+    // (worked out every 10th frame: it is a quiet line, not a stopwatch)
+    if (this._po && this.frame - this._poF < 10) return this._po;
+    this._poF = this.frame;
+    return (this._po = this.patrolObjectiveNow());
+  }
+  patrolObjectiveNow() {
     const f = this.focus(), open = this.patrol.open;
     let d = Infinity;
     for (const c of open) d = Math.min(d, dist(c.x, c.z, f.x, f.z));
     const parts = [];
-    if (open.length) parts.push(`${open.length} ${open.length === 1 ? 'felparkering' : 'felparkeringar'} · närmaste ${d < 15 ? 'här' : `${Math.round(d / 10) * 10} m`}`);
+    if (open.length) parts.push(`${open.length} ${open.length === 1 ? 'felparkering' : 'felparkeringar'} · närmaste ${d < 15 ? 'här intill' : `${Math.round(d / 10) * 10} m bort`}`);
     else parts.push('Lugnt i området. Misstänkt lugnt.');
     const giver = this.missions.offered?.giver;
     if (giver && this.npc(giver)?.state === 'normal') parts.push(`${CHARS[giver].name} vill dig något`);
@@ -1568,39 +1857,53 @@ class Game {
     hud.setSpeedo(this.playerCar);
     hud.setMeter(this.patrol.ordning);
     hud.setClock(this.clockText());
+    let it = null;
     if (this.missions.state !== 'failed') {
       let prompt = '', hold = null;
       if (!this.inDialog && (this.playerCar || this.player.state === 'normal')) {
-        const parts = [];
+        const parts = this._parts ||= [];
+        parts.length = 0;
         const sp = this.stagePrompt();
         if (sp) { parts.push(sp.text); if (sp.hold != null) hold = sp.hold; }
         const pp = this.patrol.prompt();
         if (pp) parts.push(pp.text);
         if (!this.playerCar && !sp?.takesE) {
-          const it = this.nearestInteractable();
+          it = this.nearestInteractable();
           if (it?.type === 'talk') parts.push(`<b>E</b> Prata med ${it.who.def.name}`);
-          else if (it?.type === 'car') parts.push(it.car.driverBust ? '<b>E</b> Låna bilen' : '<b>E</b> Kliv i');
+          else if (it?.type === 'car') parts.push(it.car.driverBust ? '<b>E</b> Låna bilen' : '<b>E</b> Kliv in');
           else if (it?.type === 'chat') parts.push(`<b>E</b> Hälsa på ${it.who.def.name}`);
         }
+        // Ove driving inside the car-free area: what it costs, for as long as he is in there (one
+        // Anders shout a minute was all the feedback, and the meter fell 53 -> 16 in three minutes).
+        const pc = this.playerCar;
+        if (pc && this.patrol.passive && isCarFree(pc.x, pc.z)) parts.push('<span class="pr-warn">Bilfritt område · −1 Ordning/s · Kliv ur och gå</span>');
         prompt = parts.join('<span class="pr-sep"> &nbsp;·&nbsp; </span>');
       }
       hud.setPrompt(prompt, hold);
     }
-    // World tags: violations, the errand's people/cat, neighbours' names close by.
-    const tags = [...this.patrol.tags(), ...this.interrupts.tags(), ...(this.missions.state === 'running' ? this.missions.stage?.tags?.(this) || [] : [])];
+    // World tags: violations, the errand's people/cat, and names over the neighbours - only close by
+    // (5 m), or the one an E would greet, or the day's giver within 12 m.
+    const tags = this._tags ||= [];
+    tags.length = 0;
     if (!this.inDialog) {
-      const f = this.focus();
+      this.patrol.tags(tags);
+      for (const t of this.interrupts.tags()) tags.push(t);
+      if (this.missions.state === 'running') for (const t of this.missions.stage?.tags?.(this) || []) tags.push(t);
+      const f = this.playerCar || this.player, giver = this.missions.offered?.giver;
       for (const k in this.npcs) {
         const n = this.npcs[k];
         if (n.car || n.state !== 'normal') continue;
         const d = dist(n.x, n.z, f.x, f.z);
-        if (d < 9 && d > 1.2 && !tags.some((t) => t.text === n.def.name)) tags.push({ x: n.x, y: n.y + n.height + 0.3, z: n.z, text: n.def.name, cls: 'neighbour' });
+        if (d < 1.2 || !(d < 5 || (d < 12 && (k === giver || it?.who === n)))) continue;
+        let dup = false;
+        for (const t of tags) if (t.text === n.def.name) { dup = true; break; }
+        if (!dup) tags.push({ x: n.x, y: n.y + n.height + 0.3, z: n.z, text: n.def.name, cls: 'neighbour' });
       }
     }
-    hud.tags(this.inDialog ? [] : tags);
+    hud.tags(tags);
     if (this.frame % 2 === 0) {
-      const f = this.focus();
-      hud.drawMinimap(f.x, f.z, this.cam.yaw, this.playerCar ? this.playerCar.yaw : this.player.yaw, this.mapMarkers(false), this.route);
+      const f = this.playerCar || this.player;
+      hud.drawMinimap(f.x, f.z, this.cam.yaw, f.yaw, this.mapMarkers(false), this.route);
     }
     if (this.bigMap && this.frame % 10 === 0) hud.toggleBigMap(true, this);
     hud.tickBubbles();
@@ -1639,15 +1942,26 @@ class Game {
     if (this.recycleT > 0) return;
     this.recycleT = 2;
     const f = this.focus();
+    const free = this.missions.state === 'idle' && !this.interrupts.active;
     for (const c of this.cars.slice()) {
       if (c === this.playerCar || c.locked) continue;
       if (c.dead) {
         c.deadT = (c.deadT || 0) + 2;
         if (c.deadT > 20 && dist(c.x, c.z, f.x, f.z) > 60) {
+          // A named car is never gone for good (Ove's wrecked Saab used to vanish until a reload): a
+          // new one stands at home once nobody sees either spot.
+          if (c.name) {
+            if (this.named[c.name] === c && free && (!c.home || dist(c.home.x, c.home.z, f.x, f.z) > 60)) this.respawnNamed(c.name);
+            continue;
+          }
           this.removeCar(c);
           if (c.traffic) this.spawnTrafficCar(Math.random, f);
         }
+        continue;
       }
+      // A borrowed traffic car left somewhere goes once it is far away and out of mind (each one
+      // used to stay for good: every "lånad" car added one to the world, and to the physics).
+      if (c.wasTraffic && free && !c.driver && !c.passengers.length && this.time - (c.leftAt ?? -1e9) > 30 && dist(c.x, c.z, f.x, f.z) > 120) this.removeCar(c);
     }
     for (const c of this.rehoming || []) {
       if (c === this.playerCar || c.dead || !c.home) { this.rehoming.delete(c); continue; }

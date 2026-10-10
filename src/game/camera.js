@@ -294,12 +294,16 @@ export class CamRig {
       cam.fov = this.fov; cam.updateProjectionMatrix();
       return;
     }
-    if (look && (Math.abs(look.x) > 0.1 || Math.abs(look.y) > 0.1)) {
+    if (look && Number.isFinite(look.x) && Number.isFinite(look.y) && (Math.abs(look.x) > 0.1 || Math.abs(look.y) > 0.1)) {
       // Clamp: some browsers deliver a huge jump on the first pointer-locked move.
       this.yaw -= clamp(look.x, -250, 250) * 0.0024;
       this.pitch = clamp(this.pitch + clamp(look.y, -250, 250) * 0.002, -0.3, 1.1);
       this.manualT = 1.8;
     }
+    // Never a NaN camera (one bad gamepad axis used to turn the screen black for good).
+    if (!Number.isFinite(this.yaw)) this.yaw = Number.isFinite(focus.yaw) ? focus.yaw : 0;
+    if (!Number.isFinite(this.pitch)) this.pitch = 0.16;
+    if (!Number.isFinite(this.boom)) this.boom = 4;
     this.manualT -= dt;
     let pivotH, dist, lead = 0;
     if (focus.car) {

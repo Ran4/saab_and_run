@@ -28,7 +28,8 @@ import { audio } from '../audio.js';
 import { hud } from './hud.js';
 import { clamp, dist, pick } from '../util.js';
 
-// [tag text, notebook sentence]
+// [tag text (also the pause log's short form), notebook sentence]. The one source for both: hud.js
+// reads it (hud.kinds) for the notebook and the log.
 export const KINDS = {
   carfree: ['Bil i bilfritt område', 'Bil inom det bilfria området'],
   lawn: ['På gräsmattan', 'Parkerad på gräsmattan'],
@@ -36,10 +37,10 @@ export const KINDS = {
   busstop: ['Busshållplats', 'Parkerad på busshållplatsen'],
   handicap: ['Handikapplats', 'Handikapplats utan tillstånd'],
   garbage: ['Framför soprummet', 'Blockerar soprummet'],
-  guest24: ['Gästplats > 24 h', 'Gästparkering över 24 timmar'],
+  guest24: ['Gästplats > 24 tim', 'Gästparkering över 24\u00a0timmar'],
   firelane: ['Räddningsväg', 'Står på räddningsvägen'],
   loading: ['Lastzon', 'Parkerad i lastzonen'],
-  corner: ['Vid korsning', 'Inom 10 m från korsningen'],
+  corner: ['Vid korsning', 'Inom 10\u00a0m från korsningen'],
   crosswalk: ['Övergångsställe', 'Står på övergångsstället'],
 };
 const TYPES = ['volvo740', 'golf', 'kombi', 'volvo240', 'skoda', 'bmw', 'audi', 'saab900', 'golf', 'kombi', 'volvo740', 'van'];
@@ -58,7 +59,7 @@ const _dir = new THREE.Vector3();
 const DRAIN = 0.022, DRAIN_FAR = 150, DRAIN_ERRAND = 0.4;
 const WRITE_SECS = 1.8;
 const TARGET = 6, FEW = 3;
-const OVE_START = ['Det står ju på skylten.', 'Idioter.', 'Typiskt.', 'Ingen kan läsa nu för tiden.', 'Hmpf.', 'Jaså. Här står vi.'];
+const OVE_START = ['Det står ju på skylten.', 'Idioter.', 'Typiskt.', 'Ingen kan läsa nu för tiden.', 'Hmpf.', 'Jaså. Här ska vi stå, minsann.'];
 const FLEE_LINES = ['Hej då, gubbe!', 'Skriv vad du vill!', 'Ha det, farbror!', 'Jag ska bara...!'];
 const CAUGHT_LINES = ['Okej, okej! Jag flyttar den!', 'Förlåt! Jag skulle bara handla!', 'Det var bara fem minuter!', 'Snälla, inte en lapp till...'];
 
@@ -121,6 +122,7 @@ export class Patrol {
     this.needRelease = false;   // F must be let go between two reports
     this.lastKaos = -999;
     this.spots = violationSpots.map((s) => ({ ...s, onStreet: Math.min(roadInfo(s.x, s.z).dx, roadInfo(s.x, s.z).dz) < 9 }));
+    hud.kinds = KINDS;
   }
 
   get passive() { return !this.paused && !this.suspended; }
@@ -431,13 +433,13 @@ export class Patrol {
       // (A broke Ove's "−1 kr" isn't worth a mention.)
       hud.showBanner('KAOS I OMRÅDET', `Anders kallar till extra föreningsmöte${lost >= 5 ? ` · −${lost} kr` : ''}`, 'chaos', 3200);
       audio.alarm();
-      setTimeout(() => g.radio('anders', 'Extra föreningsmöte ikväll, Ove. Klockan sju. Ordningen i området är under all kritik.'), 1800);
+      setTimeout(() => g.radio('anders', 'Extra föreningsmöte i kväll, Ove. Klockan sju. Ordningen i området är under all kritik.'), 1800);
     } else if ((this.atTop || this.ordning >= 100) && !this.redaGiven) {
       this.redaGiven = true;
       g.addCoins(100);
       hud.showBanner('ORDNING OCH REDA', 'Området är som det ska · +100 kr', 'good', 3000);
       audio.jingle('complete');
-      setTimeout(() => g.radio('anita', 'Det är så lugnt i området idag, Ove. Rune sover som en stock.'), 2200);
+      setTimeout(() => g.radio('anita', 'Det är så lugnt i området i dag, Ove. Rune sover som en stock.'), 2200);
     }
     // Keep up to 6 open violations, a new one now and then, out of sight.
     const open = this.open;
@@ -479,8 +481,9 @@ export class Patrol {
     return { text: `<b>F</b> Anteckna felparkering <small>(håll)</small>` };
   }
 
-  tags() {
-    const f = this.g.focus(), out = [];
+  // World tags (pushed onto `out`: main.js reuses one list every frame).
+  tags(out = []) {
+    const f = this.g.playerCar || this.g.player;
     for (const c of this.active) {
       const v = c.violation;
       if (v.gone || c.dead) continue;
@@ -493,8 +496,7 @@ export class Patrol {
     return out;
   }
 
-  markers(all) {
-    const out = [];
+  markers(all, out = []) {
     for (const c of this.active) {
       const v = c.violation;
       if (v.gone || c.dead) continue;
@@ -504,12 +506,21 @@ export class Patrol {
     return out;
   }
 
-  // Save / load (main.js).
-  toSave() { return { ordning: Math.round(this.ordning), reports: this.reports, log: this.log.slice(-60) }; }
+  // Save / load (main.js). Every field is checked (a string Ordning used to concatenate and grow every
+  // frame while the meter read 0), and ORDNING OCH REDA, once paid, stays paid across a reload (it
+  // was paid again on every page load with a full meter).
+  toSave() { return { ordning: Math.round(this.ordning), reports: this.reports, log: this.log.slice(-60), reda: this.redaGiven }; }
   fromSave(s) {
-    if (!s) return;
-    this.ordning = clamp(s.ordning ?? 50, 0, 100);
-    this.reports = s.reports || 0;
-    this.log = Array.isArray(s.log) ? s.log : [];
+    if (!s || typeof s !== 'object') return;
+    const o = Number(s.ordning), r = Math.floor(Number(s.reports));
+    this.ordning = s.ordning != null && Number.isFinite(o) ? clamp(o, 0, 100) : 50;
+    this.reports = Number.isFinite(r) ? clamp(r, 0, 99999) : 0;
+    const str = (v, n) => (v == null ? '' : String(v).slice(0, n));
+    this.log = Array.isArray(s.log) ? s.log.filter((e) => e && typeof e === 'object').slice(-80).map((e) => ({
+      plate: str(e.plate, 12), kind: typeof e.kind === 'string' ? e.kind : '', text: str(e.text, 140), time: str(e.time, 8),
+      caught: e.caught === true || undefined, escaped: e.escaped === true || undefined,
+    })) : [];
+    this.redaGiven = s.reda === true || this.ordning >= 100;
+    this.atTop = false; this.atBottom = false;
   }
 }
