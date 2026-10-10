@@ -23,6 +23,14 @@
 //           garages with keys (must stop the Škoda); gate (rewritten: no new day during an errand,
 //           Patrick gone at dawn on day 2, 10:30); smitintro (a smitare chase ends quietly at an intro);
 //           camtight2 (the on-foot camera swings off the garage doors).
+//   Round 2: giveup (a wrecked named car fails the day and E brings a new one; hold Q 1 s gives a
+//           running day up, a tap doesn't; the hint after a minute; no "Backa in!" on a careful
+//           forward pass; day 1's Saab fetched home; retryAt), outrosmet (no SMET! over an outro),
+//           flowercalls (day 7's afternoon calls), dusk (look-dev: DUSK='{...}' overrides),
+//           camwall (the on-foot camera at doors and the garage row: share of the picture within
+//           2.2 m); story checks the day-6 talk framing, the camera and the small-talk pause after
+//           each outro, and every single shot (cam.single) like the two-shots; retry checks that a
+//           given-up race day goes straight to the grid; gate checks no call for 75 s after a dawn.
 // Screenshots: out/story_*.png (key moments), out/m1_*.png, out/m5r_*.png, out/m7c_*.png, out/m4c_*.png, out/m6c_*.png.
 
 export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors }) => {
@@ -157,6 +165,26 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     try { await until((i) => __game.missions.state === 'idle' && __game.missions.index === i, 120000, idx); }
     catch (e) { await log('stuck at', await state()); throw e; }
     await log('done ->', await state(), 'kr', await ev(() => __game.coins));
+    // (round 2) Back in play after the outro: the camera behind Ove (the cast in front of him, not
+    // beside the lens) and nobody in the scene chatting him up at once.
+    if (idx < 7) {
+      await frames(2);
+      // (the camera starts behind Ove; with a wall behind him - his garage door on day 1 - the
+      // on-foot camera then swings to the open side: Ove must stay in front of it and nobody from
+      // the scene stand at the lens. In ?test the next day dawns at once and sends the cast home.)
+      const a = await ev(() => {
+        const g = __game, p = g.player, c = g.cam.pos, fx = Math.sin(g.cam.yaw), fz = Math.cos(g.cam.yaw);
+        const ang = (x, z) => { const dx = x - c.x, dz = z - c.z; return Math.acos(Math.max(-1, Math.min(1, (dx * fx + dz * fz) / (Math.hypot(dx, dz) || 1)))); };
+        const d = Math.atan2(Math.sin(g.cam.yaw - p.yaw), Math.cos(g.cam.yaw - p.yaw));
+        const near = Math.min(99, ...g.missions.outroCast.filter((n) => n.state === 'normal').map((n) => Math.hypot(n.x - c.x, n.z - c.z)));
+        return { dYaw: +d.toFixed(2), oveAng: +ang(p.x, p.z).toFixed(2), castNear: +near.toFixed(1), cine: !!g.cam.cine, quiet: +((g.chatGlobalT || 0) - (g.missions.endedAt ?? g.time)).toFixed(1) };
+      });
+      await log(`after outro ${idx}`, JSON.stringify(a));
+      if (a.cine || a.oveAng > 0.7 || a.castNear < 1.8) await bad(`day ${idx}: after the outro the camera is not behind Ove (${JSON.stringify(a)})`);
+      if (a.quiet < 9) await bad(`day ${idx}: no small-talk pause after the outro (${JSON.stringify(a)})`);
+      await sleep(300);
+      await shot(`after${idx}`);
+    }
   };
   const enter = (name) => ev((name) => { const g = __game; if (g.playerCar && g.playerCar.name !== name) g.exitCar(true); if (!g.playerCar) g.enterCar(g.ensureNamedCar(name)); }, name);
   // Put Ove's car at a place (facing `yaw`, default unchanged).
@@ -270,12 +298,18 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     await frames(4);
     await page.keyboard.down('KeyE'); await sleep(1900); await page.keyboard.up('KeyE');
     await stageAt(1);
+    // Not in Rune's Volvo (hold E at its door: a note), but at Anders' (round 2).
     const v = await target();
-    await onFootAt(v.x, v.z, 0.5, 1.0);
+    await onFootAt(v.x, v.z);
+    await frames(4);
+    await page.keyboard.down('KeyE'); await sleep(1800); await page.keyboard.up('KeyE');
     await stageAt(2);
+    const a = await target();
+    await onFootAt(a.x, a.z, 0.5, 1.0);
+    await stageAt(3);
     await log('carrying', await ev(() => __game.missions.m?.data.carrying));
     await reportAll();
-    await stageAt(3);
+    await stageAt(4);
     const s = await target();
     await onFootAt(s.x, s.z);
     await frames(4);
@@ -340,9 +374,21 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     await log('target', await stage('(s) => `ork ${s.ork.toFixed(0)} t ${s.t.toFixed(0)}`'));
     await ev(() => { __game.missions.stage.ork = 0; });
     await stageAt(2, 20000);
-    const n = await ev(() => { const n = __game.npc('vitskjorta'); return { x: n.x, z: n.z }; });
-    await onFootAt(n.x, n.z, 2, 3);
-    await sleep(2500);
+    // (round 2) The Saab pulled up alongside the stopped Škoda on his side, the way a ram leaves it:
+    // the stage gets Ove out and must put him in front of Vita skjortan, in the shot (he used to
+    // pop out on the far side of the Saab and the scene was filmed without him).
+    await ev(() => { const g = __game, c = g.missions.m.data.wreck.car, pc = g.playerCar; if (!pc) return; const lx = Math.cos(c.yaw), lz = -Math.sin(c.yaw); pc.place(c.x + lx * 3.3, c.z + lz * 3.3, c.yaw); pc.vx = pc.vz = 0; g.cam.yaw = c.yaw; g.cam.snapNext = true; });
+    try { await until(() => __game.missions.stage?.phase === 'talking' && __game.inDialog, 5000); }
+    catch (e) {
+      await log('talk did not start from the car', await state());
+      const n = await ev(() => { const n = __game.npc('vitskjorta'); return { x: n.x, z: n.z }; });
+      await onFootAt(n.x, n.z, 2, 3);
+    }
+    await sleep(700);
+    const tk = await ev(() => { const g = __game, n = g.npc('vitskjorta'), p = g.player, c = g.missions.m?.data.wreck?.car; return { d: +Math.hypot(n.x - p.x, n.z - p.z).toFixed(2), saabBetween: !!g.named.saab && (() => { const s = g.named.saab, L = 20; for (let k = 1; k < L; k++) { const x = n.x + (p.x - n.x) * k / L, z = n.z + (p.z - n.z) * k / L, dx = x - s.x, dz = z - s.z, fx = Math.sin(s.yaw), fz = Math.cos(s.yaw); if (Math.abs(dx * fx + dz * fz) < s.spec.len / 2 && Math.abs(dx * -fz + dz * fx) < s.spec.wid / 2) return true; } return false; })() }; });
+    await log('talk day 6: Ove by Vita skjortan', JSON.stringify(tk));
+    if (tk.d > 4 || tk.saabBetween) await bad(`day 6 talk: Ove is not in front of Vita skjortan (${JSON.stringify(tk)})`);
+    await cineCheck('talk day 6');
     await shot('story_d6_talk');
     await stageAt(3, 40000);
     const t = await target();
@@ -545,10 +591,13 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
       // gone at once, not standing at his door.
       const pv = await L('parvanehHouse');
       await onFootAt(pv.x, pv.z, 6, 8);
-      try { await until(() => !!__game.missions.offered, 60000); } catch (e) { await bad('gate: day 2 never dawned'); return; }
+      try { await until(() => !!__game.missions.offered, 95000); } catch (e) { await bad('gate: day 2 never dawned'); return; }
       await frames(3);
-      const d2 = await ev(() => { const g = __game, n = g.npc('patrick'); return { title: g.missions.offered.title, clock: g.clockText(), patrick: n.state, visible: n.root.visible, banner: document.querySelector('#banner .banner-sub')?.textContent, idle: +(g.missions.gate?.idle || 0).toFixed(1) }; });
+      const d2 = await ev(() => { const g = __game, n = g.npc('patrick'); return { title: g.missions.offered.title, clock: g.clockText(), patrick: n.state, visible: n.root.visible, banner: document.querySelector('#banner .banner-sub')?.textContent, idle: +(g.missions.gate?.idle || 0).toFixed(1), nextCall: +__interrupt.nextT.toFixed(0) }; });
       await log('day 2 offered', JSON.stringify(d2));
+      // (round 2) the giver first: no call for a good while after the dawn (GATE.minSecs is 60 now)
+      if (d2.nextCall < 70) await bad(`gate: a call is due ${d2.nextCall} s after the dawn`);
+      if (d2.idle < 59) await bad(`gate: the day dawned after ${d2.idle} s of free roam (minSecs 60)`);
       if (d2.patrick !== 'hidden' || d2.visible) await bad(`gate: Patrick stands at his door on the morning he is in hospital (${d2.patrick})`);
       if (d2.clock !== '10:30') await bad(`gate: the new day starts at ${d2.clock}`);
       await shot('gate_newday');
@@ -761,6 +810,13 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     const lines = await ev(() => window.__lines.length);
     await log('intro after giving up:', lines, 'lines');
     if (lines > 3) await bad(`retry: the whole intro again after giving up (${lines} lines)`);
+    // (round 2) ... and the race day goes straight back to the grid with Adrian aboard (not the
+    // drive to fetch the Saab and Adrian again).
+    await until(() => ['count', 'race'].includes(__game.missions.stage?.phase), 8000).catch(() => {});
+    const g2 = await ev(() => { const g = __game, m = g.missions, n = g.npc('adrian'); return { stageI: m.stageI, kind: m.stage?.kind, phase: m.stage?.phase, adrianAboard: n.car === g.playerCar && !!g.playerCar, curtain: document.querySelector('#curtain')?.classList.contains('on') }; });
+    await log('taken up again:', JSON.stringify(g2));
+    await shot('retry_2_again');
+    if (g2.kind !== 'race' || !g2.adrianAboard) await bad(`retry: the race day taken up again did not go to the grid (${JSON.stringify(g2)})`);
     // Day 7: a failed drive sends Parvaneh home.
     await fresh('&mission=6');
     await startMission();
@@ -1083,6 +1139,223 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     await log('garage row: boom', JSON.stringify(b0), '-> after 4 s', JSON.stringify(b1));
     await shot('camtight2_1');
     if (b1.boom < 1.5) await bad(`camtight2: the camera stayed on the wall (boom ${b1.boom})`);
+  };
+  // (round 2) No soft-locks: the named car wrecked in a stage that needs it fails the day (E
+  // retries with a new one); a running day is given up by holding Q for a second (a hint on the
+  // prompt line after a minute in one stage; a tap does nothing); the forward pass past the trailer
+  // box at a careful 8.6 km/h is not scolded; day 1's Saab is fetched back to the garages when Ove
+  // left it far off; a Saab wrecked late on day 1 retries from stage 3, not the trailer again.
+  sc.giveup = async () => {
+    await startMission();
+    await enter('patrickCar');
+    await stageAt(1);
+    // A careful pass forward through the box (as the hint says): never "Backa in!".
+    const pass = await ev(() => { const g = __game, b = g.missions.stage.b, c = g.playerCar, fx = Math.sin(b.yaw), fz = Math.cos(b.yaw); c.place(b.x - fx * (b.l / 2 + c.spec.len / 2 + 7), b.z - fz * (b.l / 2 + c.spec.len / 2 + 7), b.yaw); g.cam.yaw = b.yaw; g.cam.snapNext = true; return { l: b.l }; });
+    const subs = new Set();
+    for (let k = 0; k < 110; k++) {
+      const r = await ev(() => { const g = __game, b = g.missions.stage.b, c = g.playerCar, fx = Math.sin(b.yaw), fz = Math.cos(b.yaw); const v = 8.6 / 3.6; c.vx = fx * v; c.vz = fz * v; c.yaw = b.yaw; c.w = 0; return { along: (c.x - b.x) * fx + (c.z - b.z) * fz, sub: g.missions.stage.sub || '' }; });
+      subs.add(r.sub);
+      if (r.along > pass.l / 2 + 12) break;
+      await sleep(50);
+    }
+    await log('forward pass at 8.6 km/h:', JSON.stringify([...subs]));
+    if ([...subs].some((t) => t.startsWith('Backa in!'))) await bad('giveup: scolded "Backa in!" on a careful forward pass');
+    // The car wrecked in the trailer stage: a fail, E retries with a new car and trailer.
+    await ev(() => { const g = __game; g.exitCar(true); g.named.patrickCar.damage(99999, g); });
+    try { await until(() => __game.missions.state === 'failed', 5000); } catch (e) { await bad(`giveup: a wrecked Patrick's car did not fail the day (${await state()})`); return; }
+    const f = await ev(() => document.querySelector('#banner')?.textContent || '');
+    await log('wrecked:', f.replace(/\s+/g, ' ').trim());
+    if (!/kvaddad/.test(f)) await bad('giveup: the fail banner does not say the car is wrecked');
+    await shot('giveup_0_wreck');
+    await sleep(1200);
+    await tap('KeyE');
+    await until(() => __game.missions.state === 'running', 5000);
+    const r1 = await ev(() => { const g = __game, m = g.missions, c = g.named.patrickCar; return { stageI: m.stageI, kind: m.stage?.kind, dead: !!c?.dead, trailer: !!c?.trailer }; });
+    await log('after E:', JSON.stringify(r1));
+    if (r1.stageI !== 0 || r1.dead || !r1.trailer) await bad(`giveup: the retry did not bring a new car with its trailer (${JSON.stringify(r1)})`);
+    // Hold Q: the hint after a minute in one stage, a tap does nothing, a 1 s hold gives up.
+    await enter('patrickCar');
+    await stageAt(1);
+    await ev(() => { __game.missions.stageT = 61; });
+    await frames(4);
+    const hint = await ev(() => document.querySelector('#prompt')?.textContent || '');
+    await log('prompt after a minute:', hint);
+    if (!/Q.*Ge upp/.test(hint)) await bad('giveup: no give-up hint on the prompt line after a minute');
+    await shot('giveup_1_hint');
+    await tap('KeyQ'); await sleep(400);
+    if ((await ev(() => __game.missions.state)) !== 'running') await bad('giveup: a tap of Q gave the day up');
+    await page.keyboard.down('KeyQ'); await sleep(550);
+    const mid = await ev(() => ({ state: __game.missions.state, prompt: document.querySelector('#prompt')?.textContent || '' }));
+    await shot('giveup_2_hold');
+    await sleep(700); await page.keyboard.up('KeyQ');
+    const end = await ev(() => ({ state: __game.missions.state, gaveUp: [...__game.missions.gaveUp], offered: __game.missions.offered?.day, toast: [...document.querySelectorAll('.toast')].map((t) => t.textContent).join(' | ') }));
+    await log('holding Q:', JSON.stringify(mid), '->', JSON.stringify(end));
+    if (end.state !== 'idle' || !end.gaveUp.includes(1) || end.offered !== 1) await bad(`giveup: holding Q did not give the day up (${JSON.stringify(end)})`);
+    // Take it up again; drive Patrick's car into the box (warp), the Saab left 200 m off out of view
+    // before stage 3: it is back at the garages.
+    await startMission();
+    await enter('patrickCar');
+    await stageAt(1);
+    await reverseInto(2.0);
+    await stageAt(2);
+    await ev(() => { const g = __game, s = g.named.saab; s.place(40, -200, 0); });
+    await reportAll();
+    await stageAt(3);
+    await frames(3);
+    const sb = await ev(() => { const g = __game, s = g.named.saab, h = s.home; return { d: +Math.hypot(s.x - h.x, s.z - h.z).toFixed(1), text: g.missions.stage?.text }; });
+    await log('stage 3, the Saab:', JSON.stringify(sb));
+    if (sb.d > 5) await bad(`giveup: the Saab was left ${sb.d} m from the garages for "Hämta Saaben vid garagen"`);
+    // The Saab wrecked in the last stage: the retry starts at stage 3 (the trailer stays done).
+    await enter('saab');
+    await stageAt(4);
+    await ev(() => { const g = __game; g.exitCar(true); g.named.saab.damage(99999, g); });
+    try { await until(() => __game.missions.state === 'failed', 5000); } catch (e) { await bad(`giveup: a wrecked Saab did not fail day 1 (${await state()})`); return; }
+    await sleep(1200);
+    await tap('KeyE');
+    await until(() => __game.missions.state === 'running', 5000);
+    const r2 = await ev(() => { const g = __game, m = g.missions, s = g.named.saab; return { stageI: m.stageI, kind: m.stage?.kind, dead: !!s?.dead, dHome: +Math.hypot(s.x - s.home.x, s.z - s.home.z).toFixed(1) }; });
+    await log('retry after the Saab:', JSON.stringify(r2));
+    if (r2.stageI !== 3 || r2.dead) await bad(`giveup: a wrecked Saab on day 1 did not retry from stage 3 (${JSON.stringify(r2)})`);
+  };
+  // (round 2) A smitare chase still going when a mission completes ends quietly: no SMET!, no
+  // Ordning lost over UPPDRAG KLART and the outro.
+  sc.outrosmet = async () => {
+    await startMission();
+    const r0 = await ev(() => {
+      const g = __game, P = g.patrol;
+      const c = P.forceSpawn(1, { x: -60, z: -40 }, { smitare: true, radius: 40 })[0];
+      if (!c?.violation?.smitare) return { err: 'no smitare spot' };
+      P.startWriting(c);
+      return { ordning: +P.ordning.toFixed(1) };
+    });
+    if (r0.err) { await bad('outrosmet: ' + r0.err); return; }
+    await sleep(1500);
+    const p0 = await ev(() => ({ pursuit: !!__game.patrol.pursuit, ordning: +__game.patrol.ordning.toFixed(1) }));
+    await ev(() => { __game.missions.complete(); });   // (not awaited: sampled while it plays)
+    // (sampled through UPPDRAG KLART and the outro; free roam's drain after it doesn't count)
+    let r1 = null, smet = false;
+    for (let k = 0; k < 80; k++) {
+      const r = await ev(() => { const P = __game.patrol; return { state: __game.missions.state, pursuit: !!P.pursuit, ordning: +P.ordning.toFixed(1), escaped: P.log.filter((e) => e.escaped).length, banner: document.querySelector('#banner')?.textContent || '' }; });
+      if (/SMET/.test(r.banner)) smet = true;
+      if (r.state !== 'outro') break;
+      r1 = r;
+      await sleep(250);
+    }
+    await log('smitare over the outro:', JSON.stringify(p0), '->', JSON.stringify(r1), 'SMET seen', smet);
+    if (!r1 || smet || r1.pursuit || r1.escaped || r1.ordning < p0.ordning - 0.5) await bad(`outrosmet: the chase went on over the outro (${JSON.stringify(r1)}, SMET ${smet})`);
+  };
+  // (round 2) Look-dev for day 7's "Senare samma dag" light (dusk): the grave shots and a street by
+  // the hospital, before and after (out/dusk_*). DUSK='{"sun":0.06,...}' overrides the levers.
+  sc.dusk = async () => {
+    await fresh('&mission=6');
+    await until(() => !!__game.missions.offered, 20000);
+    const over = process.env.DUSK ? JSON.parse(process.env.DUSK) : null;
+    const setup = (on) => ev(async ({ on, over }) => {
+      const M = await import('./src/game/missions.js'), { fx } = await import('./src/game/fx.js'), g = __game;
+      if (over) Object.assign(M.DUSK, over);
+      g.setClock(15, 40);
+      M.dusk(on); fx.snowfall(on, 0.9);
+      const k = M.kneelSpot(g);
+      g.player.teleport(k.rx, k.rz, k.yaw);
+      g.player.anim.kneel = true;
+      M.flowersOnGrave(g);
+      g.inDialog = true;
+    }, { on, over });
+    const grave = async (tag) => {
+      for (const kind of ['stone', 'face', 'wide']) {
+        await ev(async (kind) => { const M = await import('./src/game/missions.js'); M.graveShot(__game, kind); }, kind);
+        await sleep(1200);
+        await shot(`dusk_${tag}_${kind}`);
+      }
+      await ev(async () => { const g = __game, h = window.__lm('hospitalSpot'); g.cam.release(); g.player.anim.kneel = false; g.player.teleport(h.x + 6, h.z + 4, h.yaw + 2.4); g.cam.yaw = g.player.yaw; g.cam.pitch = 0.12; g.cam.snapNext = true; g.inDialog = false; });
+      await sleep(1500);
+      await shot(`dusk_${tag}_street`);
+    };
+    await setup(false);
+    await grave('off');
+    await setup(true);
+    await grave('on');
+    const after = await ev(async () => { const M = await import('./src/game/missions.js'), { sun, scene, renderer } = await import('./src/gfx.js'); M.dusk(false); return { sun: +sun.intensity.toFixed(2), env: +scene.environmentIntensity.toFixed(2), exp: +renderer.toneMappingExposure.toFixed(2), fog: scene.fog.density }; });
+    await log('dusk(false) restores', JSON.stringify(after));
+  };
+  // (round 2) The on-foot camera against walls and doors: how much of the picture is something
+  // within 2.2 m of the lens (Ove himself not counted), right away and after 4 s untouched. Cases:
+  // walked into his own front door; standing at it facing out (the camera in the door); the garage
+  // row (view_parking). out/camwall_<case>_<0|1>.png.
+  sc.camwall = async () => {
+    const share = () => ev(async () => {
+      const { THREE, scene, camera } = await import('./src/gfx.js');
+      const g = __game, cp = camera.position, meshes = [];
+      camera.updateMatrixWorld();
+      scene.traverseVisible((o) => {
+        if (!o.isMesh || o.isPoints || !o.geometry) return;
+        for (let n = o; n; n = n.parent) if (n === g.player.root) return;
+        const m = Array.isArray(o.material) ? o.material[0] : o.material;
+        if (m && m.transparent && (m.depthWrite === false || m.blending !== THREE.NormalBlending)) return;
+        if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        const c = o.geometry.boundingSphere.center.clone().applyMatrix4(o.matrixWorld);
+        if (!o.isInstancedMesh && c.distanceTo(cp) - o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() > 6) return;
+        meshes.push(o);
+      });
+      const rc = new THREE.Raycaster();
+      let n = 0, hit = 0;
+      for (let i = 0; i < 11; i++) for (let j = 0; j < 7; j++) {
+        rc.setFromCamera(new THREE.Vector2(-0.92 + i * 0.184, -0.85 + j * (1.7 / 6)), camera);
+        rc.near = 0.05; rc.far = 2.2;
+        n++; if (rc.intersectObjects(meshes, false).length) hit++;
+      }
+      return { share: +(hit / n).toFixed(2), boom: +g.cam.boom.toFixed(2), side: g.cam.openSide || 0, look: +(g.cam.lookSide || 0).toFixed(2) };
+    });
+    const out = {};
+    const run = async (name, setup) => {
+      await ev(setup);
+      await frames(8);
+      const a = await share();
+      await shot(`camwall_${name}_0`);
+      await sleep(4500);
+      const b = await share();
+      await shot(`camwall_${name}_1`);
+      out[name] = [a, b];
+      await log(`camwall ${name}`, JSON.stringify(a), '->', JSON.stringify(b));
+    };
+    const h = await L('oveHouse');
+    // walked into the door: 3 m out, facing it, W for 1.2 s
+    await ev((h) => { const g = __game, x = h.x + Math.sin(h.yaw) * 3, z = h.z + Math.cos(h.yaw) * 3; g.player.teleport(x, z, h.yaw + Math.PI); g.cam.yaw = h.yaw + Math.PI; g.cam.pitch = 0.2; g.cam.snapNext = true; }, h);
+    await frames(5);
+    await page.keyboard.down('KeyW'); await sleep(1200); await page.keyboard.up('KeyW');
+    await run('door', () => {});
+    await run('doorout', (() => { const g = __game, h = window.__lm('oveHouse'), x = h.x + Math.sin(h.yaw) * 0.6, z = h.z + Math.cos(h.yaw) * 0.6; g.player.teleport(x, z, h.yaw); g.cam.yaw = h.yaw; g.cam.pitch = 0.2; g.cam.snapNext = true; }));
+    await run('garages', (() => { const g = __game, p = window.__lm('parking'); g.player.teleport(p.x - 6, -21.2, Math.PI / 2 + 0.25); g.cam.yaw = Math.PI / 2 + 0.6; g.cam.pitch = 0.2; g.cam.snapNext = true; }));
+    await log('camwall', JSON.stringify(out));
+  };
+  // (round 2) Day 7 after "Senare samma dag": on the way to the flowers the neighbours phone again
+  // (Patrick, Anita, Adrian), one after the other, and none once Ove is near the kiosk.
+  sc.flowercalls = async () => {
+    await fresh('&mission=6');
+    await startMission();
+    await ev(() => {
+      const I = __interrupt, o = I.radioOnly.bind(I);
+      window.__calls = [];
+      I.radioOnly = (w, t, r) => { window.__calls.push([w, +__game.time.toFixed(1)]); return o(w, t, r); };
+      const g = __game, m = g.missions;
+      m.stage.cleanup?.(g, m.m);
+      m.stageI = 5; m.startStage();
+    });
+    await sleep(45000);
+    const a = await ev(() => ({ calls: window.__calls, t0: __game.time, kind: __game.missions.stage?.kind }));
+    await log('calls on the way to the flowers', JSON.stringify(a));
+    const who = a.calls.map((c) => c[0]).join(',');
+    if (who !== 'patrick,anita,adrian') await bad(`flowercalls: the calls were ${who}`);
+    // near the kiosk: nothing more rings (a fresh stage, Patrick's call over, then walk up)
+    await ev(() => { const g = __game, m = g.missions; window.__calls = []; m.stage.cleanup?.(g, m.m); m.stageI = 5; m.startStage(); });
+    await sleep(500);
+    const t = await target();
+    await onFootAt(t.x + 20, t.z, 0, 3);
+    await sleep(25000);
+    const b = await ev(() => window.__calls.map((c) => c[0]).join(','));
+    await log('within 45 m of the kiosk:', b, JSON.stringify(await ev(() => { const s = __game.missions.stage; return { kind: s?.kind, callI: s?.callI, callAtT: s?.callAtT, call: !!__interrupt.call, dlg: __game.inDialog }; })));
+    if (b !== 'patrick') await bad(`flowercalls: calls near the kiosk (${b})`);
+    await shot('flowercalls');
   };
   for (let n = 2; n <= 7; n++) sc['m' + n] = async () => { await fresh(`&mission=${n - 1}`); await D[n](); };
   return sc;

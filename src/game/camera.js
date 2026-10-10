@@ -204,8 +204,11 @@ function subjectOf(o) {
 
 // How good is the camera at c looking at l, for these subjects (the first `need` must be seen)?
 // -> { score, vis: [0..1 per subject], heads, near (blocked rays in the first 1.5 m), poles }
-function judge(P, c, l, subjects, need = 2) {
+function judge(P, c, l, subjects, need = 2, fov = CINE_FOV) {
   const out = { score: -9, vis: [], heads: 0, near: 0, poles: 0, ok: false };
+  // (a narrower lens: a narrower picture)
+  const tk = Math.tan(THREE.MathUtils.degToRad(fov / 2)) / Math.tan(THREE.MathUtils.degToRad(CINE_FOV / 2));
+  const hh = fov === CINE_FOV ? HALF_H : Math.atan(Math.tan(THREE.MathUtils.degToRad(fov / 2)) * 16 / 9), hv = HALF_V * Math.min(1, tk);
   {
     const R = relevant(P, c.x - 0.8, c.z - 0.8, c.x + 0.8, c.z + 0.8);
     if (solidAt(R, c.x, c.y, c.z, 0.35, true)) return out;
@@ -225,7 +228,7 @@ function judge(P, c, l, subjects, need = 2) {
       if (frame) {
         const hy = Math.atan2(px - c.x, pz - c.z), hd = Math.hypot(px - c.x, pz - c.z);
         const vp = Math.atan2(py - c.y, hd);
-        inFrame = Math.abs(angleDiff(yaw0, hy)) < HALF_H * 0.86 && Math.abs(vp - pitch0) < HALF_V;
+        inFrame = Math.abs(angleDiff(yaw0, hy)) < hh * 0.86 && Math.abs(vp - pitch0) < hv;
       }
       const clear = inFrame && sight(P, c.x, c.y, c.z, px, py, pz, s.person ? 0.3 : 0.5, 0.04, s.ref || true);
       w += wt; if (clear) v += wt;
@@ -252,13 +255,13 @@ function judge(P, c, l, subjects, need = 2) {
     if (b.shape !== CIRCLE || (b.r >= 0.45 && b.kind !== 'tree') || b.top < c.y - 0.8) continue;
     const d = Math.hypot(b.x - c.x, b.z - c.z);
     if (d > dS - 0.4 || d < 0.2) continue;
-    if (Math.abs(angleDiff(yaw0, Math.atan2(b.x - c.x, b.z - c.z))) < HALF_H * 0.6) out.poles += 1.4 - d / Math.max(dS, 1);
+    if (Math.abs(angleDiff(yaw0, Math.atan2(b.x - c.x, b.z - c.z))) < hh * 0.6) out.poles += 1.4 - d / Math.max(dS, 1);
   }
   for (const k of P.cb) {
     if (k.x1 - k.x0 > 0.5 || k.z1 - k.z0 > 0.5 || k.top - k.bottom < 1.2 || k.top < c.y - 0.8) continue;
     const x = (k.x0 + k.x1) / 2, z = (k.z0 + k.z1) / 2, d = Math.hypot(x - c.x, z - c.z);
     if (d > dS - 0.4 || d < 0.2) continue;
-    if (Math.abs(angleDiff(yaw0, Math.atan2(x - c.x, z - c.z))) < HALF_H * 0.6) out.poles += 1.4 - d / Math.max(dS, 1);
+    if (Math.abs(angleDiff(yaw0, Math.atan2(x - c.x, z - c.z))) < hh * 0.6) out.poles += 1.4 - d / Math.max(dS, 1);
   }
   out.ok = out.heads >= n && out.near === 0;
   out.score = mainMin * 1.2 + (total / n) * 0.4 + extra * 0.15 + (out.heads >= n ? 0 : -2) - out.near * 0.35 - out.fore * 0.07 - out.poles * 0.3;
@@ -337,8 +340,8 @@ export class CamRig {
     const ty = Math.max(groundAt(tx, tz, py + sp * dist, 2) + 0.45, py + sp * dist);
     const free = boomFree(px, py, pz, tx, ty, tz);
     const wantBoom = Math.max(0.9, free * dist);
-    // On foot, backed into a wall with the boom at its shortest (a garage row, a shed, a porch):
-    // swing round towards the open side unless the player is steering the camera.
+    // On foot, backed into a wall with the boom short (a garage row, a shed, a porch): swing round
+    // towards the open side unless the player is steering the camera.
     if (focus.car || this.manualT > 0) this.swingTo = null;
     else if (this.manualT <= -0.5 && free * dist < 1.3 && this.swingTo == null) {
       let best = null, bf = free;
@@ -361,9 +364,15 @@ export class CamRig {
     // never rises into a porch canopy or a shed's snowy roof (those have no collision).
     if (k < 0.6) {
       want.y = Math.min(want.y, py + 0.12 + k * 0.4);
-      // ... and step to the side (over his right shoulder on foot), so we look past him rather
-      // than at the back of his head.
-      const side = (0.6 - k) * (focus.car ? 0.9 : 1.25);
+      // ... and step to the side, so we look past him rather than at the back of his head: in a
+      // car over the right, on foot over the shoulder on the open side (more room at shoulder
+      // height; it changes only for a clearly better side).
+      if (focus.car) this.openSide = 1;
+      else {
+        const fR = boomFree(px, py, pz, px - fz * 1.6, py, pz + fx * 1.6), fL = boomFree(px, py, pz, px + fz * 1.6, py, pz - fx * 1.6);
+        if (fL > fR + 0.15) this.openSide = -1; else if (fR > fL + 0.15 || !this.openSide) this.openSide = 1;
+      }
+      const side = (0.6 - k) * (focus.car ? 0.9 : 1.25) * this.openSide;
       for (const f of [1, 0.6, 0.3]) {
         const sx = want.x - fz * side * f, sz = want.z + fx * side * f;
         if (boomFree(px, py, pz, sx, want.y, sz) > 0.98) { want.x = sx; want.z = sz; break; }
@@ -382,7 +391,11 @@ export class CamRig {
       if (free < 1 && boomFree(px, py, pz, this.pos.x, this.pos.y, this.pos.z) < 0.999) this.pos.copy(want);
     }
     const la = lead + ahead * (focus.car ? 9 : 4.5);
-    this.look.set(px + fx * la, py - (focus.car ? 0.25 : 0.12) + ahead * 0.12, pz + fz * la);
+    // On foot with the boom under 1.4 m (a wall or a door right behind or beside him) the aim moves
+    // 0.45 m to the open side: Ove off-centre, the open space in the picture, not the wall.
+    const tight = focus.car ? 0 : clamp((1.4 - this.boom) / 0.4, 0, 1);
+    this.lookSide = damp(this.lookSide || 0, tight * 0.45 * (this.openSide || 1), 4, dt);
+    this.look.set(px + fx * la - fz * this.lookSide, py - (focus.car ? 0.25 : 0.12) + ahead * 0.12, pz + fz * la + fx * this.lookSide);
     // Never sit inside another car: ride up over its roof instead.
     for (const c of cars) {
       if (c === focus.car || Math.abs(c.x - this.pos.x) > c.radius + 1 || Math.abs(c.z - this.pos.z) > c.radius + 1) continue;
@@ -402,6 +415,20 @@ export class CamRig {
     cam.lookAt(this.look);
     cam.fov = this.fov;
     cam.updateProjectionMatrix();
+  }
+
+  // Behind someone on foot, after a scene: their yaw, or the nearest yaw either side of it with the
+  // boom free (Ove backed up to his garage door at the end of day 1: the camera would start in the
+  // door and swing off), the pivot and pitch as update() uses them.
+  behind(p) {
+    const h = Math.min(1.6, (p.height || 1.75) * 0.9), py = p.y + h, d = 4.6, pt = 0.2;
+    let best = p.yaw, bf = -1;
+    for (const da of [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2]) {
+      const yw = p.yaw + da, f = boomFree(p.x, py, p.z, p.x - Math.sin(yw) * Math.cos(pt) * d, py + Math.sin(pt) * d, p.z - Math.cos(yw) * Math.cos(pt) * d);
+      if (f > 0.7) { best = yw; break; }
+      if (f > bf + 0.05) { bf = f; best = yw; }
+    }
+    this.yaw = best; this.pitch = pt; this.snapNext = true; this.swingTo = null;
   }
 
   // The things a shot has to see past: { cars, people } (main.js sets this.world = () => {...}).
@@ -464,6 +491,39 @@ export class CamRig {
     }
     this.setShot(best, subjects);
     this.cineInfo.ms = Math.round(performance.now() - t0);
+  }
+
+  // A closer shot of whoever speaks (a): from past the listener's shoulder (b), 15-22 degrees off
+  // the line between them, 1.6-2.4 m behind the listener, a 36-degree lens - the speaker big in the
+  // middle, the listener's back and shoulder at the side of the picture, ~2 m from the lens (never
+  // in the first 1.5 m). Judged like any other shot, both heads in the picture; used only when it
+  // is clean (ok, a good score): returns false otherwise, and the caller keeps the two-shot.
+  single(a, b, opts = {}) {
+    const t0 = performance.now();
+    const sa = subjectOf(a), sb = subjectOf(b);
+    const dx = sb.x - sa.x, dz = sb.z - sa.z, l = Math.hypot(dx, dz);
+    if (l < 1.2 || l > 4.2) return false;
+    const ux = dx / l, uz = dz / l, FOV = 36;
+    const subjects = [sa, sb];
+    const P = gather(Math.min(sa.x, sb.x) - l - 3, Math.min(sa.z, sb.z) - l - 3, Math.max(sa.x, sb.x) + l + 3, Math.max(sa.z, sb.z) + l + 3, this.shotCtx(), subjects);
+    const look = { x: sa.x + ux * 0.25, y: sa.y + sa.height * 0.8, z: sa.z + uz * 0.25 };
+    // (the side of the line the camera is on now: shot / reverse shot stay on one side of it)
+    const here = opts.side || (((this.pos.x - sa.x) * -uz + (this.pos.z - sa.z) * ux) >= 0 ? 1 : -1);
+    let best = null;
+    for (const s of [here, -here]) for (const th of [0.3, 0.38, 0.24]) for (const back of [1.8, 2.2, 1.6]) for (const up of [0, 0.2]) {
+      const r = l + back, cs = Math.cos(th * s), sn = Math.sin(th * s);
+      const vx = ux * cs - uz * sn, vz = ux * sn + uz * cs;
+      const c = { x: sa.x + vx * r, y: sa.y + sa.height * 0.86 + up, z: sa.z + vz * r };
+      // (the listener's shoulder no nearer the lens than ~1.6 m)
+      if (Math.hypot(c.x - sb.x, c.z - sb.z) < 1.9) continue;
+      const j = judge(P, c, look, subjects, 2, FOV);
+      const score = j.score - Math.abs(th - 0.3) * 0.4 - Math.abs(back - 1.8) * 0.1 - up * 0.2 + (s === here ? 0.05 : 0);
+      if (!best || score > best.score) best = { c, look, score, j, kind: 'single', fov: FOV };
+    }
+    if (!best || !best.j.ok || best.score < (opts.min ?? 1.45)) return false;
+    this.setShot(best, subjects);
+    this.cineInfo.ms = Math.round(performance.now() - t0);
+    return true;
   }
 
   // A single subject on show (UPPDRAG KLART: Ove's car in the garage, Ove at a door): from 3/4

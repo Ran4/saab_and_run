@@ -1,14 +1,18 @@
 // The story: seven days ("dagar"), one mission a day, each a short script of stages from
 // stages.js (DESIGN.md section 5). A day's mission is offered by a neighbour who stands at their
 // landmark with the amber marker; it unlocks once the day before is done and Ove has patrolled a
-// little (two more anmälningar or a minute and a quarter of free roam; off in ?test unless &gate).
+// little (three more anmälningar, not before a minute, or a minute and a half of free roam; off in
+// ?test unless &gate).
 //
 // A mission def: { id, day, name, title, giver, at, extra (more neighbours standing there), away
 // (neighbours who are elsewhere that day: hidden at home), elsewhere ({ key: [landmark, right,
 // ahead] }: where someone spends the day instead of at home), reward (kr), intro, retryIntro (a
-// two-line intro when the day is taken up again after giving up), stages: [() => stage], setup
-// (g, m) (when the stages start: things in place for the day), retry ({ from: stage index, car,
-// with: [npc keys aboard] }: a retry starts there, e.g. on the race grid with Adrian aboard),
+// two-line intro when the day is taken up again after giving up; with `retry`, the day then goes
+// straight to that stage too), waitToast (the toast when Ove gives the day up: who waits, how),
+// stages: [() => stage], setup (g, m) (when the stages start: things in place for the day), retry
+// ({ from: stage index, car, with: [npc keys aboard] }: a retry starts there, e.g. on the race grid
+// with Adrian aboard), retryAt ([stage indices]: a day that fails at or after one of these retries
+// from it, not from the start: day 1's trailer isn't backed in again for a wrecked Saab),
 // outro (lines; a third element (g) => {...} runs as the line starts: a camera beat), outroAt (a
 // place: where Ove stands for the outro, facing its yaw), outroSetup (g) => { look, dispose } (a
 // prop for the outro: the Saab for sale), outroLook (g) => a point to frame when nobody but Ove
@@ -35,29 +39,50 @@ export const DAYS = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lörda
 // Between two days: the next one dawns after this many more reports (but not before minSecs), or
 // after `secs` of free roam at the most. Time spent on an errand, a call or a chase doesn't count,
 // and a new day never dawns in the middle of one.
-const GATE = { reports: 3, minSecs: 35, secs: 90 };
+const GATE = { reports: 3, minSecs: 60, secs: 90 };
+// A running mission is given up by holding Q this long (the key only: the gamepad's B is also the
+// report button, and holding it at a felparkering must not throw the day away; pad players have
+// the pause menu). The hint shows on the prompt line once a stage has gone on for `hint` s.
+const GIVE_UP = { hold: 1.0, hint: 60 };
+// After a scene: nobody chats Ove up for a while (Parvaneh offered the saffransris she had just
+// handed over).
+const CHAT_QUIET = 25;
+// Dialogue scenes cut to closer singles of whoever speaks (beats()); false: two-shots only.
+const SINGLES = true;
 const DAY_START = [10, 30], DAY_END = [14, 30];   // late November: light from about nine to three
 
 // Extras for a stage when it starts: { say (an Ove line in a bubble), toast, call: [who, text,
-// reply] (the phone rings; callAt = s into the stage instead of at once), lines: [[who, text,
-// 'shout' | 'radio'], ...] every `every` s while the stage runs (the first after `first` s),
-// start(g, m) (when it starts), done(g, m) (when it is done) }.
+// reply] (the phone rings; callAt = s into the stage instead of at once), calls: [[who, text,
+// reply], ...] (more calls after it, each `callEvery` s after the one before has ended; none is
+// started once Ove is within `quietR` = 40 m of the stage's target), lines: [[who, text, 'shout' |
+// 'radio'], ...] every `every` s while the stage runs (the first after `first` s), start(g, m)
+// (when it starts; `this` is the stage), done(g, m) (when it is done) }.
 const also = (factory, x) => () => {
   const st = factory();
   const init = st.init, update = st.update;
+  const calls = [...(x.call ? [x.call] : []), ...(x.calls || [])];
   st.init = function (g, m) {
     init?.call(this, g, m);
     if (x.say) g.say(g.player, x.say, 2.4);
     if (x.toast) hud.toast(x.toast, 'warn', 8000);
-    if (x.call && !x.callAt) g.interrupts.radioOnly(...x.call);
-    x.start?.(g, m);
+    this.callI = 0;
+    if (calls.length && !x.callAt) g.interrupts.radioOnly(...calls[this.callI++]);
+    x.start?.call(this, g, m);
     this.lineI = 0; this.lineT = x.first ?? 6;
-    this.callAtT = x.call && x.callAt ? x.callAt : null;
+    this.callAtT = this.callI < calls.length ? (this.callI ? x.callEvery ?? 12 : x.callAt) : null;
   };
   st.update = function (g, m, dt) {
-    if (this.callAtT != null && !g.inDialog) {
+    if (this.callAtT != null && !g.inDialog && !g.interrupts.call) {
       this.callAtT -= dt;
-      if (this.callAtT <= 0 && !g.interrupts.call) { this.callAtT = null; g.interrupts.radioOnly(...x.call); }
+      if (this.callAtT <= 0) {
+        const t = this.target?.(g), f = g.focus();
+        // (nearly there: the rest can wait - no call card over the scene at the end)
+        if (this.callI > 0 && t && dist(f.x, f.z, t.x, t.z) < (x.quietR ?? 40)) this.callAtT = null;
+        else {
+          g.interrupts.radioOnly(...calls[this.callI++]);
+          this.callAtT = this.callI < calls.length ? x.callEvery ?? 12 : null;
+        }
+      }
     }
     if (x.lines && this.lineI < x.lines.length && !g.inDialog) {
       this.lineT -= dt;
@@ -122,6 +147,7 @@ const layFlowers = () => ({
       this.t = 0;
       g.inDialog = true;
       hud.clearBubbles();
+      g.interrupts.hangUp?.();
       p.teleport(k.rx, k.rz, k.yaw);
       p.vx = p.vz = 0; p.wishX = p.wishZ = 0;
       p.anim.kneel = true;
@@ -162,7 +188,7 @@ const layFlowers = () => ({
 //   face   the reverse, from beside the stone: Ove's face, on one knee
 //   lay    from the side, a little in front: the flowers going down
 //   wide   further back and higher, for UPPDRAG KLART and the end banner
-function graveShot(g, kind) {
+export function graveShot(g, kind) {
   const k = kneelSpot(g), y = k.y, ux = k.ux, uz = k.uz, rx = -uz, rz = ux;
   const V = (x, yy, z) => ({ x, y: yy, z });
   const S = { x: k.sx, z: k.sz };
@@ -190,23 +216,39 @@ function graveShot(g, kind) {
   return g.cam.pick(cands, [ove, stone], { need: 2 });
 }
 
-// "Senare samma dag": the November afternoon light (dimmer sun and sky, a little more haze) until
-// the snowfall stops after the end. Restored on a failed / abandoned day.
+// "Senare samma dag" (15:40 in late November: the sun is down) and it snows properly: an overcast
+// blue hour. The sun all but gone (no hard shadows under the snowfall), the light from the sky,
+// a cooler tint, more haze, and the exposure up a little so the snow stays a bright blue-grey
+// rather than going dull; the sky dome dimmer, its horizon greyer. Until the snowfall stops after
+// the end; restored on a failed / abandoned day. (DUSK: the levers, for look-dev.)
+export const DUSK = { sun: 0.06, sunColor: [0.72, 0.8, 1.0], env: 0.9, exp: 1.15, fog: 2.5, sky: 0.55, haze: [0.57, 0.645, 0.765] };
 let duskSaved = null;
+const skyDome = (sc) => sc.children.find((o) => o.material?.uniforms?.uGain && o.material.uniforms.uFog);
 export function dusk(on) {
   const sun = GFX.sun, sc = GFX.scene;
   if (!sun || !sc) return;
+  const sky = skyDome(sc), U = sky?.material.uniforms, r = GFX.renderer;
   if (on && !duskSaved) {
-    duskSaved = { si: sun.intensity, env: sc.environmentIntensity, fog: sc.fog?.density, exp: GFX.renderer?.toneMappingExposure };
-    sun.intensity *= 0.42;
-    sc.environmentIntensity *= 0.72;
-    if (sc.fog) sc.fog.density *= 1.8;
-    if (GFX.renderer) GFX.renderer.toneMappingExposure *= 0.9;
+    duskSaved = { si: sun.intensity, col: sun.color.clone(), env: sc.environmentIntensity, fog: sc.fog?.density, fogCol: sc.fog?.color.clone(), exp: r?.toneMappingExposure, gain: U?.uGain.value, skyFog: U?.uFog.value.clone() };
+    sun.intensity *= DUSK.sun;
+    sun.color.setRGB(...DUSK.sunColor);
+    sc.environmentIntensity *= DUSK.env;
+    if (sc.fog) {
+      sc.fog.density *= DUSK.fog;
+      // (the haze greyer and bluer, at the same brightness)
+      const c = sc.fog.color, L = c.r * 0.2126 + c.g * 0.7152 + c.b * 0.0722, h = DUSK.haze, hl = h[0] * 0.2126 + h[1] * 0.7152 + h[2] * 0.0722;
+      c.setRGB(h[0] * L / hl, h[1] * L / hl, h[2] * L / hl);
+    }
+    if (r) r.toneMappingExposure *= DUSK.exp;
+    if (U) { U.uGain.value *= DUSK.sky; U.uFog.value.copy(sc.fog?.color || U.uFog.value); }
   } else if (!on && duskSaved) {
-    sun.intensity = duskSaved.si;
-    sc.environmentIntensity = duskSaved.env;
-    if (sc.fog && duskSaved.fog != null) sc.fog.density = duskSaved.fog;
-    if (GFX.renderer && duskSaved.exp != null) GFX.renderer.toneMappingExposure = duskSaved.exp;
+    const d = duskSaved;
+    sun.intensity = d.si;
+    sun.color.copy(d.col);
+    sc.environmentIntensity = d.env;
+    if (sc.fog && d.fog != null) { sc.fog.density = d.fog; sc.fog.color.copy(d.fogCol); }
+    if (r && d.exp != null) r.toneMappingExposure = d.exp;
+    if (U && d.gain != null) { U.uGain.value = d.gain; U.uFog.value.copy(d.skyFog); }
     duskSaved = null;
   }
   GFX.LIGHTING?.sunColor?.copy(sun.color).multiplyScalar(sun.intensity);
@@ -242,10 +284,21 @@ const walkToLot = (speed) => ({
 const SKODA_WAIT = { x: -37.25, z: -5, yaw: Math.PI };
 // Day 6: the same street, by the lot entrance (seen from the entrance as the Saab comes out).
 const SKODA_DAY6 = { x: -37.25, z: -9, yaw: Math.PI };
-// Day 3: the radiator key is in Rune's Volvo (in the garage row): beside its driver's door.
+// Day 3: the radiator key should be in Rune's Volvo (in the garage row): beside its driver's door.
 const RUNE_VOLVO = (g) => { const c = g.ensureNamedCar('runeVolvo'); return c ? g.exitSpot(c, 1) : lm('oveGarage'); };
+// ... but Anders has had it since 2015: a step in front of him at his door.
+const AT_ANDERS = (g) => { const n = g.npc('anders'), L = lm('andersHouse'), p = n && n.state === 'normal' && !n.car ? n : L; const y = p.yaw ?? L.yaw ?? 0; return { x: p.x + Math.sin(y) * 1.1, z: p.z + Math.cos(y) * 1.1 }; };
 // Day 5: the Saab for sale on Bilhallen's forecourt (the empty bay with the 35 000:- board).
 const SAAB_FOR_SALE = { x: 226, z: 68, yaw: -Math.PI / 2 };
+// Day 1, "Hämta Saaben vid garagen": the Saab is wherever Ove left it in free roam. Far from the
+// garages and out of sight, it is put back there; in sight, the objective just says to fetch it.
+// (`this` is the stage: also()'s start.)
+function homeSaab(g) {
+  const s = g.named?.saab, f = g.focus();
+  if (!s || s.dead || s === g.playerCar || !s.home || dist(s.x, s.z, s.home.x, s.home.z) < 30) return;
+  if (dist(s.x, s.z, f.x, f.z) < 160 && g.onScreen(s.x, s.y + 1, s.z)) this.text = 'Hämta Saaben';
+  else g.homeNamedCar('saab');
+}
 
 export const MISSIONS = [
   // ---------------------------------------------------------------------------------------------
@@ -262,6 +315,8 @@ export const MISSIONS = [
       ['ove', 'Vem backar med släp så? Flytta på dig.'],
     ],
     retryIntro: [['patrick', 'Ove! Släpet står fortfarande snett. Jag rörde det inte. Nästan.'], ['ove', 'Flytta på dig.']],
+    // (the trailer stays backed in when the Saab is what went wrong)
+    retryAt: [3],
     stages: [
       () => getInCar({ car: 'patrickCar', text: 'Kliv in i Patricks bil' }),
       also(() => parkIn({
@@ -276,7 +331,9 @@ export const MISSIONS = [
         say: 'När jag ändå är ute.',
         toast: 'Gå fram till en felparkerad bil och håll <b>F</b> för att anteckna den i blocket.',
       }),
-      () => getInCar({ car: 'saab', text: 'Hämta Saaben vid garagen' }),
+      // (the Saab back at the garages if Ove left it somewhere far off in free roam and it can't be
+      // seen; else the text just says to fetch it)
+      also(() => getInCar({ car: 'saab', text: 'Hämta Saaben vid garagen' }), { start: homeSaab }),
       () => parkIn({ box: 'oveGarageSpot', car: 'saab', tol: 0.3, text: 'Ställ in Saaben i garaget, nosen först' }),
     ],
     // In front of his garage door, facing the lot (he has just put the Saab away).
@@ -305,6 +362,7 @@ export const MISSIONS = [
       ['ove', 'Jag hämtar Saaben. Man kör inte bil inne på området.'],
     ],
     retryIntro: [['parvaneh', 'Ove, snälla. Sjukhuset. Nu.'], ['ove', 'Jaja. Gå till parkeringen.']],
+    waitToast: '<b>Parvaneh</b> väntar fortfarande. Hon har inget körkort, Ove.',
     stages: [
       also(() => getInCar({ car: 'saab', text: 'Hämta Saaben' }), walkToLot(2.0)),
       () => pickup({ who: 'parvaneh', at: LOT_PICKUP, walk: toLot, speed: 2.0, needCar: true, text: 'Hämta Parvaneh på parkeringen', carText: 'Parvaneh går mot parkeringen. Ta Saaben.', hello: 'Kör, Ove!' }),
@@ -312,10 +370,10 @@ export const MISSIONS = [
         to: HOSP_DROP, via: HOSP_VIA, radius: 9, timer: 95, inCar: true, with: ['parvaneh'], text: 'Kör Parvaneh till sjukhuset', failText: 'Det tog för lång tid. Parvaneh tog en taxi.',
         radioFirst: 3, radioEvery: 6,
         radio: [['parvaneh', 'Ove, du kör som en pensionär!'], ['ove', 'Jag kör som det står på skyltarna.'], ['parvaneh', 'Varför blinkar du? Det är ingen där!'], ['ove', 'Man blinkar. Alltid.'], ['parvaneh', 'En stjärna, Ove. Han skulle sätta upp EN stjärna.']],
-        callFirst: 12, calls: [['jimmy', 'Ove! Flickorna undrar om de får äta glass till frukost. De säger att du sa ja.', 'Nej.']],
+        callFirst: 12, calls: [['jimmy', 'Ove! Flickorna undrar om de får äta glass till lunch. De säger att du sa ja.', 'Nej.']],
       }),
       () => dropoff({ who: 'parvaneh', at: HOSP_DROP, radius: 9, walk: toAkut, text: 'Släpp av Parvaneh vid akuten', bye: 'Tack, Ove! Parkera, jag kommer ut sen!' }),
-      () => parkIn({ box: 'hospitalSpot', either: true, tol: 0.35, text: 'Parkera på sjukhusets parkering' }),
+      () => parkIn({ box: 'hospitalSpot', either: true, tol: 0.35, text: 'Ställ Saaben på sjukhusets parkering' }),
     ],
     outro: [
       ['parvaneh', 'Han har brutit armen. Han är hög på morfin och skrattar åt allting. Han hälsar.'],
@@ -341,9 +399,15 @@ export const MISSIONS = [
     stages: [
       // The key isn't on its hook: Rune borrowed it in 1998, and it is still in his Volvo.
       also(() => holdAt({ at: 'oveGarage', secs: 1.4, radius: 2.2, label: 'Leta efter elementnyckeln', text: 'Hämta elementnyckeln i garaget', work: 'wall' }), {
-        done: (g) => { hud.toast('Tom krok. Rune lånade elementnyckeln 1998. Den ligger säkert kvar i hans Volvo.', '', 7000); g.say(g.player, 'Rune. Typiskt.', 2.2); },
+        done: (g) => { hud.toast('Tom krok. Rune lånade elementnyckeln 1998. Den ligger säkert kvar i hans Volvo.', '', 7000); g.say(g.player, 'Rune. Naturligtvis.', 2.2); },
       }),
-      () => fetch({ at: RUNE_VOLVO, exact: true, item: 'wrench', label: 'elementnyckeln', text: 'Hämta elementnyckeln i Runes Volvo', got: 'Elementnyckeln. Mässing. Ove har haft den sedan 1991. Rune sedan 1998.' }),
+      // Not in the Volvo either: a note in the glove box sends Ove across the area to Anders.
+      also(() => holdAt({ at: RUNE_VOLVO, secs: 1.3, radius: 2.0, label: 'Leta i Runes Volvo', text: 'Hämta elementnyckeln i Runes Volvo', work: 'bend' }), {
+        done: (g) => { hud.toast('Ingen nyckel. En lapp i handskfacket: »Elementnyckeln utlånad till Anders, 2015. /R«', '', 7000); g.say(g.player, 'Anders.', 1.8); },
+      }),
+      also(() => fetch({ at: AT_ANDERS, exact: true, item: 'wrench', label: 'elementnyckeln', text: 'Hämta elementnyckeln hos Anders', got: 'Elementnyckeln. Mässing. Ove har haft den sedan 1991. Rune sedan 1998. Anders sedan 2015.' }), {
+        done: (g) => { const n = g.npc('anders'); if (n && n.state === 'normal' && dist(n.x, n.z, g.player.x, g.player.z) < 9) g.say(n, 'Elementnyckeln? Jaså, den. Den låg i Audin. Varsågod.', 3); },
+      }),
       also(() => report({ n: 2, near: 'garbageRoom', radius: 40, smitare: false, text: 'Två bilar står framför soprummet. Anteckna dem' }), {
         call: ['anita', 'Ove? Förlåt igen. Sopbilen kommer inte fram, det står två bilar framför soprummet.', 'Jag tar dem.'],
       }),
@@ -375,7 +439,7 @@ export const MISSIONS = [
     ],
     retryIntro: [['jimmy', 'Katten är tillbaka vid cykelförrådet, Ove!'], ['ove', 'Det är fortfarande inte min katt.']],
     stages: [
-      also(() => catchCat({ near: 'bikeShed', rMin: 2, rMax: 5, sit: true, timer: 110, text: 'Fånga katten vid cykelförrådet', failText: 'Katten sprang till skogen.' }), {
+      also(() => catchCat({ near: 'bikeShed', rMin: 2, rMax: 5, sit: true, timer: 110, text: 'Fånga katten vid cykelförrådet', failText: 'Katten sprang till skogs.' }), {
         first: 6, every: 10,
         lines: [['jimmy', 'Spring efter den, Ove!'], ['jimmy', 'Nej, vänta! Stå still! Prata snällt med den!'], ['ove', 'Jag pratar inte med katter.', 'radio']],
       }),
@@ -508,6 +572,7 @@ export const MISSIONS = [
       ['ove', 'Låt honom vänta.'],
     ],
     retryIntro: [['patrick', 'Ove! Barnet!'], ['ove', 'Jaja. Jag hämtar Saaben.']],
+    waitToast: '<b>Patrick</b> står kvar vid dörren. Barnet väntar inte, Ove.',
     // The Škoda waits by the entrance from the start of the day, engine running.
     setup: (g, m) => {
       const s = SKODA_WAIT, sp = g.spotFree(s.x, s.z) ? s : { ...s, z: s.z + 8 };
@@ -523,7 +588,7 @@ export const MISSIONS = [
         to: HOSP_DROP, via: HOSP_VIA, radius: 9, timer: 120, inCar: true, with: ['parvaneh'], text: 'Kör Parvaneh till sjukhuset! Skaka av dig Škodan', failText: 'För sent. Barnet föddes i Saaben. Ove kommer aldrig att prata om det.',
         chaser: {
           type: 'skoda', who: 'vitskjorta', cruise: 24, stun: 2.5, kr: 20, car: (g, m) => m.data.skoda, at: SKODA_WAIT, wait: 2.5, wake: 14,
-          goLine: 'Ove! Stanna! Jag har en blankett till dig!',
+          goLine: 'Ove! Stanna! Jag har en blankett som ni ska skriva under!',
           bannerText: 'Vita skjortan vill ha en underskrift', stopText: 'Vita skjortan håller upp ett papper mot rutan...', lines: ['Ove! Bara en underskrift!', 'Stanna! Det här är en kommunal fråga!', 'Vi har papper på det här också!'],
         },
         callFirst: 4, callEvery: 8,
@@ -549,10 +614,16 @@ export const MISSIONS = [
           fx.snowfall(true, 0.9);
         },
       }),
-      // On the way to the cemetery Patrick phones from the maternity ward.
+      // On the way to the cemetery Patrick phones from the maternity ward, and then the others call
+      // again - the morning's "INTE NU!" calls, answered this time (none once he is nearly there).
       also(() => fetch({ at: 'flowerShop', item: 'flowers', label: 'blommorna', text: 'Köp blommor vid kyrkogården', rMin: 0.8, rMax: 2.2, got: 'Rosa. Hon tyckte alltid om rosa.' }), {
         say: 'Det är söndag.',
         call: ['patrick', 'Ove! Det blev en pojke! Tre kilo fyrahundra! Han skriker precis som Parvaneh. Jag svimmade bara lite!', 'Hmpf. Grattis.'], callAt: 3.5,
+        calls: [
+          ['anita', 'Ove? Rune sa ditt namn i dag. Två gånger. Jag ville bara att du skulle veta det.', 'Bra. Det är bra, Anita.'],
+          ['adrian', 'Ove! Jag kollade under trösklarna. Ingen rost! Och jag prutade fyratusen!', 'Hmpf. Femtusen hade gått.'],
+        ],
+        callEvery: 6, quietR: 45,
       }),
       () => layFlowers(),
     ],
@@ -569,7 +640,7 @@ export const MISSIONS = [
       ['ove', 'Vilken vecka det har varit. Grannarna, alltså. De kan ingenting.'],
       ['ove', 'Parvaneh fick en pojke. Han skriker som hon. Patrick svimmade.'],
       ['ove', 'Adrian har köpt en Saab. Rune bor kvar. Katten... katten får stanna. Tills vidare.', (g) => graveShot(g, 'face')],
-      ['ove', 'Jag vet vad du skulle säga. Att de behöver mig.'],
+      ['ove', 'Jag vet vad du skulle säga. Att jag behöver dem lika mycket som de behöver mig.'],
       ['ove', 'Hmpf.'],
       ['ove', 'Det är i ordning nu, Sonja. Området.', (g) => graveShot(g, 'stone')],
       ['ove', 'Jag kommer igen på söndag. Som vanligt.'],
@@ -619,6 +690,9 @@ export class MissionRunner {
     g.placeNpcs?.(true);
     const saab = g.named?.saab;
     if (saab && saab !== g.playerCar && dist(saab.x, saab.z, g.player.x, g.player.z) > 60) g.homeNamedCar?.('saab');
+    // The giver first: no neighbour phones in for a while after the dawn (a call 5 s into day 7
+    // started an errand that the intro then dropped).
+    if (g.interrupts) g.interrupts.nextT = Math.max(g.interrupts.nextT ?? 0, 75);
     hud.showBanner(`Dag ${def.day}`, `${DAYS[def.day - 1]}smorgon`, 'mission', 2600, 'Ny dag');
     setTimeout(() => hud.toast(`<b>${g.charDef(def.giver).name}</b> vill dig något <span class="bang">!</span> Leta efter markeringen.`), 2200);
     g.save?.();
@@ -646,16 +720,32 @@ export class MissionRunner {
     if (best) p.teleport(best.x, best.z, yawTo(giver.x - best.x, giver.z - best.z));
   }
 
-  // Dialogue lines with a camera beat whenever someone in `cast` who isn't in the shot speaks (the
-  // camera turns to them and Ove); Ove's own lines keep the shot.
+  // Dialogue lines with camera beats. The scene opens on the two-shot (cinematic()); then, when
+  // the speaker changes, a closer single of whoever speaks from past the listener's shoulder
+  // (cam.single: the NPC past Ove's shoulder, Ove past the last NPC who spoke), and every fourth
+  // cut the two-shot again (whoever speaks and Ove, the rest of the cast as extras). A single that
+  // can't be had cleanly falls back to the two-shot for an NPC and keeps the shot for Ove. A
+  // line's own beat (a third element) wins. SINGLES = false: the two-shots only (as before).
   beats(lines, cast) {
-    let framed = cast[0];
-    return lines.map(([who, text, on]) => {
-      if (on || cast.length < 2 || who === 'ove') return [who, text, on];
-      const n = this.g.npc(who);
-      if (!cast.includes(n) || n === framed) return [who, text];
-      framed = n;
-      return [who, text, (gg) => gg.cam.frame(n, gg.player, { extras: cast.filter((c) => c !== n) })];
+    if (!cast.length) return lines;
+    const g = this.g;
+    let prev = null, last = cast[0], cuts = 0;
+    return lines.map(([who, text, on], i) => {
+      const n = who === 'ove' ? null : g.npc(who);
+      const inCast = n && cast.includes(n);
+      if (inCast) last = n;
+      if (on || i === 0) { prev = who; return [who, text, on]; }
+      if (who === prev) return [who, text];
+      prev = who;
+      if (who !== 'ove' && !inCast) return [who, text];
+      const lis = last;
+      const two = (gg) => gg.cam.frame(n || lis, gg.player, { extras: cast.filter((c) => c !== (n || lis)) });
+      if (!SINGLES) return who === 'ove' || cast.length < 2 ? [who, text] : [who, text, two];
+      if (++cuts % 4 === 0) return [who, text, two];
+      return [who, text, (gg) => {
+        const ok = n ? gg.cam.single?.(n, gg.player) : gg.cam.single?.(gg.player, lis);
+        if (!ok && n) two(gg);
+      }];
     });
   }
 
@@ -665,12 +755,15 @@ export class MissionRunner {
     this.state = 'intro';
     hud.hideBanner();
     hud.clearBubbles?.();
+    // (a call cut off by the scene leaves no phone toasts over the letterbox)
+    hud.clearToasts?.('phone');
     g.interrupts.abort();
     g.patrol.cancelWriting('');
     // A smitare chase still going drives off quietly (no SMET! over the intro).
     g.patrol.dropPursuit?.();
     const giver = g.npc(def.giver);
-    const lines = this.gaveUp.has(def.day) && def.retryIntro ? def.retryIntro : def.intro;
+    const again = this.gaveUp.has(def.day) && !!def.retryIntro;
+    const lines = again ? def.retryIntro : def.intro;
     // Whoever else speaks in the scene (Parvaneh beside Patrick, Anders, Rune).
     const cast = [giver, ...[...new Set(lines.map(([w]) => w))].filter((w) => w !== 'ove' && w !== def.giver).map((k) => g.npc(k)).filter((n) => n && n.state === 'normal' && !n.car)];
     g.player.wishX = g.player.wishZ = 0;
@@ -684,10 +777,33 @@ export class MissionRunner {
     await g.dialog(this.beats(lines, cast));
     this.introOn = false;
     g.endCinematic();
+    if (def.snow) fx.snowfall(true, 0.55);
+    // Taken up again after giving up, a day with a retry point goes straight there, as E after a
+    // fail does (the race: to the grid with Adrian aboard, not the drive to fetch him again).
+    if (again && def.retry) {
+      const r = def.retry;
+      hud.curtain(true, '');
+      g.inDialog = true;
+      await g.wait(0.65);
+      g.inDialog = false;
+      this.enterNamed(r.car);
+      hud.showBanner(def.name, 'Ett försök till.', 'mission', 2000, def.title);
+      audio.jingle('start');
+      this.startMission(r.from, r.with || []);
+      // (the race lifts the curtain itself once Ove is on the grid)
+      if (this.stage?.kind !== 'race') hud.curtain(false);
+      return;
+    }
     hud.showBanner(def.name, def.tagline || '', 'mission', 3000, `Dag ${def.day} · ${DAYS[def.day - 1]}`);
     audio.jingle('start');
-    if (def.snow) fx.snowfall(true, 0.55);
     this.startMission();
+  }
+
+  // Ove in that named car (a retry from a stage that starts in it).
+  enterNamed(name) {
+    const g = this.g;
+    if (g.playerCar && g.playerCar.name !== name) g.exitCar(true);
+    if (!g.playerCar) { g.player.state = 'normal'; g.enterCar(g.ensureNamedCar(name)); }
   }
 
   // From stage `from` (a retry on the race grid), with `aboard` (npc keys) in Ove's car.
@@ -706,15 +822,43 @@ export class MissionRunner {
   }
 
   startStage() {
-    const g = this.g;
-    this.stage = this.m.def.stages[this.stageI]();
-    this.stage.init?.(g, this.m);
+    const g = this.g, st = (this.stage = this.m.def.stages[this.stageI]());
+    this.stageT = 0;
+    // The stage's prompt, plus the give-up hint / hold bar (main.js asks the stage for its prompt).
+    const own = st.prompt;
+    st.prompt = (gg) => this.giveUpPrompt(own ? own.call(st, gg) : null);
+    st.init?.(g, this.m);
+  }
+
+  // Can the running mission be given up right now (hold Q, or the pause menu)? Not in the middle
+  // of a scene (a mid-mission conversation, the flowers, a cut to black).
+  get canGiveUp() { return this.state === 'running' && !!this.stage && !this.g.inDialog; }
+
+  // Holding Q (the key) for GIVE_UP.hold s gives the running mission up: abort(), the giver waits.
+  updateGiveUp(dt) {
+    const held = this.canGiveUp && this.g.input?.key?.('KeyQ');
+    this.qT = held ? (this.qT || 0) + dt : 0;
+    if (this.qT < GIVE_UP.hold) return false;
+    this.qT = 0;
+    this.abort();
+    return true;
+  }
+  // Subtle: after a stage has gone on for a minute a dimmed "Q (håll) Ge upp" joins the prompt;
+  // while Q is held the line is the give-up with its fill.
+  giveUpPrompt(p) {
+    if (this.qT > 0.08) return { text: '<b>Q</b> Ge upp dagens uppdrag', hold: Math.min(1, this.qT / GIVE_UP.hold), takesE: !!p?.takesE };
+    if ((this.stageT || 0) < GIVE_UP.hint) return p;
+    const q = '<span style="opacity:0.55"><b>Q</b> (håll) Ge upp</span>';
+    if (!p) return { text: q, takesE: false };
+    return { ...p, text: p.text ? `${p.text}<span class="pr-sep"> &nbsp;·&nbsp; </span>${q}` : q };
   }
 
   update(dt) {
     this.updateGate(dt);
-    if (this.state !== 'running') return;
+    if (this.state !== 'running' || !this.stage) { this.qT = 0; return; }
+    if (this.updateGiveUp(dt)) return;
     const g = this.g;
+    this.stageT += dt;
     const r = this.stage.update(g, this.m, dt);
     if (r === 'done') {
       this.stage.cleanup?.(g, this.m);
@@ -793,6 +937,9 @@ export class MissionRunner {
     this.state = 'outro';
     this.outroOn = false; this.outroCast = [];
     this.cleanupMission();
+    // A smitare chase from before (reporting still works during a mission) drives off quietly: no
+    // SMET! and -8 Ordning over UPPDRAG KLART and the outro.
+    g.patrol.dropPursuit?.();
     hud.clearBubbles?.();
     // UPPDRAG KLART over a held shot of what was just done (the Saab in its garage, Ove at a door,
     // the grave), not wherever the chase camera happens to look; nobody moves under the banner.
@@ -822,11 +969,13 @@ export class MissionRunner {
     this.outroOn = true;
     await g.dialog(this.beats(def.outro, cast));
     const last = this.index + 1 >= MISSIONS.length;
-    if (!last || !def.finale) { g.endCinematic(); def.finale?.(g, 'done'); }
+    if (!last || !def.finale) { g.endCinematic(); def.finale?.(g, 'done'); this.behindOve(); }
     this.outroOn = false;
     this.outroProps?.dispose?.();
     this.outroProps = null;
     for (const n of cast) { n.busy = false; n.homeX = undefined; }
+    this.quietCast(cast);
+    this.endedAt = g.time;
     this.index++;
     this.state = 'idle';
     this.m = null;
@@ -848,6 +997,7 @@ export class MissionRunner {
         await g.wait(6.5);
         g.endCinematic();
         def.finale(g, 'done');
+        this.behindOve();
       }
       if (def.snow) setTimeout(() => { fx.snowfall(false); dusk(false); }, 40000);
     } else {
@@ -858,10 +1008,29 @@ export class MissionRunner {
     }
   }
 
+  // Back to play after a scene: the camera behind Ove (or as near behind him as the walls allow),
+  // so whoever he talked to stands in front of him (cam.release() kept the yaw from before the
+  // scene: day 1 ended with the camera behind Parvaneh, a step from the lens). endCinematic()
+  // clears snapNext, so this comes after it.
+  behindOve() {
+    const g = this.g;
+    if (g.playerCar) return;
+    if (g.cam.behind) g.cam.behind(g.player);
+    else { g.cam.yaw = g.player.yaw; g.cam.pitch = 0.2; g.cam.snapNext = true; }
+  }
+  // ... and the people in the scene don't start small talk straight after it.
+  quietCast(cast) {
+    const g = this.g;
+    for (const n of cast) n.chatT = CHAT_QUIET;
+    g.chatGlobalT = Math.max(g.chatGlobalT || 0, g.time + 10);
+  }
+
   fail(reason) {
     if (this.state !== 'running') return;
     const g = this.g, def = this.m.def;
     this.state = 'failed';
+    this.failedAt = this.stageI;
+    g.patrol.dropPursuit?.();
     audio.jingle('fail');
     hud.showBanner('UPPDRAG MISSLYCKADES', reason, 'bad', 0, def.title);
     // Whoever rode with Ove took a taxi home: nobody is left standing on the street.
@@ -893,8 +1062,7 @@ export class MissionRunner {
     const def = this.current, r = def.retry;
     if (r) {
       // Straight back to that stage (the race grid), in the car, with whoever rode along.
-      if (g.playerCar && g.playerCar.name !== r.car) g.exitCar(true);
-      if (!g.playerCar) { g.player.state = 'normal'; g.enterCar(g.ensureNamedCar(r.car)); }
+      this.enterNamed(r.car);
       hud.showBanner(def.name, 'Ett försök till.', 'mission', 2000, def.title);
       audio.jingle('start');
       this.startMission(r.from, r.with || []);
@@ -910,21 +1078,33 @@ export class MissionRunner {
     g.homeNamedCar?.('saab');
     hud.showBanner(def.name, 'Ett försök till.', 'mission', 2000, def.title);
     audio.jingle('start');
-    this.startMission();
+    // (from the last of def.retryAt at or before the stage that failed, else from the start)
+    const from = Math.max(0, ...(def.retryAt || []).filter((k) => k <= (this.failedAt ?? 0)));
+    this.startMission(from);
   }
 
+  // Give the day up for now: after a fail (Q), or while it runs (hold Q, the pause menu). The giver
+  // waits; taking the day up again plays the short retryIntro (and goes to def.retry's stage).
   abort() {
-    const def = this.current;
+    const g = this.g, def = this.current;
     hud.hideBanner();
     hud.setPrompt('');
-    if (this.state === 'running') this.cleanupMission();
+    if (this.state === 'running' && this.m) {
+      // (whoever rode along goes home, as after a fail: nobody is left on the street)
+      const riders = [...this.m.data.npcs].filter((n) => g.companions.has(n) || (n.car && n.car === g.playerCar));
+      this.cleanupMission();
+      for (const n of riders) g.sendHome?.(n);
+      g.patrol.dropPursuit?.();
+    }
     this.state = 'idle';
     this.m = null;
-    this.g.player.anim.kneel = false;
+    this.stage = null;
+    this.qT = 0;
+    g.player.anim.kneel = false;
     dusk(false);
     if (def) this.gaveUp.add(def.day);
     if (def?.snow) fx.snowfall(false);
-    if (def) hud.toast(`<b>${this.g.charDef(def.giver).name}</b> väntar fortfarande. Kom tillbaka när du vill.`);
+    if (def) hud.toast(def.waitToast || `<b>${g.charDef(def.giver).name}</b> väntar fortfarande. Kom tillbaka när du vill.`);
   }
 }
 

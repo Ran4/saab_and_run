@@ -25,7 +25,7 @@ import { AIDriver, LanePath, startNodes } from '../actors/drivers.js';
 import { Collectible } from '../actors/pickups.js';
 import { buildCat } from '../actors/models.js';
 import { GeoBuilder, realMesh } from '../gfx.js';
-import { queryBlocks, circleVsBlock, groundAt, topAt, RAMP, segmentBlocked } from '../world/collision.js';
+import { queryBlocks, circleVsBlock, circleVsObb, groundAt, topAt, RAMP, segmentBlocked } from '../world/collision.js';
 import { audio } from '../audio.js';
 import { hud } from './hud.js';
 import { fx as FX } from './fx.js';
@@ -66,6 +66,8 @@ export const getInCar = (o = {}) => ({
   target(g) { return this.car && g.playerCar !== this.car ? { x: this.car.x, z: this.car.z, r: 3.5 } : null; },
   update(g) {
     this.sub = null;
+    // (a named car wrecked before Ove got in: no way on - the retry brings a new one)
+    if (this.car?.dead && !o.any) return { fail: 'Bilen är kvaddad.' };
     if (!g.playerCar) return;
     if (!this.car || g.playerCar === this.car || o.any) return 'done';
     this.sub = o.wrongText || 'Fel bil.';
@@ -777,6 +779,9 @@ export const parkIn = (o) => ({
   cleanup() { this.marker.dispose(); },
   update(g, m, dt) {
     const c = g.playerCar, b = this.b;
+    // The car it has to be is a wreck: a fail, and the retry brings a new one (it used to say
+    // "Kliv in i Patricks bil" for ever).
+    if (this.car?.dead) return { fail: 'Bilen är kvaddad.' };
     this.marker.update(g.time, false);
     this.score = 0;
     if (!c) { this.sub = this.car ? `Kliv in i ${this.car.name === 'patrickCar' ? 'Patricks bil' : this.car.name === 'saab' ? 'Saaben' : 'bilen'}` : 'Kliv in i en bil'; return; }
@@ -806,10 +811,10 @@ export const parkIn = (o) => ({
     this.sub = null;
     // Where the car is relative to the box: ahead of it (along the way a parked car faces) or behind.
     const along = (c.x - b.x) * bfx + (c.z - b.z) * bfz, near = dist(c.x, c.z, b.x, b.z) < b.l / 2 + 22;
-    // Driving forward through the box on the way past it (as told) is fine: only a car that stops
-    // in it nose first, or stays in it a while going forward, is told to back in.
+    // Driving forward through the box on the way past it (as told, however slowly: the box is 9.5 m
+    // long) is fine: only a car that stops in it nose first is told to back in.
     this.fwdInT = this.wasIn && this.enteredRev === false ? (this.fwdInT || 0) + dt : 0;
-    const scold = this.fwdInT > 3 || (this.fwdInT > 0.4 && c.speed < 0.5);
+    const scold = this.fwdInT > 0.4 && c.speed < 0.5;
     if (o.trailer && c.trailer?.jackknifed) this.sub = 'Släpet har vikt sig. Kör framåt en bit och räta upp det.';
     else if (o.reverse && this.wasIn && this.enteredRev === false && scold) this.sub = 'Backa in! Kör ut ur rutan och försök igen.';
     else if (o.reverse && this.wasIn && this.enteredRev === false) this.sub = 'Kör förbi rutan i pilens riktning och backa sedan in.';
@@ -1205,26 +1210,77 @@ export const talk = (o) => ({
   },
   target() { const n = this.npc; return { x: n.x, z: n.z, r: 2.5 }; },
   tags() { const n = this.npc; return this.phase === 'wait' ? [{ x: n.x, y: n.y + n.height + 0.35, z: n.z, text: n.def.name, cls: 'errand' }] : []; },
-  update(g) {
-    const n = this.npc;
+  update(g, m, dt) {
+    const n = this.npc, p = g.player;
     if (this.phase === 'done') return 'done';
     if (this.phase === 'talking') return;
+    if (this.phase === 'stand') {
+      // A few frames with everyone where the scene has put them, so the shot is judged on the
+      // final positions (physics has settled the step out of the car).
+      p.wishX = p.wishZ = 0; p.vx = p.vz = 0;
+      this.standT -= dt;
+      if (this.standT > 0) return;
+      this.phase = 'talking';
+      // (a mission call still going is cut off: no call card over the scene)
+      g.interrupts.hangUp?.();
+      (async () => {
+        n.yaw = yawTo(p.x - n.x, p.z - n.z);
+        p.yaw = yawTo(n.x - p.x, n.z - p.z);
+        g.cinematic(n, p);
+        await g.dialog(o.lines);
+        g.endCinematic();
+        this.phase = 'done';
+      })();
+      return;
+    }
     this.sub = g.playerCar ? 'Kliv ur bilen.' : null;
     if (g.playerCar && g.playerCar.speed < 1 && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 9) g.exitCar(true);
-    if (g.playerCar || g.player.state !== 'normal' || dist(g.player.x, g.player.z, n.x, n.z) > (o.range ?? 4.5)) return;
-    this.phase = 'talking';
-    (async () => {
-      const p = g.player;
-      n.yaw = yawTo(p.x - n.x, p.z - n.z);
-      p.yaw = yawTo(n.x - p.x, n.z - p.z);
-      p.wishX = p.wishZ = 0; p.vx = p.vz = 0;
-      g.cinematic(n, p);
-      await g.dialog(o.lines);
-      g.endCinematic();
-      this.phase = 'done';
-    })();
+    if (g.playerCar || p.state !== 'normal' || dist(p.x, p.z, n.x, n.z) > (o.range ?? 4.5)) return;
+    // Ove steps up in front of them, on their side of the cars (he used to pop out of the Saab on
+    // its far side, and the scene was filmed without him).
+    const s = standFor(g, n, o.from === 'wreck' ? m.data.wreck?.car : null);
+    if (s) p.teleport(s.x, s.z, yawTo(n.x - s.x, n.z - s.z));
+    p.wishX = p.wishZ = 0; p.vx = p.vz = 0;
+    n.yaw = yawTo(p.x - n.x, p.z - n.z);
+    g.inDialog = true;
+    this.phase = 'stand'; this.standT = 0.15;
   },
+  cleanup(g) { if (this.phase === 'stand') g.inDialog = false; },
 });
+
+// Where Ove stands to talk to n: about 2 m out from them on the open side (away from the car they
+// stepped out of, else the way they face), on their level, clear of cars and walls, with nothing
+// between them (no car, nothing taller than 0.6 m); of those the nearest to where Ove is. null: he
+// already stands well, or there is no such spot.
+function standFor(g, n, car) {
+  const p = g.player;
+  let base = n.yaw;
+  if (car) { const dx = n.x - car.x, dz = n.z - car.z; if (Math.hypot(dx, dz) > 0.3) base = Math.atan2(dx, dz); }
+  const ok = (x, z) => {
+    const y = g.groundAt(x, z);
+    if (Math.abs(y - n.y) > 0.25 || !g.spotFree(x, z, y)) return false;
+    if (segmentBlocked(n.x, n.z, x, z, Math.min(n.y, y) + 0.6) >= 0) return false;
+    const L = dist(n.x, n.z, x, z), steps = Math.max(2, Math.ceil(L / 0.15));
+    for (const c of g.cars) {
+      if (Math.abs(c.x - x) > 9 || Math.abs(c.z - z) > 9) continue;
+      if (circleVsObb(x, z, 0.7, c.obb, _h)) return false;
+      for (let k = 1; k < steps; k++) if (circleVsObb(n.x + (x - n.x) * k / steps, n.z + (z - n.z) * k / steps, 0.3, c.obb, _h)) return false;
+    }
+    return true;
+  };
+  const d = dist(p.x, p.z, n.x, n.z);
+  if (d > 1.5 && d < 3 && Math.abs(angleDiff(base, yawTo(p.x - n.x, p.z - n.z))) < 1.3 && ok(p.x, p.z)) return null;
+  // (all the way round, further out last: with the Saab pulled up alongside, the open spot is past
+  // the ends of the two cars)
+  let best = null, bs = Infinity;
+  for (const da of [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.0, -2.0, 2.5, -2.5, Math.PI]) for (const r of [2.0, 2.4, 1.7, 2.8, 3.4]) {
+    const a = base + da, x = n.x + Math.sin(a) * r, z = n.z + Math.cos(a) * r;
+    const sc = Math.abs(da) * 0.5 + Math.abs(r - 2) * 0.8 + dist(x, z, p.x, p.z) * 0.05;
+    if (sc >= bs || !ok(x, z)) continue;
+    bs = sc; best = { x, z };
+  }
+  return best;
+}
 
 // A cut to black and back (a time skip). o: { delay = 0 (s the scene runs on first), secs = 2.2
 // (s black), caption ('Senare samma dag'), clock: [h, m] (the clock jumps while it is dark),

@@ -1,4 +1,4 @@
-# Story (phase 3b, fix round 1, phase 4) — notes for later agents
+# Story (phase 3b, fix round 1, phase 4, phase 4 round 2) — notes for later agents
 
 Owner: story agent. Files: `src/game/missions.js`, `src/game/stages.js`, `src/game/camera.js`,
 `tools/scenarios/story.mjs`, this file (phase 4: also the story's parts of main.js, interruptions.js,
@@ -9,13 +9,13 @@ DESIGN.md section 5 describes the seven days as implemented.
 
 | day | id | giver @ place | stages | reward |
 |---|---|---|---|---|
-| 1 Släpkärran | `slapet` | patrick (+parvaneh) @ parvanehHouse | getInCar patrickCar → parkIn parvanehDrive (trailer, reverse, tol 0.35, clear 14) → report 3 @ guestParking (no smitare) → getInCar saab → parkIn oveGarageSpot; outro at Ove's garage door | 100 |
+| 1 Släpkärran | `slapet` | patrick (+parvaneh) @ parvanehHouse | getInCar patrickCar → parkIn parvanehDrive (trailer, reverse, tol 0.35, clear 14) → report 3 @ guestParking (no smitare) → getInCar saab (`homeSaab`: back at the garages if far off and unseen) → parkIn oveGarageSpot (`retryAt: [3]`); outro at Ove's garage door | 100 |
 | 2 Sjukhuset | `sjukhuset` | parvaneh @ parvanehHouse, away: patrick, elsewhere: sara + nasanin at jimmyHouse | getInCar saab (Parvaneh starts walking to the lot) → pickup parvaneh @ LOT_PICKUP (she walks; needCar) → goto hospitalDrop via the Akut driveway (95 s, radio every ~6 s, Jimmy's call) → dropoff (she walks to the Akut door) → parkIn hospitalSpot (either) | 150 |
-| 3 Elementet | `elementet` | anita @ runeHouse | holdAt oveGarage 1.4 s (the hook is empty: "Rune lånade elementnyckeln 1998") → fetch wrench beside Rune's Volvo (`runeVolvo`, exact) → report 2 @ garbageRoom (Anita calls first) → holdAt runeHouse "Gå in och lufta elementen" (`cut`: one E, black, caption, work 'wall'); outro on the walkway 2.3 m out from their door | 150 |
+| 3 Elementet | `elementet` | anita @ runeHouse | holdAt oveGarage 1.4 s (the hook is empty: "Rune lånade elementnyckeln 1998") → holdAt 1.3 s at Rune's Volvo (`runeVolvo`: a note, "utlånad till Anders, 2015") → fetch wrench 1.1 m in front of Anders (`AT_ANDERS`, exact; "Jaså, den. Den låg i Audin.") → report 2 @ garbageRoom (Anita calls first) → holdAt runeHouse "Gå in och lufta elementen" (`cut`: one E, black, caption, work 'wall'); outro on the walkway 2.3 m out from their door | 150 |
 | 4 Katten | `katten` | jimmy @ jimmyHouse | catchCat @ bikeShed (sit, 110 s, Jimmy: "Spring efter den!" → "Nej, vänta! Stå still!") → goto oveHouse on foot; outro at his door | 150 |
 | 5 Saab, inte Audi | `saab` | adrian (+anders) @ adrianSpot | getInCar saab → pickup adrian (needCar) → race Anders (cut to the grid, Ove right lane, Anders left lane on the first straight, cruise 19, careful, rubber band) Solrosvägen → (5,3) → (5,5) → (6,5) → dealerFinish; retry from the grid with Adrian; outro on Bilhallen's forecourt with a grey Saab for sale | 200 |
 | 6 Vita skjortan | `vitskjortan` | anita @ runeHouse, away: vitskjorta | setup: the Saab along the aisle facing the lot entrance → getInCar saab (Anita calls 8 s later) → destroy (waits at SKODA_DAY6 (−37.25, −9) by the lot entrance until Ove's car is within 30 m (35 s at most); ≤ 30 Ork a ram, drain 8/s; rubber 1 / 0.85 beyond 80 m; escape 250 m only after Ove was within 60 m and after 20 s; TAGEN!) → talk → grab the folder → goto runeHouse | 250 |
-| 7 Värkarna | `varkarna` | patrick (cast, +parvaneh) @ parvanehHouse, away: vitskjorta, snow | setup: the Škoda parked on the west street (−37.25, −5) → getInCar saab (Parvaneh walks to the lot) → pickup → goto hospitalDrop via the driveway (120 s; chaser = that Škoda, sets off after 2.5 s; 5 calls Anita, Sara, Jimmy, Adrian, Anders; radio) → dropoff "Gå nu, Ove. Det är söndag. Hälsa Sonja från mig." → cut "Senare samma dag" (15:40, Saab to hospitalSpot, Parvaneh away, `dusk(true)`, snowfall 0.9) → fetch flowers @ flowerShop (Patrick phones: a boy, he fainted) → `layFlowers` (one E: Ove kneels, the bouquet follows `kneelPoint` until ~2.2 s and stays on the twigs) → outro on one knee with the finale's shots (`graveShot`) | 500 |
+| 7 Värkarna | `varkarna` | patrick (cast, +parvaneh) @ parvanehHouse, away: vitskjorta, snow | setup: the Škoda parked on the west street (−37.25, −5) → getInCar saab (Parvaneh walks to the lot) → pickup → goto hospitalDrop via the driveway (120 s; chaser = that Škoda, sets off after 2.5 s; 5 calls Anita, Sara, Jimmy, Adrian, Anders; radio) → dropoff "Gå nu, Ove. Det är söndag. Hälsa Sonja från mig." → cut "Senare samma dag" (15:40, Saab to hospitalSpot, Parvaneh away, `dusk(true)`, snowfall 0.9) → fetch flowers @ flowerShop (Patrick phones: a boy, he fainted; then Anita and Adrian, answered calmly; none within 45 m of the kiosk) → `layFlowers` (one E: Ove kneels, the bouquet follows `kneelPoint` until ~2.2 s and stays on the twigs) → outro on one knee with the finale's shots (`graveShot`) | 500 |
 
 After day 7: banner **OMRÅDET ÄR I ORDNING** (Ordning lifted to ≥ 90) over the wide grave shot for
 6.5 s, then Ove gets up and free roam continues; the snowfall and the afternoon light end 40 s later.
@@ -32,19 +32,23 @@ After day 7: banner **OMRÅDET ÄR I ORDNING** (Ordning lifted to ≥ 90) over t
 - `index`, `state` idle | intro | running | outro | failed, `m`, `stage`, `stageI`, `offered`,
   `gating`, `gateOpen`, `gate`, `gaveUp` (days given up with Q: their `retryIntro` next time),
   `outroCast` / `outroOn` (the outro's placed people; tests read them), `outroProps`.
-- **Between days**: the next day opens after `GATE.reports` (2) more reports or `GATE.secs` (75) of
-  free roam: 06:30, `Dag N` / "Ny dag", `placeNpcs(true)` (everyone where they spend the new day,
-  e.g. the girls at Jimmy's on day 2), the Saab home if Ove is > 60 m from it.
+- **Between days**: the next day opens after `GATE.reports` (3) more reports (not before
+  `GATE.minSecs`, 60 s) or `GATE.secs` (90 s) of free roam (time with an errand, call, chase or
+  dialogue on doesn't count): 10:30, `Dag N` / "Tisdagsmorgon", `placeNpcs(true)` (everyone where
+  they spend the new day, e.g. the girls at Jimmy's on day 2), the Saab home if Ove is > 60 m from
+  it, `interrupts.nextT` ≥ 75 (the giver first).
 - `begin()` (intro, or `retryIntro` after a give-up), `startMission(from = 0, aboard = [])`
   (`def.setup(g, m)` first; `aboard`: npc keys put in Ove's car), `complete()`: cleanup, UPPDRAG
-  KLART (hidden again before the outro), 17:30 on days 1-6, Ove to `def.outroAt`, `outroSetup`,
+  KLART (hidden again before the outro), 14:30 on days 1-6, Ove to `def.outroAt`, `outroSetup`,
   `placeCast(keys)` (every non-Ove speaker within 4 m in front of Ove, fanning out, no wall /
   fence / hedge taller than 0.6 m between, kept where they stand if that already holds), the camera
   turns to whoever speaks when there are two others, a line's third element `(g) => {}` is a camera
   beat. `fail(reason)` (riders in Ove's car go home via `g.sendHome`), `updateFailed` (E = retry,
   Q = give up; **no time-out**), `retry()` (`def.retry = { from, car, with }`: straight back to that
-  stage in that car with them aboard; else from the start, Ove by the giver), `abort()`.
-- `also(factory, { say, toast, call, callAt, lines, first, every, start, done })`.
+  stage in that car with them aboard; else from the start (or the last `def.retryAt` at or before
+  the failed stage), Ove by the giver), `abort()` (also for a running day: hold Q, the pause menu).
+- `also(factory, { say, toast, call, callAt, calls, callEvery, quietR, lines, first, every, start,
+  done })` (`start` is called with the stage as `this`).
 
 ## Stage changes (stages.js), fix round 1
 
@@ -272,3 +276,121 @@ On foot, backed into a wall with the boom at its shortest, the camera swings to 
   then reads as SW, early afternoon; ~190 would be noon-south for a 10:30-14:30 day (rendering's call).
 - **Input** (`input.js`, fixer A): a `giveUp` action (KeyQ, pad 1) — missions.js already asks for it.
 - **Docs**: CLAUDE.md says "+z is south on the map": it is north now (DESIGN §5).
+
+## Phase 4, round 2 (reviews/p4r2_owner_gameplay_story.json) — what changed
+
+### No soft-locks, and a way out of a running day
+- `getInCar` / `parkIn` (stages.js) fail with **"Bilen är kvaddad."** when the named car they need
+  is dead (day 1: Patrick's car with the trailer wrecked in the box used to say "Kliv in i Patricks
+  bil" for ever; the same for the Saab). E retries; `getInCar.init` → `ensureNamedCar` replaces the
+  wreck. New def field `retryAt: [stage indices]`: a fail at or after one retries from it (day 1:
+  `[3]`, a wrecked Saab doesn't mean backing the trailer in again). `fail()` records `failedAt`.
+- **Hold Q for 1 s** gives a running day up (`GIVE_UP.hold`; `input.key('KeyQ')` only — the pad's B
+  is also the report hold). `MissionRunner.canGiveUp` (running, a stage, not `inDialog`: no give-up
+  in the middle of a talk, the flowers or a cut), `updateGiveUp(dt)`. `startStage()` wraps the
+  stage's `prompt()` (`giveUpPrompt`): after `GIVE_UP.hint` (60 s) in one stage a dimmed
+  "<b>Q</b> (håll) Ge upp" joins the prompt line; while Q is held the line is "Q Ge upp dagens
+  uppdrag" with the fill. `stageT` = seconds in the current stage.
+- `abort()` works for a running day too (hold Q, ui's pause-menu button): riders go home
+  (`sendHome`, as after a fail), `dropPursuit`, the toast is `def.waitToast` if the day has one
+  (day 2 "Hon har inget körkort, Ove.", day 7 "Barnet väntar inte, Ove.").
+- Taking a given-up day up again: the `retryIntro`, then for a day with `def.retry` (day 5) a cut
+  (curtain 0.65 s) straight to that stage in that car with them aboard (`enterNamed(name)`), as E
+  after a fail does — not the drive to fetch the Saab and Adrian again.
+
+### Continuity
+- `complete()` and `fail()` call `patrol.dropPursuit()` (a smitare chase from before ended in
+  SMET! −8 over the outro). Test: `outrosmet`.
+- After every outro: `behindOve()` → `cam.behind(player)` (camera.js: his yaw, or the nearest yaw
+  ±0.3…1.2 rad with the boom free — day 1 ends with his back to the garage door) and
+  `quietCast(cast)`: `n.chatT = 25` for the cast, `chatGlobalT` ≥ now + 10 (Parvaneh offered the
+  saffransris again straight after the scene). `endedAt` = game time the last day ended.
+- `updateGate`: a dawn sets `interrupts.nextT` ≥ 75 (the giver first). `begin()` calls
+  `hud.clearToasts?.('phone')` (ui adds it). `talk` and `layFlowers` hang up a mission call still
+  going when their scene starts (Anita's day-6 call card over the talk with Vita skjortan).
+- Day 6 `talk`: Ove is put ~2 m out from Vita skjortan on the open side (away from the Škoda;
+  all round, up to 3.4 m; spot ≥ 0.7 m from every car, the line between them clear of cars by
+  0.3 m and of anything taller than 0.6 m: `standFor`), then 0.15 s with input frozen before the
+  cinematic so the shot is judged on the final positions. (The Saab pulled up alongside on his side
+  used to put the Saab between them.) Test: the `story` day 6 pulls up alongside; d = 2.0 m, no
+  Saab between, both heads in the shot.
+- Day 1 `parkIn`: only a car that stops in the box nose first (> 0.4 s, < 0.5 m/s) is told "Backa
+  in!"; a forward pass at 8.6 km/h through the 9.5 m box is not (`giveup` checks).
+- Day 1 stage 3 (`homeSaab`, via `also({ start })`, now called with the stage as `this`): the Saab
+  > 30 m from home is put back unless it is on screen within 160 m; then the text is "Hämta Saaben".
+
+### Light: "Senare samma dag" (day 7)
+`dusk(on)` is an overcast blue hour (`DUSK` levers, exported for look-dev): sun ×0.06 and cooler
+(0.72, 0.8, 1.0), `environmentIntensity` ×0.9, exposure ×1.15, fog density ×2.5 and its colour a
+grey-blue of the same brightness, the sky dome (`uGain` ×0.55, its horizon `uFog` = the new fog
+colour). Everything saved and restored (sun colour too). No hard grave shadows; the snow a bright
+blue-grey; SONJA readable; the lantern's flame still reads lit (no extra light needed).
+Numbers (`dusk` scenario, inside the letterbox band, before → after): stone median 160 → 131
+(p1 13 → 11), wide 152 → 139 (p1 20 → 18), face 94 → 81 (p1 7.6 → 8.2), hospital street 123 → 70;
+blue−red 4.5 → 23 (stone). (Round 1's ×0.42 sun gave hard shadows under the snowfall.)
+
+### Pacing and texts
+- `GATE.minSecs` 35 → 60.
+- Day 3: the key isn't in Rune's Volvo either: hold E at its door (1.3 s, a note in the glove box:
+  "utlånad till Anders, 2015") → fetch it at Anders' door across the area (`AT_ANDERS`; Anders:
+  "Elementnyckeln? Jaså, den. Den låg i Audin. Varsågod."; the toast adds "Anders sedan 2015") →
+  the soprum cars → the radiators. Five stages now (were four; the test's D[3] follows).
+- Day 7 flower drive: `also()` takes `calls: [...]` after `call` (`callEvery` s after the one
+  before ends, none once within `quietR` m of the stage's target): Patrick (3.5 s), then Anita ("Rune
+  sa ditt namn i dag. Två gånger." — "Bra. Det är bra, Anita.") and Adrian ("Ingen rost! Och jag
+  prutade fyratusen!" — "Hmpf. Femtusen hade gått."): the morning's "INTE NU!" calls, answered
+  this time; ~13 s apart, all three within ~38 s; none within 45 m of the kiosk (`flowercalls`).
+- Lines: Vita skjortan's day-7 goLine uses "ni"; Jimmy's ice cream "till lunch"; "Ställ Saaben på
+  sjukhusets parkering"; "Rune. Naturligtvis."; "Katten sprang till skogs."; day 7 outro line 5
+  "Att jag behöver dem lika mycket som de behöver mig." (then "Hmpf.").
+
+### Camera
+- **Singles** (`cam.single(speaker, listener)`): from past the listener's shoulder, 14-22° off the
+  line, 1.6-2.2 m behind the listener (never within 1.9 m of them), speaker's eye height (+0.2),
+  a 36° lens, both heads judged in the picture (`judge` takes a `fov` now: the frame tests scale
+  with it), on the side of the line the camera is on; used only if `ok` and score ≥ 1.45, else
+  false. `beats()`: the scene opens on the two-shot, each speaker change cuts to a single (NPC past
+  Ove's shoulder; Ove past the last NPC who spoke), every 4th cut a two-shot; a failed single falls
+  back to the two-shot for an NPC and keeps the shot for Ove (`SINGLES = false` in missions.js turns
+  it all off). In a `story` run ~37 singles and ~30 two-shots, every one passing `cineCheck`.
+- On foot in a tight spot (k < 0.6) the camera steps over the shoulder on the **open** side
+  (boomFree 1.6 m left/right at shoulder height, with hysteresis), and with the boom under 1.4 m
+  the aim moves up to 0.45 m to that side (`lookSide`): Ove lower-left/right, the open space in the
+  picture. The swing-away trigger stays at 1.3 m (1.6 m was tried: at his own door facing out it
+  swung a good view 90° away). `camwall` measures it; `camtight2` still passes.
+
+### Tests (story.mjs)
+- New: `giveup`, `outrosmet`, `flowercalls`, `dusk` (look-dev), `camwall` (see the file header).
+- `story`: day 3 follows the new stages; day 6 pulls the Saab up alongside the stopped Škoda and
+  checks Ove's spot (d < 4 m, no car between) and the talk shot; after each outro (days 1-6) Ove is
+  in front of the camera (< 0.7 rad off its axis), nobody from the cast within 1.8 m of the lens,
+  and `chatGlobalT` ≥ the end + 9 s. `retry`: a given-up race day goes straight to the grid with
+  Adrian. `gate`: the dawn waits ≥ 59 s of free roam and the next call is ≥ 70 s off (waits 95 s
+  for the dawn now).
+- `m5race` is flaky when it is not the first scenario in a shot.mjs process (the key bot clips the
+  lamp post on the kerb at ~(140, 127) after the (117, 123) corner, stops dead and loses: 33.5 s,
+  Anders 17 m) — with round 2's files and with the committed ones alike; run alone it wins
+  (~27 s, Anders ~55-58 m short). Not a story change; the bot (or that kerb island) needs a look.
+
+Verified in the private copy (after refreshing with the ui landing 5911916 and the cars landing
+6694528): `story` ×4 with the singles (34-37 singles and ~30 two-shots per run, every `cineCheck`
+passing) ending `#7 idle` / `no errors`; `m5race` alone (won, Anders 92 m short); `m1`, `m7chase` (under 40 m after 10.8 s), `retry`, `gate`, `giveup`, `outrosmet`,
+`flowercalls`, `camtight2`, `camwall`, `walk`, `start` (~61 fps), `m4cat`, `m6chase`,
+`hospdrive`, `lotwalk`, `smitintro` all clean; `m5race` see above.
+
+### API changes others must know
+- `missions.canGiveUp` (getter) — ui's pause-menu "Avbryt dagens uppdrag" should show/act only
+  while it is true (not just `state === 'running'`: an abort in the middle of a talk leaves its
+  dialogue running), then call `missions.abort()`.
+- `missions.endedAt`, `missions.stageT`, `missions.failedAt`; mission defs: `waitToast`, `retryAt`;
+  `also()`: `calls`, `callEvery`, `quietR`; `start` gets the stage as `this`.
+- `cam.single(a, b, opts)`, `cam.behind(p)`, `cam.openSide`, `cam.lookSide`; exported from
+  missions.js: `DUSK`, `graveShot` (tests).
+
+### Requests to other areas (round 2)
+- **UI**: `hud.clearToasts(cls)` (begin() calls it with 'phone'); the pause-menu "Avbryt dagens
+  uppdrag" gated on `missions.canGiveUp`.
+- **Gameplay systems**: README's Q row (and DESIGN §4.6's: "Q (gamepad B) | ge upp efter ett
+  misslyckat uppdrag; håll Q 1 s: avbryt ett pågående"); Parvaneh's small talk still has "Vill du ha
+  lite saffransris?" after day 1 (CHATTER_AFTER could drop it once she has brought it); the save's
+  `begun` → `gaveUp` path now takes day 5 straight to the grid.

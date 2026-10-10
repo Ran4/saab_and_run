@@ -170,8 +170,8 @@ interact. F: hold to write a report.
 
 ### 4.5 Money & collectibles
 `kr` (kronor) replaces coins: pantburkar (cans) lying around (1 kr), rewards. 7 Saab-emblem and
-7 Sonjas fotografier (each found plays a short memory toast, e.g. "Sonja, 1984. Hon skrattade åt
-honom hela vägen till Göteborg."). All reachable without double jumps.
+7 Sonjas fotografier (each found plays a short memory toast, e.g. "Sonja, 1984. Tåget till
+Göteborg. Hon skrattade åt honom hela vägen."). All reachable without double jumps.
 
 ### 4.6 Controls
 | key | till fots | i bil |
@@ -212,23 +212,39 @@ the letterbox bars and unblocked (walls, sheds, props over 0.5 m, tree trunks an
 world's camBlocks (railings, lamp posts, overhangs), parked cars, other people), nothing within
 1.5 m of the lens and as little as possible within 3 m, no pole in the middle of the picture,
 never closer than the distance at which the two fit; two-shots from both sides and up to ~70°
-round, at eye height and a little above, then over-the-shoulder shots as the fallback.
+round, at eye height and a little above, then over-the-shoulder shots as the fallback. A scene
+opens on the two-shot; when the speaker changes it cuts to a closer **single** of whoever speaks
+(`cam.single`: from past the listener's shoulder, 14-22° off the line between them, a 36° lens,
+the listener's back at the side of the picture and never nearer the lens than 1.9 m, on the side of
+the line the camera is already on), every fourth cut the two-shot again; a single that can't be
+had cleanly falls back to the two-shot (an NPC speaking) or keeps the shot (Ove).
 `UPPDRAG KLART` is shown over a held shot of what was just done (`cam.showcase`: the Saab in its
 garage, Ove at a door; the chase camera only when the car is still moving fast), nobody moving.
 World tags, the beacon and the arrow are hidden while the letterbox is up; the `UPPDRAG KLART`
 banner is gone before the first outro line. **Time of day** (late November: light from about nine
 to three): a day starts at **10:30** and days 1-6 end at **14:30** ("Dagen är slut"); the clock
 is saved (and so is a pending gate). The next day dawns after **three more reports (not before
-35 s) or 90 s of free roam**, counting only time with no errand, call, chase or dialogue on (a day
+60 s) or 90 s of free roam**, counting only time with no errand, call, chase or dialogue on (a day
 never dawns in the middle of an errand): a `Dag N` / "Tisdagsmorgon" banner, the clock jumps to
 10:30, everyone goes where they spend the day (whoever is away that day is gone at once, not left
-standing at their door), the Saab is back at home unless Ove is in or near it; `?test` skips the
-wait unless `&gate`. North on the minimap and the big map is **+z** (the low sun then stands in
+standing at their door), the Saab is back at home unless Ove is in or near it, and no neighbour
+phones for 75 s (the giver comes first); `?test` skips the wait unless `&gate`. After an outro the
+camera is behind Ove (the cast in front of him) and the people in the scene leave him alone for a
+while (no small talk for 25 s, nobody for 10 s); a smitare chase still going ends quietly when a
+mission completes or fails, as at an intro. North on the minimap and the big map is **+z** (the low sun then stands in
 the south-west, as it does in the early afternoon).
 Fail: `UPPDRAG MISSLYCKADES` (it waits for the player: no time-out), E retries from the start of
-the day (or from `def.retry.from`: day 5 restarts on the race grid with Adrian aboard), Q (gamepad B) gives up
-(the giver waits; taking the day up again plays the two-line `retryIntro`). Whoever rode with Ove
-when it failed goes home (a taxi), nobody is left on the street. Titles are "Dag 1 – Släpkärran" etc.
+the day (or from `def.retry.from`: day 5 restarts on the race grid with Adrian aboard; or from the
+last of `def.retryAt` at or before the failed stage: a Saab wrecked late on day 1 doesn't mean
+backing the trailer in again), Q (gamepad B) gives up (the giver waits, `def.waitToast` says how:
+"Barnet väntar inte, Ove."; taking the day up again plays the two-line `retryIntro`, and a day
+with `def.retry` goes straight to that stage: the race grid). A stage whose named car is wrecked
+(`getInCar`, `parkIn`: Patrick's car with the trailer, the Saab) fails with "Bilen är kvaddad.", and
+the retry brings a new one. A **running** day can be given up too: hold **Q** (the key, not pad B,
+which is also the report button) for 1 s, or the pause menu's "Avbryt dagens uppdrag"; a dimmed
+"Q (håll) Ge upp" joins the prompt line once a stage has gone on for a minute, and holding Q shows
+its fill. Not during a scene (`missions.canGiveUp`). Whoever rode with Ove when it failed or was
+given up goes home (a taxi), nobody is left on the street. Titles are "Dag 1 – Släpkärran" etc.
 During a mission the avbrott scheduler pauses; missions phone in their own calls
 (`interrupts.radioOnly`, e.g. "INTE NU!"; radio lines and calls take turns, and a call still going
 when Ove arrives is cut off: `interrupts.hangUp`) and shouts. Mission defs may list `extra` (more
@@ -257,19 +273,24 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    new neighbours have been backing car + trailer for twenty minutes and flattened Ove's mailbox.
    Get in `patrickCar` → drive past and **back car + trailer into `parvanehDrive`** (reverse-only,
    trailer in the box; Patrick shouts useless advice) → report 3 felparkeringar at the guest
-   parking (tutorial: no smitare) → get in the `saab` → park it nose first in `oveGarageSpot`.
+   parking (tutorial: no smitare) → get in the `saab` (put back at the garages first if Ove left it
+   far off in free roam and it can't be seen; else "Hämta Saaben") → park it nose first in
+   `oveGarageSpot`. Driving forward through the trailer box on the way past it is never scolded,
+   however slowly; only stopping in it nose first is ("Backa in!").
    Outro at Ove's garage door: Parvaneh brings saffransris; Ove pretends not to want it.
 2. **Sjukhuset** (Tisdag, 150 kr) — giver `parvaneh`; Patrick fell off the ladder putting up an
    advent star and went in the ambulance (`away`), the girls are at Jimmy's (`elsewhere`), and
    Parvaneh has no driving licence. Get in the `saab` while she walks to the residents' lot (Ove
    won't drive into the area) → pick her up where they meet (by the lot entrance) → timed drive to
-   the hospital with her riding along (she talks; Jimmy phones about ice cream for breakfast), the
+   the hospital with her riding along (she talks; Jimmy phones about ice cream for lunch), the
    guide leading through the Akut driveway → drop her at the canopy (`hospitalDrop`; she walks in)
    → park in `hospitalSpot`. Outro: "Jag betalar inte för att stå still!" — and she decides he will
    teach her to drive. **From now on Patrick wears a cast.**
 3. **Elementet** (Onsdag, 150 kr) — giver `anita` at `runeHouse`. The elementnyckel's hook in
-   `oveGarage` is empty (hold E: "Tom krok. Rune lånade elementnyckeln 1998.") → fetch it from
-   Rune's Volvo in the garage row (`runeVolvo`; brass, Ove's since 1991, Rune's since 1998) → Anita
+   `oveGarage` is empty (hold E: "Tom krok. Rune lånade elementnyckeln 1998.") → it isn't in Rune's
+   Volvo in the garage row either (`runeVolvo`, hold E at its door: a note in the glove box,
+   "utlånad till Anders, 2015") → fetch it at Anders' door across the area ("Jaså, den. Den låg i
+   Audin."; brass, Ove's since 1991, Rune's since 1998, Anders' since 2015) → Anita
    phones: two cars block the soprum → report 2 at
    `garbageRoom` → at `runeHouse` "Gå in och lufta elementen": one press of E and a cut to black
    ("Ove går in och luftar elementen. Ett i taget."). Outro: Rune, lucid for a second: "...Saab." —
@@ -293,7 +314,8 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    Škoda waits on the west street by the entrance until Ove's car comes within 30 m, then flees
    (cruise 19, ×0.85 while Ove is over 80 m behind; it gets away only beyond 250 m, after he has
    been on it, never in the first 20 s); rams take at most 30 Ork each, staying on its bumper drains
-   8/s; he pulls over: **TAGEN!** → `talk`: he steps out ("Det
+   8/s; he pulls over: **TAGEN!** → `talk`: he steps out and Ove steps up in front of him, on his
+   side of the cars, before the scene is framed ("Det
    här är inte över, Ove. Vi har papper på allt." — "Det har jag också.") → `grab` the folder →
    bring it to `runeHouse`. Outro: a signature is missing; Rune stays.
 7. **Värkarna** (Söndag, 500 kr, light snowfall) — giver `patrick` (arm in a cast) at
@@ -302,16 +324,20 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    walks to the lot → pick her up → timed drive to the hospital: the Škoda sets off after Ove
    (`chaser`, STOPPAD on contact) while every neighbour phones (Anita, Sara: "...Ja. Men INTE NU!",
    Jimmy, Adrian, Anders) → drop her off: "Gå nu, Ove. Det är söndag. Hälsa Sonja från mig." → cut:
-   **Senare samma dag**, 15:40 (the afternoon light: a dimmer sun and sky, more haze; steady
-   snowfall), the Saab in the hospital car park → on the way to the cemetery Patrick phones: a boy,
-   he fainted (only a little) → buy flowers at the `flowerShop` kiosk → at `sonjaGrave` one press of
+   **Senare samma dag**, 15:40: the sun is down and it snows properly, an overcast blue hour
+   (`dusk()`: the sun at 6 % and cooler, no hard shadows; the sky light ×0.9, the exposure ×1.15 so
+   the snow stays a bright blue-grey, the haze ×2.5 and greyer, the sky dome dimmer), the Saab in
+   the hospital car park → on the way to the cemetery the phone rings again, as in the morning, but
+   now Ove answers: Patrick (a boy, he fainted, only a little), Anita (Rune said Ove's name today),
+   Adrian (no rust, and he haggled) - no call once he is nearly there → buy flowers at the
+   `flowerShop` kiosk → at `sonjaGrave` one press of
    E "Lägg blommorna på Sonjas grav": Ove goes down on one knee (`st.kneel`) and lays them on the
    spruce twigs in front of the stone (they stay). Outro: Ove alone on one knee, telling Sonja about
    the week, in the finale's own shots: over his shoulder to the stone (the gilded SONJA, the
    flowers, the lantern), the reverse from beside the stone, back to the stone. Final banner
    **OMRÅDET ÄR I ORDNING** over a wide shot of the grave in the snow (the Ordning meter is lifted to
    at least 90 to match); then Ove gets up and free roam (patrol, avbrott) goes on; the snowfall and
-   the afternoon light end 40 s later.
+   the dusk end 40 s later.
 
 ## 6. World contract (`src/world/*`)
 
