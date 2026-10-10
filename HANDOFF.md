@@ -42,10 +42,14 @@ genomspelning 6 (`p4_play.json`). Fynd per ägare: `p4_owner_*.json`, `p4_gamepl
 | bilar (instansade LOD-kroppar, sovande bilar, `dispose`, `warmCars`, hjulhus) | a2896ac |
 | gameplay B (filmkamera med siktkontroll, finalen, klocka 10:30/14:30, karta N = +z, dag 6, kontinuitet) | 8281a67 |
 | rendering (auto-kvalitet, batchad värld 1375 → 493 draw calls, billigare pass, svärta, fx) | a34a5fd + krasch-fix d42e414 |
-| **gameplay A** (robusthet, input, save, UI/titel, kvalitetsväljare, `car.dispose`, broadphase, småprat, docs) | GAMEPLAY_A_STATUS |
+| **gameplay A** (robusthet, input, save, UI/titel, kvalitetsväljare, `car.dispose`, broadphase, småprat, docs) | (se nästa commit efter 4d21357) |
 
 ## Nästa steg
 
+0. **Känd flake:** `story`:s bildkontroll för dag 6:s eftertexter slår ibland fel
+   (`CHECK FAILED day 6 outro: anita … wall=true`) — `placeCast` i missions.js ställer ibland
+   Anita bakom husknuten vid Runes ramp (slumpad plats). 1 av ~7 körningar 10-10. Fixa
+   placeringen (pröva fler platser, kräv fri sikt) så att testet blir stabilt.
 1. **Slutverifiera** i spelmappen: `story` ×2, `m1`, `start`, `title`, `talk`, `errands`,
    `rperf`/`rload` (render.mjs), `carcost`; titta på titelskärmen och några intron. Commita.
 2. **Fas 4, runda 2:** kör om de fem helhetsgranskarna (art director, svenska/ton, kod,
