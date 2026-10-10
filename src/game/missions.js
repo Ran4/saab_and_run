@@ -49,7 +49,7 @@ const GIVE_UP = { hold: 1.0, hint: 60 };
 const CHAT_QUIET = 25;
 // Dialogue scenes cut to closer singles of whoever speaks (beats()); false: two-shots only.
 const SINGLES = true;
-const DAY_START = [10, 30], DAY_END = [14, 30];   // late November: light from about nine to three
+export const DAY_START = [10, 30], DAY_END = [14, 30];   // late November: light from about nine to three
 
 // Extras for a stage when it starts: { say (an Ove line in a bubble), toast, call: [who, text,
 // reply] (the phone rings; callAt = s into the stage instead of at once), calls: [[who, text,
@@ -396,6 +396,7 @@ export const MISSIONS = [
       ['rune', '...'],
       ['anita', 'Han tycker om när du kommer, Ove. Även om han inte säger det.'],
     ],
+    retryIntro: [['anita', 'Ove... det klickar fortfarande i elementen.'], ['ove', 'Jag hämtar nyckeln.']],
     stages: [
       // The key isn't on its hook: Rune borrowed it in 1998, and it is still in his Volvo.
       also(() => holdAt({ at: 'oveGarage', secs: 1.4, radius: 2.2, label: 'Leta efter elementnyckeln', text: 'Hämta elementnyckeln i garaget', work: 'wall' }), {

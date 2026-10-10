@@ -215,7 +215,7 @@ export const hud = {
     twice('opt-abort', (b) => {
       const g = window.__game;
       b.hidden = true;
-      if (g?.missions?.state === 'running') g.missions.abort();
+      if (g?.missions?.canGiveUp) g.missions.abort();
       g?.pause?.(false);
     });
     // The title's "Kontroller": the controls table over the right of the scene, on request (it used
@@ -289,9 +289,10 @@ export const hud = {
     set('opt-gfx', true, q === 'auto' ? `Auto (${tierName(qualityInfo().tier)})` : tierName(q));
     const ctl = !!$('pause')?.classList.contains('ctl');
     set('opt-controls', true, ctl ? 'Dölj' : 'Visa');
-    // "Avbryt dagens uppdrag" only while a mission runs (not in its intro, outro or after a failure).
+    // "Avbryt dagens uppdrag" only while a mission runs and can be given up (not in its intro, outro,
+    // a mid-mission scene such as day 6's talk, or after a failure): missions.canGiveUp, like hold-Q.
     const ab = $('opt-abort');
-    if (ab) { const on = window.__game?.missions?.state === 'running'; if (ab.hidden === on) { ab.hidden = !on; unconfirm(ab); } }
+    if (ab) { const on = !!window.__game?.missions?.canGiveUp; if (ab.hidden === on) { ab.hidden = !on; unconfirm(ab); } }
   },
 
   // ------------------------------------------------------------------------------------------

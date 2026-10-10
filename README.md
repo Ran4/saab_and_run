@@ -28,7 +28,7 @@ URL-val: `?fresh` struntar i det sparade spelet, `?mission=N` börjar på dag N+
 `?q=high` eller `?q=low` väljer grafiknivå (`?lowgfx` = låg).
 
 **Grafik** i pausmenyn växlar Auto → Hög → Låg. Auto är förvalt: spelet väljer själv efter datorn
-(låg på inbyggda grafikkretsar, och det går ner till låg om bildfrekvensen blir för låg) och visar
+(låg på inbyggda och svaga grafikkretsar, och det går ner till låg om bildfrekvensen blir för låg) och visar
 vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 
 ## Kontroller
@@ -98,7 +98,8 @@ halv tre.
 7. **Värkarna** – alla ringer på en gång.
 
 Går ett uppdrag snett: **E** försöker igen (ett förlorat race börjar om vid startlinjen), **Q** ger
-upp så länge (grannen väntar, och nästa gång blir det kort). Katter fångar man inte genom att springa
+upp så länge (grannen väntar, och nästa gång blir det kort). Ett pågående uppdrag ger man upp genom
+att hålla **Q** en sekund, eller med **Avbryt dagens uppdrag** i pausmenyn. Katter fångar man inte genom att springa
 efter dem.
 
 ## Kodkarta
@@ -140,6 +141,7 @@ PORT=8791 node tools/shot.mjs m4cat         # dag 4: katten med tangenterna (tå
 FROM=4 PORT=8791 node tools/shot.mjs story  # berättelsen från dag 5
 PORT=8791 node tools/shot.mjs titlecheck quality tabhide gamepad corruptsave   # titel, grafikval, paus, handkontroll, sparfiler
 PORT=8791 node tools/shot.mjs titlekeys reloadday r2checks smalltalk dilation    # titeln med tangenter, omladdning, klockan, småprat, tid under 30 fps
+PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausmenyns Avbryt dagens uppdrag, notiser under scener
 ```
 
 ## Tillgångar och tack

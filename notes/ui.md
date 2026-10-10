@@ -37,8 +37,9 @@ with no errors; `story` was run against it).
   its own timers (it has left by the time the scene ends). Nobody used `toast()`'s return value; it
   still returns the (possibly queued) element.
 - **Pause menu: Avbryt dagens uppdrag** (`#opt-abort`, `.btn.minor` above Radera sparat spel, in
-  `.pm-acts`): `syncMenu()` shows it only while `window.__game.missions.state === 'running'` (not in
-  the intro, outro or after a failure); two clicks ("Säker? Klicka igen", falls back after 3.5 s,
+  `.pm-acts`): `syncMenu()` shows it only while `window.__game.missions.canGiveUp` (running, not in
+  the intro, outro, a mid-mission scene or after a failure; integration changed it from
+  `state === 'running'`, which let the day-6 talk be aborted mid-dialogue); two clicks ("Säker? Klicka igen", falls back after 3.5 s,
   the shared `twice()` helper that Radera sparat spel now uses too); then `missions.abort()` (cleans
   up, marks the day given up: the short intro next time, toasts who is still waiting) and
   `game.pause(false)`. No main.js change. Half-confirmed buttons reset whenever the menu opens.

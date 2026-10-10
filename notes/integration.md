@@ -506,3 +506,15 @@ it stays straight out. With the world's slate-blue Saab (round 2) the car reads 
   Anita says her whole 6-line intro again (every other day gets its 2 lines). Something like
   `[['anita', 'Ove... elementen klickar fortfarande.'], ['ove', 'Jag hämtar nyckeln.']]`. Exporting
   `DAY_END` would let main.js drop its literal 14:30 (`DAY_END_MIN`).
+
+### Phase 4, round 2: integration (after all seven landings)
+
+Closed the cross-owner requests above and from the other handbacks:
+- Day 3 got its `retryIntro` (Anita: "Ove... det klickar fortfarande i elementen." / "Jag hämtar
+  nyckeln."); `reloadday` with `RD_INDEX=2`: 2 lines. missions.js exports `DAY_START`/`DAY_END`;
+  main.js's `DAY_END_MIN` is computed from it.
+- `hideNearCamera` restores everyone it hid, seated or not (people's day-5 "Adrian invisible" flake).
+- The pause menu's "Avbryt dagens uppdrag" shows and acts only while `missions.canGiveUp` (story's
+  request: `state === 'running'` let the day-6 talk be aborted mid-dialogue).
+- CLAUDE.md (round-2 scenarios of every area, the give-up rules), README (hold Q / the pause menu,
+  weak GPUs on auto, a test line), DESIGN §9 and notes/ui.md follow.

@@ -22,7 +22,7 @@ import { CamRig } from './game/camera.js';
 import { Patrol } from './game/patrol.js';
 import { Interruptions } from './game/interruptions.js';
 import * as stages from './game/stages.js';
-import { MissionRunner, MISSIONS, DAYS, flowersOnGrave } from './game/missions.js';
+import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
 import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
 
@@ -44,7 +44,7 @@ const CLOCK_RATE = 0.25;   // in-game minutes per real second: an hour every fou
 // slut", missions.js DAY_END) and the light never changes, so before day 1, between two days and while
 // a day waits for Ove it shows no later time than that. Day 7 runs on to dusk (its cut sets 15:40); after
 // the whole story it stops at 16:30. It never goes backwards by itself.
-const DAY_END_MIN = 14 * 60 + 30, AFTER_STORY_MIN = 16 * 60 + 30;
+const DAY_END_MIN = DAY_END[0] * 60 + DAY_END[1], AFTER_STORY_MIN = 16 * 60 + 30;
 
 // The neighbours and where they spend the day: [landmark, metres to its right, metres ahead]
 // (landmark yaw = the way someone standing there faces; houses: out of the door).
@@ -1864,7 +1864,9 @@ class Game {
   // right behind Ove at a wall) is hidden for that frame. Ove himself never is.
   hideNearCamera() {
     const hidden = (this._camHidden ||= []);
-    for (const ch of hidden) if (ch.state !== 'hidden' && !ch.car) ch.root.visible = true;
+    // Restored whatever happened since (seated in a car included: a seat keeps the root's own
+    // visibility, so someone hidden the frame before a scene seated them stayed invisible).
+    for (const ch of hidden) if (ch.state !== 'hidden') ch.root.visible = true;
     hidden.length = 0;
     if (this.cam.cine || this.aerial) return;
     const cp = camera.position;

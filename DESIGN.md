@@ -497,7 +497,7 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
   slide in one by one after it. `hud.clearToasts(cls?)` fades the toasts of a class ('phone', ...)
   or all, queued ones too (missions.begin() clears 'phone').
 - Pause menu **Avbryt dagens uppdrag** (`#opt-abort`, two clicks like Radera sparat spel): shown only
-  while `missions.state === 'running'`; calls `missions.abort()` and unpauses (the way out for a
+  while `missions.canGiveUp` (running, not in a mid-mission scene); calls `missions.abort()` and unpauses (the way out for a
   gamepad player and for a stuck stage).
 - Portraits (`renderPortrait`, `PORTRAIT`): a window portrait, not studio light - a warm key well to
   camera-left casting a soft shadow, little fill and sky (~3.5-4:1 across the face), a cool rim from
