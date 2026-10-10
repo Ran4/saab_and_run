@@ -27,11 +27,13 @@ const KEYS = {
   mute: ['KeyN'],
   reset: ['KeyR'],
   giveUp: ['KeyQ'],
+  // the title screen's "Spela" / "Fortsätt" (main.js titleKeys; never the mouse)
+  begin: ['Enter', 'NumpadEnter', 'Space', 'KeyE'],
 };
 // Standard gamepad layout: A jump / handbrake, B report (hold) and give up (after a failed mission),
 // X kick, Y interact, LB or L3 brisk walk (L3 is the horn in a car), R3 look back, Back map, Start
-// pause.
-const PAD = { jump: [0], handbrake: [0], report: [1], giveUp: [1], sprint: [4, 10], attack: [2], interact: [3], horn: [10], pause: [9], map: [8], skip: [0, 3], lookBack: [11] };
+// pause; on the title A, Y or Start begin.
+const PAD = { jump: [0], handbrake: [0], report: [1], giveUp: [1], sprint: [4, 10], attack: [2], interact: [3], horn: [10], pause: [9], map: [8], skip: [0, 3], lookBack: [11], begin: [0, 3, 9] };
 const finite = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const dz = (a) => { a = finite(a); return Math.abs(a) < 0.15 ? 0 : a < -1 ? -1 : a > 1 ? 1 : a; };
 
@@ -39,11 +41,14 @@ export const input = {
   locked: false,
   canvas: null,
   onUnlock: null,
+  playing: false,   // main.js start(): the title is gone (see the keydown handler)
 
   init(canvas) {
     this.canvas = canvas;
     window.addEventListener('keydown', (e) => {
-      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      // In the game Space, Tab (the map) and the arrows are ours. On the title they keep their
+      // browser meaning: Tab walks the buttons, Space / Enter press the focused one.
+      if (this.playing && ['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
       if (!e.repeat) pressed.add(e.code);
       down.add(e.code);
     });
@@ -113,10 +118,10 @@ export const input = {
     if (KEYS[action]?.some((k) => down.has(k))) return true;
     return !!PAD[action]?.some((b) => padNow[b] > 0.5);
   },
-  pressed(action) {
-    if (KEYS[action]?.some((k) => pressed.has(k))) return true;
-    return !!PAD[action]?.some((b) => padNow[b] > 0.5 && !(padPrev[b] > 0.5));
-  },
+  pressed(action) { return this.keyPressedAction(action) || this.padPressedAction(action); },
+  // The same, from the keyboard (and mouse) only, or from the pad only.
+  keyPressedAction(action) { return !!KEYS[action]?.some((k) => pressed.has(k)); },
+  padPressedAction(action) { return !!PAD[action]?.some((b) => padNow[b] > 0.5 && !(padPrev[b] > 0.5)); },
   // Movement axes: x = right, y = forward.
   moveX() { return clamp1((down.has('KeyD') || down.has('ArrowRight') ? 1 : 0) - (down.has('KeyA') || down.has('ArrowLeft') ? 1 : 0) + padAxes[0]); },
   moveY() { return clamp1((down.has('KeyW') || down.has('ArrowUp') ? 1 : 0) - (down.has('KeyS') || down.has('ArrowDown') ? 1 : 0) - padAxes[1]); },

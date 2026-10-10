@@ -5,7 +5,8 @@
 import { THREE, initGfx, renderer, scene, camera, followSun, tickSky, renderFrame, gfxReady, gfxStats, precompile, uploadGeometry } from './gfx.js';
 import { input } from './input.js';
 import { audio } from './audio.js';
-import { buildTown, parkedCars, tickTown, litterSpots, collectibleSpots, mapLabels as townLabels, surfaceAt as townSurfaceAt } from './world/town.js';
+import { parkedCars, tickTown, litterSpots, collectibleSpots, mapLabels as townLabels, surfaceAt as townSurfaceAt } from './world/town.js';
+import * as TOWN from './world/town.js';
 import { finalizeProps, tickProps, breakProp, propsNear, props as allProps } from './world/props.js';
 import { lm, landmarks, routeAim, N, LANE, RHW, SW, nodeX, nodeZ, neighbors, BOUND, isRoad, isCarFree, HALF, P } from './world/layout.js';
 import { groundAt, queryBlocks, contains, circleVsObb } from './world/collision.js';
@@ -13,7 +14,7 @@ import { Car, collideCars, warmCars } from './actors/car.js';
 import { Character } from './actors/character.js';
 import { CHARS, buildBust, randomPed, buildCat, carryPoint } from './actors/models.js';
 import { AIDriver } from './actors/drivers.js';
-import { spawnPeds } from './actors/peds.js';
+import { spawnPeds, nearestSidewalk } from './actors/peds.js';
 import { initCans, tickCans, Collectible } from './actors/pickups.js';
 import { fx as FX } from './game/fx.js';
 import { hud, renderPortrait } from './game/hud.js';
@@ -21,7 +22,7 @@ import { CamRig } from './game/camera.js';
 import { Patrol } from './game/patrol.js';
 import { Interruptions } from './game/interruptions.js';
 import * as stages from './game/stages.js';
-import { MissionRunner, MISSIONS, DAYS } from './game/missions.js';
+import { MissionRunner, MISSIONS, DAYS, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
 import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
 
@@ -39,6 +40,11 @@ const TEST = params.has('test');
 // Pushing Rune's wheelchair: 3.0, or 3.6 with Shift (2.2 made the errand a 50 s crawl).
 const WALK = 3.2, BRISK = 5.5, PUSH = 3.0, PUSH_BRISK = 3.6, JUMP_V = 5.4;
 const CLOCK_RATE = 0.25;   // in-game minutes per real second: an hour every four minutes
+// The clock stops at the end of the day while nothing is going on: the days end at 14:30 ("Dagen är
+// slut", missions.js DAY_END) and the light never changes, so before day 1, between two days and while
+// a day waits for Ove it shows no later time than that. Day 7 runs on to dusk (its cut sets 15:40); after
+// the whole story it stops at 16:30. It never goes backwards by itself.
+const DAY_END_MIN = 14 * 60 + 30, AFTER_STORY_MIN = 16 * 60 + 30;
 
 // The neighbours and where they spend the day: [landmark, metres to its right, metres ahead]
 // (landmark yaw = the way someone standing there faces; houses: out of the door).
@@ -55,11 +61,17 @@ const HOMES = {
   vitskjorta: ['kommun', 1.5, 0],
 };
 
-// Day-blind lines only: nothing here thanks Ove for something that hasn't happened yet, mentions
-// the cat before day 4 or says good morning at half past two (the day runs 10:30-14:30).
+// When a line may be said, by where the story is (m = the MissionRunner: m.index days done, m.gateOpen
+// = the next day has dawned). storyDay: the day it is - the evening after day n is still day n.
+const storyDay = (m) => Math.max(1, m.index + (m.gateOpen && m.index < MISSIONS.length ? 1 : 0));
+const met = (m) => m.index >= 1;                         // the new neighbours know Ove (day 1's scene)
+const eveningOfDay1 = (m) => m.index === 1 && !m.gateOpen;  // Patrick still climbs ladders
+const onDay = (d) => (m) => storyDay(m) === d;
+// Base lines: a string, or [line, when(m)]. Nothing here thanks Ove for something that hasn't happened
+// yet, mentions the cat before day 4 or says good morning at half past two (the day runs 10:30-14:30).
 const CHATTER = {
-  parvaneh: ['Hej Ove! Vill du ha lite saffransris? Jag har gjort för mycket.', 'Ove, du ser nästan glad ut i dag.', 'Patrick har klättrat upp på en stege igen. Titta inte.', 'Flickorna vill att du kommer på middag. Jag med.'],
-  patrick: ['Hej Ove! Jag skulle bara... nej, det var inget.', 'Släpet står lite snett, va?', 'Jag är IT-konsult. Jag kan starta om saker. Det är ungefär allt.', 'Har du en insexnyckel? Jag ska bara montera en garderob. Tror jag.'],
+  parvaneh: [['Hej Ove! Vill du ha lite saffransris? Jag har gjort för mycket.', met], 'Ove, du ser nästan glad ut i dag.', ['Patrick har klättrat upp på en stege igen. Titta inte.', eveningOfDay1], ['Flickorna vill att du kommer på middag. Jag med.', met]],
+  patrick: ['Hej Ove! Jag skulle bara... nej, det var inget.', ['Släpet står helt rakt. Jag har tagit en bild på det.', eveningOfDay1], ['Jag är IT-konsult. Jag kan starta om saker. Det är ungefär allt.', met], 'Har du en insexnyckel? Jag ska bara montera en garderob. Tror jag.'],
   sara: ['Ove! Kom och bygg snögubbe!', 'Varför är du alltid så arg?', 'Mamma säger att du är snäll inuti.', 'Pappa kan inte bygga snögubbar. De ramlar.'],
   nasanin: ['Ove! Ove! Ove!', 'Snögubbe!', 'Snö!', 'Ove, titta!'],
   jimmy: ['Tjena Ove! Har du ätit?', 'Ove! Mannen själv!', 'Jag kör nyttigt nu. Typ.', 'Fint väder, va?'],
@@ -69,12 +81,23 @@ const CHATTER = {
   anders: ['Ove! Har du sett min nya Audi?', 'Föreningen har nya regler, Ove. Jag mejlar.', 'Morsning, Ove. Fint väder för en promenad.', 'Vi borde ha en bom vid infarten, tycker du inte?'],
   vitskjorta: ['Vi har papper på allt.', 'Det här är en kommunal angelägenhet.', 'Ha en bra dag. Tills vidare.'],
 };
+// Before day 1's scene the family that moved in yesterday hasn't met Ove: no line names him or knows
+// him (no dinner, no saffransris, no "IT-konsult" right before Patrick introduces himself); Patrick
+// is still backing the trailer ("en kvart. Minst." sets up Ove's "Tjugo minuter. Jag har tagit tid.").
+const CHATTER_FIRST = {
+  patrick: ['Jag har köpt en bok om att backa med släp. Den har bilder.', 'Vänster... nej. Höger. Eller?', 'Hur svårt kan det vara att backa ett släp?'],
+  parvaneh: ['Hej! Vi har precis flyttat in.', 'Han har backat i en kvart nu. Minst.', 'Patrick, älskling. Andas.'],
+  sara: ['Hej! Vi har flyttat hit!', 'Pappa kan inte backa.', 'Vem är du?'],
+  nasanin: ['Hej!', 'Snö!', 'Släpet!'],
+};
 // Later in the week some of them have news: [missions done, lines, replace]. From then on those lines
 // come 60 % of the time (with `replace`: always, the base lines are retired - Adrian has his Saab).
+// Lines may carry a `when` too, as above.
 const CHATTER_AFTER = {
   patrick: [2, ['Armen kliar under gipset. Hela tiden.', 'Parvaneh säger att jag inte får gå upp på stegar mer. Någonsin.', 'Tack för att du körde Parvaneh. Jag var... upptagen.']],
   parvaneh: [2, ['Första körlektionen på måndag, Ove! Jag har redan köpt en övningskörningsskylt.', 'Patrick försöker knyta skorna med en hand. Det är bättre än tv.', 'Tack för hjälpen med släpet. Igen.']],
-  anita: [3, ['Det är så varmt hos oss nu, Ove.', 'Rune sa ”Saab” igen i morse. Bara så där.', 'Tack för i går, Ove.']],
+  // ("i går" = day 3, Anita's radiators: said on day 4 only, not on the evening of day 3 or on day 5)
+  anita: [3, ['Det är så varmt hos oss nu, Ove.', 'Rune sa ”Saab” igen i morse. Bara så där.', ['Tack för i går, Ove.', onDay(4)]]],
   sara: [4, ['Katten tycker om dig.', 'Får jag klappa katten?']],
   nasanin: [4, ['Katten!', 'Kissen!']],
   rune: [3, ['...Saab.']],
@@ -91,14 +114,19 @@ const KICKED = ['Hallå!', 'Vad gör du?', 'Akta dig!', 'Ove!'];
 // Shoved aside by Ove's car (children and the neighbours are never knocked over).
 const SHOVED = ['Akta!', 'Hallå!', 'Ove! Titta dig för!', 'Är du inte klok, Ove?!', 'Kör som folk, Ove!'];
 const SHOVED_KID = ['Aj!', 'Akta!', 'Ove!', 'Hallå!'];
+// What Ove thinks of a car, by make (TYRE[c.kind]; Rune's own Volvo by its name). One opinion per make:
+// there is no Japanese car in the area, and "Typiskt" is used enough elsewhere.
 const TYRE = {
   saab900: ['Bra däck.', 'Så ska en bil se ut.', 'Ordentligt.'],
-  volvo240: ['Volvo. Jaja.', 'Rune hade en sån. Typiskt.'],
+  runeVolvo: ['Runes Volvo. Han kör den inte längre.', 'Volvo. Jaja.'],
+  volvo240: ['Volvo. Jaja.', 'En 240. Den går i alla fall.'],
   volvo740: ['Volvo. Jaja.', 'För lite luft. Som vanligt.'],
   audi: ['Plast och elektronik.', 'Tyskt krafs.', 'Anders har en sån. Det säger väl allt.'],
-  bmw: ['Plast och elektronik.', 'BMW. Hmpf.'],
+  bmw: ['Plast och elektronik.', 'BMW. Hmpf.', 'Rune köpte en sån. Sen pratade vi inte på flera år.'],
+  golf: ['Tyskt krafs.', 'Golf. Det är en sport, inte en bil.'],
+  skoda: ['Tjeckiskt. Hmpf.', 'Sånt här kör de på kommunen.'],
   bus: ['Hmpf.'],
-  default: ['Japansk skit.', 'Slitna. Typiskt.', 'Hmpf.', 'För lite luft. Som vanligt.', 'Ingen kollar lufttrycket nu för tiden.'],
+  default: ['Hmpf.', 'Sommardäck. I november.', 'För lite luft. Som vanligt.', 'Ingen kollar lufttrycket nu för tiden.'],
 };
 // Saab emblems: Ove's notes. Sonja's photographs: short memories (warm, a little sad, never more).
 const EMBLEM_NOTES = [
@@ -122,6 +150,8 @@ const PHOTO_NOTES = [
 // Ove's Saab always wears the same plate (the player looks at it all game). Valid Swedish format:
 // no I, Q, V, Å, Ä, Ö, and no O last.
 const FIXED_PLATES = { saab: 'SAB 900' };
+// The title shot (Game.titlePose): the Saab rolled out of its bay, Ove beside it.
+const TITLE_POSE = { out: 4.1, turn: 0, ove: [1.5, 0.9, 0.15], look: -0.6, arc: { th0: 0.70, th1: 0.52, d0: 7.6, d1: 6.6, off: 2.3 } };
 const TRAFFIC = ['volvo240', 'volvo740', 'volvo740', 'golf', 'golf', 'kombi', 'kombi', 'skoda', 'bmw', 'audi', 'saab900', 'taxi', 'van', 'volvo240', 'kombi', 'bus', 'garbage'];
 
 const _v = new THREE.Vector3();
@@ -190,7 +220,11 @@ class Game {
     setLoading('Plogar gatorna…');
     await hud.fontsReady;
     await frame();
-    buildTown(scene);
+    // The town: in chunks that give the browser the thread back every ~40 ms when town.js has the
+    // async build (the loading text moves; the build is 2.5-3 s), else in one task. Nothing below runs
+    // before it is done.
+    if (TOWN.buildTownAsync) await TOWN.buildTownAsync(scene, (f) => setLoading(`Plogar gatorna… ${Math.round(f * 100)} %`));
+    else TOWN.buildTown(scene);
     finalizeProps(scene);
     hud.buildBaseMap();
     initCans(scene, litterSpots);
@@ -220,8 +254,8 @@ class Game {
     this.player = new Character(CHARS.ove);
     this.player.key = 'ove';
     scene.add(this.player.root);
-    this.emblems = collectibleSpots.emblems.map(([x, y, z], i) => new Collectible(scene, 'emblem', i, x, y, z));
-    this.photos = collectibleSpots.photos.map(([x, y, z], i) => new Collectible(scene, 'photo', i, x, y, z));
+    this.emblems = collectibleSpots.emblems.map(([x, y, z], i) => new Collectible(scene, 'emblem', i, x, y, z, { static: true }));
+    this.photos = collectibleSpots.photos.map(([x, y, z], i) => new Collectible(scene, 'photo', i, x, y, z, { static: true }));
     this.bang = new Bang(scene);
     this.beacon = new Beacon(scene);
     this.arrow = new GuideArrow(scene);
@@ -236,6 +270,9 @@ class Game {
     // What dialogue shots must see past (camera.js judges shots by what the lens would see).
     this.cam.world = () => ({ cars: this.cars, people: this.allChars() });
     this.load();
+    // A new game: the first call comes after a minute and a half (at 45 s it rang before Ove had even
+    // met Patrick); a continued one keeps the usual 45 s.
+    if (this.isNewGame) this.interrupts.nextT = 90;
     this.storyWorld();
     this.placeNpcs(true);
     this.spawnPlayer();
@@ -245,6 +282,7 @@ class Game {
     // While the portraits are taken: the world's vertex buffers go to the GPU now and its shaders
     // compile in the background (both used to land in the first frame: 1 s), and every car type and
     // variant is compiled and uploaded once (else the first Saab entry hitches).
+    const unwarm = this.prewarmItems();
     uploadGeometry();
     const pc = precompile();
     const wc = warmCars(renderer, scene, camera).catch((e) => console.warn('warmCars', e));
@@ -258,6 +296,7 @@ class Game {
     this.titlePose();
     this.setupTitle();
     await pc;
+    unwarm();
     await wc;
     this.last = performance.now();
     requestAnimationFrame((t) => this.loop(t));
@@ -265,6 +304,19 @@ class Game {
     setLoading(null);
     document.getElementById('play').disabled = false;
     if (TEST) this.start();
+  }
+
+  // What errands and missions build the first time they run - a fetch item (the spare key, Jimmy's
+  // phone, the elementnyckel, the papers, the flowers), the cat - compiled its shaders in game (a
+  // 40 ms frame here, typically 100-300 ms on ANGLE/D3D). One of each now, under the town while the
+  // world compiles; the returned function takes them away again.
+  prewarmItems() {
+    const p = this.player, y = p.y - 30;
+    const items = ['key', 'phone', 'wrench', 'papers', 'flowers'].map((k, i) => new Collectible(scene, k, 'warm', p.x + i, y, p.z));
+    const cat = buildCat();
+    cat.root.position.set(p.x, y, p.z);
+    scene.add(cat.root);
+    return () => { for (const c of items) c.dispose(); scene.remove(cat.root); };
   }
 
   // Ove starts on the walkway outside his door, facing along it.
@@ -277,10 +329,15 @@ class Game {
   }
 
   // Title screen: Ove beside his Saab, rolled out of its bay in front of his garage, in the low
-  // afternoon sun. The camera drifts in slowly from the lot (south-west of them: the sun rakes across
-  // from the right) with the two of them in the right half of the picture; the title card covers the
-  // left. start() puts the Saab back in its bay.
-  titlePose() {
+  // afternoon sun. The camera drifts in slowly from the lot (south-east of them; the sun is low in the
+  // south-west, from the left of the picture) with the two of them in the right half of the picture;
+  // the title card covers the left. start() puts the Saab back in its bay.
+  // o (look-dev: __game.titlePose({...})): out (m out of the bay), turn (rad the car has turned on its
+  // way out, negative = to its right), ove [m to the car's left, m ahead of its centre, facing: rad
+  // from the car's heading towards it], look (Ove's head, rad to his left), arc (the camera: th0, th1,
+  // d0, d1, off as in titleShot).
+  titlePose(o = {}) {
+    const P = { ...TITLE_POSE, ...o };
     const car = this.named.saab, h = car?.home;
     if (!car || !h) {
       const s = landmarks.oveStart || lm('oveHouse');
@@ -288,17 +345,30 @@ class Game {
       this.titleShot = null;
       return;
     }
-    // 4.1 m out of the bay, facing out (a man who reverses in leaves like that).
-    const yaw = h.yaw + Math.PI, fx = Math.sin(yaw), fz = Math.cos(yaw), lx = fz, lz = -fx;   // forward, left
-    const cx = h.x + fx * 4.1, cz = h.z + fz * 4.1;
+    // Out of the bay, facing out (a man who reverses in leaves like that). (Round 2 tried turning it
+    // so the low sun rakes along the flank the camera sees: from the only clear camera side - the
+    // lot's other row and the bus shelter block the rest - that needs it broadside with its nose into
+    // the title card, ~0.9 rad; worse. `turn` stays for look-dev: the titlepose scenario.)
+    const out = h.yaw + Math.PI, ox = Math.sin(out), oz = Math.cos(out);
+    const yaw = out + P.turn, fx = Math.sin(yaw), fz = Math.cos(yaw), lx = fz, lz = -fx;   // forward, left
+    const cx = h.x + ox * P.out, cz = h.z + oz * P.out;
     car.place(cx, cz, yaw);
     car.ctrl.park = true;
     car.sync(0);
-    // Ove by the driver's door (the car's left), a little ahead of it, turned half to his car.
-    this.player.teleport(cx + lx * 1.5 + fx * 0.9, cz + lz * 1.5 + fz * 0.9, yawTo(fx * 1.08 - lx * 0.4, fz * 1.08 - lz * 0.4));
-    // The subject point between them, and the camera's slow arc: from 40 deg off the car's nose
-    // (towards its left) at 7.6 m, in to 30 deg at 6.6 m over 40 s.
-    this.titleShot = { x: cx + lx * 0.6 + fx * 0.6, z: cz + lz * 0.6 + fz * 0.6, fx, fz, lx, lz, th0: 0.70, th1: 0.52, d0: 7.6, d1: 6.6, off: 2.3 };
+    // Ove by the driver's door (the car's left), a little ahead of it, three-quarters to his car,
+    // hands in his jacket pockets, looking at it (the people area's pocket pose: model.style.pockets).
+    const [side, ahead, face] = P.ove, sg = Math.sign(side) || 1;
+    const p = this.player;
+    p.teleport(cx + lx * side + fx * ahead, cz + lz * side + fz * ahead, yaw - face * sg);
+    if (p.model.style) p.model.style.pockets = true;
+    p.anim.look = P.look;
+    // The subject point between them, and the camera's slow arc: from th0 off the car's nose (towards
+    // its left) at d0, in to th1 at d1 over 40 s.
+    // (cam: the camera on the car's left, 1, or its right, -1; camOut: its arc is laid out from the
+    // way out of the bay, not from the car's turned heading - the lot has room there)
+    const cs = P.cam ?? 1;
+    const bx = P.camOut ? ox : fx, bz = P.camOut ? oz : fz, blx = bz * cs, blz = -bx * cs;
+    this.titleShot = { x: cx + lx * 0.6 * sg + fx * 0.6, z: cz + lz * 0.6 * sg + fz * 0.6, fx: bx, fz: bz, lx: blx, lz: blz, ...P.arc };
   }
 
   // The title's buttons: "Spela" for a new game; with a saved one, "Fortsätt" with the day it is at
@@ -309,7 +379,8 @@ class Game {
     const i = this.missions.index, n = MISSIONS.length;
     const pending = i > 0 && i < n && !this.missions.gateOpen;
     const day = clamp(i >= n ? n : pending ? i : i + 1, 1, DAYS.length);
-    play.innerHTML = `Fortsätt <small>Dag ${day} · ${DAYS[day - 1]}</small>`;
+    // (after the whole story: free patrol, not "Dag 7" as if it were still ahead)
+    play.innerHTML = i >= n ? 'Fortsätt <small>Fri patrull</small>' : `Fortsätt <small>Dag ${day} · ${DAYS[day - 1]}</small>`;
     play.classList.add('cont');
     if (!nw) return;
     nw.hidden = false;
@@ -330,11 +401,17 @@ class Game {
     this.started = true;
     document.getElementById('title').classList.add('gone');
     document.body.classList.add('playing');
+    input.playing = true;
     audio.init();
-    // The Saab back in its bay (the title had it rolled out).
+    // The Saab back in its bay (the title had it rolled out), Ove out of his title pose.
     const saab = this.named.saab;
     if (saab?.home && !saab.dead && this.titleShot) { saab.place(saab.home.x, saab.home.z, saab.home.yaw); saab.ctrl.park = true; }
+    if (this.player.model.style) this.player.model.style.pockets = false;
+    this.player.anim.look = 0;
     this.spawnPlayer();
+    // Everyone where they spend the day, once more (a neighbour who is elsewhere today - Patrick in
+    // hospital on a continued day-2 morning - stays hidden; the title used to bring him back).
+    this.placeNpcs(true);
     if (!TEST) { input.wantLock = true; input.lock(); }
     // The start toasts only on a new game (a continued one knows all that already).
     if (!TEST && this.isNewGame) {
@@ -373,6 +450,19 @@ class Game {
     return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   }
   setClock(h, m = 0) { this.clockMin = h * 60 + m; hud.setClock(this.clockText()); }
+  // The latest time the clock runs to now (see DAY_END_MIN), Infinity while day 7 runs on to dusk.
+  clockCap() {
+    const ms = this.missions, n = MISSIONS.length;
+    if (ms.index >= n) return AFTER_STORY_MIN;
+    if (ms.index === n - 1 && ms.state !== 'idle') return Infinity;
+    return DAY_END_MIN;
+  }
+  tickClock(dt) {
+    const cap = this.clockCap();
+    if (this.clockMin < cap) this.clockMin = Math.min(cap, this.clockMin + dt * CLOCK_RATE);
+    // (past midnight: it wraps; it was saved as 1440+ and a reload took it back to 10:30)
+    if (this.clockMin >= 24 * 60) this.clockMin -= 24 * 60;
+  }
 
   // ------------------------------------------------------------------------------------------
   // World population
@@ -544,10 +634,15 @@ class Game {
       this.dropBust(car);
       const ped = this.peds.reduce((best, p) => (!best || dist(p.char.x, p.char.z, this.player.x, this.player.z) > dist(best.char.x, best.char.z, this.player.x, this.player.z) ? p : best), null);
       if (ped && ped.char.state !== 'seated') {
-        const e = this.exitSpot(car, 1);
+        // out of the door on the side that faces the nearest sidewalk (the far one if need be: the
+        // car mustn't stand between them and where they walk on to)
+        const w = nearestSidewalk(car.x, car.z);
+        const e = this.exitSpot(car, !w || (w.x - car.x) * Math.cos(car.yaw) - (w.z - car.z) * Math.sin(car.yaw) >= 0 ? 1 : -1);
         ped.char.teleport(e.x, e.z);
         ped.char.state = 'normal';
         ped.idleT = 3;
+        // ...and walks on from the nearest sidewalk, not towards its old loop across town
+        ped.rehome?.();
         this.say(ped.char, pick(CARJACK), 2.2);
       }
       this.patrol.addOrdning(-8);
@@ -960,6 +1055,9 @@ class Game {
       scene.add(cat.root);
       this.homeCat = cat;
     }
+    // After day 7: Sonja's flowers lie on her grave (the finale lays them itself; after a reload they
+    // were gone).
+    if (i >= MISSIONS.length && !this.graveFlowers) flowersOnGrave(this);
     // Day 5: Adrian bought a Saab. It stands in the residents' lot, where a parked car stood.
     if (i >= 5 && !this.named.adrianSaab) {
       const a = lm('adrianSpot'), bay = landmarks.adrianBay;
@@ -1030,7 +1128,11 @@ class Game {
   save() {
     try {
       // (clock: the in-game time; gate: the day is over and the next one hasn't dawned yet)
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: this.missions.index, clock: Math.round(this.clockMin), gate: !this.missions.gateOpen && this.missions.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave() }));
+      // (begun: the day under way, or given up and waiting: after a reload its giver says only the
+      // short retry lines, not the whole scene again - the day's progress itself is not kept)
+      const ms = this.missions, cur = ms.current;
+      const begun = cur && (ms.state !== 'idle' || ms.gaveUp.has(cur.day)) ? ms.index : null;
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave() }));
     } catch (e) { /* private mode: progress just won't persist */ }
   }
   // Every field is checked: a hand-edited or half-written save must not kill the story (mission -1
@@ -1053,6 +1155,8 @@ class Game {
           if (s.clock != null && clock >= 0 && clock < 24 * 60) this.clockMin = clock;
           // Saved between two days: the next one still waits for a little patrolling.
           if (s.gate === true && this.missions.index > 0 && this.missions.index < MISSIONS.length) { this.missions.gateOpen = false; this.missions.gate = { t: 0, idle: 0, reports: this.patrol.reports }; }
+          // Saved in the middle of a day (or with it given up): the short retry intro next time.
+          else if (s.begun != null && Number(s.begun) === this.missions.index && MISSIONS[this.missions.index]) this.missions.gaveUp.add(MISSIONS[this.missions.index].day);
           this.isNewGame = this.missions.index === 0 && !this.patrol.reports;
         }
       } catch (e) { /* corrupt save: start fresh */ }
@@ -1128,11 +1232,15 @@ class Game {
 
   loop(now) {
     requestAnimationFrame((t) => this.loop(t));
-    const dt = Math.min(0.05, (now - this.last) / 1000);
+    // Game time never runs ahead of the physics: below 30 fps the fixed steps can't keep up (at most
+    // MAX_STEPS a frame), so everything else - timers, the clock, the Ordning drain, hooks, dialogue -
+    // slows down with them. It used to get the frame time clamped at 0.05 s: at 20 fps the missions'
+    // and errands' timers ran 1.5x faster than the cars and people they time.
+    const dt = clamp((now - this.last) / 1000, 0, MAX_STEPS * STEP);
     this.last = now;
     input.poll();
     if (this.started && !this.paused) this.update(dt);
-    else if (!this.started) this.idleTitle(dt);
+    else if (!this.started) { this.idleTitle(dt); this.titleKeys(); }
     else if (this.paused) {
       // Nothing else reads keys while paused. (The Esc that released the pointer and opened the
       // menu may arrive a moment later: ignore keys for the first 300 ms.)
@@ -1177,9 +1285,22 @@ class Game {
     FX.tick(dt);
   }
 
+  // The title starts with the keyboard and the gamepad too (it took a mouse click only): Enter, Space
+  // or E, the pad's A, Y or Start. Not while the controls card or the "Säker? Klicka igen" confirm is
+  // up, and the keys not while another title button has the focus (Enter / Space are its own then).
+  // Mouse0 never starts it ('skip' includes it: a click on Kontroller would have started the game).
+  titleKeys() {
+    const play = document.getElementById('play');
+    if (!play || play.disabled) return;
+    if (document.getElementById('title')?.classList.contains('ctl') || document.getElementById('newgame')?.classList.contains('confirm')) return;
+    const ae = document.activeElement;
+    const keysFree = !ae || ae === document.body || ae === play || ae === renderer.domElement;
+    if ((keysFree && input.keyPressedAction('begin')) || input.padPressedAction('begin')) this.start();
+  }
+
   update(dt) {
     this.time += dt;
-    this.clockMin += dt * CLOCK_RATE;
+    this.tickClock(dt);
     if (this.hooks.length) for (const h of this.hooks.slice()) h(dt);
     this.handleOneShots();
     this.acc += dt;
@@ -1271,9 +1392,18 @@ class Game {
     else if (it.type === 'car') this.enterCar(it.car);
   }
 
+  // The lines a neighbour may say now (see CHATTER, CHATTER_FIRST, CHATTER_AFTER).
   chatterFor(key) {
-    const base = CHATTER[key] || ['Hej, Ove.'], later = CHATTER_AFTER[key];
-    return later && this.missions.index >= later[0] && (later[2] || Math.random() < 0.6) ? later[1] : base;
+    const m = this.missions;
+    if (m.index === 0 && CHATTER_FIRST[key]) return CHATTER_FIRST[key];
+    const later = CHATTER_AFTER[key];
+    const list = later && m.index >= later[0] && (later[2] || Math.random() < 0.6) ? later[1] : CHATTER[key];
+    const out = (this._chatter ||= []);
+    out.length = 0;
+    for (const l of list || []) if (typeof l === 'string') out.push(l); else if (l[1](m)) out.push(l[0]);
+    if (!out.length && list !== CHATTER[key]) for (const l of CHATTER[key] || []) if (typeof l === 'string' || l[1](m)) out.push(typeof l === 'string' ? l : l[0]);
+    if (!out.length) out.push('Hej, Ove.');
+    return out;
   }
 
   // Small talk with a neighbour: a line from them, a grunt from Ove.
@@ -1517,7 +1647,9 @@ class Game {
   kickTyre(c, fx, fz) {
     audio.kick();
     audio.thud();
-    // The car rocks on its springs a little.
+    // The car rocks on its springs a little (a parked car asleep would only rock later, when
+    // something else woke it: wake it now).
+    c.wake?.();
     const cfx = Math.sin(c.yaw), cfz = Math.cos(c.yaw);
     const side = Math.sign(fx * cfz - fz * cfx) || 1;
     c._sus.rv += side * 0.45;
@@ -1525,7 +1657,7 @@ class Game {
     fx_snowPuff(c, this.player);
     if (this.time - this.tyreT > 1.4) {
       this.tyreT = this.time;
-      this.say(this.player, pick(TYRE[c.kind] || TYRE.default), 1.8);
+      this.say(this.player, pick(TYRE[c.name] || TYRE[c.kind] || TYRE.default), 1.8);
     }
   }
 
@@ -1537,6 +1669,13 @@ class Game {
     const hit = _hit;
     const chars = this.allChars(this._chars ||= []);
     const a = this.byX(), R = 2 * this._rmax + 1.5;
+    // Trailers (Patrick's) are solid too: nobody walks into one, and a towed one shoves people aside
+    // like a car's flank (it was never tested: Ove could stand inside it, and it passed through
+    // pedestrians). Few cars have one: a short list, not the x-sorted band (a trailer reaches ~5 m
+    // behind its car's own extent).
+    const trs = (this._trs ||= []);
+    trs.length = 0;
+    for (const c of this.cars) if (c.trailer && !c.dead) trs.push(c);
     for (const ch of chars) {
       if (ch.state === 'seated' || ch.state === 'hidden' || ch.solid === false) continue;
       const pushed = !!this.companions.get(ch)?.push && !this.playerCar;
@@ -1564,6 +1703,18 @@ class Game {
           if (vn < 0) { ch.vx -= hit.nx * vn; ch.vz -= hit.nz * vn; }
         }
       }
+      for (let i = 0; i < trs.length; i++) {
+        const car = trs[i], t = car.trailer, reach = t.len / 2 + 1;
+        if (Math.abs(t.x - ch.x) > reach || Math.abs(t.z - ch.z) > reach || ch.y > t.y + 1.0) continue;
+        if (!circleVsObb(ch.x, ch.z, ch.r, t.obb, hit)) continue;
+        const carIn = car.vx * hit.nx + car.vz * hit.nz;
+        if (carIn > 1 || ch.state !== 'normal') this.shoveAside(ch, car, hit, carIn, t.obb);
+        else {
+          ch.x += hit.nx * hit.depth; ch.z += hit.nz * hit.depth;
+          const vn = ch.vx * hit.nx + ch.vz * hit.nz;
+          if (vn < 0) { ch.vx -= hit.nx * vn; ch.vz -= hit.nz * vn; }
+        }
+      }
     }
     // Keep the player from walking through people (and the one he pushes from pushing back).
     if (!this.playerCar) {
@@ -1581,9 +1732,10 @@ class Game {
   }
 
   // Out of the way sideways (the side of the car they are already on), not along the bumper's
-  // normal: a car can never carry anyone. The car loses speed on every contact frame.
-  shoveAside(ch, car, hit, carIn) {
-    const o = car.obb, rx = -o.fz, rz = o.fx;
+  // normal: a car can never carry anyone. The car loses speed on every contact frame. (o: the box that
+  // touched them - the car's, or its trailer's.)
+  shoveAside(ch, car, hit, carIn, o = car.obb) {
+    const rx = -o.fz, rz = o.fx;
     const lat = (ch.x - o.x) * rx + (ch.z - o.z) * rz;
     if (Math.abs(hit.nx * rx + hit.nz * rz) > 0.7) {
       // Against the car's flank: the plain push out is sideways already.
@@ -1637,8 +1789,10 @@ class Game {
       n.anim.talk = talker === k;
       const giver = this.missions.offered?.giver === k;
       // Elsewhere today: hidden at home (see npcAway). Nobody vanishes in front of Ove, and nobody
-      // who is away comes back into view (a new day hides them at once: placeNpcs(true)).
-      const away = !title && this.npcAway(k) && (near > 25 || this.missions.state !== 'idle' || n.state === 'hidden');
+      // who is away comes back into view (a new day hides them at once: placeNpcs(true)). The title
+      // keeps them as loading left them (it used to un-hide them every frame: Patrick stood at his
+      // door on a continued day-2 morning, though Parvaneh's intro says the ambulance took him).
+      const away = this.npcAway(k) && (title || near > 25 || this.missions.state !== 'idle' || n.state === 'hidden');
       if (away && n.state === 'normal' && !n.car && !this.companions.has(n)) { n.state = 'hidden'; n.root.visible = false; }
       else if (!away && n.state === 'hidden') { n.state = 'normal'; n.root.visible = true; }
       n.anim.wave = !title && giver && near < 9 && !this.inDialog && n.state === 'normal';
@@ -1745,7 +1899,7 @@ class Game {
     const take = (list, set, kind, notes) => {
       for (const c of list) {
         if (!c.alive) continue;
-        c.tick(this.time, dt);
+        c.tick(this.time, camera.position);
         const mp = c.mesh.position;
         if (dist(mp.x, mp.z, f.x, f.z) < (this.playerCar ? 2.6 : 1.4) && Math.abs(mp.y - (f.y + 1)) < 1.8) {
           c.remove();
@@ -1871,7 +2025,7 @@ class Game {
           it = this.nearestInteractable();
           if (it?.type === 'talk') parts.push(`<b>E</b> Prata med ${it.who.def.name}`);
           else if (it?.type === 'car') parts.push(it.car.driverBust ? '<b>E</b> Låna bilen' : '<b>E</b> Kliv in');
-          else if (it?.type === 'chat') parts.push(`<b>E</b> Hälsa på ${it.who.def.name}`);
+          else if (it?.type === 'chat') parts.push(`<b>E</b> Småprata med ${it.who.def.name}`);
         }
         // Ove driving inside the car-free area: what it costs, for as long as he is in there (one
         // Anders shout a minute was all the feedback, and the meter fell 53 -> 16 in three minutes).

@@ -25,8 +25,9 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   impact x 4, staying within 12 m drains 6/s; at 0: `pullOver` + hazards + **TAGEN!** (+12 Ordning,
   +50 kr, auto-anmäld); more than 110 m away for 5 s: **SMET!** (−8 Ordning, struck through in the
   log). One pursuit at a time.
-- **Ordning** (0-100, starts 50): drains 0.022/s per open violation (one > 150 m from Ove counts
-  half; ×0.4 while an avbrott or a call is on; ×0.5 for a minute after KAOS); +7 report, +12 TAGEN,
+- **Ordning** (0-100, starts 50): drains 0.014/s per open violation (one > 150 m from Ove counts a
+  quarter; ×0.4 while an avbrott or a call is on; ×0.5 for a minute after KAOS; phase 4 round 2 - it
+  was 0.022 and a half); +7 report, +12 TAGEN,
   +10 / −10 errand done / failed, −12 a pedestrian hit by Ove's car, −3 a neighbour or child shoved
   by it, −2…−4 and 5-20 kr per prop Ove breaks
   (car or kick), −1/s driving inside a car-free zone (Anders shouts, once a minute), −8 for "lånar"
@@ -34,7 +35,9 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   OMRÅDET** (−50 kr, back to 35, Anders calls a föreningsmöte); at 100: **ORDNING OCH REDA** (+100 kr,
   once per free-roam stretch, i.e. until a mission ends). The KAOS banner leaves out the kronor when
   Ove had less than 5.
-- **Avbrott**: a neighbour calls ~45 s into free roam, then 70-110 s after each errand: the old
+- **Avbrott**: a neighbour calls ~90 s into a new game (~45 s into a continued one), then 70-110 s
+  after each errand (day gates: element after day 3, forskolan and nyckeln after day 1, katten after
+  day 4): the old
   landline rings, the call card, Ove answers ("Ja?"), two lines, Ove's grumble, then an errand with a
   patience timer in the Avbrott panel. Done: +10 Ordning, +30-60 kr, thanks on the radio, an Ove
   "Hmpf.". Too late: −10 Ordning. The nine templates (`TEMPLATES` in interruptions.js): element
@@ -47,11 +50,11 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
 - **Neighbours** at their homes (`HOMES` in main.js): Parvaneh, Patrick, Sara and Nasanin by
   parvanehHouse; Jimmy; Adrian at adrianSpot; Anita with Rune (wheelchair) at runeHouse; Anders;
   Vita skjortan outside Kommunhuset. They turn to Ove, greet him one at a time (CHATTER), E =
-  "Hälsa på X" (a line and an Ove grunt), name tags within 9 m, teal dots on the minimap. The
+  "Småprata med X" (a line and an Ove grunt), name tags within 9 m, teal dots on the minimap. The
   current mission giver stands at the mission's spot with the amber marker and waves.
 - **On foot**: walk 3.2, rask gång (Shift) 5.5, pushing Rune 3.0 (3.6 with Shift), one jump (apex
   0.55 m, no double jump), J/click kicks: a tyre (thunk, the car rocks, an opinion by make: "Bra
-  däck." / "Japansk skit." / "Plast och elektronik."), the nearest prop (breaks, Ove pays; one
+  däck." / "Plast och elektronik." / "Sommardäck. I november."), the nearest prop (breaks, Ove pays; one
   per kick), a person (they object; nobody is knocked over by Ove's boot). Footsteps from the walk
   cycle (`audio.step` with the world's `surfaceAt`). Poses: `carry` with the cat (at
   `carryPoint`), `work` (+ `workKind`) while holding E in a job, `push` with Rune, `write`, `phone`.
@@ -365,3 +368,141 @@ saved game, Kontroller, Nytt spel, start toasts, the rolled-out Saab shoves nobo
 Hög -> Låg, persistence, old keys, URL), `recycle` (wrecked Saab back, borrowed car gone, player x/z
 while driving), `smalltalk` (forbidden lines per day, katten by day), `tagmerge`, `companion`, `p4ui`
 (banner bands, toasts under the letterbox), `titlecam` (title look-dev: `TC`, `TCJS`, `TCRAW`).
+
+## Phase 4, round 2 (whole-game review: reviews/p4r2_owner_gameplay_systems.json) — what changed
+
+**Game time = physics below 30 fps** (main.js `loop`). The frame dt handed to everything (timers,
+hooks, dialogue, the clock, the Ordning drain, idleTitle) is clamped to `MAX_STEPS * STEP` (2/60 s)
+and at 0 below (a rAF time a little before `last` could give a negative dt). Below 30 fps the whole
+game slows down uniformly instead of the missions' and errands' timers running up to 1.5x faster than
+the cars and people they time. `dilation` (a frame hook busy-waits 48 ms, ~17-19 fps, 4 s): g.time /
+(stepN / 60) **1.502 -> 1.000** (g.time 3.80 s vs physics 2.53 s before; 2.27 / 2.27 now); at 60 fps
+4.00 / 4.00 both.
+
+**Small talk by story time** (main.js `CHATTER`, `CHATTER_FIRST`, `CHATTER_AFTER`, `chatterFor`). A
+base or later line is a string or `[line, when(m)]` (m = the MissionRunner); helpers `met` (index >= 1),
+`eveningOfDay1` (index 1, gate closed: Patrick hasn't fallen yet), `onDay(d)` with `storyDay(m)` = the
+day it is (the evening after day n is still day n). Before day 1 (index 0) Parvaneh, Patrick, Sara and
+Nasanin say only `CHATTER_FIRST` (they moved in yesterday: no line names Ove; no dinner, saffransris or
+IT-konsult; "Han har backat i en kvart nu. Minst." sets up "Tjugo minuter."). Saffransris / middag /
+IT-konsult from day 1 on, "stege igen" and Patrick's new "Släpet står helt rakt. Jag har tagit en bild på
+det." only on the evening of day 1, Anita's "Tack för i går" only on day 4. `smalltalk` checks every day
+with the gate open and closed (0 forbidden lines; it pushes an error otherwise), prints the day-0 lines
+and every errand's availability by day. The chat prompt is "**E** Småprata med X" (was "Hälsa på").
+
+**Errand day gates** (interruptions.js `TEMPLATES[].after`): element after day 3 (the elementnyckel is in
+Rune's Volvo until then), forskolan and nyckeln after day 1 (the new neighbours phone Ove once they have
+met him), katten after day 4 as before. Availability by day 0..7: element `...xxxxx`, forskolan and
+nyckeln `.xxxxxxx`, katten `....xxxx`, the rest always. `force()` still bypasses `after` (the `errands`
+scenario forces all nine at day 0: 9/9 ok). A new game's first call comes at **90 s** (`isNewGame`; 45 s
+on a continued one). New lines: forskolan "Kan du hämta Nasanin på förskolan? Jag hinner inte, och
+Patrick... ja. Du vet." (fits before and after his cast), katten "Bär katten till Sara" / "Han hittade
+hem själv till slut. Men han var jättekall.", skjuts hello "Tjena! Vilken service!" (he may be picked up
+in a borrowed car).
+
+**An answered errand dropped by a day's start** says so: `tpl.busy` per template ("Du är upptagen? Okej,
+jag ringer Jimmy."), radioed 1.6 s after the intro is over (`interrupts.dropNote`; only when the abort
+happens with `missions.state !== 'idle'`: tests and `force()` drop silently). No Ordning penalty.
+
+**Patrick on a continued day-2 morning** (main.js `syncAll`, `start`): on the title `away` NPCs stay
+hidden (`away = npcAway(k) && (title || ...)`: the title un-hid them every frame and Patrick, in hospital,
+stood at his door after Fortsätt), and `start()` runs `placeNpcs(true)` once. `titlekeys`: Patrick
+`hidden` on the title, 1.5 s later, 6 s after Fortsätt and at Parvaneh's door.
+
+**The title starts with keys and the pad** (main.js `titleKeys`, input.js action `begin`): Enter,
+NumpadEnter, Space, E; pad A, Y, Start. Not while `#title.ctl` (Kontroller) or `#newgame.confirm` is up,
+and the keys not while another title button has the focus (its own Enter / Space). Never Mouse0 (the
+'skip' action has it). input.js: `input.playing` (set by `start()`): Space, Tab and the arrows are
+preventDefault'ed only in the game, so Tab walks the title's buttons. New `input.keyPressedAction(a)` /
+`input.padPressedAction(a)` (`pressed(a)` is their or). No `play.focus()`: Tab reaches it first anyway,
+and a programmatic focus would draw the focus ring on the title. A pad press can't lock the pointer (no
+user activation): the next click does, as after an Esc resume.
+
+**Clock** (main.js `clockCap`, `tickClock`): it stops at 14:30 (`DAY_END_MIN`, missions.js's DAY_END)
+before day 1, between days and while a day waits or runs (days 1-6), runs free while day 7 runs (its cut
+sets 15:40), stops at 16:30 after the story; it never goes backwards by itself, wraps at midnight and is
+saved `% 1440`. (It used to reach 15:20 in the gate and 1440+ after ~33 min post-game, which a reload
+threw away.)
+
+**Saves.** `save()` writes `begun` (the index of a day under way or given up and waiting); `load()` adds
+that day to `missions.gaveUp`, so after a reload its giver says only the `retryIntro` (`reloadday`: day 4,
+6 lines -> 2). Day 3 has no `retryIntro` (missions.js): it still plays its whole intro. More autosaves:
+interruptions `complete()` / `fail()`, patrol `escaped()`, KAOS, ORDNING OCH REDA (a report, a TAGEN! and
+a collectible saved already).
+
+**KAOS hold, pursuit guard, the meter during missions** (patrol.js). `newStretch()` (main.js, when a
+mission has ended) sets `eventHold = 12`: KAOS / ORDNING OCH REDA wait 12 s (counted outside dialogue)
+- KAOS fired the moment day 6's outro ended. While `suspended` (a mission runs) losses stop at 1 (or
+where the meter already was). `updatePursuit` returns without touching `mot` / `farT` while `g.inDialog`
+or a day's intro / outro runs. `r2checks`: meter 1 after −100 in a mission, KAOS 11.9 s after the end.
+
+**Ordning balance**: DRAIN 0.022 -> **0.014**/s per open violation, a far one (> 150 m) counts a
+**quarter** (was half). `drain`: 6 open, nobody reporting **0.133 -> 0.083/s** (5 a minute), during an
+errand 0.05 -> 0.035/s; three reports in a row hold the open count at 3 for 20 s+ (the meter 67.3 ->
+66.7 over those 20 s). About one report a minute now holds the meter (+7 against ~4-5 a minute with
+4-5 open), two a minute fill it. The reviewer's slow player (21 reports and 8 errands in 75 min) loses
+~42 instead of ~83 in his first 11 minutes by this estimate, i.e. ends them at ~63 instead of 22.
+
+**Cars and people.** Trailers are solid for people (`carsVsPeople`: every car with a trailer, its
+`trailer.obb` within `len/2 + 1` and below `trailer.y + 1`: pushed out standing, `shoveAside(ch, car,
+hit, carIn, trailer.obb)` when towed); `r2checks`: Ove walking into Patrick's trailer stops 1.06 m from
+its centre line (half width 0.75 + his radius 0.31; he ended at -0.71 inside it before). `kickTyre` wakes
+a sleeping car (`car.wake()`): roll 0 -> 0.026 rad (the impulse used to sit in `_sus.rv` until something
+else woke it; the cars round 2 also wakes a sleeping car on any push on its springs - both stay). A carjacked driver is re-homed (peds.js `Ped.rehome()`: the nearest point of the nearest
+sidewalk loop, briskly, then on round that loop; it walked at its old loop's next corner, across town),
+and is let out on the car's side that faces that sidewalk (`nearestSidewalk(x, z)`, peds.js; on the
+driver's side the car itself stood in the way: a first version stood against its flank, 0.4 m in 14 s):
+`r2checks` the driver walks 11.8 m in 14 s.
+Tyre opinions by make (`TYRE`; Rune's own Volvo by name): no "Japansk skit." (there is no Japanese car),
+no more "Typiskt" there.
+
+**Story leftovers.** `storyWorld()` lays Sonja's flowers after the story when none lie there
+(`flowersOnGrave`, missions.js; the finale's own stay). The title says "Fortsätt · Fri patrull" after
+day 7.
+
+**Perf.** `prewarmItems()` (init): one Collectible of each fetch item (key, phone, wrench, papers,
+flowers) and a cat, 30 m under Ove while `precompile()` runs, disposed after: `errandprog` (each template
+forced, Ove at its target with the item in view, E held): programs added mobilen 1, nyckeln 1, katten 1
+-> 0 for all nine (146 programs at start). Collectibles (pickups.js `tick(t, cam)`): the item itself is
+not drawn beyond 60 m from the camera (the beam is), the holders of emblems / photos (`opts.static`),
+the beams and the photo's planes have fixed matrices. `collcull` (main-pass draw calls, culled vs every
+item drawn as before): start 560 vs 567, street 428 vs 439, aerial 490 vs 516.
+
+**Loading.** main.js imports town.js as a namespace too (`TOWN`) and awaits
+`TOWN.buildTownAsync(scene, onProgress)` when town.js exports it (rendering's chunked build; the
+loading line reads "Plogar gatorna… 40 %"), else runs `TOWN.buildTown(scene)` in one task as before.
+Nothing after it runs before it has resolved. With rendering's build landed, `rload` (RLOADN=3, min /
+median): the town 2.80 / 2.85 s in chunks, the loading line updated every ~0.1-0.2 s through it (it
+was one 2.4-2.7 s task), longest task 710 / 714 ms (after the town), ready 5.68 / 5.78 s, first frame
+9.1 / 9.4 ms with no new programs; `errandprog` still 0.
+
+**Art.** The finale bouquet (pickups.js `bouquet()`): eight roses (bud + three nested five-lobed petal
+cups, outer ones darker pink), stems, leaves, a two-sided kraft-cream paper cone with a crumpled rim cut
+low at the front (-z: up when it lies on the grave or tips forward in Ove's hands), a ribbon, cut stems
+out of the bottom; ~7k triangles (`bouquet` look-dev scenario). Title pose (`TITLE_POSE`, `titlePose(o)`):
+Ove's hands in his jacket pockets (`model.style.pockets`, reset in `start()`), body three-quarters,
+head turned to his Saab (`anim.look` -0.6). Turning the Saab so the sun rakes its camera-side flank was
+tried (`titlepose` scenario, TP=...): the lot's other row and the bus shelter leave only the south-east
+camera side, from which the flank only catches the sun broadside with the nose into the title card;
+it stays straight out. With the world's slate-blue Saab (round 2) the car reads on the title now
+(bonnet and grille catch the light).
+
+**API changes others should know (round 2).**
+- input.js: `input.playing` (main.js `start()` sets it), `input.keyPressedAction(a)`,
+  `input.padPressedAction(a)`; action `begin` (Enter, NumpadEnter, Space, E; pad A, Y, Start).
+- main.js: `clockCap()`, `tickClock(dt)` (the clock no longer just adds dt), `titlePose(o)` (look-dev
+  options), `prewarmItems()`; `chatterFor(key)` returns a reused array (read it at once). The save has
+  `begun`. `shoveAside(ch, car, hit, carIn, obb = car.obb)`.
+- patrol.js: `eventHold` (s; `newStretch()` sets 12); `addOrdning` stops losses at 1 while `suspended`;
+  `updatePursuit` freezes during dialogue / intro / outro.
+- interruptions.js: `TEMPLATES[].busy`, `interrupts.dropNote`; `after` on element (3), forskolan (1),
+  nyckeln (1), katten (4).
+- peds.js: `Ped.rehome()`, `nearestSidewalk(x, z)`.
+- pickups.js: `Collectible.tick(t, cam)` (cam optional: culls the item beyond 60 m), opts `static`; the
+  'flowers' geometry's open front is -z (see above).
+
+**Requests.**
+- Story (missions.js): day 3 ('elementet') has no `retryIntro`, so after a reload mid-day 3 or a give-up
+  Anita says her whole 6-line intro again (every other day gets its 2 lines). Something like
+  `[['anita', 'Ove... elementen klickar fortfarande.'], ['ove', 'Jag hämtar nyckeln.']]`. Exporting
+  `DAY_END` would let main.js drop its literal 14:30 (`DAY_END_MIN`).

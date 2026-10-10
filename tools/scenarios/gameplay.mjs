@@ -11,8 +11,15 @@
 // pausemenu (a real game: P / Esc / Fortsätt), uicheck (bubbles at the edges, banners, call card,
 // stamp, pause log, snow heaps, the cat carried, work poses), portraitlight (A/B portrait light),
 // audiolevels (offline: engine at full throttle vs the music, snow steps across sessions).
+// Phase 4 round 2 (notes/integration.md): dilation (game time = physics at ~20 fps), errandprog (no
+// shader compiles in errands), smalltalk (+ day 0, day windows, errands by day), r2checks (clock,
+// kick, trailer, grave flowers, dropped errand, KAOS hold), reloadday (short intro, "Fri patrull"),
+// titlekeys (Enter / Space / pad on the title, Patrick on a continued day 2), titlepose, bouquet
+// (look-dev). Their failed checks count as errors.
 
-export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, standBy, fresh, fps, PORT }) => {
+export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, standBy, fresh, fps, PORT, errors = [] }) => {
+  // A failed check of the phase-4 round-2 scenarios ends the run with 'N errors' (like the story's).
+  const verdict = (label, ok, good = 'OK', bad = 'BAD') => { if (!ok) errors.push(`${label}: ${bad}`); return ok ? good : bad; };
   const st = () => ev(() => { const g = __game, P = g.patrol; return { ordning: +P.ordning.toFixed(1), reports: P.reports, kr: g.coins, writing: !!P.writing, pursuit: !!P.pursuit, open: P.open.length }; });
   const log = async (label, extra = {}) => console.log('[t]', label, JSON.stringify({ ...(await st()), ...extra }));
 
@@ -895,6 +902,81 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       }
     },
 
+    // Collectibles beyond 60 m aren't drawn (their beams are): main-pass draw calls with the culling
+    // and with every emblem / photo forced visible (as before), at the start, on a street and aerial.
+    async collcull() {
+      const poses = [['start', null], ['street', [30, -40 + 2.75, Math.PI / 2]], ['aerial', 'aerial']];
+      const out = {};
+      for (const [name, pose] of poses) {
+        await ev((pose) => {
+          const g = __game, s = window.__lm('oveStart');
+          g.aerial = pose === 'aerial';
+          if (Array.isArray(pose)) { g.player.teleport(pose[0], pose[1], pose[2]); g.cam.yaw = pose[2]; } else g.player.teleport(s.x, s.z, s.yaw);
+          g.cam.snapNext = true;
+          for (const c of [...g.emblems, ...g.photos]) delete c.tick;
+        }, pose);
+        await frames(30);
+        const on = await ev(async () => { const a = []; for (let i = 0; i < 10; i++) { await new Promise((r) => requestAnimationFrame(r)); a.push(window.__stats().calls); } return Math.round(a.reduce((x, y) => x + y) / a.length); });
+        await ev(() => { for (const c of [...__game.emblems, ...__game.photos]) { c.tick = function (t) { if (!this.alive) return; this.inner.visible = true; this.inner.matrixAutoUpdate = true; this.inner.rotation.y = t * 0.9 + this.ph; }; } });
+        await frames(10);
+        const off = await ev(async () => { const a = []; for (let i = 0; i < 10; i++) { await new Promise((r) => requestAnimationFrame(r)); a.push(window.__stats().calls); } return Math.round(a.reduce((x, y) => x + y) / a.length); });
+        out[name] = { calls: on, unculled: off, saved: off - on };
+      }
+      await ev(() => { __game.aerial = false; for (const c of [...__game.emblems, ...__game.photos]) delete c.tick; });
+      console.log('[t] collcull', JSON.stringify(out));
+    },
+
+    // The finale's bouquet: on Sonja's grave (flowersOnGrave, as after the story) and upright as a
+    // carried / fetch item, in close-up. BQ_D = camera distance (m).
+    async bouquet() {
+      const d = +(process.env.BQ_D || 1.1);
+      const info = await ev(async (d) => {
+        const g = __game, M = await import('./src/game/missions.js'), { Collectible } = await import('./src/actors/pickups.js');
+        const k = M.kneelSpot(g);
+        g.player.teleport(k.sx + 3, k.sz + 3, 0);
+        M.flowersOnGrave(g);
+        const f = g.graveFlowers, rx = -k.uz, rz = k.ux;
+        const up = new Collectible(g.scene, 'flowers', 'look', k.tx + rx * 0.9, g.groundAt(k.tx, k.tz) + 0.45, k.tz + rz * 0.9);
+        up.inner.scale.setScalar(1.7);
+        window.__bq = { f, up, k };
+        g.cam.update = function () {};
+        g.hideNearCamera = function () {};
+        const tris = (o) => { let n = 0; o.traverse((m) => { if (m.geometry) n += (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3; }); return n; };
+        return { tris: tris(f.inner) };
+      }, d);
+      console.log('[t] bouquet triangles', JSON.stringify(info));
+      const views = [['grave', 'f', 0.5, 0.55], ['grave_side', 'f', 1.9, 0.35], ['upright', 'up', 0.3, 0.1], ['upright_top', 'up', 1.2, 0.7]];
+      for (const [name, which, ang, el] of views) {
+        await ev(({ which, ang, el, d }) => {
+          const { f, up, k } = window.__bq, o = which === 'f' ? f : up, cam = __game.cam.cam;
+          const p = o.mesh.position, a = Math.atan2(k.ux, k.uz) + Math.PI + ang;
+          const tx = p.x, ty = p.y + (which === 'f' ? 0.05 : 0.25), tz = p.z;
+          cam.position.set(tx + Math.sin(a) * d * Math.cos(el), ty + d * Math.sin(el), tz + Math.cos(a) * d * Math.cos(el));
+          cam.lookAt(tx, ty, tz); cam.fov = 40; cam.updateProjectionMatrix();
+        }, { which, ang, el, d });
+        await frames(6);
+        await shot('bouquet_' + name);
+      }
+    },
+
+    // Title pose look-dev: TP='[{"turn":-0.8,"ove":[1.5,0.9,0.7],"look":0.5,"t":2}, ...]' calls
+    // __game.titlePose(o) on the real title and shoots it at arc time t (TCRAW=1 hides the card).
+    // Without TP: the game's own pose at 2 s and 30 s. Prints how far the cars round the Saab were
+    // shoved off their spots.
+    async titlepose() {
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?fresh=1${process.env.QUERY || ''}`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000 });
+      if (process.env.TCRAW) await ev(() => { document.getElementById('title').style.visibility = 'hidden'; });
+      const list = process.env.TP ? JSON.parse(process.env.TP) : [{ t: 2 }, { t: 30 }];
+      for (let k = 0; k < list.length; k++) {
+        await ev((o) => { const g = __game; if (Object.keys(o).some((q) => q !== 't')) g.titlePose(o); g.time = o.t ?? 2; }, list[k]);
+        await frames(40);
+        await shot('titlepose_' + k);
+        const shoved = await ev(() => { const g = __game, s = g.named.saab; return g.cars.filter((c) => c !== s && c.home && Math.hypot(c.x - s.x, c.z - s.z) < 12).map((c) => +Math.hypot(c.x - c.home.x, c.z - c.home.z).toFixed(2)).filter((d) => d > 0.01); });
+        console.log('[t] titlepose', k, JSON.stringify(list[k]), 'shoved', JSON.stringify(shoved));
+      }
+    },
+
     // Gamepads that aren't a standard 4-axis pad (a laptop accelerometer, a 3-axis stick) must never
     // give NaN: 0, 1 and 3 axes, non-standard mapping; then a standard pad without analogue triggers
     // drives the Saab with the left stick.
@@ -1111,27 +1193,279 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
     // retired after day 5, no "god morgon"; the 'katten' errand only from day 4.
     async smalltalk() {
       const r = await ev(() => {
-        const g = __game, out = {};
+        const g = __game, m = g.missions, out = {};
+        // [pattern, from, to (missions.index; to exclusive), keys (all if absent), gate (true: only with
+        // the next day dawned, false: only the evening before, undefined: either)]
+        const NEW = ['parvaneh', 'patrick', 'sara', 'nasanin'];
         const bad = [
           [/släpet\. Igen/, 0, 2], [/Katten|katten|Kissen|kattmat/, 0, 4], [/i går/, 0, 3], [/köpa bil|om Audi\?/, 5, 8], [/[Gg]od morgon|frukost|Fin morgon/, 0, 8], [/L-skylt/, 0, 8],
+          // before day 1's scene the new family doesn't know Ove (phase 4 round 2)
+          [/Ove|saffransris|middag|IT-konsult|snäll inuti/, 0, 1, NEW],
+          // Patrick fell on day 2's morning: no ladder and no "Släpet står" once that day has dawned
+          [/stege igen|Släpet står/, 1, 2, ['parvaneh', 'patrick'], true], [/stege igen|Släpet står/, 2, 8, ['parvaneh', 'patrick']],
+          // Anita's "Tack för i går" (day 3 was hers) only on day 4
+          [/Tack för i går/, 3, 4, ['anita'], false], [/Tack för i går/, 4, 5, ['anita'], true], [/Tack för i går/, 5, 8, ['anita']],
         ];
+        const gate0 = m.gateOpen;
         for (let day = 0; day <= 7; day++) {
-          g.missions.index = day;
-          const seen = new Set();
-          for (const k of Object.keys(g.npcs)) for (let i = 0; i < 300; i++) for (const l of g.chatterFor(k)) seen.add(`${k}: ${l}`);
-          const hits = [];
-          for (const l of seen) for (const [re, from, to] of bad) if (re.test(l) && day >= from && day < to) hits.push(l);
-          out[day] = hits;
+          for (const gate of [true, false]) {
+            if (!gate && day === 0) continue;
+            m.index = day; m.gateOpen = gate;
+            const seen = new Set();
+            for (const k of Object.keys(g.npcs)) for (let i = 0; i < 300; i++) for (const l of g.chatterFor(k)) seen.add(`${k}: ${l}`);
+            const hits = [];
+            for (const l of seen) {
+              const k = l.split(':')[0], text = l.slice(k.length + 2);
+              for (const [re, from, to, keys, gt] of bad) if (re.test(text) && day >= from && day < to && (!keys || keys.includes(k)) && (gt === undefined || gt === gate)) hits.push(l);
+            }
+            if (hits.length) out[`${day}${gate ? '' : ' (evening)'}`] = hits;
+          }
         }
-        return out;
+        m.index = 0; m.gateOpen = gate0;
+        const day0 = {};
+        for (const k of NEW) day0[k] = g.chatterFor(k).slice();
+        return { hits: out, day0 };
       });
+      console.log('[t] smalltalk forbidden lines', JSON.stringify(r.hits), verdict('smalltalk', !Object.keys(r.hits).length));
+      console.log('[t] smalltalk day 0', JSON.stringify(r.day0));
+      // Every errand's availability by day (missions.index 0..7): the day gates (DESIGN 4.3)
       const k = await ev(async () => {
         const { TEMPLATES } = await import('./src/game/interruptions.js');
-        const t = TEMPLATES.find((t) => t.id === 'katten'), g = __game, out = [];
-        for (let day = 0; day <= 7; day++) { g.missions.index = day; out.push(__interrupt.available(t)); }
+        const g = __game, out = {};
+        for (const t of TEMPLATES) { out[t.id] = ''; for (let day = 0; day <= 7; day++) { g.missions.index = day; out[t.id] += __interrupt.available(t) ? 'x' : '.'; } }
+        g.missions.index = 0;
         return out;
       });
-      console.log('[t] smalltalk', JSON.stringify(r), 'katten available by day', JSON.stringify(k));
+      console.log('[t] errands available by day 0..7', JSON.stringify(k));
+      // The chat prompt, and the first call of a new game
+      const p = await ev(() => { const g = __game, n = g.npc('anita'), s = g.freeSpot(n.x, n.z, 1.4, 1.8); g.player.teleport(s.x, s.z, Math.atan2(n.x - s.x, n.z - s.z)); return +__interrupt.nextT.toFixed(0); });
+      await frames(10);
+      console.log('[t] chat prompt', JSON.stringify(await ev(() => document.getElementById('prompt')?.textContent || '')), '| first call of a new game in', p, 's');
+    },
+
+    // Phase 4 round 2 checks that need no real title: the clock (14:30 cap, the wrap at midnight, the
+    // save), a kick on a sleeping car, Ove walking into Patrick's trailer, Sonja's flowers after the
+    // story, the dropped errand, the meter during a mission and KAOS held after it.
+    async r2checks() {
+      // -- clock
+      const c = await ev(async () => {
+        const g = __game, out = {};
+        g.clockMin = 14 * 60 + 29.8;
+        await new Promise((r) => setTimeout(r, 2500));
+        out.cap = g.clockText();
+        g.clockCap = () => Infinity;
+        g.clockMin = 24 * 60 - 0.2;
+        await new Promise((r) => setTimeout(r, 2500));
+        out.wrap = g.clockText();
+        g.save();
+        out.saved = JSON.parse(localStorage.getItem('saab-and-run-v1')).clock;
+        delete g.clockCap;
+        g.missions.index = 7;
+        g.clockMin = 16 * 60 + 29.8;
+        await new Promise((r) => setTimeout(r, 2500));
+        out.afterStory = g.clockText();
+        g.missions.index = 0; g.setClock(10, 30);
+        return out;
+      });
+      console.log('[t] clock', JSON.stringify(c), verdict('clock', c.cap === '14:30' && c.wrap.startsWith('00:') && c.saved < 1440 && c.afterStory === '16:30'));
+      // -- kick a sleeping parked car
+      const k = await ev(async () => {
+        const g = __game, p = g.player;
+        const car = g.cars.filter((c) => c.asleep && !c.violation && !c.name && !c.trailer).sort((a, b) => Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z))[0];
+        const fx = Math.sin(car.yaw), fz = Math.cos(car.yaw), lx = fz, lz = -fx;
+        const d = car.spec.wid / 2 + 0.95, x = car.x + lx * d + fx * 1.3, z = car.z + lz * d + fz * 1.3;
+        p.teleport(x, z, Math.atan2(-lx, -lz));
+        g.kickTyre(car, -lx, -lz);
+        const asleep0 = car.asleep;
+        let maxRoll = 0;
+        for (let i = 0; i < 20; i++) { await new Promise((r) => requestAnimationFrame(r)); maxRoll = Math.max(maxRoll, Math.abs(car._sus.r)); }
+        return { asleepAfterKick: asleep0, maxRoll: +maxRoll.toFixed(4), rvLeft: +car._sus.rv.toFixed(3) };
+      });
+      console.log('[t] kick sleeping car', JSON.stringify(k), verdict('kick', k.maxRoll > 0.005));
+      // -- Ove walks into Patrick's trailer from the side
+      const t0 = await ev(() => {
+        const g = __game, c = g.named.patrickCar, t = c.trailer, p = g.player;
+        const lx = Math.cos(t.yaw), lz = -Math.sin(t.yaw);
+        let side = 1;
+        if (!g.spotFree(t.x + lx * 2.2, t.z + lz * 2.2)) side = -1;
+        const x = t.x + lx * 2.2 * side, z = t.z + lz * 2.2 * side, yaw = Math.atan2(t.x - x, t.z - z);
+        p.teleport(x, z, yaw); g.cam.yaw = yaw; g.cam.pitch = 0.2; g.cam.snapNext = true;
+        return { hx: t.obb.hx, side };
+      });
+      await hold(['KeyW'], 2500);
+      const t1 = await ev(() => { const g = __game, t = g.named.patrickCar.trailer, p = g.player, lx = Math.cos(t.yaw), lz = -Math.sin(t.yaw); return { lat: +((p.x - t.x) * lx + (p.z - t.z) * lz).toFixed(2), r: p.r }; });
+      await shot('r2_trailerwalk');
+      console.log('[t] trailer walk', JSON.stringify({ ...t0, ...t1 }), verdict('trailer walk', Math.abs(t1.lat) >= t0.hx + t1.r - 0.05, 'OK (outside the box)', 'BAD (inside the trailer)'));
+      // -- a carjack: the driver set down by the car walks on from the nearest sidewalk
+      const cj0 = await ev(() => {
+        const g = __game, c = g.cars.filter((c) => c.traffic && c.driverBust && !c.dead).sort((a, b) => Math.hypot(a.x - g.player.x, a.z - g.player.z) - Math.hypot(b.x - g.player.x, b.z - g.player.z))[0];
+        if (!c) return null;
+        c.ai = null; c.vx = c.vz = 0;
+        const e = g.exitSpot(c, 1); g.player.teleport(e.x, e.z, 0);
+        const before = new Map(g.peds.map((p) => [p, [p.char.x, p.char.z]]));
+        g.enterCar(c);
+        const ped = g.peds.find((p) => { const b = before.get(p); return Math.hypot(p.char.x - b[0], p.char.z - b[1]) > 5; });
+        // Ove drives off a little way (the car stays out of the driver's way)
+        g.playerCar.place(c.x + Math.sin(c.yaw) * 14, c.z + Math.cos(c.yaw) * 14, c.yaw);
+        window.__cj = ped || null;
+        return ped ? { x: ped.char.x, z: ped.char.z, toTarget: +Math.hypot(ped.target[0] - ped.char.x, ped.target[1] - ped.char.z).toFixed(1) } : null;
+      });
+      await sleep(14000);
+      const cj1 = await ev(() => { const g = __game, p = window.__cj; if (g.playerCar) g.exitCar(true); return p ? { x: p.char.x, z: p.char.z, k: p.k, crossing: p.crossing } : null; });
+      const walked = cj0 && cj1 ? +Math.hypot(cj1.x - cj0.x, cj1.z - cj0.z).toFixed(1) : null;
+      console.log('[t] carjack driver', JSON.stringify({ firstLeg: cj0?.toTarget, walked14s: walked }), verdict('carjack rehome', !cj0 || (cj0.toTarget < 25 && walked > 6)));
+      // -- Sonja's flowers after the story (as after a reload: storyWorld at load with index 7)
+      const f = await ev(() => { const g = __game; g.missions.index = 7; g.storyWorld(); const a = g.graveFlowers; g.storyWorld(); const same = a === g.graveFlowers; const s = window.__lm('sonjaGrave'); return { flowers: !!a, same, d: a ? +Math.hypot(a.x - s.x, a.z - s.z).toFixed(2) : null }; });
+      console.log('[t] grave flowers', JSON.stringify(f), verdict('grave flowers', f.flowers && f.same && f.d < 1.5));
+      await ev(() => { __game.missions.index = 0; });
+      // -- an errand dropped by a story day: the neighbour says so after the intro
+      await ev(() => { const g = __game, s = window.__lm('oveStart'); g.player.teleport(s.x, s.z, s.yaw); __interrupt.force('skotta', { quick: true }); });
+      await frames(10);
+      await ev(() => __game.missions.begin());
+      await until(() => __game.missions.state === 'running', 60000);
+      await sleep(2600);
+      const dn = await ev(() => ({ text: document.getElementById('hud')?.textContent.match(/[^.!?]*tar det i morgon[^.!?]*/)?.[0] || '', note: __interrupt.dropNote }));
+      console.log('[t] dropped errand', JSON.stringify(dn), verdict('dropped errand', !!dn.text && !dn.note));
+      // -- during the mission the meter stops at 1; after it, KAOS waits 12 s
+      const o = await ev(() => { const g = __game; g.patrol.addOrdning(-100); return +g.patrol.ordning.toFixed(2); });
+      await ev(() => __game.missions.abort());
+      await frames(5);
+      const k0 = await ev(() => { const g = __game; g.patrol.addOrdning(-100); return { t: g.time, hold: g.patrol.eventHold }; });
+      await until(() => __game.patrol.lastKaos > 0, 30000).catch(() => {});
+      const k1 = await ev(() => ({ kaos: __game.patrol.lastKaos }));
+      console.log('[t] kaos hold', JSON.stringify({ ordningDuringMission: o, hold: +k0.hold.toFixed(1), kaosAfter: +(k1.kaos - k0.t).toFixed(1) }), verdict('kaos hold', o >= 1 && k1.kaos - k0.t >= 11.5));
+    },
+
+    // A reload in the middle of a day replays only the short intro (RD_INDEX = missions.index, default 3:
+    // day 4; a day without a retryIntro plays its whole intro again); a save after the whole story
+    // offers "Fortsätt · Fri patrull".
+    async reloadday() {
+      const idx = +(process.env.RD_INDEX ?? 3);
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?test=1&fresh=1&mission=${idx}`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000, polling: 250 });
+      await ev(() => __game.missions.begin());
+      await until(() => __game.missions.state === 'running', 60000);
+      const s1 = await ev(() => { __game.save(); return JSON.parse(localStorage.getItem('saab-and-run-v1')); });
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?test=1`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000, polling: 250 });
+      const r = await ev(async () => {
+        const g = __game, n = [];
+        const D = g.dialog.bind(g);
+        g.dialog = (lines) => { n.push(lines.length); return D(lines); };
+        const gave = [...g.missions.gaveUp];
+        g.missions.begin();
+        await new Promise((res) => setTimeout(res, 300));
+        g.dialog = D;
+        return { index: g.missions.index, gaveUp: gave, introLines: n[0], retryIntro: g.missions.current?.retryIntro?.length ?? null };
+      });
+      console.log('[t] reload mid-day', JSON.stringify({ saved: { mission: s1.mission, begun: s1.begun }, ...r }), r.retryIntro ? verdict('reload mid-day', r.introLines === r.retryIntro, 'OK (short intro)') : 'this day has no retryIntro (missions.js)');
+      await ev(() => localStorage.setItem('saab-and-run-v1', JSON.stringify({ v: 1, mission: 7, kr: 900, patrol: { ordning: 90, reports: 40, log: [] } })));
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 90000, polling: 250 });
+      const t = await ev(() => document.getElementById('play').textContent);
+      await shot('r2_title_alldone');
+      console.log('[t] title after the story', JSON.stringify(t), verdict('title after the story', /Fri patrull/.test(t)));
+      await ev(() => localStorage.removeItem('saab-and-run-v1'));
+    },
+
+    // The real title (no ?test): Enter / Space / the pad's A start it; not while Kontroller is open, not
+    // a click on the scene; Tab walks the buttons. And a continued day-2 morning: Patrick (in hospital)
+    // is not at his door, on the title or after Fortsätt.
+    async titlekeys() {
+      const load = async (q = '?fresh=1') => { await page.goto(`http://127.0.0.1:${PORT}/index.html${q}`, { waitUntil: 'load' }); await page.waitForFunction('window.__ready === true', { timeout: 90000 }); await sleep(400); };
+      const started = () => ev(() => __game.started);
+      const out = {};
+      await load();
+      await page.keyboard.press('Tab');
+      out.tab = await ev(() => document.activeElement?.id || document.activeElement?.tagName);
+      await ev(() => document.activeElement.blur());
+      await page.keyboard.press('Enter'); await frames(3);
+      out.enter = await started();
+      await load();
+      await page.click('#title-ctl'); await sleep(200);
+      await page.keyboard.press('Space'); await frames(3);
+      out.spaceWithControlsOpen = await started();
+      await ev(() => { document.getElementById('title').classList.remove('ctl'); document.activeElement.blur(); });
+      await page.keyboard.press('Space'); await frames(3);
+      out.space = await started();
+      await load();
+      await ev(() => { window.__pad = { connected: true, index: 0, id: 'test', mapping: 'standard', axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ value: 0, pressed: false })) }; navigator.getGamepads = () => [window.__pad]; });
+      await frames(3);
+      await ev(() => { window.__pad.buttons[0] = { value: 1, pressed: true }; });
+      await frames(3);
+      out.padA = await started();
+      await ev(() => { navigator.getGamepads = () => []; });
+      await load();
+      await page.mouse.click(900, 300); await frames(3);
+      out.clickOnScene = await started();
+      // day 2 dawned, saved, reloaded: Patrick hidden on the title and after Fortsätt
+      await ev(() => localStorage.setItem('saab-and-run-v1', JSON.stringify({ v: 1, mission: 1, gate: false, clock: 640, kr: 120, patrol: { ordning: 55, reports: 4, log: [] } })));
+      await load('');
+      const pt = await ev(() => ({ patrick: __game.npc('patrick').state, play: document.getElementById('play').textContent }));
+      await sleep(1500);
+      const pt2 = await ev(() => __game.npc('patrick').state);
+      await page.keyboard.press('Enter');
+      await sleep(6000);
+      const pt3 = await ev(() => { const g = __game, n = g.npc('patrick'); return { state: n.state, visible: n.root.visible, d: +Math.hypot(n.x - g.player.x, n.z - g.player.z).toFixed(1) }; });
+      await ev(() => { const g = __game, d = window.__lm('parvanehHouse'); const yaw = d.yaw + Math.PI; g.player.teleport(d.x + Math.sin(d.yaw) * 5, d.z + Math.cos(d.yaw) * 5, yaw); g.cam.yaw = yaw; g.cam.snapNext = true; });
+      await sleep(1500);
+      await shot('r2_day2_parvaneh_door');
+      const pt4 = await ev(() => __game.npc('patrick').state);
+      out.day2 = { title: pt, titleLater: pt2, afterStart: pt3, atTheDoor: pt4 };
+      await ev(() => localStorage.removeItem('saab-and-run-v1'));
+      const ok = out.tab && out.tab !== 'BODY' && out.enter && !out.spaceWithControlsOpen && out.space && out.padA && !out.clickOnScene && pt.patrick === 'hidden' && pt2 === 'hidden' && pt3.state === 'hidden' && pt4 === 'hidden';
+      console.log('[t] titlekeys', JSON.stringify(out), verdict('titlekeys', ok));
+    },
+
+    // Phase 4 round 2: game time vs physics below 30 fps. A frame hook busy-waits DIL_MS (48) ms, so
+    // the game runs at ~20 fps: g.time, an errand's patience timer and the clock must advance with the
+    // fixed steps (stepN / 60), not with the wall clock (they ran up to 1.5x faster than the world).
+    async dilation() {
+      const busy = +(process.env.DIL_MS || 48);
+      const run = (ms) => ev(async (ms) => {
+        const g = __game;
+        g.interrupts.force('punktering', { quick: true });
+        const hook = () => { const t = performance.now(); while (performance.now() - t < ms) { /* busy */ } };
+        if (ms) g.onFrame(hook);
+        await new Promise((r) => setTimeout(r, 300));
+        const t0 = g.time, s0 = g.stepN, c0 = g.clockMin, e0 = g.interrupts.active?.timer ?? 0, f0 = g.frame, w0 = performance.now();
+        await new Promise((r) => setTimeout(r, 4000));
+        const r = { gameT: +(g.time - t0).toFixed(2), physT: +((g.stepN - s0) / 60).toFixed(2), errandT: +(e0 - (g.interrupts.active?.timer ?? 0)).toFixed(2), clockMin: +(g.clockMin - c0).toFixed(3), wall: +((performance.now() - w0) / 1000).toFixed(2), fps: +((g.frame - f0) / ((performance.now() - w0) / 1000)).toFixed(1) };
+        if (ms) g.offFrame(hook);
+        g.interrupts.abort();
+        r.ratio = +(r.gameT / Math.max(0.01, r.physT)).toFixed(3);
+        return r;
+      }, ms);
+      const a = await run(0);
+      const b = await run(busy);
+      console.log('[t] dilation normal', JSON.stringify(a));
+      console.log('[t] dilation busy', busy, 'ms', JSON.stringify(b), verdict('dilation', Math.abs(b.ratio - 1) < 0.02, 'OK', 'BAD (game time != physics)'));
+    },
+
+    // Programs compiled in game by the errands (perf review: 'nyckeln' compiled 2, 'element' 1: the
+    // first errand target's beacon, the fetch item, the work pose's tool). Each template is forced,
+    // Ove stands at its target with the item in view and holds E for a second; renderer.info.programs
+    // must not grow. EP_IDS=a,b to pick.
+    async errandprog() {
+      const ids = process.env.EP_IDS ? process.env.EP_IDS.split(',') : ['element', 'forskolan', 'mobilen', 'punktering', 'nyckeln', 'rune', 'skotta', 'katten', 'skjuts'];
+      await frames(60);
+      const out = {};
+      const p00 = await ev(() => window.__stats().programs);
+      for (const id of ids) {
+        const p0 = await ev(() => window.__stats().programs);
+        await ev((id) => { const g = __game, s = window.__lm('oveStart'); if (g.playerCar) g.exitCar(true); g.player.teleport(s.x, s.z, s.yaw); g.player.state = 'normal'; __interrupt.force(id, { quick: true }); }, id);
+        await frames(20);
+        const kind = await ev(() => { const g = __game, t = __interrupt.target(), st = __interrupt.stage; if (t) { const s = g.freeSpot(t.x, t.z, 1.6, 2.4); const yaw = Math.atan2(t.x - s.x, t.z - s.z); g.player.teleport(s.x, s.z, yaw); g.cam.yaw = yaw; g.cam.pitch = 0.25; g.cam.snapNext = true; } return st?.kind; });
+        await frames(40);
+        if (kind === 'holdAt') { await ev(() => { const g = __game, t = __interrupt.target(); g.player.teleport(t.x, t.z, g.player.yaw); }); await frames(3); await hold(['KeyE'], 1000); }
+        await frames(50);
+        const p1 = await ev(() => window.__stats().programs);
+        out[id] = p1 - p0;
+        await ev(() => __interrupt.abort());
+        await frames(5);
+      }
+      const p11 = await ev(() => window.__stats().programs);
+      console.log('[t] errandprog programs added', JSON.stringify(out), 'total', p11 - p00, verdict('errandprog', Object.values(out).every((v) => v === 0), 'OK', 'COMPILES'));
     },
 
     // Two identical tags side by side merge ("2 × ..."); names only close by.

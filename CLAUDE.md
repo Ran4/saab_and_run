@@ -15,7 +15,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - Scenarios: `start views aerial drive tow walk talk smash traffic cruise title` (shot.mjs) plus
   every `tools/scenarios/<area>.mjs` (same name overrides): gameplay.mjs `report pursuit interrupt
   errands collect patrol freeroam stages` and phase 4's `gperf carcycle gamepad corruptsave tabhide
-  titlecheck quality recycle smalltalk tagmerge companion p4ui titlecam` (notes/integration.md), story.mjs `story m1..m7 gate aftermath` plus the no-warp
+  titlecheck quality recycle smalltalk tagmerge companion p4ui titlecam` and round 2's `dilation errandprog
+  r2checks reloadday titlekeys collcull titlepose bouquet` (notes/integration.md), story.mjs `story m1..m7 gate aftermath` plus the no-warp
   checks `m5race m7chase m4cat lotwalk hospdrive retry`, cars.mjs, people.mjs.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
@@ -50,6 +51,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   roofs; landmarks must not sit inside a building footprint. `car.place()` resets a trailer.
 - The module `fx` (particles) is easy to shadow with a local `const fx = Math.sin(...)`.
   car.js and stages.js import it as `FX` for that reason.
+- The frame dt is clamped to two fixed steps (2/60 s): below 30 fps the whole game slows down with
+  the physics, so timers, `g.time` and the clock always match the cars and people they time.
 - One-shot inputs (jump, kick, E) are handled once per frame in `handleOneShots`, continuous
   ones in `fixedStep` (60 Hz, at most 2 steps per frame). `input.pressed` stays true for the whole
   frame. A stage whose `prompt()` returns `takesE` owns the E key. Give up is the `giveUp` action

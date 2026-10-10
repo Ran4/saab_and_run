@@ -123,20 +123,24 @@ bil." "Vem backar med släp så?" He secretly cares; he never says so.
   reads them as `hud.kinds`).
 
 ### 4.2 Ordning meter (top right; replaces the Shame meter)
-`ORDNING I OMRÅDET`, 0–100, starts at 50. Drains 0.022/s per active unreported violation; one
-more than 150 m from Ove counts half; ×0.4 while an avbrott or call is active; ×0.5 for 60 s after
-KAOS (0.08 was tried first: it emptied the meter in 78 s whatever Ove did).
+`ORDNING I OMRÅDET`, 0–100, starts at 50. Drains 0.014/s per active unreported violation; one
+more than 150 m from Ove counts a quarter; ×0.4 while an avbrott or call is active; ×0.5 for 60 s after
+KAOS (0.08 was tried first: it emptied the meter in 78 s whatever Ove did; 0.022 with far ones at half
+kept a normal player at 6-55. About one report a minute holds the meter now, two a minute fill it).
 +7 per report, +12 per caught smitare, +10 per completed avbrott, −10 per failed avbrott,
 −12 per pedestrian hit, −3 when Ove's car shoves a neighbour or child aside, −2…−4 per broken prop, −1/s while Ove himself drives a car inside the
 car-free zone (Anders shouts "Ove! Det är förbjudet att köra bil inom området!" — once per
 minute — and as long as Ove's car is in there the prompt line says so: "Bilfritt område · −1
 Ordning/s · Kliv ur och gå"). At 0: **KAOS I OMRÅDET** — Anders calls an extra föreningsmöte, −50 kr
 (amounts under 5 kr are not shown), meter resets to 35. Reaching 100: **ORDNING OCH REDA**, +100 kr
-(once per free-roam stretch; saved, so a reload with a full meter doesn't pay it again).
+(once per free-roam stretch; saved, so a reload with a full meter doesn't pay it again). While a story
+mission runs the meter stops at 1 (KAOS would only wait for the outro), and both events wait 12 s
+after a mission has ended (KAOS used to land on top of a day's last line and "Dagen är slut").
 
 ### 4.3 Avbrott — neighbours interrupt (`src/game/interruptions.js`)
 In free roam (not during story missions, which script their own), a neighbour calls every
-70–110 s (first one ~45 s after free roam begins; never while a story mission runs, never within
+70–110 s (the first one ~90 s into a new game, ~45 s into a continued one; never while a story
+mission runs, never within
 40 s after one, and never as Ove walks up to the neighbour whose day it is: within 14 m of the
 giver it waits; a call cut off because a mission began is tried again 45 s or more later). Pausing
 stops the bell (it rings on after the menu while nobody has answered). Phone rings (`audio.ring`), `hud.incomingCall`
@@ -144,12 +148,19 @@ card with portrait ("Parvaneh ringer…"), two short lines as radio toasts, Ove 
 ("Ja?" / "Vad är det nu då?"). If Ove was writing a report, **the call cancels it** (that's the
 joke). Then a short errand with a patience timer (90–150 s) shown with `hud.setErrand`.
 Complete: +10 Ordning, +30–60 kr, a reluctant Ove line ("Hmpf."). Time out: the neighbour is
-disappointed, −10 Ordning. Errand templates (built from the same stage kinds as missions):
-1. Anita: det klickar i elementet igen → hold E at `runeHouse` 3 s ("Lufta elementet").
-2. Parvaneh: hämta Nasanin på förskolan → pickup at `preschool` → drop at `parvanehHouse`.
+disappointed, −10 Ordning. An answered errand that a story day takes Ove off ends without blame, and
+once the day's intro is over its neighbour says on the radio that it's fine (template `busy`: "Du är
+upptagen? Okej, jag ringer Jimmy."). Some only ring once the story allows (`after`: that many days
+done): the new neighbours phone Ove once they have met him. Errand templates (built from the same
+stage kinds as missions):
+1. Anita: det klickar i elementet igen → hold E at `runeHouse` 3 s ("Lufta elementet"). After day 3
+   (`after: 3`): until then Ove's elementnyckel is in Rune's Volvo.
+2. Parvaneh: hämta Nasanin på förskolan → pickup at `preschool` → drop at `parvanehHouse`. After
+   day 1.
 3. Jimmy: glömt mobilen i centrum → fetch item at `centrum` → bring to `jimmyHouse`.
 4. Adrian: punktering → hold E at `bikeShed` 4 s ("Laga punkteringen").
-5. Patrick: låst sig ute → fetch spare key at `oveHouse` → hold E at `parvanehHouse` 1.5 s.
+5. Patrick: låst sig ute → fetch spare key at `oveHouse` → hold E at `parvanehHouse` 1.5 s. After
+   day 1.
 6. Anita: Rune har rullat iväg → find Rune (45–80 m away on a sidewalk), push him home.
 7. Anita: skotta framför dörren → hold E at three spots by `runeHouse`.
 8. Sara: Oves katt har rymt ("Det är inte min katt.") → short cat chase, carry it to Sara. Only once
@@ -164,8 +175,8 @@ with Ove (errands) follow his trail (a point every 0.6 m) round fences and hedge
 (cast and pedestrians) and the neighbours are never knocked over by cars; they are shoved aside,
 like Rune. A knock-down depends only on the car's own speed into the person (> 4.5 m/s), so
 walking into a parked car just stops Ove. Pushing Rune: 3.0 m/s (3.6 with Shift). **J/click:
-"sparka på däcket"** — kicking a car's tyre plays a thunk and an Ove comment ("Bra däck." /
-"Japansk skit."); kicking props still breaks them (−Ordning; one kick breaks the nearest prop only). E: talk / get in & out / hold to
+"sparka på däcket"** — kicking a car's tyre plays a thunk, rocks the car (a parked car asleep is
+woken) and an Ove comment by make ("Bra däck." / "Plast och elektronik." / "Sommardäck. I november."); kicking props still breaks them (−Ordning; one kick breaks the nearest prop only). E: talk / get in & out / hold to
 interact. F: hold to write a report.
 
 ### 4.5 Money & collectibles
@@ -187,9 +198,13 @@ Göteborg. Hon skrattade åt honom hela vägen."). All reachable without double 
 | B | | titta bakåt |
 | M / N / R | karta / ljud / tillbaka till vägen | |
 | Esc / P (gamepad Start) | paus och fortsätt (pausmenyn släpper musen) | |
-| Q (gamepad B) | ge upp, när ett uppdrag har misslyckats | |
+| Q (gamepad B) | ge upp efter ett misslyckat uppdrag; håll Q för att avbryta ett pågående | |
 
+The title starts with Spela / Fortsätt, Enter, Space or E, or the pad's A, Y or Start (never with a
+click on the scene; not while Kontroller or the "Nytt spel" confirm is open); Tab walks its buttons.
 A hidden tab or a window that loses focus pauses the game too; a hidden tab's sound is suspended.
+Below 30 fps the whole game slows down with the fixed steps (at most two a frame): timers, the clock
+and the meter never run ahead of the cars and people they time.
 Gamepad: the first connected pad with the standard mapping (else a non-standard one once a button
 on it has been pressed), missing axes and buttons read 0; the triggers are the pedals, and a pad whose triggers have never moved drives with the left
 stick (forward gas, back brake).

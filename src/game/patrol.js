@@ -52,11 +52,16 @@ const ROAD_EW = roadNames?.ew || ['Skogsbrynet', 'Björkvägen', 'Skolvägen', '
 const AREA = { ove: 'Radhusområdet', radhus: 'Radhusen', villa: 'Villaområdet', apartments: 'Lamellhusen', centrum: 'Centrum', hospital: 'Sjukhuset', church: 'Kyrkan', cemetery: 'Kyrkogården', dealer: 'Bilhallen', preschool: 'Förskolan', kommun: 'Kommunhuset', gas: 'Macken', park: 'Parken', field: 'Fotbollsplanen', forest: 'Skogen' };
 
 const _dir = new THREE.Vector3();
-// The Ordning drain (notes/integration.md, "Fix round 1"): 0.022/s per open violation, a far one
-// (> 150 m from Ove) counts half, and only 40 % while a neighbour has Ove on an errand or on the
-// phone. Up to 6 are open; a report buys real quiet: the next one comes 25-45 s later (only
-// 9-16 s while fewer than 3 are open). After KAOS the meter gets a minute's grace at half drain.
-const DRAIN = 0.022, DRAIN_FAR = 150, DRAIN_ERRAND = 0.4;
+// The Ordning drain (notes/integration.md, "Fix round 1", "Phase 4, round 2"): 0.014/s per open
+// violation, a far one (> 150 m from Ove) counts a quarter, and only 40 % while a neighbour has Ove on
+// an errand or on the phone. Up to 6 are open; a report buys real quiet: the next one comes 25-45 s
+// later (only 9-16 s while fewer than 3 are open). After KAOS the meter gets a minute's grace at half
+// drain. (At 0.022 and far = half a player reporting every couple of minutes lived at 6-55: about one
+// report a minute should hold the meter, two a minute reach ORDNING OCH REDA.)
+const DRAIN = 0.014, DRAIN_FAR = 150, DRAIN_FAR_W = 0.25, DRAIN_ERRAND = 0.4;
+// After a story day (or anything else that suspended the patrol) the meter's events wait this long:
+// KAOS used to fire the moment day 6's outro ended, on top of "Dagen är slut".
+const EVENT_HOLD = 12;
 const WRITE_SECS = 1.8;
 const TARGET = 6, FEW = 3;
 const OVE_START = ['Det står ju på skylten.', 'Idioter.', 'Typiskt.', 'Ingen kan läsa nu för tiden.', 'Hmpf.', 'Jaså. Här ska vi stå, minsann.'];
@@ -116,6 +121,7 @@ export class Patrol {
     this.reportTimes = [];
     this.redaGiven = false;     // ORDNING OCH REDA pays once per free-roam stretch
     this.kaosT = 0;
+    this.eventHold = 0;         // s before KAOS / ORDNING OCH REDA may fire (newStretch)
     this.spawnT = 3;
     this.cooldown = new Map();  // spot -> game time when it may be used again
     this.carFreeShoutT = -999;
@@ -133,14 +139,19 @@ export class Patrol {
 
   addOrdning(d) {
     if (!d) return;
-    this.ordning = clamp(this.ordning + d, 0, 100);
+    // While a story mission runs the meter can't be emptied (broken props, a shoved neighbour): KAOS
+    // would only wait for the outro to end. It stops at 1 (or where it already was, if lower).
+    if (d < 0 && this.suspended) this.ordning = Math.max(Math.min(this.ordning, 1), this.ordning + d);
+    else this.ordning = clamp(this.ordning + d, 0, 100);
     // Remember touching the ends: the events fire on the next free-roam update.
     if (this.ordning >= 100) this.atTop = true;
     else if (this.ordning < 97) this.atTop = false;
     if (this.ordning <= 0) this.atBottom = true;
     else if (this.ordning > 5) this.atBottom = false;
   }
-  newStretch() { this.redaGiven = false; }
+  // Free roam again (main.js, when a mission has ended): ORDNING OCH REDA may pay once more, and the
+  // meter's events hold off for a while.
+  newStretch() { this.redaGiven = false; this.eventHold = EVENT_HOLD; }
 
   // ------------------------------------------------------------------------------------------
   // Spawning
@@ -339,6 +350,10 @@ export class Patrol {
   updatePursuit(dt) {
     const g = this.g, P = this.pursuit;
     if (!P) { hud.setPursuit(null); return; }
+    // Nothing counts while a scene plays (a dialogue, a day's intro or outro): no SMET! out of a
+    // cutscene the player could do nothing about.
+    const ms = g.missions?.state;
+    if (g.inDialog || ms === 'intro' || ms === 'outro') return;
     const c = P.car, f = g.focus();
     P.t += dt;
     if (c.dead) { this.caught(); return; }
@@ -398,6 +413,7 @@ export class Patrol {
     this.log.push({ plate: c.plate, kind: v.kind, text: v.text, time: g.clockText(), escaped: true });
     hud.showBanner('SMET!', `${c.plate} kom undan`, 'bad', 2400);
     audio.jingle('fail');
+    g.save();
   }
 
   // ------------------------------------------------------------------------------------------
@@ -423,8 +439,10 @@ export class Patrol {
       if (v.reported && this.pursuit?.car !== c && g.time > v.leaveAt && !this.visible(c.x, c.z)) { this.remove(c); continue; }
     }
     if (!this.passive) return;
+    if (this.eventHold > 0 && !g.inDialog) this.eventHold -= dt;
     // Events first (a report that fills the meter must not be drained away before it counts).
-    if ((this.atBottom || this.ordning <= 0) && g.time - this.lastKaos > 5) {
+    if (this.eventHold > 0) { /* a scene has just ended: the meter's banners wait */ }
+    else if ((this.atBottom || this.ordning <= 0) && g.time - this.lastKaos > 5) {
       this.atBottom = false;
       this.lastKaos = g.time;
       const lost = Math.min(g.coins, 50);
@@ -434,12 +452,14 @@ export class Patrol {
       hud.showBanner('KAOS I OMRÅDET', `Anders kallar till extra föreningsmöte${lost >= 5 ? ` · −${lost} kr` : ''}`, 'chaos', 3200);
       audio.alarm();
       setTimeout(() => g.radio('anders', 'Extra föreningsmöte i kväll, Ove. Klockan sju. Ordningen i området är under all kritik.'), 1800);
+      g.save();
     } else if ((this.atTop || this.ordning >= 100) && !this.redaGiven) {
       this.redaGiven = true;
       g.addCoins(100);
       hud.showBanner('ORDNING OCH REDA', 'Området är som det ska · +100 kr', 'good', 3000);
       audio.jingle('complete');
       setTimeout(() => g.radio('anita', 'Det är så lugnt i området i dag, Ove. Rune sover som en stock.'), 2200);
+      g.save();
     }
     // Keep up to 6 open violations, a new one now and then, out of sight.
     const open = this.open;
@@ -451,7 +471,7 @@ export class Patrol {
     // neighbours have Ove busy, and gently for a minute after a KAOS.
     const f = g.focus();
     let w = 0;
-    for (const c of open) w += dist(c.x, c.z, f.x, f.z) > DRAIN_FAR ? 0.5 : 1;
+    for (const c of open) w += dist(c.x, c.z, f.x, f.z) > DRAIN_FAR ? DRAIN_FAR_W : 1;
     let k = DRAIN;
     if (g.interrupts?.active || g.interrupts?.call) k *= DRAIN_ERRAND;
     if (g.time - this.lastKaos < 60) k *= 0.5;

@@ -1,8 +1,8 @@
 # Saab & Run — En man som heter Ove
 
 *Simpsons: Hit & Run*, fast baklänges. Här är det inte du som skapar kaos: du är Ove, 59 år,
-självutnämnd ordningsvakt i ett svenskt radhusområde en kall morgon i slutet av november. Du
-patrullerar området i din Saab 900 och antecknar felparkerade bilar i ditt block, jagar smitarna
+självutnämnd ordningsvakt i ett svenskt radhusområde en kall dag i slutet av november. Du
+patrullerar området i din Saab 900 och skriver upp felparkerade bilar i blocket, jagar smitarna
 som drar iväg när du börjar skriva och håller ordningen uppe. Men grannarna avbryter dig hela
 tiden. Släpkärran, elementet, katten, sjukhuset. Ove muttrar och hjälper till. Han säger aldrig
 varför.
@@ -16,7 +16,9 @@ nysnö, riktiga texturer.
 make run           # installerar beroenden vid behov, startar http://127.0.0.1:8790 och öppnar sidan
 ```
 
-Klicka på **Spela**. Finns det ett sparat spel står det **Fortsätt** (med dagen du är på), och
+Klicka på **Spela** (eller tryck Enter eller mellanslag, eller A eller Start på handkontrollen). Finns
+det ett sparat spel står det **Fortsätt** (med dagen du är på, eller *Fri patrull* när alla sju dagarna
+är klara), och
 **Nytt spel** under knappen börjar om (två klick: det sparade spelet raderas). **Kontroller** visar
 tangenterna. `make serve` startar bara servern, `PORT=9000 make run` väljer en annan port.
 Modulerna kräver en HTTP-server: `file://` fungerar inte. Typsnitten ligger inbäddade, så spelet
@@ -26,7 +28,7 @@ URL-val: `?fresh` struntar i det sparade spelet, `?mission=N` börjar på dag N+
 `?q=high` eller `?q=low` väljer grafiknivå (`?lowgfx` = låg).
 
 **Grafik** i pausmenyn växlar Auto → Hög → Låg. Auto är förvalt: spelet väljer själv efter datorn
-(låg på inbyggda grafikkretsar, och det går ner till låg om bilderna blir för långsamma) och visar
+(låg på inbyggda grafikkretsar, och det går ner till låg om bildfrekvensen blir för låg) och visar
 vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 
 ## Kontroller
@@ -46,12 +48,13 @@ vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 | N | ljud av/på | ljud av/på |
 | R | fast? tillbaka till vägen | fast? tillbaka till vägen |
 | Esc / P | paus (med Oves anteckningsbok) | paus |
-| Q | ge upp, när ett uppdrag har misslyckats | ge upp |
+| Q | ge upp efter ett misslyckat uppdrag; håll Q för att avbryta ett pågående | ge upp efter ett misslyckat uppdrag; håll Q för att avbryta ett pågående |
 
 En handkontroll fungerar också (A hoppa/handbroms, B anteckna, X sparka, Y interagera, avtryckarna
-gasar och bromsar, Start paus, B ger upp efter ett misslyckat uppdrag). En kontroll utan analoga
-avtryckare kör med vänster spak: framåt gasar, bakåt bromsar. Spelet pausar också när fliken döljs
-eller fönstret tappar fokus.
+gasar och bromsar, Start paus, B ger upp efter ett misslyckat uppdrag). En handkontroll utan analoga
+avtryckare kör med vänster spak: framåt gasar, bakåt bromsar. Pausmenyn har också **Avbryt dagens
+uppdrag**. Spelet pausar när fliken döljs eller fönstret tappar fokus. Hinner datorn inte med 30
+bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte kortare för det.
 
 ## Spelet
 
@@ -70,11 +73,14 @@ eller fönstret tappar fokus.
   OMRÅDET** och extra föreningsmöte. Fyller du den: **ORDNING OCH REDA**, +100 kr.
 - **Avbrott.** Telefonen ringer. Anita, Parvaneh, Jimmy, Adrian, Patrick... Det klickar i
   elementet, någon har låst sig ute, katten har rymt, Rune har rullat iväg. Hjälp till innan
-  tålamodet tar slut. Den som följer med Ove går i hans spår.
+  tålamodet tar slut. Den som följer med Ove går i hans spår. De nya grannarna ringer först när de
+  har träffat Ove, och en del ärenden dyker upp först senare i veckan.
 - **Till fots** går Ove, går raskt och sparkar på däck. Han har åsikter om de flesta bilmärken.
 - **Kronor och samlarsaker.** Pantburkar (1 kr), belöningar, sju Saab-emblem och sju av Sonjas
   fotografier gömda i stan. Allt Ove har sönder betalar han själv.
-- Spelet sparas automatiskt i webbläsaren. Pausmenyn kan radera det.
+- Spelet sparas automatiskt i webbläsaren (efter varje anmälan, ärende, samlarsak och dag, och var
+  30:e sekund). Laddar du om mitt i en dag börjar dagen om, men grannen fattar sig kort. Pausmenyn kan
+  radera det sparade spelet.
 
 ### Sju dagar
 
@@ -133,6 +139,7 @@ PORT=8791 node tools/shot.mjs m7chase       # dag 7: Škodan ska hinna ikapp av 
 PORT=8791 node tools/shot.mjs m4cat         # dag 4: katten med tangenterna (tålamod, inte fart)
 FROM=4 PORT=8791 node tools/shot.mjs story  # berättelsen från dag 5
 PORT=8791 node tools/shot.mjs titlecheck quality tabhide gamepad corruptsave   # titel, grafikval, paus, handkontroll, sparfiler
+PORT=8791 node tools/shot.mjs titlekeys reloadday r2checks smalltalk dilation    # titeln med tangenter, omladdning, klockan, småprat, tid under 30 fps
 ```
 
 ## Tillgångar och tack

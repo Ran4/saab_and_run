@@ -36,6 +36,23 @@ export class Ped {
     this.target = this.loop.pts[this.k];
   }
 
+  // Put somewhere new (a carjack sets the car's driver down by its door, wherever it stood): walk on
+  // from the nearest point of the nearest sidewalk loop (briskly, like a crossing), then on round that
+  // loop. The old loop's next corner was usually across town, and a straight walk there pressed them
+  // into hedges and walls for the rest of the session. (main.js lets them out on the car's side that
+  // faces that sidewalk, so the car itself isn't in the way.)
+  rehome() {
+    const c = this.char, w = nearestSidewalk(c.x, c.z);
+    if (!w) return;
+    const n = w.loop.pts.length;
+    this.loop = w.loop;
+    // nextTarget() at the sidewalk goes on to the corner ahead in our direction
+    this.k = this.dir > 0 ? w.k : (w.k + 1) % n;
+    this.target = [w.x, w.z];
+    this.crossing = true;
+    this.panicT = 0;
+  }
+
   // At a corner, maybe cross to the neighbouring block's matching corner.
   maybeCross() {
     if (r() > 0.25) return false;
@@ -86,6 +103,22 @@ export class Ped {
     c.wishX = (dx / d) * sp; c.wishZ = (dz / d) * sp;
     c.yaw = yawTo(dx, dz);
   }
+}
+
+// The nearest point of any sidewalk loop to (x, z): { loop, k (the edge pts[k] -> pts[k + 1]), x, z }.
+export function nearestSidewalk(x, z) {
+  let best = null, bd = Infinity;
+  for (const L of pedLoops) {
+    const n = L.pts.length;
+    for (let k = 0; k < n; k++) {
+      const [ax, az] = L.pts[k], [qx, qz] = L.pts[(k + 1) % n];
+      const ex = qx - ax, ez = qz - az, l2 = ex * ex + ez * ez || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / l2));
+      const px = ax + ex * t, pz = az + ez * t, d = (px - x) ** 2 + (pz - z) ** 2;
+      if (d < bd) { bd = d; best = { loop: L, k, x: px, z: pz }; }
+    }
+  }
+  return best;
 }
 
 export function spawnPeds(scene, n) {
