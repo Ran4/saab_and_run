@@ -35,7 +35,7 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - All player-facing text is Swedish; code, comments and this file are English.
 - Yaw: forward = (sin yaw, cos yaw), matching three's `rotation.y` on +Z-facing models.
   Right = (-cos yaw, sin yaw) = local -X. Positive steer turns right, which *decreases* yaw (and
-  *increases* it while reversing). Drivers sit on the car's left (+X local). +z is south on the map.
+  *increases* it while reversing). Drivers sit on the car's left (+X local). +z is north on the map (the minimap and big map draw N = +z since phase 4, so the low sun reads as south-west); +x is west.
 - Everything off the asphalt is at `CURB` (0.15). Solids are footprints with a top height:
   a wall if `top > y + step`, a floor otherwise (characters step 0.45, cars 0.6). Ramps are
   oriented boxes whose top rises along their yaw. Snow banks have no collision.

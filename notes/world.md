@@ -22,7 +22,7 @@ built; DESIGN.md §6 is the contract it implements. Everything is PBR via the §
 | `outskirts.js` | forest belt, noise heightfield hills (`hillHeight(x, z)`), instanced spruce silhouettes, a barn/cottage/roundpole fence, BOUND walls |
 | `props.js` | Swedish breakables (same API as before); round 5: common types are instanced per 200 m cell of a 3 × 3 grid (`props:<type>:<cell>`) |
 
-## MAP (j = 0 is north/−z, i = 0 is west/−x; block (3,3) is centred on the origin)
+## MAP (j = 0 is −z, i = 0 is −x; block (3,3) is centred on the origin. Since phase 4 the maps draw north = +z, so j = 0 is the SOUTH row and i = 0 the EAST column)
 
 ```
 j0  forest    villa       villa      field       radhus      villa       forest

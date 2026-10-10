@@ -20,7 +20,7 @@
 import { Car } from '../actors/car.js';
 import { AIDriver } from '../actors/drivers.js';
 import { randomPed } from '../actors/models.js';
-import { violationSpots } from '../world/town.js';
+import { violationSpots, roadNames } from '../world/town.js';
 import { lm, rc, N, P, HALF, MAP, isCarFree, blockAt } from '../world/layout.js';
 import { circleVsObb } from '../world/collision.js';
 import { THREE, camera } from '../gfx.js';
@@ -44,9 +44,10 @@ export const KINDS = {
 };
 const TYPES = ['volvo740', 'golf', 'kombi', 'volvo240', 'skoda', 'bmw', 'audi', 'saab900', 'golf', 'kombi', 'volvo740', 'van'];
 
-// Street names for Ove's notebook: roads along z (north-south) at x = rc(i), roads along x at z = rc(j).
-const ROAD_NS = ['Gärdesvägen', 'Lingonvägen', 'Torgvägen', 'Rönnvägen', 'Parkvägen', 'Sjukhusvägen', 'Hagvägen', 'Östra vägen'];
-const ROAD_EW = ['Skogsbrynet', 'Björkvägen', 'Skolvägen', 'Solrosvägen', 'Blåklintsvägen', 'Kyrkvägen', 'Ängsvägen', 'Granvägen'];
+// Street names for Ove's notebook: roads along z (north-south) at x = rc(i), roads along x at z =
+// rc(j). The world's own lists (the street-name signs) when it has them, so the two always agree.
+const ROAD_NS = roadNames?.ns || ['Gärdesvägen', 'Lingonvägen', 'Torgvägen', 'Rönnvägen', 'Parkvägen', 'Sjukhusvägen', 'Hagvägen', 'Västra vägen'];
+const ROAD_EW = roadNames?.ew || ['Skogsbrynet', 'Björkvägen', 'Skolvägen', 'Solrosvägen', 'Blåklintsvägen', 'Kyrkvägen', 'Ängsvägen', 'Granvägen'];
 const AREA = { ove: 'Radhusområdet', radhus: 'Radhusen', villa: 'Villaområdet', apartments: 'Lamellhusen', centrum: 'Centrum', hospital: 'Sjukhuset', church: 'Kyrkan', cemetery: 'Kyrkogården', dealer: 'Bilhallen', preschool: 'Förskolan', kommun: 'Kommunhuset', gas: 'Macken', park: 'Parken', field: 'Fotbollsplanen', forest: 'Skogen' };
 
 const _dir = new THREE.Vector3();
@@ -370,6 +371,18 @@ export class Patrol {
     audio.jingle('complete');
     this.credit(c, true);
     setTimeout(() => { if (!g.playerCar && g.player.state === 'normal') g.say(g.player, 'Det står ju på skylten.', 2); }, 1400);
+  }
+
+  // A story mission begins in the middle of a chase: the smitare simply drives off, no SMET!, no
+  // penalty, nothing in the log (the panel goes too).
+  dropPursuit() {
+    const P = this.pursuit;
+    if (!P) return;
+    this.pursuit = null;
+    hud.setPursuit(null);
+    const c = P.car, v = c.violation;
+    if (v) { v.fleeing = false; v.gone = true; }
+    if (!c.dead) c.ai = new AIDriver(c, { mode: 'traffic', cruise: 14 });
   }
 
   escaped() {

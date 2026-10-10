@@ -55,7 +55,7 @@ const CHATTER = {
   patrick: ['Hej Ove! Jag skulle bara... nej, det var inget.', 'Släpet står lite snett, va?', 'Jag är IT-konsult. Det är som ett jobb, fast...', 'Har du en insexnyckel? Jag ska bara montera en garderob. Tror jag.'],
   sara: ['Ove! Kom och bygg snögubbe!', 'Varför är du alltid så arg?', 'Mamma säger att du är snäll inuti.', 'Katten tycker om dig.'],
   nasanin: ['Ove! Ove! Ove!', 'Katten!', 'Snö!', 'Ove, titta!'],
-  jimmy: ['Tjena Ove! Har du ätit frukost?', 'Ove, min man!', 'Jag kör nyttigt nu. Typ.', 'Fin morgon, va?'],
+  jimmy: ['Tjena Ove! Har du ätit frukost?', 'Ove! Mannen själv!', 'Jag kör nyttigt nu. Typ.', 'Fin morgon, va?'],
   adrian: ['Ove, vad tycker du om Audi?', 'Jag ska köpa bil snart. Vad köper man?', 'Kan du lära mig byta däck någon gång?'],
   anita: ['God morgon, Ove.', 'Rune sov dåligt i natt.', 'Tack för igår, Ove.', 'Han frågar efter dig ibland. På sitt sätt.'],
   rune: ['...', 'Hm.', '...Ove.', 'Volvo.'],
@@ -124,7 +124,9 @@ class Game {
     this.peds = [];
     this.coins = 0;
     this.time = 0;
-    this.clockMin = 6 * 60;
+    // A late-November day in Sweden: light from about nine to three. The day starts at 10:30 and
+    // ends at 14:30 ("Dagen är slut"); the clock is saved.
+    this.clockMin = 10 * 60 + 30;
     this.frame = 0;
     this.acc = 0;
     this.hooks = [];
@@ -205,6 +207,8 @@ class Game {
     this.missions = new MissionRunner(this);
     this.missions.gating = !TEST || params.has('gate');
     this.cam = new CamRig(camera);
+    // What dialogue shots must see past (camera.js judges shots by what the lens would see).
+    this.cam.world = () => ({ cars: this.cars, people: this.allChars() });
     this.load();
     this.storyWorld();
     this.placeNpcs(true);
@@ -295,6 +299,17 @@ class Game {
     if (car === this.playerCar) this.exitCar(true);
     for (const p of [car.driver, ...car.passengers]) if (p && p.car === car) this.unseat(p);
     scene.remove(car.root);
+    // A seated driver bust is a geometry of its own (its materials are the shared surfaces).
+    this.dropBust(car);
+  }
+  // Take a seated driver bust out of a car for good (its geometry is its own; the materials are
+  // the shared surfaces).
+  dropBust(car) {
+    const b = car.driverBust;
+    if (!b) return;
+    b.parent?.remove(b);
+    b.traverse((o) => o.geometry?.dispose());
+    car.driverBust = null;
   }
 
   // A cheap seated driver (busts: 2 draw calls) on the car's driver seat.
@@ -365,7 +380,7 @@ class Game {
     ch.root.rotation.set(0, 0, 0);
     if (side === 1) {
       car.driver = ch;
-      if (car.driverBust) { car.tilt.remove(car.driverBust); car.driverBust = null; }
+      this.dropBust(car);
     } else car.passengers.push(ch);
     ch.seatSide = side;
   }
@@ -437,8 +452,7 @@ class Game {
     if (this.pushedNpc()) { hud.toast('Inte med Rune i rullstolen.'); return; }
     if (car.driverBust) {
       // "Lånar" a car with someone in it: they are not pleased.
-      car.tilt.remove(car.driverBust);
-      car.driverBust = null;
+      this.dropBust(car);
       const ped = this.peds.reduce((best, p) => (!best || dist(p.char.x, p.char.z, this.player.x, this.player.z) > dist(best.char.x, best.char.z, this.player.x, this.player.z) ? p : best), null);
       if (ped && ped.char.state !== 'seated') {
         const e = this.exitSpot(car, 1);
@@ -523,6 +537,7 @@ class Game {
     ch.walkSpeed = opts.speed || null;
     ch.walkStay = !!opts.stay;
     ch.walkYaw = opts.yaw;
+    ch.walkChk = null;
   }
   // Out of the story for now (a passenger after a failed drive took a taxi home): back at their
   // usual spot at once, free again.
@@ -687,7 +702,7 @@ class Game {
       hud.showBanner('KVADDAD', 'Bilen är förstörd', 'bad', 1800);
     } else {
       for (const p of [car.driver, ...car.passengers]) if (p) { this.unseat(p); p.fling((Math.random() - 0.5) * 6, 5, (Math.random() - 0.5) * 6); }
-      if (car.driverBust) { car.tilt.remove(car.driverBust); car.driverBust = null; }
+      this.dropBust(car);
       // Somebody's car, wrecked by Ove: that costs.
       if (this.playerCar && !car.violation?.fleeing && !car.isTarget && !car.isChaser && dist(car.x, car.z, this.playerCar.x, this.playerCar.z) < 12) {
         this.patrol.addOrdning(-8);
@@ -743,10 +758,11 @@ class Game {
 
   async dialog(lines) {
     this.inDialog = true;
+    hud.clearBubbles?.();
     await hud.runDialog(lines.map(([who, text, on]) => ({ who, text, on: typeof on === 'function' ? on : null })), this);
     this.inDialog = false;
   }
-  cinematic(a, b) { this.cam.frame(a, b); hud.letterbox(true); this.inDialog = true; }
+  cinematic(a, b, opts) { this.cam.frame(a, b, opts); hud.letterbox(true); hud.clearBubbles?.(); this.inDialog = true; }
   endCinematic() { this.cam.release(); hud.letterbox(false); this.inDialog = false; this.cam.snapNext = false; }
   onFrame(fn) { this.hooks.push(fn); }
   offFrame(fn) { this.hooks = this.hooks.filter((h) => h !== fn); }
@@ -832,7 +848,8 @@ class Game {
 
   save() {
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: this.missions.index, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave() }));
+      // (clock: the in-game time; gate: the day is over and the next one hasn't dawned yet)
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: this.missions.index, clock: Math.round(this.clockMin), gate: !this.missions.gateOpen && this.missions.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave() }));
     } catch (e) { /* private mode: progress just won't persist */ }
   }
   load() {
@@ -846,6 +863,9 @@ class Game {
           this.got.photos = new Set(s.photos || []);
           this.unlocked = new Set(s.unlocked || []);
           this.patrol.fromSave(s.patrol);
+          if (Number.isFinite(s.clock)) this.clockMin = clamp(s.clock, 0, 24 * 60 - 1);
+          // Saved between two days: the next one still waits for a little patrolling.
+          if (s.gate === true) { this.missions.gateOpen = false; this.missions.gate = { t: 0, idle: 0, reports: this.patrol.reports }; }
         }
       } catch (e) { /* corrupt save: start fresh */ }
     }
@@ -906,6 +926,10 @@ class Game {
       n.homeX = x; n.homeZ = z; n.homeYaw = p.yaw;
       n.teleport(x, z, p.yaw);
       n.spot = h.id;
+      // A new day (or the game loading): whoever is elsewhere today is gone at once, not standing
+      // at their door until Ove walks off (Patrick on the morning he is in hospital).
+      if (force && this.npcAway(key)) { n.state = 'hidden'; n.root.visible = false; }
+      else if (force && n.state === 'hidden') { n.state = 'normal'; n.root.visible = true; }
     }
   }
 
@@ -1060,7 +1084,7 @@ class Game {
     const line = pick(this.chatterFor(n.key));
     this.say(n, line, 2.8);
     for (let k = 0; k < 3; k++) setTimeout(() => audio.talk(n.def.voice || 300), k * 230);
-    setTimeout(() => { if (!this.playerCar) { const r = pick(OVE_REPLY); this.say(this.player, r, 1.6); audio.talk(CHARS.ove.voice); } }, 2000);
+    setTimeout(() => { if (!this.playerCar && !this.inDialog) { const r = pick(OVE_REPLY); this.say(this.player, r, 1.6); audio.talk(CHARS.ove.voice); } }, 2000);
     n.chatT = 12 + Math.random() * 8;
   }
 
@@ -1170,6 +1194,22 @@ class Game {
           idx++;
         }
       } else if (n.walkTo) {
+        // Walks are straight lines: someone pressed against a hedge or a wall makes no progress.
+        // Then a mission NPC on the way to wait somewhere (walkStay) is put there once Ove can't
+        // see it (or skips to the next point of the walk), and anyone else gives the walk up and is
+        // free again (placeNpcs takes them home out of sight).
+        const chk = (n.walkChk ||= { t: 0, x: n.x, z: n.z });
+        chk.t += h;
+        if (chk.t > 3) {
+          const stuck = dist(n.x, n.z, chk.x, chk.z) < 0.3;
+          chk.t = 0; chk.x = n.x; chk.z = n.z;
+          if (stuck) {
+            const end = n.walkPath?.length ? n.walkPath[n.walkPath.length - 1] : n.walkTo;
+            if (n.walkStay && dist(n.x, n.z, p.x, p.z) > 25 && !this.inDialog) { n.teleport(end.x, end.z, n.walkYaw ?? n.yaw); n.walkPath = []; n.walkTo = { x: end.x, z: end.z }; }
+            else if (n.walkStay && n.walkPath?.length) n.walkTo = n.walkPath.shift();
+            else if (!n.walkStay) { n.walkTo = null; n.walkPath = null; n.busy = false; n.homeX = undefined; n.walkSpeed = null; n.walkChk = null; n.step(h, this); continue; }
+          }
+        }
         const d = dist(n.x, n.z, n.walkTo.x, n.walkTo.z);
         if (d < 0.8 && n.walkPath?.length) n.walkTo = n.walkPath.shift();
         else if (d < 0.8) {
@@ -1177,7 +1217,7 @@ class Game {
           // A mission NPC who walked somewhere to wait (walkNpc with stay) stays put and busy.
           if (n.walkStay) { n.walkStay = false; n.yaw = n.walkYaw ?? n.yaw; }
           else { n.busy = false; n.homeX = undefined; }
-          n.walkSpeed = null;
+          n.walkSpeed = null; n.walkChk = null;
         } else { const sp = n.walkSpeed || (n.wheelchair ? 1.0 : 1.4); n.wishX = ((n.walkTo.x - n.x) / d) * sp; n.wishZ = ((n.walkTo.z - n.z) / d) * sp; }
       } else if (!n.busy && n.homeX !== undefined && n.state === 'normal') {
         // Pushed a little out of place: shuffle back.
@@ -1332,8 +1372,9 @@ class Game {
       const near = dist(n.x, n.z, p.x, p.z);
       n.anim.talk = talker === k;
       const giver = this.missions.offered?.giver === k;
-      // Elsewhere today: hidden at home (see npcAway).
-      const away = !title && this.npcAway(k) && (near > 25 || this.missions.state !== 'idle');
+      // Elsewhere today: hidden at home (see npcAway). Nobody vanishes in front of Ove, and nobody
+      // who is away comes back into view (a new day hides them at once: placeNpcs(true)).
+      const away = !title && this.npcAway(k) && (near > 25 || this.missions.state !== 'idle' || n.state === 'hidden');
       if (away && n.state === 'normal' && !n.car && !this.companions.has(n)) { n.state = 'hidden'; n.root.visible = false; }
       else if (!away && n.state === 'hidden') { n.state = 'normal'; n.root.visible = true; }
       n.anim.wave = !title && giver && near < 9 && !this.inDialog && n.state === 'normal';
@@ -1399,11 +1440,16 @@ class Game {
     hidden.length = 0;
     if (this.cam.cine || this.aerial) return;
     const cp = camera.position;
+    camera.getWorldDirection(_v);
+    const hl = Math.hypot(_v.x, _v.z) || 1, vx = _v.x / hl, vz = _v.z / hl;
+    // Within arm's reach of the lens, or with the upper body across the first 1.2 m of the view (an
+    // arm waving in front of the camera beside a shed).
     const test = (ch) => {
       if (ch === this.player || ch.state === 'hidden' || ch.car || !ch.root.visible) return;
-      if (Math.abs(ch.x - cp.x) > 1.2 || Math.abs(ch.z - cp.z) > 1.2) return;
+      if (Math.abs(ch.x - cp.x) > 2 || Math.abs(ch.z - cp.z) > 2) return;
       if (cp.y < ch.y - 0.3 || cp.y > ch.y + ch.height + 0.35) return;
-      if (dist(ch.x, ch.z, cp.x, cp.z) < ch.r + 0.42) { ch.root.visible = false; hidden.push(ch); }
+      const dx = ch.x - cp.x, dz = ch.z - cp.z, along = clamp(dx * vx + dz * vz, 0, 1.2);
+      if (Math.hypot(dx, dz) < ch.r + 0.75 || Math.hypot(dx - vx * along, dz - vz * along) < ch.r + 0.25) { ch.root.visible = false; hidden.push(ch); }
     };
     for (const k in this.npcs) test(this.npcs[k]);
     for (const p of this.peds) test(p.char);

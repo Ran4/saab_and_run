@@ -58,7 +58,7 @@ export const TEMPLATES = [
       fetch({ at: 'centrum', item: 'phone', label: 'Jimmys mobil', text: 'Hitta Jimmys mobil på torget i centrum', rMin: 2, rMax: 7, got: 'Jimmys mobil. Skärmen är sprucken. Typiskt.' }),
       goto({ who: 'jimmy', radius: 2.6, text: 'Lämna mobilen till Jimmy' }),
     ],
-    thanks: 'Ove! Min man! Jag bjuder på en macka!', fail: 'Ingen fara, Ove. Jag köper en ny. Eller lånar.',
+    thanks: 'Ove, du är kung! Jag bjuder på en macka!', fail: 'Ingen fara, Ove. Jag köper en ny. Eller lånar.',
   },
   {
     id: 'punktering', who: 'adrian', title: 'Punktering', patience: 100,
@@ -143,11 +143,17 @@ export class Interruptions {
       if (!free) this.abort();
       else this.updateErrand(dt);
     }
-    if (!free || !this.auto || this.active || this.call || g.inDialog) return;
+    // During a story mission (and its outro) nobody calls, and the first call after it comes
+    // a good while later, never the moment the outro ends.
+    if (!free) { this.nextT = Math.max(this.nextT, 40); return; }
+    if (!this.auto || this.active || this.call || g.inDialog) return;
     this.nextT -= dt;
     if (this.nextT <= 0) {
-      // Not in the middle of a chase, and not while Ove is lying in the snow.
+      // Not in the middle of a chase, not while Ove is lying in the snow, and not as he walks up
+      // to the neighbour whose day it is (the call would be cut off by their scene a second later).
+      const giver = g.missions.offered ? g.npc(g.missions.offered.giver) : null, f = g.focus();
       if (g.patrol.pursuit || (!g.playerCar && g.player.state !== 'normal')) this.nextT = 6;
+      else if (giver && giver.state === 'normal' && dist(giver.x, giver.z, f.x, f.z) < 14) this.nextT = 8;
       else this.ring();
     }
   }

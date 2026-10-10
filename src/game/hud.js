@@ -581,6 +581,11 @@ export const hud = {
     const item = { b, target, until: performance.now() + secs * 1000 };
     (this._bubbles ||= []).push(item);
   },
+  // A cutscene starts: small talk from a moment ago doesn't hang over it.
+  clearBubbles() {
+    for (const it of this._bubbles || []) it.b.remove();
+    if (this._bubbles) this._bubbles.length = 0;
+  },
   tickBubbles() {
     const list = this._bubbles || [];
     if (!list.length) return;
@@ -728,9 +733,10 @@ export const hud = {
     c.strokeStyle = 'rgba(19,23,27,0.78)'; c.lineWidth = 13; c.stroke();
     c.beginPath(); c.arc(R, R, RM, 0, Math.PI * 2);
     c.strokeStyle = 'rgba(241,242,238,0.95)'; c.lineWidth = 3; c.stroke();
-    // North marker orbiting on the dark ring.
+    // North marker orbiting on the dark ring. North is +z in the world (DESIGN 6: the low November
+    // sun then stands in the south-west, as it does in the early afternoon).
     const n = this._north ||= root.querySelector('.mm-n');
-    const a = camYaw + Math.PI, rr = 210 / 2 - 3.5;
+    const a = camYaw, rr = 210 / 2 - 3.5;
     n.style.transform = `translate(${(Math.cos(a - Math.PI / 2) * rr).toFixed(1)}px, ${(Math.sin(a - Math.PI / 2) * rr).toFixed(1)}px)`;
   },
 
@@ -741,12 +747,15 @@ export const hud = {
     const cv = this.bigmap.querySelector('canvas');
     const c = cv.getContext('2d');
     const t = performance.now() / 1000;
-    // Crop to the town itself, north up.
+    // Crop to the town itself, north up (north is +z: the base map, drawn with -z up, is turned
+    // half a turn).
     const E = HALF + 16, S = cv.width, k = S / (2 * E);
     c.clearRect(0, 0, S, S);
     c.imageSmoothingQuality = 'high';
+    c.save(); c.translate(S, S); c.rotate(Math.PI);
     c.drawImage(baseMap, (MAP_EXT - E) * MAP_SCALE, (MAP_EXT - E) * MAP_SCALE, 2 * E * MAP_SCALE, 2 * E * MAP_SCALE, 0, 0, S, S);
-    const toC = (x, z) => [(x + E) * k, (z + E) * k];
+    c.restore();
+    const toC = (x, z) => [S - (x + E) * k, S - (z + E) * k];
     const markers = (game.mapMarkers?.(true) || []).map((m) => [m, toC(m.x, m.z)]);
     const p = game.focus();
     const [x, y] = toC(p.x, p.z);
@@ -791,7 +800,7 @@ export const hud = {
     }
     c.letterSpacing = '0px';
     for (const [m, [mx, my]] of markers) { c.save(); c.translate(mx, my); drawMarker(c, m, false, 1.9, t); c.restore(); }
-    c.save(); c.translate(x, y); c.rotate(-p.yaw + Math.PI); drawPlayerArrow(c, 2.1); c.restore();
+    c.save(); c.translate(x, y); c.rotate(-p.yaw); drawPlayerArrow(c, 2.1); c.restore();
     // Scale bar: 100 m.
     c.save();
     c.translate(28, S - 30);

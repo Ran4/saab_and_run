@@ -248,6 +248,14 @@ export const goto = (o) => ({
     this.caughtT = 0;
     this.catches++;
     if (C.catchFails || m.def?.bustFails) return { fail: C.catchText || 'Vita skjortan hann ikapp.' };
+    // Three stops in one drive is plenty: after that he gives up (and says so).
+    if (this.catches > (C.maxCatches ?? 3)) {
+      c.ai = new AIDriver(c, { mode: 'traffic', cruise: 11 });
+      c.isChaser = false;
+      this.chaser = null;
+      if (C.who) g.radio(C.who, C.giveUpLine || 'Jag skickar ett brev, Ove! Rekommenderat!');
+      return null;
+    }
     // Stopped: Ove is held up for a moment (and it costs), then the Škoda backs off and comes again.
     this.stunT = C.stun ?? 2.5;
     if (g.playerCar) g.freezeCar = true;
@@ -258,7 +266,8 @@ export const goto = (o) => ({
     if (C.lines && C.who) g.radio(C.who, pick(C.lines));
     g.cam.shake = Math.max(g.cam.shake, 0.3);
     c.ai = null; c.ctrl.throttle = 0; c.ctrl.brake = 1; c.ctrl.steer = 0; c.ctrl.park = true;
-    this.backoffT = this.stunT + (C.backoff ?? 4);
+    // (and it hangs back longer after every stop)
+    this.backoffT = this.stunT + (C.backoff ?? 4) + (this.catches - 1) * 3;
     return null;
   },
   cleanup(g) {
@@ -556,7 +565,7 @@ export const catchCat = (o) => ({
     const p = at(o.near, g);
     // Somewhere open near the place (most directions free for a few metres), not in a corner of the
     // bike shed where the first step towards it pins it.
-    let s = null, bestN = -1;
+    let s = null, bestN = -Infinity;
     for (let k = 0; k < 24; k++) {
       const q = g.freeSpot(p.x, p.z, o.rMin ?? 8, o.rMax ?? 18), y = g.groundAt(q.x, q.z);
       let n = isRoad(q.x, q.z) ? -20 : 0;   // (never out on the street)
@@ -564,6 +573,7 @@ export const catchCat = (o) => ({
       if (n > bestN) { bestN = n; s = q; }
       if (n >= 10) break;
     }
+    s ??= g.freeSpot(p.x, p.z, 0, 3);
     const cat = (this.cat = buildCat());
     cat.x = s.x; cat.z = s.z; cat.y = g.groundAt(s.x, s.z); cat.yaw = Math.random() * 6;
     cat.vx = 0; cat.vz = 0; cat.wanderT = 0; cat.meowT = 1;
@@ -574,7 +584,12 @@ export const catchCat = (o) => ({
     g.scene.add(cat.root);
     this.t = o.timer ?? null;
     m.data.cat = cat;
-    m.items.push(() => { if (g.carrying === cat) g.setCarrying(null); cat.root.parent?.remove(cat.root); });
+    // (its geometry and its skeleton's bone texture are its own; the materials are shared surfaces)
+    m.items.push(() => {
+      if (g.carrying === cat) g.setCarrying(null);
+      cat.root.parent?.remove(cat.root);
+      cat.root.traverse((o) => { o.geometry?.dispose(); o.skeleton?.dispose(); });
+    });
   },
   target() { return { x: this.cat.x, z: this.cat.z, r: 1.2 }; },
   markers() { return [{ type: 'item', x: this.cat.x, z: this.cat.z, edge: true }]; },
@@ -791,9 +806,14 @@ export const parkIn = (o) => ({
     this.sub = null;
     // Where the car is relative to the box: ahead of it (along the way a parked car faces) or behind.
     const along = (c.x - b.x) * bfx + (c.z - b.z) * bfz, near = dist(c.x, c.z, b.x, b.z) < b.l / 2 + 22;
-    if (o.trailer && c.trailer?.jackknifed) this.sub = 'Släpet har knäckt sig. Kör fram en bit och räta upp det.';
-    else if (o.reverse && this.wasIn && this.enteredRev === false) this.sub = 'Backa in! Kör ut ur rutan och försök igen.';
-    else if (o.reverse && !centreIn && near) this.sub = along > 0 && Math.cos(dh) > 0.7 ? 'Backa in i rutan (S). Styr åt andra hållet för att svänga släpet.' : 'Kör förbi rutan med fronten åt pilen, och backa in.';
+    // Driving forward through the box on the way past it (as told) is fine: only a car that stops
+    // in it nose first, or stays in it a while going forward, is told to back in.
+    this.fwdInT = this.wasIn && this.enteredRev === false ? (this.fwdInT || 0) + dt : 0;
+    const scold = this.fwdInT > 3 || (this.fwdInT > 0.4 && c.speed < 0.5);
+    if (o.trailer && c.trailer?.jackknifed) this.sub = 'Släpet har vikt sig. Kör framåt en bit och räta upp det.';
+    else if (o.reverse && this.wasIn && this.enteredRev === false && scold) this.sub = 'Backa in! Kör ut ur rutan och försök igen.';
+    else if (o.reverse && this.wasIn && this.enteredRev === false) this.sub = 'Kör förbi rutan i pilens riktning och backa sedan in.';
+    else if (o.reverse && !centreIn && near) this.sub = along > 0 && Math.cos(dh) > 0.7 ? 'Backa in i rutan (S). Styr åt andra hållet för att svänga släpet.' : 'Kör förbi rutan i pilens riktning och backa sedan in.';
     else if (nc > 0 && nc < 4) this.sub = 'Hela bilen i rutan.';
     else if (nc === 4 && !headOk) this.sub = 'Rakt i rutan.';
     else if (nc === 4 && nt < 4) this.sub = 'Släpet också.';
@@ -835,7 +855,12 @@ export class BoxMarker {
     this.mat.color.setHex(col); this.fill.color.setHex(col);
     this.mat.opacity = 0.75 + Math.sin(t * 4) * 0.15;
   }
-  dispose() { this.grp.parent?.remove(this.grp); }
+  dispose() {
+    if (!this.grp.parent) return;
+    this.grp.parent.remove(this.grp);
+    for (const c of this.grp.children) c.geometry.dispose();
+    this.mat.dispose(); this.fill.dispose();
+  }
 }
 
 // Report n violations. o: { n, near (place: violations are force-spawned near it), radius = 70,
@@ -881,7 +906,7 @@ export const wait = (o) => ({
 // traffic) }. Countdown 3-2-1-KÖR; the opponent eases off when ahead and pushes when far behind.
 export const race = (o) => ({
   kind: 'race',
-  text: o.text || 'Kör först i mål!',
+  text: o.text || 'Kom först i mål!',
   init(g, m) {
     if (!g.playerCar) g.enterCar(g.ensureNamedCar('saab'));
     const fin = at(o.finish, g);
@@ -911,6 +936,8 @@ export const race = (o) => ({
     let opp;
     if (o.car) {
       opp = g.ensureNamedCar(o.car);
+      // (a lost race queued it to go home once nobody looks: not any more, it's racing again)
+      g.rehoming?.delete(opp);
       this.named = opp;
       opp.place(s.x - rx * LANE, s.z - rz * LANE, s.yaw);
     } else opp = g.spawnMissionCar(m, o.type || 'audi', s.x - rx * LANE, s.z - rz * LANE, s.yaw, { color: o.color, name: o.carName });
@@ -1032,35 +1059,52 @@ export const race = (o) => ({
 // Stop a fleeing car (Vita skjortan's Škoda): ram it and stay on its bumper until it gives up,
 // like a smitare (DESIGN 4.1) but with a timer. o: { type, color, carName, who (NPC on the
 // driver's seat, as a bust), cruise = 19, timer, ram = 3.5 (Ork per unit of impact, at most
-// ramMax = 30 a hit: it takes a few), drain = 8/s within 12 m, text, failText, barLabel }. It
-// speeds up a little while Ove is far behind, so it really gets away. When stopped:
-// m.data.wreck = { x, z, car }.
+// ramMax = 30 a hit: it takes a few), drain = 8/s within 12 m, text, failText, barLabel,
+// at (a place: it waits parked there, engine running, instead of a random street 60-120 m off),
+// wait (s it waits at most), wake (m: it sets off at once when Ove's car comes this close), goLine
+// (its driver's radio line as it sets off), waitText, escape = 170 (m: further than this for 6 s
+// and it got away), grace = 0 (s before an escape can count; it never counts before Ove has been
+// within seenAt = 60 m of it once), rubber = [near, far] (cruise factor within / beyond 80 m) }.
+// When stopped: m.data.wreck = { x, z, car }.
 export const destroy = (o) => ({
   kind: 'destroy',
-  text: o.text,
+  get text() { return this.waitT > 0 && o.waitText ? o.waitText : o.text; },
   init(g, m) {
     const f = g.focus();
-    let best = null;
-    for (let tries = 0; tries < 60 && best == null; tries++) {
-      const id = (Math.random() * NN * NN) | 0;
-      const d = dist(nodeX(id), nodeZ(id), f.x, f.z);
-      if (d > 60 && d < 120) best = id;
+    let x, z, yaw;
+    const p = o.at ? at(o.at, g) : null;
+    if (p) ({ x, z, yaw } = p);
+    else {
+      let best = null;
+      for (let tries = 0; tries < 60 && best == null; tries++) {
+        const id = (Math.random() * NN * NN) | 0;
+        const d = dist(nodeX(id), nodeZ(id), f.x, f.z);
+        if (d > 60 && d < 120) best = id;
+      }
+      best ??= nearestNode(f.x + 90, f.z);
+      const nb = neighbors(best)[0];
+      const dx = nodeX(nb) - nodeX(best), dz = nodeZ(nb) - nodeZ(best), l = Math.hypot(dx, dz);
+      x = nodeX(best) + (dx / l) * 14 + (-dz / l) * LANE; z = nodeZ(best) + (dz / l) * 14 + (dx / l) * LANE; yaw = yawTo(dx, dz);
     }
-    best ??= nearestNode(f.x + 90, f.z);
-    const nb = neighbors(best)[0];
-    const dx = nodeX(nb) - nodeX(best), dz = nodeZ(nb) - nodeZ(best), l = Math.hypot(dx, dz);
-    const x = nodeX(best) + (dx / l) * 14 + (-dz / l) * LANE, z = nodeZ(best) + (dz / l) * 14 + (dx / l) * LANE;
-    const car = (this.car = g.spawnMissionCar(m, o.type || 'skoda', x, z, yawTo(dx, dz), { color: o.color ?? 0xe8e8e6, name: o.carName || 'vitskjortaSkoda' }));
+    const car = (this.car = g.spawnMissionCar(m, o.type || 'skoda', x, z, yaw, { color: o.color ?? 0xe8e8e6, name: o.carName || 'vitskjortaSkoda' }));
     car.locked = true;
     car.isTarget = true;
     car.damageScale = o.damageScale ?? 0.4;
     if (o.who) g.addBust(g.charDef(o.who), car);
-    // It really gets away while Ove is far behind (it used to idle along at 0-11 km/h).
-    car.ai = new AIDriver(car, { mode: 'flee', target: () => g.focusTarget(), cruise: o.cruise || 19, avoid: true, rubber: () => { const f2 = g.focus(); return dist(car.x, car.z, f2.x, f2.z) > 80 ? 1.2 : 1; } });
     this.t = o.timer ?? null;
     this.ork = 100;
-    this.farT = 0;
+    this.farT = 0; this.el = 0; this.seen = false;
     this.stopped = false;
+    this.waitT = o.wait ?? 0;
+    if (this.waitT > 0) { car.ai = null; car.engineOn = true; car.ctrl.park = true; car.ctrl.throttle = 0; }
+    else this.flee(g);
+  },
+  // Off it goes; it pushes a little while Ove is near and eases off when he is far behind (it used
+  // to speed up when far, and a player who lost sight of it never saw it again).
+  flee(g) {
+    const car = this.car, [rn, rf] = o.rubber || [1, 0.85];
+    car.ctrl.park = false;
+    car.ai = new AIDriver(car, { mode: 'flee', target: () => g.focusTarget(), cruise: o.cruise || 19, avoid: true, rubber: () => { const f2 = g.focus(); return dist(car.x, car.z, f2.x, f2.z) > 80 ? rf : rn; } });
   },
   onImpact(g, m, a, b, impact) {
     if (this.stopped || impact <= 3) return;
@@ -1069,7 +1113,7 @@ export const destroy = (o) => ({
   },
   target() { return { x: this.car.x, z: this.car.z, r: 0, follow: true }; },
   markers() { return [{ type: 'enemy', x: this.car.x, z: this.car.z, edge: true }]; },
-  obj() { return { timer: this.stopped ? null : this.t, bar: Math.max(0, this.ork) / 100, barLabel: o.barLabel || 'Ork', barColor: '#c4483d' }; },
+  obj() { return { timer: this.stopped || this.waitT > 0 ? null : this.t, bar: Math.max(0, this.ork) / 100, barLabel: o.barLabel || 'Ork', barColor: '#c4483d' }; },
   tags(g) { const c = this.car, f = g.focus(); return dist(c.x, c.z, f.x, f.z) < 120 && !this.stopped ? [{ x: c.x, y: c.y + c.height + 0.6, z: c.z, text: o.tag || 'Vita skjortan', cls: 'smitare' }] : []; },
   update(g, m, dt) {
     const c = this.car, f = g.focus();
@@ -1078,10 +1122,26 @@ export const destroy = (o) => ({
       if (c.speed < 0.5 || this.stopT > 7) { m.data.wreck = { x: c.x, z: c.z, car: c }; return 'done'; }
       return;
     }
-    if (this.t != null) { this.t -= dt; if (this.t <= 0) return { fail: o.failText || 'Han kom undan.' }; }
     const d = dist(c.x, c.z, f.x, f.z);
+    if (this.waitT > 0) {
+      // Parked where Ove will see it as he comes out; it sets off when he comes close (in a car).
+      this.waitT -= dt;
+      if (this.waitT <= 0 || (g.playerCar && d < (o.wake ?? 0)) || (!c.dead && this.ork < 100)) {
+        this.waitT = 0;
+        this.flee(g);
+        audio.honk(0.5, 0.25);
+        if (o.goLine && o.who) g.radio(o.who, o.goLine);
+      }
+      this.sub = g.playerCar ? null : 'Kliv in i bilen!';
+      return;
+    }
+    this.el += dt;
+    if (this.t != null) { this.t -= dt; if (this.t <= 0) return { fail: o.failText || 'Han kom undan.' }; }
     if (d < 12 && g.playerCar) this.ork -= (o.drain ?? 8) * dt;
-    if (d > 170) { this.farT += dt; if (this.farT > 6) return { fail: o.failText || 'Han kom undan.' }; } else this.farT = Math.max(0, this.farT - dt);
+    if (d < (o.seenAt ?? 60)) this.seen = true;
+    // (it can only get away from a man who was on its tail: never in the first moments, never
+    // while Ove is still on his way to it)
+    if (d > (o.escape ?? 170) && this.seen && this.el > (o.grace ?? 0)) { this.farT += dt; if (this.farT > 6) return { fail: o.failText || 'Han kom undan.' }; } else this.farT = Math.max(0, this.farT - dt);
     if (this.ork <= 0 || c.dead) {
       this.stopped = true; this.stopT = 0;
       if (!c.dead && c.ai) c.ai.pullOver(); else c.hazard = !c.dead;
@@ -1136,7 +1196,7 @@ export const talk = (o) => ({
     n.state = 'normal'; n.root.visible = true;
     const car = o.from === 'wreck' ? m.data.wreck?.car : null;
     if (car) {
-      if (car.driverBust) { car.tilt.remove(car.driverBust); car.driverBust = null; }
+      if (g.dropBust) g.dropBust(car); else if (car.driverBust) { car.tilt.remove(car.driverBust); car.driverBust = null; }
       const e = g.exitSpot(car, 1);
       n.teleport(e.x, e.z, car.yaw);
       audio.door();

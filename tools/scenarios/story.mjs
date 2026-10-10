@@ -16,7 +16,14 @@
 //           corners); must win. RACE_VMAX=22 caps it at ~80 km/h (a careful driver).
 //   m4cat   day 4's cat with keys: walk up (it bolts), stride after it with Shift for 6 s (it must
 //           not be caught in the first 5 s), then stand still: it comes to Ove.
-// Screenshots: out/story_*.png (key moments), out/m1_*.png, out/m5r_*.png, out/m7c_*.png, out/m4c_*.png.
+//   Phase 4: every intro / outro / UPPDRAG KLART shot (story, m1..m7) is checked as rendered (cineCheck:
+//           both speakers' heads in the picture and unblocked, nothing within 1.5 m of the lens) and saved
+//           (out/intro<d>_<k>, outro<d>_<k>, klart<d>).
+//   intros  each day's intro walked up to from three sides (FROM/TO days); m6chase day 6 from the
+//           garages with keys (must stop the Škoda); gate (rewritten: no new day during an errand,
+//           Patrick gone at dawn on day 2, 10:30); smitintro (a smitare chase ends quietly at an intro);
+//           camtight2 (the on-foot camera swings off the garage doors).
+// Screenshots: out/story_*.png (key moments), out/m1_*.png, out/m5r_*.png, out/m7c_*.png, out/m4c_*.png, out/m6c_*.png.
 
 export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors }) => {
   const state = () => ev(() => { const m = __game.missions; return `#${m.index} ${m.state} stage ${m.stageI ?? '-'} ${m.stage?.kind || ''} ${m.stage?.sub || m.stage?.text || ''}`; });
@@ -30,6 +37,11 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
   // The outro that is about to play: every speaker by Ove (< 4 m) with nothing between them (no
   // collider taller than 0.6 m above the lower of their two spots on the line between them).
   const outroCheck = async (day) => {
+    // (UPPDRAG KLART's held shot first)
+    try { await until(() => __game.missions.state === 'outro', 30000); } catch (e) { await bad(`day ${day}: no outro`); return; }
+    await sleep(500);
+    await cineCheck(`klart day ${day}`);
+    await shot(`klart${day}`);
     try { await until(() => __game.missions.outroOn, 30000); } catch (e) { await bad(`day ${day}: no outro`); return; }
     await frames(4);
     const r = await ev(async () => {
@@ -42,14 +54,77 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     });
     await log(`outro day ${day}`, JSON.stringify(r));
     for (const c of r) if (!(c.d < 4 && !c.wall && c.shown)) await bad(`day ${day} outro: ${c.key} d=${c.d} wall=${c.wall} shown=${c.shown}`);
-    // OUTRO_SHOTS=1: a screenshot of every line (out/outro<day>_<k>.png).
-    if (process.env.OUTRO_SHOTS) {
-      let last = '', k = 0;
-      while (await ev(() => __game.missions.state === 'outro') && k < 12) {
-        const t = await ev(() => `${document.querySelector('#dialog .dlg-name')?.textContent}|${(document.querySelector('#dialog .dlg-text')?.textContent || '').slice(0, 12)}`);
-        if (t !== last && t.split('|')[1].length >= 12) { last = t; await sleep(300); await shot(`outro${day}_${k++}`); }
-        await sleep(120);
+    // Every shot of the outro: both speakers' heads in view, nothing at the lens (out/outro<day>_<k>.png).
+    await sceneWatch('outro', day);
+  };
+  // A dialogue / cutscene shot as rendered (phase 4): rays from the camera through the letterboxed
+  // picture find the nearest thing in the first 1.5 m (must be nothing), and a ray to each subject's
+  // head (the model's head bone; a point subject's top) must reach it unblocked and land between
+  // the letterbox bars. Uses the real scene meshes (alpha-blended cards and light beams skipped).
+  const cineCheck = async (label) => {
+    const r = await ev(async () => {
+      const { THREE, scene, camera } = await import('./src/gfx.js');
+      const g = __game, subs = g.cam.cineSubjects || [];
+      camera.updateMatrixWorld();
+      const cp = camera.position, meshes = [];
+      scene.traverseVisible((o) => {
+        if (!(o.isMesh) || o.isPoints || !o.geometry) return;
+        const m = Array.isArray(o.material) ? o.material[0] : o.material;
+        if (m && m.transparent && (m.depthWrite === false || m.blending !== THREE.NormalBlending)) return;
+        if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        const c = o.geometry.boundingSphere.center.clone().applyMatrix4(o.matrixWorld);
+        if (!o.isInstancedMesh && c.distanceTo(cp) - o.geometry.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() > 40) return;
+        meshes.push(o);
+      });
+      const rc = new THREE.Raycaster();
+      const nameOf = (o) => { let n = o; while (n && !n.name) n = n.parent; return (n?.name || o.type).slice(0, 24); };
+      let near = Infinity, nearWhat = '';
+      for (let i = 0; i < 7; i++) for (let j = 0; j < 3; j++) {
+        rc.setFromCamera(new THREE.Vector2(-0.88 + i * (1.76 / 6), -0.5 + j * 0.5), camera);
+        rc.near = 0.05; rc.far = 1.5;
+        const h = rc.intersectObjects(meshes, false)[0];
+        if (h && h.distance < near) { near = h.distance; nearWhat = nameOf(h.object); }
       }
+      const inside = (o, root) => { for (let n = o; n; n = n.parent) if (n === root) return true; return false; };
+      const heads = subs.map((s) => {
+        const ref = s.ref, head = new THREE.Vector3();
+        if (ref?.model?.head) ref.model.head.getWorldPosition(head); else head.set(s.x, s.y + s.height * 0.9, s.z);
+        const v = head.clone().project(camera);
+        const inFrame = v.z < 1 && Math.abs(v.x) < 0.95 && Math.abs(v.y) < 0.64;
+        const dir = head.clone().sub(cp), d = dir.length();
+        rc.set(cp.clone(), dir.normalize()); rc.near = 0.05; rc.far = d;
+        const root = ref?.root || ref?.car?.root;
+        const hit = rc.intersectObjects(meshes, false).find((h) => h.distance < d - 0.3 && !(root && inside(h.object, root)));
+        return { who: ref?.key || ref?.name || 'point', inFrame, blocked: hit ? `${nameOf(hit.object)}@${hit.distance.toFixed(1)}` : null, d: +d.toFixed(1) };
+      });
+      return { info: g.cam.cineInfo, near: near === Infinity ? 99 : +near.toFixed(2), nearWhat, heads, cam: [+cp.x.toFixed(1), +cp.y.toFixed(1), +cp.z.toFixed(1)] };
+    });
+    await log(`shot ${label}`, JSON.stringify(r));
+    const n = (r.heads || []).length;
+    // (UPPDRAG KLART at speed - the race's finish line - keeps the chase camera)
+    if (!n && label.startsWith('klart')) return r;
+    // the first two subjects are the speakers: both must show; extras are nice to have
+    for (const [i, h] of (r.heads || []).entries()) if (i < 2 && (!h.inFrame || h.blocked)) await bad(`${label}: ${h.who}'s head ${!h.inFrame ? 'out of the picture' : 'hidden by ' + h.blocked}`);
+    if (r.near < 1.5) await bad(`${label}: ${r.nearWhat} ${r.near} m from the lens`);
+    if (!n) await bad(`${label}: no shot`);
+    return r;
+  };
+  // While an intro / outro plays: every new shot is checked and saved (out/<kind><day>_<k>.png).
+  const sceneWatch = async (kind, day) => {
+    const flag = kind === 'intro' ? 'introOn' : 'outroOn';
+    try { await until((f) => __game.missions[f], 20000, flag); } catch (e) { await bad(`day ${day}: no ${kind}`); return; }
+    let last = null, k = 0;
+    for (let i = 0; i < 400 && k < 8; i++) {
+      const on = await ev((f) => __game.missions[f], flag);
+      if (!on) break;
+      const pos = await ev(() => { const c = __game.cam.cine; return c ? `${c.pos.x.toFixed(2)},${c.pos.y.toFixed(2)},${c.pos.z.toFixed(2)}` : null; });
+      if (pos && pos !== last) {
+        last = pos;
+        await sleep(250);
+        await cineCheck(`${kind} day ${day} #${k}`);
+        await shot(`${kind}${day}_${k++}`);
+      }
+      await sleep(100);
     }
   };
   const failCheck = async () => { if (await ev(() => __game.missions.state === 'failed')) { await log('FAILED', await ev(() => document.querySelector('#banner .banner-sub')?.textContent)); throw new Error('mission failed'); } };
@@ -73,8 +148,8 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
       try { await until(() => __game.missions.state !== 'idle', 3000); break; }
       catch (e) { await log('E missed, attempt', attempt, await ev(() => { const g = __game, n = g.npc(g.missions.offered.giver), it = g.nearestInteractable(); return `near=${it?.type} d=${Math.hypot(n.x - g.player.x, n.z - g.player.z).toFixed(2)}`; })); }
     }
-    await sleep(1200);
-    await shot(`story_d${await ev(() => __game.missions.index + 1)}_intro`);
+    const day = await ev(() => __game.missions.index + 1);
+    await sceneWatch('intro', day);
     await until(() => __game.missions.state === 'running', 60000);
     await log('started', await state());
   };
@@ -189,12 +264,18 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
   };
   D[3] = async () => {
     await startMission();
+    // The empty hook in the garage (hold E), then the key in Rune's Volvo.
     const t = await target();
     await onFootAt(t.x, t.z);
+    await frames(4);
+    await page.keyboard.down('KeyE'); await sleep(1900); await page.keyboard.up('KeyE');
     await stageAt(1);
+    const v = await target();
+    await onFootAt(v.x, v.z, 0.5, 1.0);
+    await stageAt(2);
     await log('carrying', await ev(() => __game.missions.m?.data.carrying));
     await reportAll();
-    await stageAt(2);
+    await stageAt(3);
     const s = await target();
     await onFootAt(s.x, s.z);
     await frames(4);
@@ -307,14 +388,15 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     const s = await target();
     await onFootAt(s.x, s.z);
     await frames(4);
-    await page.keyboard.down('KeyE'); await sleep(1600);
+    await tap('KeyE');
+    await sleep(600);
+    await shot('story_d7_kneel');
+    await sleep(1000);
     await shot('story_d7_grave');
-    await sleep(2000); await page.keyboard.up('KeyE');
-    await until(() => __game.missions.state === 'outro', 20000);
-    await sleep(7000);
-    await shot('story_d7_outro');
+    await outroCheck(7);
     await waitIdle(7);
-    await sleep(1500);
+    await sleep(1200);
+    await cineCheck('end banner');
     await shot('story_end');
   };
 
@@ -438,19 +520,84 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     async gate() {
       await fresh('&gate');
       await D[1]();
-      await log('after day 1', JSON.stringify(await ev(() => ({ offered: !!__game.missions.offered, gateOpen: __game.missions.gateOpen, reports: __game.patrol.reports }))));
-      for (let k = 0; k < 2; k++) {
+      await log('after day 1', JSON.stringify(await ev(() => ({ offered: !!__game.missions.offered, gateOpen: __game.missions.gateOpen, reports: __game.patrol.reports, clock: __game.clockText() }))));
+      // An errand comes in at once; three reports are filed meanwhile. The new day must not dawn
+      // while the errand runs (it used to, with Ove carrying Sara's cat).
+      await ev(() => __interrupt.force('element', { quick: true }));
+      for (let k = 0; k < 3; k++) {
         const c = await ev(() => { const g = __game, P = g.patrol, p = g.player; let best = null, bd = 1e9; for (const c of P.open) { if (c.violation.smitare) continue; const d = Math.hypot(c.x - p.x, c.z - p.z); if (d < bd) { bd = d; best = c; } } best ??= P.forceSpawn(1, { x: p.x, z: p.z }, { smitare: false })[0]; return { x: best.x, z: best.z }; });
         await ev((c) => { const g = __game, s = g.freeSpot(c.x, c.z, 3, 3.6); g.player.teleport(s.x, s.z, Math.atan2(c.x - s.x, c.z - s.z)); g.cam.snapNext = true; }, c);
         await frames(5);
         await page.keyboard.down('KeyF'); await sleep(2200); await page.keyboard.up('KeyF');
         await frames(5);
-        await log('free-roam report', k + 1, 'offered', await ev(() => !!__game.missions.offered));
       }
-      await until(() => !!__game.missions.offered, 10000);
-      await sleep(600);
-      await log('day 2 offered', await ev(() => `${__game.missions.offered.title} clock ${__game.clockText()}`));
+      await sleep(38000);
+      const mid = await ev(() => ({ offered: !!__game.missions.offered, errand: !!__interrupt.active, reports: __game.patrol.reports, idle: +(__game.missions.gate?.idle || 0).toFixed(1) }));
+      await log('3 reports + 38 s with an errand on', JSON.stringify(mid));
+      if (mid.offered) await bad('gate: a new day dawned in the middle of an errand');
+      // Do the errand (the radiator at Rune's), then the day may dawn.
+      const r = await L('runeHouse');
+      await onFootAt(r.x, r.z);
+      await frames(4);
+      await page.keyboard.down('KeyE'); await sleep(3600); await page.keyboard.up('KeyE');
+      await log('errand done', await ev(() => !__interrupt.active));
+      // Somewhere near Parvaneh's door when the day dawns: Patrick (in hospital on day 2) must be
+      // gone at once, not standing at his door.
+      const pv = await L('parvanehHouse');
+      await onFootAt(pv.x, pv.z, 6, 8);
+      try { await until(() => !!__game.missions.offered, 60000); } catch (e) { await bad('gate: day 2 never dawned'); return; }
+      await frames(3);
+      const d2 = await ev(() => { const g = __game, n = g.npc('patrick'); return { title: g.missions.offered.title, clock: g.clockText(), patrick: n.state, visible: n.root.visible, banner: document.querySelector('#banner .banner-sub')?.textContent, idle: +(g.missions.gate?.idle || 0).toFixed(1) }; });
+      await log('day 2 offered', JSON.stringify(d2));
+      if (d2.patrick !== 'hidden' || d2.visible) await bad(`gate: Patrick stands at his door on the morning he is in hospital (${d2.patrick})`);
+      if (d2.clock !== '10:30') await bad(`gate: the new day starts at ${d2.clock}`);
       await shot('gate_newday');
+    },
+    // Each day's intro, walked up to from three sides (no teleport next to the giver): the first
+    // shot of every intro must show both speakers' heads with nothing at the lens.
+    async intros() {
+      const from = +(process.env.FROM || 0), to = +(process.env.TO || 7);
+      for (let day = from + 1; day <= to; day++) {
+        for (const k of [0, 1, 2]) {
+          await fresh(`&mission=${day - 1}`);
+          await until(() => !!__game.missions.offered, 20000);
+          // Out on the walkway in front of the giver: straight out from their door (side 0), or
+          // along the walkway from either side (1, 2), then up to them.
+          await ev(async () => { const { segmentBlocked } = await import('./src/world/collision.js'); window.__seg = segmentBlocked; });
+          const at = await ev((k) => {
+            const g = __game, def = g.missions.offered, n = g.npc(def.giver), L = window.__lm(def.at), yaw = L.yaw ?? 0;
+            const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = -fz, rz = fx, sd = k === 1 ? 1 : -1;
+            // (straight out: from 3.2 m, just in reach - further out there are fences across the
+            // walkway at some doors, and Rune's wheelchair in front of Anita)
+            const st = k === 0 ? { x: n.x + fx * 3.2, z: n.z + fz * 3.2 } : { x: n.x + fx * 2.4 + rx * 5 * sd, z: n.z + fz * 2.4 + rz * 5 * sd };
+            const s = g.spotFree(st.x, st.z) ? st : g.freeSpot(st.x, st.z, 0.3, 1.5);
+            window.__walkWp = k === 0 ? [] : [{ x: n.x + fx * 2.2 + rx * 0.9 * sd, z: n.z + fz * 2.2 + rz * 0.9 * sd }];
+            const a = Math.atan2(n.x - s.x, n.z - s.z);
+            g.player.teleport(s.x, s.z, a); g.cam.yaw = a; g.cam.snapNext = true;
+            return [s.x.toFixed(1), s.z.toFixed(1)];
+          }, k);
+          await frames(5);
+          // Walk (W, the camera turned to the next point) until "Prata med" shows, then E.
+          for (let i = 0; i < 120; i++) {
+            const ok = await ev(() => {
+              const g = __game, n = g.npc(g.missions.offered.giver), p = g.player, W = window.__walkWp;
+              if (W.length && Math.hypot(W[0].x - p.x, W[0].z - p.z) < 0.6) W.shift();
+              const t = W[0] || n;
+              g.cam.yaw = Math.atan2(t.x - p.x, t.z - p.z);
+              return !W.length && g.nearestInteractable()?.type === 'talk';
+            });
+            if (ok) break;
+            await page.keyboard.down('KeyW'); await sleep(50);
+          }
+          await page.keyboard.up('KeyW');
+          await frames(3);
+          await tap('KeyE');
+          try { await until(() => __game.missions.introOn, 4000); } catch (e) { await bad(`intros: day ${day} from side ${k}: E did not start the intro`); continue; }
+          await sleep(400);
+          await cineCheck(`intro day ${day} side ${k} (from ${at})`);
+          await shot(`intros_d${day}_${k}`);
+        }
+      }
     },
     // What the story leaves in the world (a game loaded at day 7): Patrick's cast, the cat by
     // Ove's door, Adrian's Saab in the lot; then day 7's flowers on Sonja's grave.
@@ -798,6 +945,144 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
       if (came == null) await bad('m4cat: the cat never came to Ove standing still');
     }
     await shot('m4c_3_carry');
+  };
+  // Day 6 with keys, from the start: Ove gets into the Saab where it stands by the garages (no warp
+  // behind the Škoda), drives out of the lot and has to stop Vita skjortan (bump him, stay on his
+  // bumper). A bot: waypoints out of the lot, then the road route to the Škoda (layout's routeAim,
+  // like the guide arrow), straight at it once it is close and on the same street. Must catch it.
+  sc.m6chase = async () => {
+    await fresh('&mission=5');
+    await startMission();
+    await ev(() => { const g = __game, c = g.named.saab, e = g.exitSpot(c, 1); g.player.teleport(e.x, e.z, Math.atan2(c.x - e.x, c.z - e.z)); g.cam.yaw = c.yaw; g.cam.snapNext = true; });
+    await frames(5);
+    await tap('KeyE');
+    try { await until(() => __game.missions.stage?.kind === 'destroy', 6000); } catch (e) { await bad('m6chase: never got into the Saab'); return; }
+    const st0 = await ev(() => { const g = __game, s = g.missions.stage, c = g.playerCar; return { saab: [+c.x.toFixed(1), +c.z.toFixed(1), +c.yaw.toFixed(2)], skoda: [+s.car.x.toFixed(1), +s.car.z.toFixed(1)], waiting: s.waitT > 0, d: +Math.hypot(s.car.x - c.x, s.car.z - c.z).toFixed(0) }; });
+    await log('day 6 start', JSON.stringify(st0));
+    await shot('m6c_0');
+    // The bot's brain runs in the page: out of the lot by waypoints (the Saab stands nose out, the
+    // aisle runs west to the lot entrance), then a lane path to the Škoda (the AI's own LanePath over
+    // the shortest node route, re-planned every second) with a lookahead, slowing for turns; within
+    // ~30 m and roughly ahead: straight at it, a little faster than it (bumps). Stuck: back up.
+    await ev(() => { window.__bot = { wp: [{ x: -6, z: -23.2 }, { x: -28, z: -23.2 }, { x: -38.5, z: -22.5 }], plan: null, planT: 0, stuckT: 0, revT: 0 }; });
+    let n = 0, res = null, woke = null, closest = 1e9;
+    const t0 = await ev(() => __game.time);
+    const held = new Set();
+    for (let k = 0; k < 5000; k++) {
+      const st = await ev(async () => {
+        const L = await import('./src/world/layout.js'), D = await import('./src/actors/drivers.js');
+        const g = __game, c = g.playerCar, m = g.missions, s = m.stage, B = window.__bot;
+        if (!c || s?.kind !== 'destroy') return { kind: s?.kind || m.state, t: g.time };
+        const q = s.car, d = Math.hypot(q.x - c.x, q.z - c.z), fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), v = c.forwardSpeed;
+        let tx, tz, vt;
+        if (B.wp.length) {
+          if (Math.hypot(B.wp[0].x - c.x, B.wp[0].z - c.z) < 3.5) B.wp.shift();
+          const w = B.wp[0] || { x: c.x + fx * 10, z: c.z + fz * 10 };
+          tx = w.x; tz = w.z; vt = 7;
+        } else {
+          const ahead = ((q.x - c.x) * fx + (q.z - c.z) * fz) / (d || 1);
+          // (straight at it only along asphalt: across a corner it drove into yards)
+          const roadLine = L.isRoad(c.x, c.z) && [0.25, 0.5, 0.75, 1].every((t) => L.isRoad(c.x + (q.x - c.x) * t, c.z + (q.z - c.z) * t));
+          if (d < 30 && ahead > 0.5 && roadLine) { tx = q.x + q.vx * 0.35; tz = q.z + q.vz * 0.35; vt = Math.max(9, q.speed + (d > 9 ? 7 : 3)); }
+          else {
+            B.planT -= 1;
+            if (!B.plan || B.planT <= 0) {
+              const [a, b] = D.startNodes(c), goal = L.nearestNode(q.x, q.z);
+              const rest = b === goal ? [] : L.findPath(b, goal).slice(1);
+              B.plan = new D.LanePath([a, b, ...rest], { endPoint: [q.x, q.z] });
+              B.plan.ensure(60);
+              B.planT = 30;
+            }
+            const P = B.plan, pts = P.pts;
+            while (P.idx < pts.length - 1) { const p0 = pts[P.idx], dx = p0.x - c.x, dz = p0.z - c.z; if (dx * dx + dz * dz < 16 || dx * fx + dz * fz < 0) P.idx++; else break; }
+            const look = 4.2 + Math.abs(v) * 0.38;
+            let tp = pts[Math.min(P.idx, pts.length - 1)];
+            for (let i = P.idx; i < pts.length; i++) { tp = pts[i]; if (Math.hypot(pts[i].x - c.x, pts[i].z - c.z) > look) break; }
+            // near a turn: aim at its first point (a long lookahead cuts the corner over the kerb)
+            for (let i = P.idx; i < pts.length && i < P.idx + 10; i++) if (pts[i].turn) { if (Math.hypot(pts[i].x - c.x, pts[i].z - c.z) > 6) tp = Math.hypot(tp.x - c.x, tp.z - c.z) < Math.hypot(pts[i].x - c.x, pts[i].z - c.z) ? tp : pts[i]; break; }
+            tx = tp.x; tz = tp.z; vt = 30;
+            for (let i = P.idx; i < pts.length && i < P.idx + 14; i++) if (pts[i].turn && Math.hypot(pts[i].x - c.x, pts[i].z - c.z) < 12 + v * v / 9) { vt = 8.5; break; }
+          }
+        }
+        // stuck against something: back up a moment, steering the other way
+        if (B.revT > 0) { B.revT -= 1; return { kind: s.kind, rev: true, e: 0, v, vt: -4, x: c.x, z: c.z, qx: q.x, qz: q.z, qv: q.speed, d, waiting: s.waitT > 0, ork: s.ork, farT: s.farT, t: g.time }; }
+        if (Math.abs(v) < 0.8 && vt > 3 && !(s.waitT > 0 && !B.wp.length)) B.stuckT += 1; else B.stuckT = 0;
+        if (B.stuckT > 45) {
+          B.stuckT = 0; B.revT = 35; B.plan = null;
+          const near = g.cars.filter((o) => o !== c && Math.hypot(o.x - c.x, o.z - c.z) < 7).map((o) => `${o.kind}@${o.x.toFixed(1)},${o.z.toFixed(1)}${o.violation ? ' viol' : ''}`);
+          console.log('[t] m6 stuck at', c.x.toFixed(1), c.z.toFixed(1), 'yaw', c.yaw.toFixed(2), 'cars', near.join(' '));
+        }
+        let e = Math.atan2(tx - c.x, tz - c.z) - c.yaw;
+        while (e > Math.PI) e -= 2 * Math.PI; while (e < -Math.PI) e += 2 * Math.PI;
+        if (Math.abs(e) > 0.6) vt = Math.min(vt, 8);
+        return { kind: s.kind, e, v, vt, x: c.x, z: c.z, qx: q.x, qz: q.z, qv: q.speed, d, waiting: s.waitT > 0, ork: s.ork, farT: s.farT, t: g.time };
+      });
+      if (st.kind !== 'destroy') { res = st; break; }
+      if (st.t - t0 > 170) break;
+      if (!st.waiting && woke == null) { woke = st.t - t0; await log('the Škoda sets off after', woke.toFixed(1), 's'); }
+      closest = Math.min(closest, st.d);
+      const keys = [];
+      if (st.rev) { keys.push('KeyS'); }
+      else {
+        if (st.v < st.vt - 0.4) keys.push('KeyW'); else if (st.v > st.vt + 1.5) keys.push('KeyS');
+        if (st.e < -0.04) keys.push('KeyD'); else if (st.e > 0.04) keys.push('KeyA');
+      }
+      for (const kk of [...held]) if (!keys.includes(kk)) { await page.keyboard.up(kk); held.delete(kk); }
+      for (const kk of keys) if (!held.has(kk)) { await page.keyboard.down(kk); held.add(kk); }
+      if (n++ % 25 === 0) await log('m6', `t ${(st.t - t0).toFixed(1)} saab (${st.x.toFixed(0)}, ${st.z.toFixed(0)}) ${Math.round(st.v * 3.6)} km/h, skoda (${st.qx.toFixed(0)}, ${st.qz.toFixed(0)}) ${Math.round(st.qv * 3.6)} km/h, d ${st.d.toFixed(0)} m, ork ${st.ork.toFixed(0)}${st.waiting ? ' waiting' : ''}${st.farT > 0 ? ` far ${st.farT.toFixed(1)}` : ''}${st.rev ? ' REV' : ''}`);
+      if (n === 150) await shot('m6c_1');
+      await sleep(30);
+    }
+    for (const kk of held) await page.keyboard.up(kk);
+    const end = await ev(() => ({ state: __game.missions.state, kind: __game.missions.stage?.kind, sub: document.querySelector('#banner .banner-sub')?.textContent || '' }));
+    await log('m6chase result', JSON.stringify(end), 'after', res ? (res.t - t0).toFixed(1) : '-', 's, closest', closest.toFixed(0), 'm');
+    await shot('m6c_2');
+    if (end.state === 'failed' || end.kind === 'destroy' || !res) await bad(`m6chase: the Škoda was not stopped (${end.state} ${end.kind} ${end.sub})`);
+    else await log('SKODA STOPPED');
+  };
+  // Continuity (phase 4): a smitare chase going on when Ove starts the day's mission ends quietly
+  // (no SMET! over the intro, no Ordning lost, nothing in the log); a phone call never rings as he
+  // walks up to the giver, nor the moment an outro ends.
+  sc.smitintro = async () => {
+    await fresh('&calls');
+    await until(() => !!__game.missions.offered, 20000);
+    const r0 = await ev(() => {
+      const g = __game, P = g.patrol, n = g.npc(g.missions.offered.giver);
+      // a smitare on a street spot outside Ove's area, then its flight
+      const c = P.forceSpawn(1, { x: -60, z: -40 }, { smitare: true, radius: 40 })[0];
+      if (!c?.violation?.smitare) return { err: 'no smitare spot' };
+      P.startWriting(c);
+      const s = g.freeSpot(n.x, n.z, 1.4, 2);
+      g.player.teleport(s.x, s.z, Math.atan2(n.x - s.x, n.z - s.z));
+      return { pursuit: !!P.pursuit, ordning: +P.ordning.toFixed(1), log: P.log.length };
+    });
+    await log('smitare fleeing', JSON.stringify(r0));
+    if (r0.err) { await bad('smitintro: ' + r0.err); return; }
+    await sleep(800);
+    await ev(() => __game.missions.begin());
+    await sleep(14000);
+    const r1 = await ev(() => { const P = __game.patrol; return { pursuit: !!P.pursuit, panel: document.querySelector('.pursuit, #pursuit')?.classList.contains('show') || false, ordning: +P.ordning.toFixed(1), log: P.log.length, escaped: P.log.filter((e) => e.escaped).length, banner: document.querySelector('#banner .banner-title, #banner h1')?.textContent || '' }; });
+    await log('14 s into the intro', JSON.stringify(r1));
+    if (r1.pursuit || r1.escaped || r1.ordning < r0.ordning - 0.5) await bad(`smitintro: the chase went on into the intro (${JSON.stringify(r1)})`);
+    // The next call after the day: not as the outro ends.
+    const nt = await ev(() => __interrupt.nextT);
+    await log('next call in', nt.toFixed(0), 's (while the mission runs)');
+    if (nt < 39) await bad(`smitintro: a call is due ${nt.toFixed(0)} s after the mission`);
+  };
+  // The on-foot camera backed into the garage row (view_parking): it swings to the open side.
+  sc.camtight2 = async () => {
+    // Ove a step in front of the garage doors, facing along the row, the camera swung round
+    // behind him into the garages (boom at its shortest, the wall filling the screen).
+    const p = await L('parking');
+    await ev((p) => { const g = __game; g.player.teleport(p.x, -20.6, Math.PI / 2); g.cam.yaw = Math.PI / 2 + 1.0; g.cam.pitch = 0.18; g.cam.snapNext = true; }, p);
+    await frames(10);
+    const b0 = await ev(() => ({ boom: +__game.cam.boom.toFixed(2), yaw: +__game.cam.yaw.toFixed(2) }));
+    await shot('camtight2_0');
+    await sleep(4000);
+    const b1 = await ev(() => ({ boom: +__game.cam.boom.toFixed(2), yaw: +__game.cam.yaw.toFixed(2) }));
+    await log('garage row: boom', JSON.stringify(b0), '-> after 4 s', JSON.stringify(b1));
+    await shot('camtight2_1');
+    if (b1.boom < 1.5) await bad(`camtight2: the camera stayed on the wall (boom ${b1.boom})`);
   };
   for (let n = 2; n <= 7; n++) sc['m' + n] = async () => { await fresh(`&mission=${n - 1}`); await D[n](); };
   return sc;
