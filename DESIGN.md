@@ -494,19 +494,22 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
 Built in phase 1. Everything below is the actual API; later agents rely only on this section.
 
 ### 10.1 What the renderer does (so you know what you get for free)
-- **Pipeline:** `WebGLRenderer` -> `EffectComposer` (HalfFloat; only the scene pass is 4x MSAA,
-  the second target is plain and unused: the OutputPass draws to the screen without a swap) ->
-  `UnrealBloomPass` (threshold 2.6, only lights / sun glints / fire bloom) -> `OutputPass` (ACES
-  Filmic, exposure 1.45, then a display grade: a toe lift (display-linear ^ 0.86 - ACES alone crushes
+- **Pipeline:** `WebGLRenderer` -> `EffectComposer` (HalfFloat; only the scene pass is
+  multisampled (4x on high), the second target is plain: on high the OutputPass draws to the screen
+  without a swap) -> bloom (`GameBloomPass`: UnrealBloomPass, threshold 2.6, only lights / sun glints
+  / fire bloom, **without its final blend** into the multisampled scene target: the OutputPass adds
+  the half-resolution bloom before tone mapping - the same image, ~1.5 ms less GPU at 18.7 MP) ->
+  `OutputPass` (ACES Filmic, exposure 1.45, then a display grade: a toe lift (display-linear ^ 0.86 - ACES alone crushes
   shade into navy-black), a soft black point (x² / (x + 0.03), rescaled: the deepest tones go to
   black, mid tones barely move, nothing clips), saturation 1.0 falling to 0.65 x in the deepest
-  tones, a gentle S-curve on the upper half only, + sRGB).
+  tones, a gentle S-curve on the upper half only, + sRGB) -> on the low tier only, FXAA (the grade
+  then draws into the second target and FXAA to the screen).
   Call **`renderFrame()`** once per frame instead of `renderer.render(scene, camera)` (main.js
   does). Per frame it: updates the scene's matrices **once** (`scene.matrixWorldAutoUpdate` is
   false; don't rely on a render call updating them); renders the sun's shadow cascades in a
-  shadow-only pass (the near cascade every frame, the far one every 2nd frame on high / 3rd on low and
+  shadow-only pass (the near cascade every frame, the far one every 2nd frame on high / 4th on low and
   at once when the camera jumps > 6 m or turns > 10 deg - moving things beyond 30 m update their
-  shadows at 30/20 Hz); on high renders the GTAO normal/depth pre-pass through a camera whose far plane
+  shadows at 30 Hz on high; on low they cast none beyond 30 m); on high renders the GTAO normal/depth pre-pass through a camera whose far plane
   is 80 m (AO is a 0.9 m contact term at half resolution: nothing further is drawn there); then the
   main pass. `renderer.render()` still works for one-off renders to a render target (portraits), but
   gets no AO/bloom/tone mapping (output is linear).
@@ -552,10 +555,13 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
   shadow and AO passes (surfaces don't matter there). So every part of a multi-surface mesh casts
   a shadow, including any 'tinted' glass in it. Put see-through car glass in **its own** mesh
   (single 'tinted' material -> casts no shadow, no AO), as car.js does. Each object kind (Mesh,
-  InstancedMesh, SkinnedMesh, BatchedMesh) gets its own depth (`customDepthMaterial`, unless you set
-  one or the material is alpha-tested) and AO-normal material, and instanced / skinned / batched
-  users of a shared surface material are given that kind's own copy (`kindSweep`): one material
-  used by several kinds made three.js re-evaluate its program at every switch.
+  InstancedMesh without and with `instanceColor`, SkinnedMesh, BatchedMesh - five kinds) gets its
+  own depth (`customDepthMaterial`, unless you set one or the material is alpha-tested) and AO-normal
+  material, and instanced / skinned / batched users of a shared surface material are given that
+  kind's own copy (`kindSweep`, every mesh, also the ones left out of the pre-pass): one material
+  used by several kinds made three.js re-evaluate its program at every switch (12-20 times a frame
+  before phase 4 round 2, ~0 now: `render.mjs rprog`). An InstancedMesh that gets its
+  `instanceColor` later is moved to the other kind at the next list rebuild (every 20 frames).
 - **Draw calls:** one draw call per surface per mesh in the main pass. Static world geometry is
   merged per block with `GeoBuilder` (buildTown: one builder per block for solids, ground and
   twigs) and then **batched by surface across the town** (`src/world/batch.js`, `StaticBatch`, a
@@ -572,16 +578,22 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
 - **Quality:** `setQuality('auto' | 'high' | 'low')` (returns `qualityInfo()`), `getQuality()` ->
   the setting, `qualityInfo()` -> `{ setting, tier, scale, pixelRatio, gpu, integrated, reason }`
   (what actually runs: `tier` 'high' | 'low', `reason` e.g. 'integrated GPU', 'slow (24.1 ms)',
-  'chosen'). Two tiers: **high** = GTAO, bloom, 4x MSAA, 2048 shadow maps with 16-tap PCF, far
-  cascade every 2nd frame; **low** = no AO pre-pass and no bloom (a shadow-only pre-pass), no MSAA,
-  1024 maps with 4-tap PCF, far cascade every 3rd frame (about 0.5-0.8x the GPU time and 10-40 %
-  fewer calls than high). The pixel ratio is capped at 1 device pixel per CSS pixel (`&pr=x` forces x). **auto** (the
-  default outside tests) = low on integrated GPUs (WEBGL_debug_renderer_info: Intel, AMD Radeon(TM)
-  Graphics / Vega APUs, plain Apple M-chips, mobile, software), else high, dropping to low (once)
-  when the first ~4 s of frames average over 20 ms; **auto and low** also scale the render resolution
+  'chosen', 'weak GPU', 'laptop GPU'; also `msaa` (samples) and `fxaa`). Two tiers: **high** =
+  GTAO, bloom, 4x MSAA, 2048 shadow maps with 16-tap PCF, far cascade every 2nd frame; **low** = no
+  AO pre-pass and no bloom (a shadow-only pre-pass), no MSAA but FXAA, 1024 maps with 4-tap PCF, and
+  it sheds CPU too: the far cascade (30-210 m) every 4th frame and with only the static world in it
+  (props, cans, cars, wheels and people - anything instanced, skinned or inside a group - cast no
+  shadow beyond the near cascade's 30 m), and prop cells (`props:*`) more than 120 m away are left
+  out of every pass (`&leanprops=m`). The pixel ratio is capped at 1 device pixel per CSS pixel
+  (`&pr=x` forces x). **auto** (the default outside tests) = low on integrated GPUs
+  (WEBGL_debug_renderer_info: Intel, AMD Radeon(TM) Graphics / Vega APUs, plain Apple M-chips,
+  mobile, software) and on weak entry-level ones (GeForce MX, Quadro P/T + 3 digits), else high
+  (laptop GPUs - 'Laptop', 'Max-Q', 'Mobile' - at 2x MSAA); `classifyGpu(str)` is exported for tests
+  and `&gpu=<string>` pretends to be that GPU. It drops to low (once) when the first ~3 s of frames
+  (4 windows of 0.7 s) have a median over 20 ms; **auto and low** also scale the render resolution
   0.6/0.7-1.0 with the frame time (down a step when frames take > 18.5 ms, undone if that did not
-  help - CPU-bound - and probed back up after a few seconds at full rate). **high** is always full
-  resolution. Tests (`?test`) default to high without the dynamic scale (deterministic shots);
+  help - CPU-bound - and probed back up after a few seconds at full rate); on the high tier **auto**
+  first steps 4x MSAA down to 2x (and back up last). **high** is always full resolution, 4x. Tests (`?test`) default to high without the dynamic scale (deterministic shots);
   `&q=auto|high|low`, `?lowgfx` (= low) and `&dynscale` override. Tier switches need no shader
   recompiles.
 - Look-dev URL overrides (for testing only): `&hdri=winter_river_2k` (hazier alternative sky),
@@ -594,7 +606,10 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
   screenshot), `&glintdbg` (snow crystal cells in green, their glints in red), `&black=0.03` (soft
   black point), `&aofar=80` (AO pre-pass far plane), `&farevery=n` (far cascade every n frames),
   `&gputime` (GPU timer -> `gfxStats.gpuMs`), `&debug` (shader error checks, on in tests),
-  `&nobatch`, `&nomultidraw` (BatchedMesh without WEBGL_multi_draw).
+  `&nobatch`, `&nomultidraw` (BatchedMesh without WEBGL_multi_draw), `&nowarmdraw` (no warm frame
+  while loading), `&gpu=<renderer string>`, `&leanprops=120`, `&envdown=1&envband=0.17` (the env's
+  ground: brightness multiplier and the fade depth under the horizon, radians), `&townhash`,
+  `&checkmerge`, `&oldmerge`.
 
 ### 10.2 Surfaces: saying what things are made of
 `GeoBuilder` keeps all its methods (`add, box, boxB, sphere, cyl, cone, ico, build, empty,
@@ -670,16 +685,34 @@ Unknown names fall back to `plain`. `SURFACES` (exported) holds the table (scale
   haze, far hills) or sets `userData.raycastable = false`: those become non-raycastable (`raycast` is a
   no-op). buildTown applies it to everything it adds. The world's batches raycast per block (only the
   blocks a ray passes near are tested).
-- **`precompile(root = scene)`** -> promise: compiles every program `root` needs against the scene
-  (lights, fog, environment) **as the composer's scene pass sees it** (linear HDR target, no tone
-  mapping - a plain `renderer.compileAsync` while the screen is bound compiles tone-mapped variants
-  the game never uses), with KHR_parallel_shader_compile, without blocking. buildTown starts one for
-  the world; the first `renderFrame` issues the rest. **`uploadGeometry(root = scene)`** draws
-  everything under `root` once into a 1x1 target (no colour, no depth) so its vertex buffers are
-  uploaded now rather than in the first frame (buildTown does it for the world). main.js should call
-  both at 'Tar porträtt…' and await the precompile before the loop starts.
+- **`precompile(root = scene, { warm = true })`** -> promise: compiles every program `root` needs
+  against the scene (lights, fog, environment) **as the composer's scene pass sees it** (linear HDR
+  target, no tone mapping - a plain `renderer.compileAsync` while the screen is bound compiles
+  tone-mapped variants the game never uses), with KHR_parallel_shader_compile, without blocking - and
+  the renderer's own programs, each in the state its pass draws in: the five kinds' shadow-depth and
+  AO-normal materials, the shadow pre-pass' own mesh, bloom, GTAO and its denoiser, the output grade
+  and FXAA. With `warm` (the default) it then, still without blocking, waits for the GPU (`gpuIdle()`),
+  takes every program into use (its first use waits for the driver's link: ~0.3 s for the scene's
+  ~140, in 25 ms slices) and draws one whole frame behind the loading screen (the driver finishes each
+  program on its first draw: another ~0.3 s of GPU work) and waits for the GPU again. People's
+  first-draw face bakes are held off in that frame. main.js calls it at 'Tar porträtt…' and awaits it
+  before the loop starts: the first title frame takes ~10-25 ms (was 0.4-0.47 s, frozen) and nothing
+  compiles in it (`gfxStats.first.newPrograms`). buildTown starts one with `{ warm: false }` for the
+  world. **`uploadGeometry(root = scene)`** draws everything under `root` once into a 1x1 target (no
+  colour, no depth) so its vertex and index buffers are uploaded now rather than in the first frame;
+  objects' own `onBeforeRender` hooks are held off meanwhile (faces keep baking lazily), class hooks
+  run. buildTown does it for the world, main.js for the rest at 'Tar porträtt…'. **`gpuIdle()`** -> promise: resolves when the GPU has finished
+  what was issued so far (a fence polled between tasks). **`nextTask()`** -> promise: a yield to the
+  event loop (scheduler.yield / MessageChannel; not clamped like setTimeout).
+- **Loading the town:** `buildTown(scene)` (world/town.js) builds it in one task (2.4-3 s on a
+  desktop CPU). **`buildTownAsync(scene, onProgress)`** does exactly the same work in the same order -
+  the same town byte for byte (`?townhash` hashes the batches) - but yields to the browser every
+  ~40 ms (no task over ~0.35 s; the loading screen stays alive) and calls `onProgress(f)`, f = 0..1;
+  ~0.1-0.2 s longer in all. `townStats` has `buildMs` (work time), `wallMs`, `steps` (per stage).
 - Geometry from `GeoBuilder.build()` has attributes `position, normal, color, tri (vec4), trin`
-  and `geo.userData.surfaces` (surface name per group). If you push your own geometry into
+  and `geo.userData.surfaces` (surface name per group). It is merged in one pass into preallocated
+  arrays (the same result as two levels of `mergeGeometries`, which it falls back to for unusual
+  parts; `?checkmerge` runs both and compares every build, `?oldmerge` the old one). If you push your own geometry into
   `g.parts`, it is accepted (missing attributes are added; built multi-surface geometry is split
   back into its surfaces).
 - **Legacy `MAT.*`** (all PBR now): `MAT.toon` (= plain), `MAT.burnt` (charred, set as a single
@@ -777,11 +810,12 @@ to the constructors if needed.
 desaturated, tinted, x env intensity), `fog` colour, `fogExp2` - for custom shaders), `FOG_GLSL`,
 `setRoadGrid`,
 `gfxReady` (promise: await it after `initGfx()` before building content; main.js does),
-`renderFrame, setQuality, getQuality, qualityInfo, precompile, uploadGeometry, makeStatic, prepareKind, setSnow,
-getSnow, setWetness, setLight, gfxStats` (`ms` (renderFrame CPU, smoothed), `calls, tris, aoCalls`
-(shadow + AO pre-pass calls); `pass.{shadow, ao, main}` = [calls, tris] of the last frame,
-`cpu.{matrices, pre, main}` ms, `gpuMs` with `&gputime`, `first` = { ms, programs } of the first
-frame; also in `__stats()`), `sceneDepthTexture()`, `sceneDepthRange()`, `followSun()` and
+`renderFrame, setQuality, getQuality, qualityInfo, classifyGpu, precompile, uploadGeometry, gpuIdle,
+nextTask, makeStatic, prepareKind, setSnow, getSnow, setWetness, setLight, gfxStats` (`ms` (renderFrame
+CPU, smoothed), `calls, tris, aoCalls` (shadow + AO pre-pass calls); `pass.{shadow, ao, main}` =
+[calls, tris] of the last frame, `cpu.{matrices, pre, main}` ms, `gpuMs` with `&gputime`, `first` =
+{ ms, programs, newPrograms } of the first frame; also in `__stats()`), `warmStats` (the loading's
+warm frame: drawMs, gpuWaitMs), `gfxDebug` (tests), `sceneDepthTexture()`, `sceneDepthRange()`, `followSun()` and
 `tickSky(t)` (kept for main.js; `tickSky` drives water/time uniforms), `mat, PRIM, makeWedge,
 GeoBuilder, textCanvas, signMesh, toonGradient` (dummy).
 Assets: `assets/tex/*` (made by `uv run tools/textures.py [keys...]`), `assets/sky/*.hdr`, licences in

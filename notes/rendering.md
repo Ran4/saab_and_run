@@ -1,10 +1,150 @@
-# Rendering — notes (round 6, final polish after the p4 reviews)
+# Rendering — notes (phase 4, round 2 on top of round 6)
 
 Owner of `src/gfx.js`, `src/game/fx.js`, `src/game/markers.js`, `src/world/town.js` (build
 orchestration) and `src/world/batch.js`. The contract is DESIGN.md section 10; this file says what
-changed in round 6, why, and the numbers.
+changed, why, and the numbers. Phase 4 round 2 first; round 6 (the earlier pass) below it.
 
-## What changed
+## Phase 4, round 2 (the whole-game review's rendering list)
+
+Measured at 1280x720 on the RTX 4070 in headless Chrome (ANGLE-GL) while six other fixers and other
+sessions shared the machine: CPU timings were 30-60 % slower and noisy all day (the town's world code
+alone took 1.6-2.1 s per load instead of ~1.4), so timings are min / median of repeated runs and
+interleaved A/B where it mattered; call counts and GPU timer A/Bs (exclusive slot) are reliable.
+
+### 1. The frozen first title frame (precompile, uploadGeometry) - fixed
+- Cause, measured: `precompile()` only compiled the scene's materials. The first frame then compiled
+  the bloom (high-pass, 5 blurs, composite, blend), GTAO + denoiser and output programs itself, and -
+  the bigger part - on ANGLE/desktop GL "parallel" compiles report complete at once: the real link
+  happens at a program's first use (`getProgramParameter` 317-365 ms in the first frame), and the
+  driver finishes each program on its first *draw* (another ~0.3-0.4 s of GPU-process time: with
+  every program precompiled the first frame took 10 ms of CPU but the next frame still came 380 ms
+  later).
+- `precompile(root = scene, { warm = true })` now also compiles the renderer's own programs, each in
+  the state its pass draws in (a throwaway rig: one 1-triangle Mesh / InstancedMesh / InstancedMesh
+  with instanceColor / SkinnedMesh / BatchedMesh per kind with the DEPTH (back- and double-sided) and
+  NORMAL materials, the shadow pre-pass' own mesh, fullscreen quads with the bloom, GTAO, denoise and
+  output materials (geometry like three's FullScreenQuad: position + uv - with normals they were other
+  programs), FXAA drawn to the screen; the output pass' defines are primed first). Then, without
+  blocking the main thread: `gpuIdle()` (a fence polled between tasks), every program taken into use
+  in 25 ms slices (uniform / attribute locations), and **one whole frame drawn behind the loading
+  screen** (`warmDraw`; people's own `onBeforeRender` face hooks held off in it: nobody is placed yet,
+  every LOD level is still on) followed by `gpuIdle()` again. buildTown's early call is
+  `{ warm: false }`. The first `renderFrame` no longer re-issues a precompile when one was done.
+- `uploadGeometry()` holds objects' own `onBeforeRender` hooks off while it draws everything into
+  the 1x1 target (class hooks - the batches' culling - still run): it no longer bakes every face in
+  town synchronously. (A version that hid every material for one render call drew nothing at all,
+  but three uploads index buffers only when it binds them for a draw: the cards' 2.7 MB of indices
+  stayed in JS and would have uploaded in some gameplay frame; reverted to drawing.)
+- Numbers (production page, `RPROD=1 rload`, 2-3 loads each): **first title frame 0.40-0.69 s ->
+  10-20 ms** (GAME as-is today: 693 ms; my baseline: 380-455 ms), `newPrograms` in it 10 -> 0, and no
+  rAF gap after ready (was 380-570 ms). 'Tar porträtt': uploadGeometry 476-590 -> ~25-60 ms; the
+  portraits now bake the cast's 9 faces themselves (renderPortrait 167-185 -> 500-680 ms) and the warm
+  frame adds 0.3-0.45 s of GPU wait (main thread free, idle work - people's LOD jobs - runs in it), so
+  'ready' is ~0.1-0.4 s later and the title is smooth from its first frame: about the same time to a
+  smooth title, without the freeze. `warmStats` = { drawMs ~20-60, gpuWaitMs ~280-410 }.
+
+### 2. High tier GPU: bloom blend and MSAA - fixed
+- `GameBloomPass` (UnrealBloomPass without its last step: the additive full-screen blend into the 4x
+  multisampled HDR scene target) + the output grade adds `texture(tBloom) * uBloom` before tone mapping
+  (tBloom = `renderTargetsHorizontal[0]`, half resolution, bilinear as before; `uBloom` 0 on low). Same
+  image: static-world shots base vs new differ in as many pixels (> 3 %) as base vs base (start 2077 vs
+  2380, a lamp pose 2356 vs 2664, street 205 vs 192, aerial 3 vs 2). GPU timer at 18.66 MP (pr 4.5,
+  exclusive, interleaved): **start 18.0-18.2 -> 16.3-16.5 ms, drone_nw 20.2-20.6 -> 18.7-19.0 ms**
+  (-1.5 to -1.7 ms, more than the review's estimate).
+- MSAA step: on 'auto' at the high tier, a window over 18.5 ms first tries 4x -> 2x MSAA (a trial like
+  the render-scale steps: undone and held 20 s if frames did not get >= 5 % faster, i.e. CPU-bound),
+  then the render scale; going back up, the scale first and 4x last. Laptop GPUs (renderer string
+  'Laptop' / 'Max-Q' / 'Mobile') start at 2x. `qualityInfo().msaa`. `render.mjs rautosim` drives the
+  logic with simulated frame times: GPU 20.5 ms -> x2 at 0.7 s and stays; GPU 24 ms -> x2, scale 0.9,
+  then the first-seconds check moves it to low; CPU 19.5 ms -> x2 tried and undone at 1.7 s; 16 ms ->
+  nothing moves.
+
+### 3. Program re-evaluations - fixed (12-20 a frame -> 0)
+- A fifth object kind 'instc' (InstancedMesh with instanceColor: far car bodies, debris) with its own
+  pre-pass depth / normal materials and surface copies; an InstancedMesh that gets its colours later
+  moves over at the next list rebuild (our DEPTH customDepthMaterial is re-assigned too).
+- The last 2 a frame were 'surface:bark' shared between the silhouette forest (an InstancedMesh left
+  out of the pre-pass, so never swept) and a plain mesh: `kindSweep` now runs for every mesh.
+- `render.mjs rprog` (customProgramCacheKey counters for 30 frames): start / street_long / lot_e /
+  drone_nw 0, 0.03, 0, 0 a frame (a marker ShaderMaterial once in 30 frames). Programs 149 after the
+  load (GAME today 143-144: the new kind's depth / normal / upload variants), flat; the precompile
+  covers the new kind (nothing compiles in the first frame).
+
+### 4. Loading: buildTown - `buildTownAsync` added (main.js to switch), merge faster
+- `buildTownAsync(scene, onProgress)` (town.js) runs exactly the same work in the same order as
+  `buildTown(scene)` (both iterate one generator, `townSteps`; batch.js has `batchSteps`), yielding
+  to the browser (`nextTask()`) every ~40 ms and calling `onProgress(f)`, f 0..1. Byte-identical world:
+  `?townhash` hashes every batch's buffers and runs before they are dropped - base, sync and async all
+  `a6d4a344` over 259,475,612 bytes. With it (throwaway main.js in my copy): the town's longest task
+  ~0.2-0.34 s (was one 2.4-3.7 s task), the loading text updates ~30 times, +0.1-0.2 s wall time.
+  The remaining long single steps are world code (a radhus block, buildStreets, buildOutskirts,
+  finalizeSigns: 0.15-0.3 s each).
+- `GeoBuilder.build()` merges in one pass into preallocated typed arrays (the same result as the two
+  levels of `mergeGeometries`: `?checkmerge` ran both for all 232 multi-part builds of a load - no
+  difference; falls back for unusual parts; `?oldmerge`). Load profile: mergeGeometries +
+  mergeAttributes + its JS-array index (~0.35-0.43 s self over a load) -> mergeParts 0.18 s, and
+  less garbage. batch.js' packing loop was rewritten (same numbers) but measured no faster
+  (~0.25 s: 9 Math.round per vertex over ~4.5 M vertices). Town steps now (sync, noisy machine): blocks 1.7-2.1 s (world), streets 0.23-0.32,
+  outskirts 0.16-0.22, merge 0.22-0.31, batch 0.29-0.38, signs 0.17-0.2, upload 0.1-0.19, precompile
+  0.09-0.13 s. `townStats` = { buildMs (work time), wallMs, steps, ... }.
+
+### 5. Minors
+- **FXAA on low** - done: `FXAAPass` after the output grade on the low tier only (the grade then
+  draws into the composer's second target and swaps; FXAA to the screen and swaps back; its texel size
+  follows the composer's size and the dynamic scale). Eaves, gutters, string lights and lamp posts are
+  smooth (rendering copy `out/p4r2/low_fxaa_base_new_high.png`: base low / new low / high); sub-pixel twigs soften a little.
+- **Low tier sheds CPU** - done: the far cascade every 4th frame (was 3rd) and with only the static
+  world in it (props, cans, cars, wheels, people - anything instanced, skinned or inside a group - cast
+  no shadow beyond the near cascade's 30 m on low: their `castShadow` is off just while viewport 1 is
+  drawn, `GameSunShadow.onFar`); prop cells (`props:*`, 200 m cells) more than 120 m away are out of
+  every pass (`layers.mask` 0, restored when near or on high; `&leanprops=m`). Calls per frame on low:
+  start 414 -> 329-341 (shadow 138-140 -> 84-85, main 320-322 -> 251-261), street_long 502-518 ->
+  353-354 (shadow 106 -> 62, main 441-460 -> 296-299). The CPU A/B was lost in today's noise.
+  Collectibles were not culled: their beams guide the player from afar (gameplay's call).
+- **Weak 'discrete' GPUs start on low** - done: `classifyGpu(str)` (exported): GeForce MX + 3 digits
+  and Quadro P/T + 3 digits are 'weak GPU' -> low under auto; laptop dGPUs -> high at 2x MSAA. 17
+  sample strings checked (`render.mjs rgpu`: MX150/450/550, Quadro P620 low; RTX 3050 Laptop, GTX 1650
+  Max-Q laptop; RTX 4070, Quadro T1000, RX 6600, M2 Pro high; Iris Xe, UHD 620, Radeon(TM) Graphics,
+  680M, M1, Mali, SwiftShader low). `&gpu=<string>` pretends to be one. The first slow-check decision
+  now takes 4 windows of 0.7 s (was 6).
+- **Lit-snow lower hemisphere for car paint** - not done, the premise does not hold for this HDRI:
+  its ground mean (`down`, below -17 deg) is (0.65, 0.69, 0.81) - brighter than the zenith sky (0.09,
+  0.13, 0.26) - and the env already fades to it under the horizon. Look-dev (`render.mjs rsaab`,
+  `&envdown=1.5&envband=0.04`: 1.5x brighter snow, reaching it 2 deg under the horizon; and AO off)
+  moved the shaded Saab's lower door from sRGB (7, 10, 23) to (10, 14, 30) - invisible. Its
+  darkness is the clear coat's Fresnel on a dark paint plus the grade's soft black point (x^2 / (x +
+  0.03) crushes reflections below ~3 % display-linear), i.e. car paint (cars) or the grade (approved
+  for its deep blacks), not the environment. `&envdown` / `&envband` stay as look-dev overrides.
+- **Distance culling of the spruce / crown cards** - not done: signs.js puts them in a 3 x 3 grid of
+  200 m cells (conifer: 266k of 358k quads in the four corner cells, whose nearest point is ~140 m
+  from Ove's house), so a 150 m cell cull changes nothing in mid-town and pops whole 200 m blocks of
+  spruce fringes near the edges; aerial / drone views must keep them. Needs finer cells in signs.js
+  (world) first - then a per-cell distance check in tickTown is a few lines.
+
+### API changes others must know
+- **main.js (gameplay_systems):** replace `buildTown(scene);` (line ~193) with
+  ``await buildTownAsync(scene, (f) => setLoading(`Plogar gatorna… ${Math.round(f * 100)} %`));``
+  (import `buildTownAsync` from './world/town.js'; `setLoading` already exists). Keep `uploadGeometry();
+  const pc = precompile();` at 'Tar porträtt…' and `await pc` before the loop: the promise now
+  resolves later (after the warm frame, ~0.3-0.5 s) - that is the point.
+- `precompile(root, { warm = true })`, `gpuIdle()`, `nextTask()`, `classifyGpu(str)`, `warmStats`,
+  `gfxDebug` (tests) are new exports; `qualityInfo()` has `msaa` and `fxaa`; `gfxStats.first` has
+  `newPrograms`. `townStats` has `wallMs` and `steps`. `uploadGeometry()` no longer runs objects'
+  own `onBeforeRender` hooks (instance properties; class methods still run).
+- **people / ui:** with uploadGeometry no longer baking every face, the portraits bake the cast's
+  faces (renderPortrait 0.17 -> 0.5-0.68 s in 'Tar porträtt'); rendering portraits lazily (on first
+  use) would take that out of the load.
+- **world:** the low tier hides prop cells beyond 120 m with `layers.mask = 0` (props.js should not
+  use layers itself); finer card cells in signs.js if the card cull is wanted.
+
+### Tests
+`render.mjs`: `rload` (now `RLOADN=n` loads with min / median, long tasks, loading phases, rAF gaps,
+`RPROD=1` for the real page; errors if the first frame compiled anything), `rprof` (CPU profile of a
+load; `RPROF_WITHIN=fn`), `rprog`, `rgpu`, `rautosim`, `rsaab`, new poses `sun_into`, `title_side`.
+
+## Round 6
+
+### What changed
 
 ### Quality tiers that work (`setQuality('auto' | 'high' | 'low')`, `getQuality()`, `qualityInfo()`)
 - `getQuality()` returns the **setting** ('auto' | 'high' | 'low'); `qualityInfo()` what runs:
@@ -12,7 +152,7 @@ changed in round 6, why, and the numbers.
   `setQuality(x)` returns `qualityInfo()`. No shader recompiles on a switch (PCF taps are a uniform).
 - **high**: GTAO, bloom, 4x MSAA, 2048 shadow maps, 16-tap PCF, far cascade every 2nd frame.
   **low**: no AO and no bloom (shadow-only pre-pass), no MSAA, 1024 maps, 4-tap PCF, far cascade every
-  3rd frame. Pixel ratio capped at 1 device pixel per CSS pixel on both (`&pr=x` forces x).
+  3rd frame (4th since phase 4 round 2, and FXAA). Pixel ratio capped at 1 device pixel per CSS pixel on both (`&pr=x` forces x).
 - **auto** (default outside tests): low on integrated GPUs (WEBGL_debug_renderer_info: Intel / Iris /
   UHD, AMD Radeon(TM) Graphics / 680M-780M / Vega APUs, plain Apple M-chips and "Apple GPU", Mali,
   Adreno, PowerVR, SwiftShader / llvmpipe), high otherwise; drops to low once if the median of the

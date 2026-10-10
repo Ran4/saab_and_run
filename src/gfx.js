@@ -1,7 +1,7 @@
 // Rendering foundation: a physically based, realistic winter-morning look.
 //
-//  - WebGLRenderer -> EffectComposer (HalfFloat, 4x MSAA) -> bloom -> OutputPass (ACES Filmic, a
-//    small saturation/S-curve grade, sRGB).
+//  - WebGLRenderer -> EffectComposer (HalfFloat, 4x MSAA) -> bloom (added in the output pass) ->
+//    OutputPass (ACES Filmic, a small saturation/S-curve grade, sRGB) -> FXAA on the low tier.
 //  - Lighting: a low warm SunLight (two cascaded shadow maps) + image-based light from a CC0 winter
 //    HDRI (sun clamped out of it, the SunLight provides that), drawn as the sky with the HDRI's sun
 //    warped onto the SunLight's direction. Height fog (+ a thin far haze) tinted warm towards the sun.
@@ -20,6 +20,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { FXAAPass } from 'three/addons/postprocessing/FXAAPass.js';
 import { SunLight } from 'three/addons/lights/SunLight.js';
 import { SunLightShadow } from 'three/addons/lights/SunLightShadow.js';
 
@@ -97,17 +98,19 @@ export const LIGHTING = {
 // actually runs (tier, render scale, GPU). Two tiers:
 //  high: GTAO (its normal/depth pre-pass only within AO_FAR), bloom, 4x MSAA, 2048 shadow maps with
 //        16-tap PCF, the far cascade re-rendered every 2nd frame.
-//  low:  no AO and no bloom (a shadow-only pre-pass), no MSAA, 1024 shadow maps with 4-tap PCF, the
-//        far cascade every 3rd frame.
-// 'auto' (the default outside tests) picks low on integrated GPUs and drops to low when frames stay
-// over 20 ms in the first seconds; 'auto' and 'low' also scale the render resolution (0.6-1.0 of the
-// pixel ratio, which is capped at 1 device pixel per CSS pixel; `&pr=1.5` raises the cap) with the
-// frame time. 'high' is always full resolution. Tests (?test) default to 'high' without the
+//  low:  no AO and no bloom (a shadow-only pre-pass), no MSAA but FXAA, 1024 shadow maps with 4-tap
+//        PCF, and 'lean' on the CPU: the far cascade every 4th frame with only the static world in
+//        it, prop cells beyond 120 m skipped (see farCastersOff / leanProps).
+// 'auto' (the default outside tests) picks low on integrated and weak GPUs (classifyGpu) and drops
+// to low when frames stay over 20 ms in the first seconds; on the high tier it first steps 4x MSAA
+// down to 2x (laptop GPUs start there); 'auto' and 'low' also scale the render resolution (0.6-1.0
+// of the pixel ratio, which is capped at 1 device pixel per CSS pixel; `&pr=1.5` raises the cap) with
+// the frame time. 'high' is always full resolution, 4x. Tests (?test) default to 'high' without the
 // dynamic scale (deterministic shots); `&q=auto|high|low`, `?lowgfx` (= low), `&dynscale` override.
 
 const QSET = {
-  high: { ao: true, bloom: true, msaa: 4, shadow: 2048, pcfLow: 0, farEvery: 2, scaleMin: 0.7 },
-  low: { ao: false, bloom: false, msaa: 0, shadow: 1024, pcfLow: 1, farEvery: 3, scaleMin: 0.6 },
+  high: { ao: true, bloom: true, msaa: 4, fxaa: false, shadow: 2048, pcfLow: 0, farEvery: 2, scaleMin: 0.7, lean: false },
+  low: { ao: false, bloom: false, msaa: 0, fxaa: true, shadow: 1024, pcfLow: 1, farEvery: 4, scaleMin: 0.6, lean: true },
 };
 const TEST = PARAMS.has('test');
 const QSETTINGS = ['auto', 'high', 'low'];
@@ -118,12 +121,13 @@ const QUALITY = {
   scale: 1,           // render scale (x the capped pixel ratio)
   prCap: 1,          // device pixels per CSS pixel at most (`&pr=x` forces x, for tests)
   dyn: !TEST || PARAMS.has('dynscale'),
-  gpu: '', integrated: false, reason: 'default',
+  msaaCut: false,     // 'auto' on the high tier: 2x MSAA instead of 4x (the first step down; laptop GPUs start there)
+  gpu: '', integrated: false, weak: false, laptop: false, reason: 'default',
 };
 const tierOf = () => (QUALITY.setting === 'auto' ? QUALITY.autoTier : QUALITY.setting);
 export function getQuality() { return QUALITY.setting; }
 export function qualityInfo() {
-  return { setting: QUALITY.setting, tier: QUALITY.tier, scale: QUALITY.scale, pixelRatio: renderer ? +renderer.getPixelRatio().toFixed(3) : 0, gpu: QUALITY.gpu, integrated: QUALITY.integrated, reason: QUALITY.reason };
+  return { setting: QUALITY.setting, tier: QUALITY.tier, scale: QUALITY.scale, msaa: composer ? composer.renderTarget1.samples : 0, fxaa: !!fxaa?.enabled, pixelRatio: renderer ? +renderer.getPixelRatio().toFixed(3) : 0, gpu: QUALITY.gpu, integrated: QUALITY.integrated, reason: QUALITY.reason };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -131,10 +135,12 @@ export function qualityInfo() {
 
 // `nearOnly` (set by the shadow pre-pass on most frames): only the near cascade is fitted and
 // re-rendered; the far one keeps its map and matrix from the last full update (the sun does not move,
-// the far cascade covers 30-210 m, so moving things there update at 30 or 20 Hz).
+// the far cascade covers 30-210 m, so moving things there update at 30 Hz on high).
+// `onFar` (set by the low tier): called just before the far cascade (viewport 1) is drawn.
 class GameSunShadow extends SunLightShadow {
-  constructor() { super(); this.split = 30; this.far = 210; this.nearOnly = false; }
+  constructor() { super(); this.split = 30; this.far = 210; this.nearOnly = false; this.onFar = null; }
   getViewportCount() { return this.nearOnly ? 1 : this._viewportCount; }
+  getFrustum(i) { if (i === 1 && this.onFar) this.onFar(); return super.getFrustum(i); }
 }
 // Same fitting maths as SunLightShadow.updateMatrices, but with fixed split distances.
 const _lo = new THREE.Matrix4(), _v2l = new THREE.Matrix4(), _ld = new THREE.Vector3(), _up = new THREE.Vector3(), _c = new THREE.Vector3();
@@ -1187,7 +1193,8 @@ function makeSurfaceMaterial(name, snow, extra = {}) {
 }
 
 // The (shared) material for a surface. opts: { snow = true, unique = false, intensity, kind }.
-// Shared materials come in one instance per object kind ('mesh', 'inst', 'skin', 'batch'): three.js
+// Shared materials come in one instance per object kind ('mesh', 'inst', 'instc' = instanced with
+// instanceColor, 'skin', 'batch'): three.js
 // re-evaluates the program every time one material switches between a Mesh, an InstancedMesh and a
 // SkinnedMesh, so instanced/skinned/batched users get their own copy (same shader, same programs).
 // The renderer swaps them in by itself (kindSweep), so callers never need to pass `kind`.
@@ -1206,7 +1213,7 @@ export function surfaceMaterial(name, opts = {}) {
 // ones were made. Opaque draws are sorted by material id, which decides coplanar overlaps (road
 // markings on asphalt): copies made in the same order keep the same winners. (batch.js)
 export function prepareKind(kind) {
-  const base = [...matCache.entries()].filter(([k]) => !/\|(inst|skin|batch)$/.test(k)).map(([, m]) => m).sort((a, b) => a.id - b.id);
+  const base = [...matCache.entries()].filter(([k]) => !/\|(inst|instc|skin|batch)$/.test(k)).map(([, m]) => m).sort((a, b) => a.id - b.id);
   for (const m of base) { const inf = matInfo.get(m); if (inf) surfaceMaterial(inf[0], { snow: inf[1], kind }); }
 }
 
@@ -1300,10 +1307,61 @@ export function outlineMat() { return MAT._noOutline ??= new THREE.MeshBasicMate
 export function outlineGeometry(geo) { return geo; }
 
 // ---------------------------------------------------------------------------------------------
+// Bloom without its final blend: UnrealBloomPass ends by drawing its result additively over the
+// scene target - the 4x multisampled HDR target, a full-screen pass at 4 samples a pixel (about 60 %
+// of bloom's GPU time at high resolutions). Here it stops after the composite (the result is in
+// renderTargetsHorizontal[0], half resolution) and the output grade adds it before tone mapping
+// (gradeOutput: tBloom / uBloom): the same sum, read once per pixel.
+class GameBloomPass extends UnrealBloomPass {
+  render(renderer, writeBuffer, readBuffer) {
+    renderer.getClearColor(this._oldClearColor);
+    this._oldClearAlpha = renderer.getClearAlpha();
+    const oldAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+    renderer.setClearColor(this.clearColor, 0);
+    const q = this._fsQuad;
+    // 1. bright areas
+    this.highPassUniforms.tDiffuse.value = readBuffer.texture;
+    this.highPassUniforms.luminosityThreshold.value = this.threshold;
+    q.material = this.materialHighPassFilter;
+    renderer.setRenderTarget(this.renderTargetBright);
+    renderer.clear();
+    q.render(renderer);
+    // 2. blur the mips
+    let input = this.renderTargetBright;
+    for (let i = 0; i < this.nMips; i++) {
+      const m = this.separableBlurMaterials[i];
+      q.material = m;
+      m.uniforms.colorTexture.value = input.texture;
+      m.uniforms.direction.value = UnrealBloomPass.BlurDirectionX;
+      renderer.setRenderTarget(this.renderTargetsHorizontal[i]);
+      renderer.clear();
+      q.render(renderer);
+      m.uniforms.colorTexture.value = this.renderTargetsHorizontal[i].texture;
+      m.uniforms.direction.value = UnrealBloomPass.BlurDirectionY;
+      renderer.setRenderTarget(this.renderTargetsVertical[i]);
+      renderer.clear();
+      q.render(renderer);
+      input = this.renderTargetsVertical[i];
+    }
+    // 3. composite (the output pass adds it)
+    q.material = this.compositeMaterial;
+    this.compositeMaterial.uniforms.bloomStrength.value = this.strength;
+    this.compositeMaterial.uniforms.bloomRadius.value = this.radius;
+    this.compositeMaterial.uniforms.bloomTintColors.value = this.bloomTintColors;
+    renderer.setRenderTarget(this.renderTargetsHorizontal[0]);
+    renderer.clear();
+    q.render(renderer);
+    renderer.setClearColor(this._oldClearColor, this._oldClearAlpha);
+    renderer.autoClear = oldAutoClear;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Init
 
 const pmremCache = {};
-let sky, gtao, bloom, renderPass, outputPass, msaaTarget, aoSize = new THREE.Vector2();
+let sky, gtao, bloom, renderPass, outputPass, fxaa = null, msaaTarget, aoSize = new THREE.Vector2();
 export let gfxReady = Promise.resolve();
 
 export function initGfx(container) {
@@ -1366,7 +1424,7 @@ export function initGfx(container) {
   composer.swapBuffers();   // the scene pass draws into readBuffer: make that the multisampled one
   renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
-  bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.14, 0.42, 2.6);
+  bloom = new GameBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.14, 0.42, 2.6);
   composer.addPass(bloom);
   outputPass = new OutputPass();
   // It draws to the screen: no buffer swap after it, or every other frame the scene pass would land
@@ -1374,6 +1432,12 @@ export function initGfx(container) {
   outputPass.needsSwap = false;
   gradeOutput(outputPass);
   composer.addPass(outputPass);
+  // Low tier (no MSAA): FXAA on the graded image. Then the output grade draws into the composer's
+  // second target (and swaps), FXAA draws to the screen (and swaps back). FXAAPass.setSize keeps its
+  // texel size with the composer's (resizes, the dynamic render scale).
+  fxaa = new FXAAPass();
+  fxaa.enabled = false;
+  composer.addPass(fxaa);
   gtao = new GTAOPass(scene, camera, size.x, size.y);
   // Small radius and thin assumed thickness: contact occlusion (under cars, wall feet, corners), not
   // metre-wide dark clouds on a wall behind anything that stands in front of it.
@@ -1385,7 +1449,16 @@ export function initGfx(container) {
   window.addEventListener('resize', onResize);
 }
 
-// Which GPU: integrated ones (and software renderers) start on the low tier under 'auto'.
+// Which GPU: integrated ones (and software renderers) and weak entry-level 'discrete' ones (GeForce
+// MX, small Quadro P/T: often no faster than an Iris Xe) start on the low tier under 'auto'; laptop
+// GPUs start the high tier at 2x MSAA. Exported for the tests (render.mjs rgpu).
+export function classifyGpu(s) {
+  const weak = /geforce\s*mx\s?\d{3}|\bmx\s?\d{3}\b|quadro\s+(p|t)\d{3}\b/i.test(s);
+  const discrete = !weak && /nvidia|geforce|quadro|rtx|gtx|radeon\s*(rx|pro|r9|r7|vii|hd\s*[5-9]\d{3})|radeon\s*\(tm\)\s*(rx|pro)|arc\s*(\(tm\))?\s*[ab]\d|apple m\d+\s*(pro|max|ultra)/i.test(s);
+  const integrated = !weak && !discrete && /intel|iris|uhd|hd graphics|radeon(\(tm\))?\s*(graphics|\d{3}m)|radeon vega|vega \d+|apple|mali|adreno|powervr|swiftshader|llvmpipe|softpipe|lavapipe|microsoft basic/i.test(s);
+  const laptop = discrete && /laptop|max-q|mobile/i.test(s);
+  return { weak, discrete, integrated, laptop, tier: weak || integrated ? 'low' : 'high', reason: weak ? 'weak GPU' : integrated ? 'integrated GPU' : laptop ? 'laptop GPU' : 'default' };
+}
 function detectGpu() {
   let s = '';
   try {
@@ -1393,11 +1466,15 @@ function detectGpu() {
     const e = gl.getExtension('WEBGL_debug_renderer_info');
     s = String((e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || '');
   } catch (e) { /* no info */ }
-  const discrete = /nvidia|geforce|quadro|rtx|gtx|radeon\s*(rx|pro|r9|r7|vii|hd\s*[5-9]\d{3})|radeon\s*\(tm\)\s*(rx|pro)|arc\s*(\(tm\))?\s*[ab]\d|apple m\d+\s*(pro|max|ultra)/i.test(s);
-  const integrated = !discrete && /intel|iris|uhd|hd graphics|radeon(\(tm\))?\s*(graphics|\d{3}m)|radeon vega|vega \d+|apple|mali|adreno|powervr|swiftshader|llvmpipe|softpipe|lavapipe|microsoft basic/i.test(s);
+  if (PARAMS.has('gpu')) s = PARAMS.get('gpu');   // tests: pretend to be this GPU
+  const c = classifyGpu(s);
   QUALITY.gpu = s.replace(/^ANGLE \((.*)\)$/, '$1').slice(0, 120);
-  QUALITY.integrated = integrated;
-  if (integrated && QUALITY.setting === 'auto') { QUALITY.autoTier = 'low'; QUALITY.reason = 'integrated GPU'; }
+  QUALITY.integrated = c.integrated;
+  QUALITY.weak = c.weak;
+  QUALITY.laptop = c.laptop;
+  QUALITY.msaaCut = c.laptop;
+  QUALITY.reason = c.reason;
+  if (c.tier === 'low' && QUALITY.setting === 'auto') QUALITY.autoTier = 'low';
 }
 
 // Display grade inside the OutputPass, after tone mapping: a toe lift (ACES' own toe has a log-log
@@ -1411,8 +1488,12 @@ function gradeOutput(pass) {
   pass.uniforms.uContrast = m.uniforms.uContrast = { value: SKY.contrast };
   pass.uniforms.uToe = m.uniforms.uToe = { value: SKY.toe };
   pass.uniforms.uBlack = m.uniforms.uBlack = { value: SKY.black };
+  // bloom (GameBloomPass' composite, half resolution), added in linear HDR before tone mapping
+  pass.uniforms.tBloom = m.uniforms.tBloom = { value: bloom.renderTargetsHorizontal[0].texture };
+  pass.uniforms.uBloom = m.uniforms.uBloom = { value: 1 };
   m.fragmentShader = m.fragmentShader
-    .replace('varying vec2 vUv;', 'varying vec2 vUv;\nuniform float uSat;\nuniform float uContrast;\nuniform float uToe;\nuniform float uBlack;')
+    .replace('varying vec2 vUv;', 'varying vec2 vUv;\nuniform float uSat;\nuniform float uContrast;\nuniform float uToe;\nuniform float uBlack;\nuniform sampler2D tBloom;\nuniform float uBloom;')
+    .replace('gl_FragColor = texture2D( tDiffuse, vUv );', 'gl_FragColor = texture2D( tDiffuse, vUv );\n\t\t\tif ( uBloom > 0.0 ) gl_FragColor.rgb += texture2D( tBloom, vUv ).rgb * uBloom;')
     .replace(/\}\s*$/, `
       {
         vec3 c = clamp( gl_FragColor.rgb, 0.0, 1.0 );
@@ -1456,39 +1537,47 @@ function applyQuality() {
   QUALITY.tier = tierOf();
   const Q = QSET[QUALITY.tier];
   bloom.enabled = Q.bloom;
+  outputPass.uniforms.uBloom.value = Q.bloom ? 1 : 0;
+  fxaa.enabled = Q.fxaa;
+  outputPass.needsSwap = Q.fxaa;
   G.uShadowLow.value = Q.pcfLow;
   if (sun.shadow.mapSize.x !== Q.shadow) {
     sun.shadow.mapSize.set(Q.shadow, Q.shadow);
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
   }
-  if (composer.renderTarget1.samples !== Q.msaa) {
-    composer.renderTarget1.samples = Q.msaa;
-    composer.renderTarget1.dispose();
-  }
+  applyMsaa();
   if (!(QUALITY.dyn && QUALITY.setting !== 'high')) QUALITY.scale = 1;
   QUALITY.scale = Math.max(Q.scaleMin, QUALITY.scale);
   if (Math.abs(renderer.getPixelRatio() - basePixelRatio() * QUALITY.scale) > 1e-3) onResize();
   AQ.skip = 30;
 }
+// The scene target's samples: the tier's, or 2 when 'auto' has cut 4x MSAA (no shader recompiles).
+function applyMsaa() {
+  const Q = QSET[QUALITY.tier], ms = Q.msaa && QUALITY.setting === 'auto' && QUALITY.msaaCut ? Math.min(2, Q.msaa) : Q.msaa;
+  const rt = composer.renderTarget1;
+  if (rt.samples !== ms) { rt.samples = ms; rt.dispose(); }
+}
 // 'auto' (default), 'high' or 'low'; see the Quality section at the top. Returns qualityInfo().
 export function setQuality(level) {
   QUALITY.setting = QSETTINGS.includes(level) ? level : 'auto';
   if (QUALITY.setting !== 'auto') QUALITY.reason = 'chosen';
-  else if (QUALITY.reason === 'chosen') QUALITY.reason = QUALITY.integrated ? 'integrated GPU' : 'default';
+  else if (QUALITY.reason === 'chosen') QUALITY.reason = QUALITY.weak ? 'weak GPU' : QUALITY.integrated ? 'integrated GPU' : QUALITY.laptop ? 'laptop GPU' : 'default';
   if (renderer) applyQuality();
   return qualityInfo();
 }
 
 // Automatic quality, fed with the frame interval once per renderFrame. Windows of ~0.7 s:
-//  - 'auto' on the high tier: if the frames of the first ~5 s of rendering (after the first-frame
-//    hitches) average over 20 ms, or the render scale is at its minimum and frames stay over 24 ms,
-//    drop to the low tier (once; reason 'slow').
+//  - 'auto' on the high tier: if the frames of the first ~3 s of rendering (4 windows after the
+//    first-frame hitches) average over 20 ms, or the render scale is at its minimum and frames stay
+//    over 24 ms, drop to the low tier (once; reason 'slow'). Before the render scale, 4x MSAA steps
+//    down to 2x (and back up last).
 //  - 'auto'/'low': render scale 0.6/0.7..1.0 in steps of 0.1. Down when a window averages over
 //    18.5 ms (under ~54 fps); if a step down did not make frames >= 5 % faster the game is CPU-bound,
 //    so the step is undone and held for 20 s. Up (a probe) after 5 windows at full rate; a probe that
 //    makes frames slow again is undone and held off for 10 s, doubling each time.
 const AQ = { n: 0, sum: 0, skip: 45, wins: [], trial: null, good: 0, slow: 0, cpuHold: 0, upHold: 0, backoff: 10000, decided: false, last: 0 };
-function autoQuality(now) {
+function autoQuality(now, sim = false) {
+  if (AQ.sim && !sim) return;   // a test drives it (gfxDebug.aqStep)
   const dt = AQ.last ? now - AQ.last : 0;
   AQ.last = now;
   if (QUALITY.setting === 'high' || dt <= 0) return;
@@ -1502,7 +1591,7 @@ function autoQuality(now) {
   if (QUALITY.setting === 'auto' && QUALITY.tier === 'high') {
     if (!AQ.decided) {
       AQ.wins.push(T);
-      if (AQ.wins.length >= 6) {
+      if (AQ.wins.length >= 4) {
         AQ.decided = true;
         const s = [...AQ.wins].sort((a, b) => a - b), med = s[s.length >> 1];
         if (med > 20) { QUALITY.autoTier = 'low'; QUALITY.reason = `slow (${med.toFixed(1)} ms)`; applyQuality(); return; }
@@ -1513,20 +1602,29 @@ function autoQuality(now) {
     } else AQ.slow = 0;
   }
   if (!QUALITY.dyn) return;
+  // Steps: on 'auto' at the high tier, 4x -> 2x MSAA comes first (fill-bound at high resolutions it
+  // is 8-15 % of the frame), then the render scale. A step is a trial: undone if it did not help.
   const setScale = (s) => { QUALITY.scale = Math.round(Math.max(Q.scaleMin, Math.min(1, s)) * 10) / 10; onResize(); AQ.skip = 12; };
+  const setCut = (on) => { QUALITY.msaaCut = on; applyMsaa(); AQ.skip = 12; };
+  const set = (tr, v) => (tr.msaa ? setCut(v) : setScale(v));
+  const msaaStep = QUALITY.setting === 'auto' && QUALITY.tier === 'high' && Q.msaa > 2;
   if (AQ.trial) {
     const tr = AQ.trial;
     AQ.trial = null;
-    if (tr.dir < 0 && T > tr.T * 0.95) { setScale(tr.prev); AQ.cpuHold = now + 20000; }
-    else if (tr.dir > 0 && T > 18.5) { setScale(tr.prev); AQ.upHold = now + AQ.backoff; AQ.backoff = Math.min(AQ.backoff * 2, 160000); }
+    if (tr.dir < 0 && T > tr.T * 0.95) { set(tr, tr.prev); AQ.cpuHold = now + 20000; }
+    else if (tr.dir > 0 && T > 18.5) { set(tr, tr.prev); AQ.upHold = now + AQ.backoff; AQ.backoff = Math.min(AQ.backoff * 2, 160000); }
     else if (tr.dir > 0) AQ.backoff = 10000;
     return;
   }
   if (T > 18.5) {
     AQ.good = 0;
-    if (QUALITY.scale > Q.scaleMin + 1e-3 && now > AQ.cpuHold) { AQ.trial = { dir: -1, T, prev: QUALITY.scale }; setScale(QUALITY.scale - 0.1); }
+    if (now <= AQ.cpuHold) return;
+    if (msaaStep && !QUALITY.msaaCut) { AQ.trial = { dir: -1, T, msaa: true, prev: false }; setCut(true); }
+    else if (QUALITY.scale > Q.scaleMin + 1e-3) { AQ.trial = { dir: -1, T, prev: QUALITY.scale }; setScale(QUALITY.scale - 0.1); }
   } else if (T < 17.4) {
-    if (++AQ.good >= 5 && QUALITY.scale < 1 && now > AQ.upHold) { AQ.good = 0; AQ.trial = { dir: 1, T, prev: QUALITY.scale }; setScale(QUALITY.scale + 0.1); }
+    if (++AQ.good < 5 || now <= AQ.upHold) return;
+    if (QUALITY.scale < 1) { AQ.good = 0; AQ.trial = { dir: 1, T, prev: QUALITY.scale }; setScale(QUALITY.scale + 0.1); }
+    else if (msaaStep && QUALITY.msaaCut && !QUALITY.laptop) { AQ.good = 0; AQ.trial = { dir: 1, T, msaa: true, prev: true }; setCut(false); }
   } else AQ.good = 0;
 }
 
@@ -1545,6 +1643,7 @@ export function setRoadGrid({ pitch = 80, offset = 40, halfWidth = 5.5, lane = 2
 // Sky: the HDRI drawn as the background (its sun warped onto SUN_DIR), and a sun-clamped copy of
 // it PMREM'd into scene.environment.
 
+const ENV_DOWN = +(PARAMS.get('envdown') || 1), ENV_BAND = +(PARAMS.get('envband') || 0.17);   // look-dev: the env's ground
 async function loadSky() {
   const tex = await new HDRLoader().setDataType(THREE.FloatType).loadAsync(`${ASSETS}sky/${SKY.hdri}.hdr`);
   const W = tex.image.width, H = tex.image.height, D = tex.image.data;
@@ -1584,6 +1683,7 @@ async function loadSky() {
   scene.fog.color.copy(fog);
   FOG_SUN_TINT.set(Math.min(2.5, warm.r / Math.max(1e-3, fog.r)), Math.min(2.5, warm.g / Math.max(1e-3, fog.g)), Math.min(2.5, warm.b / Math.max(1e-3, fog.b)));
   LIGHTING.fog.copy(fog); LIGHTING.sky.copy(up); LIGHTING.ground.copy(down);
+  LIGHTING.raw = { up: up.clone(), down: down.clone(), cold: cold.clone(), warm: warm.clone() };   // (look-dev)
 
   // Environment: the same sky with the sun clamped away (the SunLight provides it).
   const EW = 1024, EH = 512, E = new Float32Array(EW * EH * 4);
@@ -1600,8 +1700,8 @@ async function loadSky() {
     // bright, even ground under the horizon line.
     const ev = (0.5 - (y + 0.5) / EH) * Math.PI;
     if (ev < 0) {
-      const t = Math.min(1, -ev / 0.17), w = t * t * (3 - 2 * t) * 0.9;
-      r += (down.r - r) * w; g += (down.g - g) * w; b += (down.b - b) * w;
+      const t = Math.min(1, -ev / ENV_BAND), w = t * t * (3 - 2 * t) * 0.9;
+      r += (down.r * ENV_DOWN - r) * w; g += (down.g * ENV_DOWN - g) * w; b += (down.b * ENV_DOWN - b) * w;
     }
     const l = r * 0.2126 + g * 0.7152 + b * 0.0722;
     if (l > CLAMP) {
@@ -1737,15 +1837,18 @@ export function tickSky(t) { G.uTime.value = t; }
 const AO_STRENGTH = +(PARAMS.get('aostr') || 1.3); // exponent on the AO term
 const AO_FAR = +(PARAMS.get('aofar') || 80);
 const FAR_EVERY = +(PARAMS.get('farevery') || 0);   // look-dev: re-render the far cascade every n frames
-const KIND_NAMES = ['mesh', 'inst', 'skin', 'batch'];
-const kindOf = (o) => (o.isBatchedMesh ? 3 : o.isInstancedMesh ? 1 : o.isSkinnedMesh ? 2 : 0);
+// Object kinds, each with its own pre-pass materials and surface copies: three.js re-evaluates a
+// material's program whenever it switches between them. 'instc' = an InstancedMesh with
+// instanceColor (far car bodies, debris): with and without it are different programs too.
+const KIND_NAMES = ['mesh', 'inst', 'skin', 'batch', 'instc'];
+const kindOf = (o) => (o.isBatchedMesh ? 3 : o.isInstancedMesh ? (o.instanceColor ? 4 : 1) : o.isSkinnedMesh ? 2 : 0);
 const PRE = KIND_NAMES.map((k) => { const m = new THREE.MeshBasicMaterial(); m.name = 'pre:' + k; return m; });
-const DEPTH = KIND_NAMES.map((k) => { const m = new THREE.MeshDepthMaterial(); m.name = 'depth:' + k; return m; });
+const DEPTH = KIND_NAMES.map((k) => { const m = new THREE.MeshDepthMaterial(); m.name = 'depth:' + k; m.userData.gameDepth = true; return m; });
 let NORMAL = null, shScene = null, tinyRT = null, aoCam = null, frameNo = 0, lastFull = -99, lastMap = null;
 const shLights = [];
 const lastFullPos = new THREE.Vector3(1e9, 0, 0), lastFullDir = new THREE.Vector3(), _dir = new THREE.Vector3(), _clearCol = new THREE.Color();
 const depthRange = new THREE.Vector2(0.25, AO_FAR);
-const PL = { at: -1e9, hide: [], hideVis: [], multi: [], multiK: [], all: [], allK: [], saved: [] };
+const PL = { at: -1e9, hide: [], hideVis: [], multi: [], multiK: [], all: [], allK: [], saved: [], small: [], props: [] };
 
 function initPrepass() {
   NORMAL = KIND_NAMES.map((k) => { const m = gtao.normalMaterial.clone(); m.name = 'aonormal:' + k; return m; });
@@ -1760,6 +1863,7 @@ function initPrepass() {
     sm.needsUpdate = true;
     sm.render(shLights, scene, camera);
     sm.needsUpdate = false;
+    farCastersBack();
   };
   shScene.add(d);
   shLights.push(sun);
@@ -1798,25 +1902,66 @@ function kindSweep(o, k) {
     if (inf) o.material = surfaceMaterial(inf[0], { snow: inf[1], kind });
   }
 }
+// Low tier ('lean'): it sheds CPU work, not only pixels.
+//  - The far cascade (30-210 m) draws only the static world (its batches and the forest belt, plus
+//    plain top-level meshes): props, cans, cars, wheels and people (everything instanced, skinned or
+//    inside a group) cast no shadow beyond the near cascade's 30 m. Their castShadow is switched off
+//    just for that viewport (GameSunShadow.onFar) and back on right after.
+//  - Prop cells (props:*, one InstancedMesh per type and 200 m cell) whose bounds are more than
+//    LEAN_PROPS m away are left out of every pass (layer mask 0; restored when near or on high).
+//  - The far cascade every 4th frame (high: 2nd).
+const LEAN_PROPS = +(PARAMS.get('leanprops') || 120);
+const farOff = [];
+function farCastersOff() {
+  const S = PL.small;
+  for (let i = 0; i < S.length; i++) if (S[i].castShadow) { S[i].castShadow = false; farOff.push(S[i]); }
+}
+function farCastersBack() {
+  for (let i = 0; i < farOff.length; i++) farOff[i].castShadow = true;
+  farOff.length = 0;
+}
+const _pc = new THREE.Vector3();
+function leanProps(on) {
+  const P = PL.props, cp = camera.position;
+  for (let i = 0; i < P.length; i++) {
+    const o = P[i], u = o.userData;
+    if (u.leanMask === undefined) u.leanMask = o.layers.mask;
+    let far = false;
+    if (on) {
+      if (!o.boundingBox) o.computeBoundingBox();
+      far = o.boundingBox.distanceToPoint(_pc.copy(cp)) > LEAN_PROPS;
+    }
+    o.layers.mask = far ? 0 : u.leanMask;
+  }
+}
 function rebuildLists() {
-  PL.hide.length = PL.multi.length = PL.multiK.length = PL.all.length = PL.allK.length = 0;
+  PL.hide.length = PL.multi.length = PL.multiK.length = PL.all.length = PL.allK.length = PL.small.length = PL.props.length = 0;
   scene.traverse((o) => {
     if (o === scene) return;
+    // (every mesh gets its kind's copies, also the ones left out of the pre-pass: the main pass
+    // would flip a shared material between kinds just the same)
+    const k = o.isMesh && o.material ? kindOf(o) : 0;
+    if (k) kindSweep(o, k);
     if (o.userData.noAO || o.isPoints || o.isLine || o.isSprite) { PL.hide.push(o); return; }
     if (!o.isMesh || !o.material) return;
     const arr = Array.isArray(o.material);
     if (!arr && o.material.transparent) { PL.hide.push(o); return; }
-    const k = kindOf(o);
-    if (k) kindSweep(o, k);
     PL.all.push(o); PL.allK.push(k);
+    if (k !== 3 && (k || o.parent !== scene)) PL.small.push(o);
+    if (o.isInstancedMesh && o.parent === scene && o.name.startsWith('props:')) PL.props.push(o);
     if (arr) { PL.multi.push(o); PL.multiK.push(k); }
-    // (castShadow may be switched on later - people's LOD does - so every plain caster-to-be gets it)
-    if (o.customDepthMaterial === undefined && (arr ? o.material.every(plain1) : plain1(o.material))) o.customDepthMaterial = DEPTH[k];
+    // (castShadow may be switched on later - people's LOD does - so every plain caster-to-be gets it;
+    // re-checked at every rebuild: an InstancedMesh may get its instanceColor after it was added)
+    const cd = o.customDepthMaterial;
+    if (cd === undefined || cd.userData.gameDepth) o.customDepthMaterial = (arr ? o.material.every(plain1) : plain1(o.material)) ? DEPTH[k] : undefined;
   });
   PL.at = frameNo;
 }
 function prepass(Q) {
   if (frameNo - PL.at >= 20) rebuildLists();
+  sun.shadow.onFar = Q.lean ? farCastersOff : null;
+  if (Q.lean ? frameNo % 10 === 0 : PL.leanOn) leanProps(Q.lean);
+  PL.leanOn = Q.lean;
   const H = PL.hide, HV = PL.hideVis, A = PL.all, S = PL.saved, M = PL.multi, MK = PL.multiK;
   for (let i = 0; i < H.length; i++) { HV[i] = H[i].visible; H[i].visible = false; }
   for (let i = 0; i < A.length; i++) S[i] = A[i].material;
@@ -1879,41 +2024,193 @@ function renderAO() {
 
 // Depth of the AO pre-pass (for soft particles), or null when AO is off. It only holds geometry
 // within AO_FAR: sceneDepthRange() is its (near, far); a cleared texel (1.0) means "nothing near".
+// For test scenarios (render.mjs rprog): the renderer's own per-kind materials.
+export const gfxDebug = {
+  kinds: () => ({ names: KIND_NAMES, PRE, DEPTH, NORMAL }),
+  // the automatic quality, fed with simulated frame times (render.mjs rautosim)
+  aqSim(on) {
+    if (on) { QUALITY.scale = 1; QUALITY.msaaCut = QUALITY.laptop; QUALITY.autoTier = QUALITY.integrated || QUALITY.weak ? 'low' : 'high'; applyQuality(); }
+    AQ.sim = on; AQ.last = 0; AQ.skip = 0; AQ.n = AQ.sum = 0; AQ.wins = []; AQ.decided = false; AQ.trial = null; AQ.good = AQ.slow = 0; AQ.cpuHold = AQ.upHold = 0; },
+  aqStep: (now) => autoQuality(now, true),
+};
 export function sceneDepthTexture() { return QSET[QUALITY.tier].ao && gtao ? gtao.depthTexture : null; }
 export function sceneDepthRange() { return depthRange; }
 
 // Compile every program the scene needs without blocking (KHR_parallel_shader_compile): call it
 // during loading once the scene is populated (main.js: before the portraits), and await it before the
 // first frame if possible. Hidden objects are included (three compiles the whole graph); materials
-// are compiled as the composer's scene pass sees them (linear HDR target, no tone mapping).
-export function precompile(root = scene) {
+// are compiled as the composer's scene pass sees them (linear HDR target, no tone mapping). The
+// renderer's own programs are compiled too, each in the state its pass draws in: the per-kind shadow
+// depth and AO-normal materials, the shadow pre-pass' tiny scene, and the post chain (bloom, GTAO and
+// its denoiser, FXAA, the output grade). Resolves when every program has linked.
+let progRig = null;
+function buildProgRig() {
+  // one 1-triangle object per kind (position + normal: the attributes every real mesh has)
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  g.setIndex([0, 1, 2]);
+  const mk = (k, m) => {
+    let o;
+    if (k === 1 || k === 4) {
+      o = new THREE.InstancedMesh(g, m, 1);
+      if (k === 4) o.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3).fill(1), 3);
+    } else if (k === 2) {
+      const sg = g.clone();
+      sg.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(new Array(12).fill(0), 4));
+      sg.setAttribute('skinWeight', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+      o = new THREE.SkinnedMesh(sg, m);
+    } else if (k === 3) {
+      o = new THREE.BatchedMesh(1, 3, 3, m);
+      o.addInstance(o.addGeometry(g));
+    } else o = new THREE.Mesh(g, m);
+    o.frustumCulled = false;
+    return o;
+  };
+  const depth = new THREE.Scene(), normal = new THREE.Scene(), post = new THREE.Scene();
+  // shadow depth: as the shadow map draws it (side = the shadow side of a front-sided material, or
+  // double-sided); clones share the program cache, so both variants are ready for DEPTH[k]
+  KIND_NAMES.forEach((_, k) => {
+    depth.add(mk(k, DEPTH[k]));
+    const d2 = DEPTH[k].clone(); d2.side = THREE.DoubleSide;
+    depth.add(mk(k, d2));
+    normal.add(mk(k, NORMAL[k]));
+  });
+  // (like three's FullScreenQuad: position + uv, no normals - normals would be another program)
+  const quad = new THREE.BufferGeometry();
+  quad.setAttribute('position', new THREE.Float32BufferAttribute([-1, 3, 0, -1, -1, 0, 3, -1, 0], 3));
+  quad.setAttribute('uv', new THREE.Float32BufferAttribute([0, 2, 0, 0, 2, 0], 2));
+  const postMats = () => [bloom.materialHighPassFilter, ...bloom.separableBlurMaterials, bloom.compositeMaterial, gtao.gtaoMaterial, gtao.pdMaterial, outputPass.material].filter(Boolean);
+  const screen = new THREE.Scene();   // FXAA draws to the screen (another program than into a target)
+  { const o = new THREE.Mesh(quad, fxaa.material); o.frustumCulled = false; screen.add(o); }
+  progRig = { depth, normal, post, screen, quad, postMats };
+}
+// A yield to the event loop that is not clamped like setTimeout (lets the page paint between chunks
+// of loading work; scheduler.yield where the browser has it).
+const _mc = typeof MessageChannel !== 'undefined' ? new MessageChannel() : null, _mq = [];
+if (_mc) _mc.port1.onmessage = () => { const f = _mq.shift(); if (f) f(); };
+export function nextTask() {
+  if (globalThis.scheduler?.yield) return globalThis.scheduler.yield();
+  return new Promise((res) => { if (_mc) { _mq.push(res); _mc.port2.postMessage(0); } else setTimeout(res, 0); });
+}
+// First use of a program (its uniform and attribute locations) waits for the driver to finish linking
+// it - with ANGLE on desktop GL "parallel" compiles report complete at once and the link really
+// happens there: ~2-3 ms a program, 0.3-0.4 s for the scene's ~140, all in the first frame. Done here
+// instead, in ~25 ms chunks while the loading screen is up.
+const warmed = new WeakSet();
+let precompiled = false;
+async function warmPrograms() {
+  let t = performance.now();
+  const list = renderer.info.programs;
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i];
+    if (warmed.has(p)) continue;
+    warmed.add(p);
+    try { p.getUniforms(); p.getAttributes(); } catch (e) { console.warn('precompile warm', e); }
+    if (performance.now() - t > 25) { await nextTask(); t = performance.now(); }
+  }
+}
+// opts.warm (default true): when the compiles are done, also take each program into use and draw one
+// frame behind the loading screen (see warmDraw); false just issues the compiles (buildTown's early
+// call: the cars and people are not built yet).
+export function precompile(root = scene, { warm = true } = {}) {
   if (!renderer || !composer) return Promise.resolve();
+  if (warm) precompiled = true;
   rebuildLists();   // per-kind materials first, so the variants are what gets compiled
-  const prev = renderer.getRenderTarget();
-  renderer.setRenderTarget(composer.renderTarget1);
-  let p;
-  try { p = renderer.compileAsync(root, camera, scene); } catch (e) { console.warn('precompile', e); p = Promise.resolve(); }
-  renderer.setRenderTarget(prev);
-  return p;
+  if (!progRig) buildProgRig();
+  const R = progRig, r = renderer, prev = r.getRenderTarget(), ps = [];
+  const go = (rt, what, cam, target) => {
+    r.setRenderTarget(rt);
+    try { ps.push(r.compileAsync(what, cam, target)); } catch (e) { console.warn('precompile', e); }
+  };
+  // the output grade's defines are set on its first render: set them now (draw nothing)
+  { const q = outputPass._fsQuad, f = q.render; q.render = () => {}; try { outputPass.render(r, null, composer.readBuffer); } finally { q.render = f; } }
+  // the post quads
+  R.post.clear();
+  for (const m of R.postMats()) { const o = new THREE.Mesh(R.quad, m); o.frustumCulled = false; R.post.add(o); }
+  for (const d of DEPTH) { d.side = THREE.BackSide; d.map = d.alphaMap = null; d.alphaTest = 0; }
+  go(composer.renderTarget1, root, camera, scene);          // the scene, as the main pass draws it
+  go(tinyRT, R.depth, camera, shScene);                     // shadow depth (inside the shadow-only pass)
+  go(tinyRT, shScene, camera, shScene);                     // that pass' own 1-triangle mesh
+  go(gtao.normalRenderTarget, R.normal, camera, scene);     // AO normals (the scene's lights state)
+  go(bloom.renderTargetBright, R.post, camera, R.post);     // post quads (into a render target)
+  go(null, R.screen, camera, R.screen);                     // FXAA (low tier: to the screen)
+  r.setRenderTarget(prev);
+  const all = Promise.all(ps);
+  if (!warm) return all;
+  // (first wait, without blocking, until the GPU process is through the compiles: taking a program
+  // into use before that is a synchronous wait of ~0.3 s)
+  return all.then(() => gpuIdle()).then(warmPrograms).then(() => (PARAMS.has('nowarmdraw') ? null : warmDraw()));
+}
+// One whole frame drawn behind the loading screen, then wait (without blocking) until the GPU has
+// done it: the driver finishes each program on its first draw (another ~0.3-0.4 s in the GPU
+// process after the links, which froze the first title frame).
+// People's own onBeforeRender hooks (a face is baked on its first draw) are held off: the game has
+// not placed anyone yet (every level of detail is still on), and the faces bake in idle time anyway.
+export const warmStats = {};
+const noop = () => {};
+function warmDraw() {
+  const t0 = performance.now(), p0 = new Set(renderer.info.programs), held = [];
+  scene.traverse((o) => { if (o.isSkinnedMesh && Object.hasOwn(o, 'onBeforeRender')) { held.push(o, o.onBeforeRender); o.onBeforeRender = noop; } });
+  try {
+    scene.updateMatrixWorld();
+    camera.updateMatrixWorld();
+    const Q = QSET[QUALITY.tier];
+    prepass(Q);
+    if (Q.ao) renderAO();
+    G.uSSAO.value.z = Q.ao ? AO_STRENGTH : 0.0;
+    composer.render();
+    G.uSSAO.value.z = 0;
+  } finally {
+    for (let i = 0; i < held.length; i += 2) if (held[i].onBeforeRender === noop) held[i].onBeforeRender = held[i + 1];
+  }
+  warmStats.drawMs = +(performance.now() - t0).toFixed(1);
+  warmStats.newPrograms = renderer.info.programs.filter((p) => !p0.has(p)).map((p) => p.name || p.cacheKey.slice(0, 60));
+  const t1 = performance.now();
+  return gpuIdle().then(() => { warmStats.gpuWaitMs = +(performance.now() - t1).toFixed(1); });
+}
+// Resolves once the GPU has finished everything issued so far (a fence polled between tasks).
+export function gpuIdle(timeout = 4000) {
+  const gl = renderer?.getContext();
+  if (!gl || !gl.fenceSync) return Promise.resolve();
+  const f = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+  gl.flush();
+  const t0 = performance.now();
+  return new Promise((res) => {
+    const poll = () => {
+      if (gl.getSyncParameter(f, gl.SYNC_STATUS) === gl.SIGNALED || performance.now() - t0 > timeout) { gl.deleteSync(f); res(); }
+      else setTimeout(poll, 8);
+    };
+    poll();
+  });
 }
 
-// Upload the vertex buffers of everything under `root` now (one draw of each into a 1x1 target, no
-// colour, no depth), instead of in the first frame. With makeStatic that also frees the CPU arrays.
+// Upload the vertex and index buffers of everything under `root` now, instead of in the first frame:
+// one draw of each into a 1x1 target (no colour, no depth; a handful of trivial programs). Objects'
+// own onBeforeRender hooks are held off for it (people's faces bake on their first draw: that made
+// this bake every face in town at once), class hooks (the world batches' culling) still run. With
+// makeStatic that also frees the CPU arrays.
 const UPLOAD_MAT = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false });
 export function uploadGeometry(root = scene) {
   if (!renderer || !tinyRT) return;
-  const tmp = new THREE.Scene(), culled = [];
+  const tmp = new THREE.Scene(), culled = [], held = [];
   tmp.matrixWorldAutoUpdate = false;
-  root.traverse((o) => { if (o.frustumCulled && (o.isMesh || o.isPoints || o.isLine)) { o.frustumCulled = false; culled.push(o); } });
+  root.traverse((o) => {
+    if (o.frustumCulled && (o.isMesh || o.isPoints || o.isLine)) { o.frustumCulled = false; culled.push(o); }
+    if (Object.hasOwn(o, 'onBeforeRender')) { held.push(o, o.onBeforeRender); o.onBeforeRender = noop; }
+  });
   const kids = root === scene ? [...scene.children] : [root];
   for (const k of kids) tmp.children.push(k);   // borrowed, not re-parented
-  const prev = renderer.getRenderTarget();
+  const prev = renderer.getRenderTarget(), mask = camera.layers.mask;
+  camera.layers.enableAll();
   renderer.setRenderTarget(tinyRT);
   tmp.overrideMaterial = UPLOAD_MAT;
   try { renderer.render(tmp, camera); } catch (e) { console.warn('uploadGeometry', e); }
   renderer.setRenderTarget(prev);
+  camera.layers.mask = mask;
   tmp.children.length = 0;
   for (const o of culled) o.frustumCulled = true;
+  for (let i = 0; i < held.length; i += 2) if (held[i].onBeforeRender === noop) held[i].onBeforeRender = held[i + 1];
 }
 
 // Static meshes: their matrices never change after this (one updateMatrix now), and their CPU-side
@@ -1984,11 +2281,14 @@ function gpuEnd() {
 
 export function renderFrame() {
   const t0 = performance.now();
+  let progs0 = null;
   if (!gfxStats.frames) {
+    progs0 = new Set(renderer.info.programs);
     statsInit();
     // Issue every program the scene needs at once before the first draw, so the driver can build
-    // them in parallel instead of one blocking compile per new material.
-    precompile();
+    // them in parallel instead of one blocking compile per new material (unless the loading already
+    // did: then only what was added since is left, and it compiles as it is drawn).
+    if (!precompiled) precompile(scene, { warm: false });
   }
   autoQuality(document.timeline?.currentTime ?? t0);
   renderer.info.reset();
@@ -2017,7 +2317,11 @@ export function renderFrame() {
   P.ao[0] = gfxStats.aoCalls - _sh.calls; P.ao[1] = preTris - _sh.tris;
   P.main[0] = gfxStats.calls - gfxStats.aoCalls; P.main[1] = gfxStats.tris - preTris;
   const dt = performance.now() - t0;
-  if (!gfxStats.frames) gfxStats.first = { ms: +dt.toFixed(1), matrices: +(t1 - t0).toFixed(1), pre: +(t2 - t1).toFixed(1), main: +(t3 - t2).toFixed(1), programs: renderer.info.programs?.length, at: +performance.now().toFixed(0) };
+  if (!gfxStats.frames) {
+    // (newPrograms: what the first frame had to compile itself - precompile() should leave nothing)
+    gfxStats.first = { ms: +dt.toFixed(1), matrices: +(t1 - t0).toFixed(1), pre: +(t2 - t1).toFixed(1), main: +(t3 - t2).toFixed(1), programs: renderer.info.programs?.length, at: +performance.now().toFixed(0) };
+    gfxStats.first.newPrograms = renderer.info.programs.filter((p) => !progs0.has(p)).map((p) => p.name || p.cacheKey.slice(0, 48));
+  }
   gfxStats.frames++;
   gfxStats.ms += (dt - gfxStats.ms) * 0.05;
   gfxStats.last = dt;
@@ -2176,9 +2480,13 @@ export class GeoBuilder {
       const list = p.userData?.surfaces && p.userData.surfaces.length > 1 && p.groups.length ? splitBySurface(p) : [[p._surface || p.userData?.surfaces?.[0] || 'plain', p]];
       for (const [s, g] of list) { if (!by.has(s)) by.set(s, []); by.get(s).push(g); }
     }
-    const surfaces = [...by.keys()];
-    const merged = surfaces.map((s) => { const l = by.get(s); return l.length === 1 ? stripGeo(l[0]) : mergeGeometries(l.map(stripGeo), false); });
-    const g = merged.length === 1 ? merged[0] : mergeGeometries(merged, true);
+    const surfaces = [...by.keys()], lists = surfaces.map((s) => by.get(s));
+    // One pass into preallocated arrays (the same result as the two levels of mergeGeometries below,
+    // without hundreds of intermediate geometries and an index built as a JS array: ~2x faster and
+    // far less garbage while the town is built). Falls back when a part is unusual.
+    let g = MERGE_CHECK !== 'old' && lists.reduce((n, l) => n + l.length, 0) > 1 ? mergeParts(lists) : null;
+    if (MERGE_CHECK === 'check' && g) checkMerge(g, mergeOld(lists));
+    if (!g) g = mergeOld(lists);
     g.userData = { surfaces };
     g.computeBoundingSphere();
     g.computeBoundingBox();
@@ -2187,6 +2495,56 @@ export class GeoBuilder {
   get empty() { return this.parts.length === 0; }
 }
 function fract(x) { return x - Math.floor(x); }
+function mergeOld(lists) {
+  const merged = lists.map((l) => (l.length === 1 ? stripGeo(l[0]) : mergeGeometries(l.map(stripGeo), false)));
+  return merged.length === 1 ? merged[0] : mergeGeometries(merged, true);
+}
+// ?checkmerge: every build() also runs the old merge and compares (console.error on a difference);
+// ?oldmerge: the old merge only.
+const MERGE_CHECK = PARAMS.has('checkmerge') ? 'check' : PARAMS.has('oldmerge') ? 'old' : '';
+const MERGE_ATTRS = ['position', 'normal', 'color', 'tri', 'trin'], MERGE_SIZE = [3, 3, 3, 4, 3];
+function mergeParts(lists) {
+  let nv = 0, ni = 0;
+  for (const l of lists) for (const p of l) {
+    const ix = p.index;
+    if (!ix || ix.isInterleavedBufferAttribute || Object.keys(p.morphAttributes).length) return null;
+    for (let k = 0; k < 5; k++) {
+      const a = p.attributes[MERGE_ATTRS[k]];
+      if (!a || a.isInterleavedBufferAttribute || a.itemSize !== MERGE_SIZE[k] || a.normalized || !(a.array instanceof Float32Array) || a.array.length !== a.count * a.itemSize) return null;
+    }
+    if (Object.keys(p.attributes).length !== 5) return null;
+    nv += p.attributes.position.count; ni += ix.count;
+  }
+  const out = MERGE_ATTRS.map((k, i) => new Float32Array(nv * MERGE_SIZE[i]));
+  const idx = new Uint32Array(ni), g = new THREE.BufferGeometry();
+  let v = 0, i = 0, mx = 0;
+  lists.forEach((l, li) => {
+    const i0 = i;
+    for (const p of l) {
+      for (let k = 0; k < 5; k++) out[k].set(p.attributes[MERGE_ATTRS[k]].array, v * MERGE_SIZE[k]);
+      const src = p.index.array, n = p.index.count;
+      for (let j = 0; j < n; j++) { const x = src[j] + v; idx[i + j] = x; if (x > mx) mx = x; }
+      i += n; v += p.attributes.position.count;
+    }
+    if (lists.length > 1) g.addGroup(i0, i - i0, li);
+  });
+  MERGE_ATTRS.forEach((k, j) => g.setAttribute(k, new THREE.BufferAttribute(out[j], MERGE_SIZE[j])));
+  // (index type as BufferGeometry.setIndex picks it for an array: 32-bit only from 65535 up)
+  g.setIndex(new THREE.BufferAttribute(mx >= 65535 ? idx : new Uint16Array(idx), 1));
+  return g;
+}
+let mergeChecks = 0;
+function checkMerge(a, b) {
+  const bad = (why) => console.error('GeoBuilder merge differs:', why);
+  mergeChecks++;
+  if (a.index.array.constructor !== b.index.array.constructor) return bad('index type');
+  const same = (x, y) => x.length === y.length && x.every((v, i) => Object.is(v, y[i]));
+  if (!same(a.index.array, b.index.array)) return bad('index');
+  for (const k of MERGE_ATTRS) if (!same(a.attributes[k].array, b.attributes[k].array)) return bad(k);
+  if (JSON.stringify(a.groups) !== JSON.stringify(b.groups)) return bad('groups ' + JSON.stringify(a.groups) + ' vs ' + JSON.stringify(b.groups));
+  if (Object.keys(b.attributes).length !== 5) return bad('attributes ' + Object.keys(b.attributes));
+}
+export function mergeCheckCount() { return mergeChecks; }
 function stripGeo(g) {
   if (!g.userData || !Object.keys(g.userData).length) return g;
   const c = new THREE.BufferGeometry();

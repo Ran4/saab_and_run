@@ -8,8 +8,8 @@
 // instance per block, so one draw call per surface per pass and per-block culling), printed signs
 // are batched in a few atlas meshes (signs.js), breakables are instanced (props.js).
 
-import { GeoBuilder, realMesh, makeStatic, precompile, uploadGeometry } from '../gfx.js';
-import { batchStatic, touchSurfaces } from './batch.js';
+import { GeoBuilder, realMesh, makeStatic, precompile, uploadGeometry, nextTask } from '../gfx.js';
+import { batchSteps, touchSurfaces } from './batch.js';
 import { P, N, HALF, CURB, rc, blockInterior, MAP, landmarks, carFreeZones, isCarFree } from './layout.js';
 import { Frame } from './kit.js';
 import { oveBlock } from './ove.js';
@@ -35,8 +35,32 @@ export const townStats = {};
 // ?nobatch: the old per-block meshes (one mesh per block per builder) instead of the batches.
 const BATCH = typeof location === 'undefined' || !new URLSearchParams(location.search).has('nobatch');
 
+// buildTown(scene) builds it all in one go; buildTownAsync(scene, onProgress) does exactly the same
+// work in the same order (the same town, byte for byte) but gives the browser the thread back every
+// ~40 ms (the loading screen stays alive: the whole build is 2.5-3 s on a desktop CPU, one task) and
+// calls onProgress(f), f = 0..1, at each of those breaks and with 1 at the end. Both run townSteps.
 export function buildTown(scene) {
-  const t0 = performance.now();
+  for (const _ of townSteps(scene));   // eslint-disable-line no-unused-vars
+}
+export async function buildTownAsync(scene, onProgress = null) {
+  let t = performance.now(), last = -1;
+  for (const f of townSteps(scene)) {
+    if (performance.now() - t < 40) continue;
+    if (onProgress && f !== last) { last = f; try { onProgress(f); } catch (e) { console.warn(e); } }
+    await nextTask();
+    t = performance.now();
+  }
+  if (onProgress) onProgress(1);
+}
+
+// The build, as a generator yielding the progress (0..1) at the points where it may pause.
+function* townSteps(scene) {
+  // (times are work time: the pauses of buildTownAsync are not counted)
+  const t0 = performance.now(), steps = {};
+  let busy = 0, resumed = t0, lastB = 0;
+  const work = () => busy + performance.now() - resumed;
+  const lap = (k) => { const b = work(); steps[k] = Math.round((steps[k] || 0) + b - lastB); lastB = b; };
+  function* y(f) { busy += performance.now() - resumed; yield f; resumed = performance.now(); }
   const before = new Set(scene.children);
   const chunks = [];
   // (S.fineG: the thin branches and twigs of the block's trees, round 5 - no shadow, no AO pre-pass)
@@ -47,6 +71,7 @@ export function buildTown(scene) {
   };
   const centres = {};
   const glassG = (shared.glassG = new GeoBuilder().use('tinted'));
+  // progress: the blocks are about half of the time, the streets / outskirts / batching the rest
   for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
     const b = blockInterior(i, j), cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2;
     const { S, F } = chunks[i][j];
@@ -71,10 +96,16 @@ export function buildTown(scene) {
       case 'field': fieldBlock(f, r); break;
       case 'forest': forestBlock(f, r); break;
     }
+    yield* y(0.5 * (i * N + j + 1) / (N * N));
   }
+  lap('blocks');
   const roadG = new GeoBuilder();
   buildStreets(chunk, glassG, roadG);
+  lap('streets');
+  yield* y(0.56);
   buildOutskirts(scene);
+  lap('outskirts');
+  yield* y(0.6);
   placeCollectibles(centres);
   topUpLitter();
 
@@ -83,7 +114,7 @@ export function buildTown(scene) {
   // (batch.js): one BatchedMesh per category and surface with one instance per block, so a surface
   // is one draw call per pass and blocks are still culled one by one. One category at a time, the
   // builders emptied as they go (lower peak memory).
-  let meshes = 0, batchMs = 0;
+  let meshes = 0;
   if (BATCH) {
     for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const { S, F } = chunks[i][j]; touchSurfaces(S); touchSurfaces(F); touchSurfaces(S.fineG); }
     touchSurfaces(roadG);
@@ -94,46 +125,77 @@ export function buildTown(scene) {
     ['ground', (c) => take(c.F), { cast: false }],
     ['twigs', (c) => take(c.S.fineG), { cast: false, noAO: true }],
   ];
+  let ci = 0;
   for (const [name, get, o] of cats) {
-    const geos = [];
-    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
-      const g = get(chunks[i][j]);
-      if (!g) continue;
-      if (BATCH) { geos.push(g); continue; }
-      const m = realMesh(g, { cast: o.cast });
-      m.name = `${name}${i}${j}`;
-      if (o.noAO) m.userData.noAO = true;
-      scene.add(m); meshes++;
+    const geos = [], p0 = 0.6 + 0.1 * ci++;
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const g = get(chunks[i][j]);
+        if (!g) continue;
+        if (BATCH) { geos.push(g); continue; }
+        const m = realMesh(g, { cast: o.cast });
+        m.name = `${name}${i}${j}`;
+        if (o.noAO) m.userData.noAO = true;
+        scene.add(m); meshes++;
+      }
+      yield* y(p0 + 0.05 * (i + 1) / N);
     }
+    lap('merge');
     if (name === 'ground') {
       const g = take(roadG);
       if (g && BATCH) geos.push(g);
       else if (g) { const m = realMesh(g, { cast: false }); m.name = 'roads'; scene.add(m); meshes++; }
     }
-    if (BATCH) { const tb = performance.now(); meshes += batchStatic(scene, [{ name, geos, ...o }]).length; batchMs += performance.now() - tb; }
+    if (BATCH) {
+      const out = [];
+      for (const _ of batchSteps(scene, [{ name, geos, ...o }], out)) yield* y(p0 + 0.075);   // eslint-disable-line no-unused-vars
+      meshes += out.length;
+    }
+    lap('batch');
+    yield* y(p0 + 0.1);
   }
   // The outskirts' forest belt (24 sector meshes, ~8 surfaces each) joins the batches as well.
   if (BATCH) {
     const belt = scene.children.filter((m) => m.name === 'forestbelt' && m.isMesh && !before.has(m));
     for (const m of belt) scene.remove(m);
-    const tb = performance.now();
-    meshes += batchStatic(scene, [{ name: 'forest', geos: belt.map((m) => m.geometry), cast: true }]).length;
-    batchMs += performance.now() - tb;
+    const out = [];
+    for (const _ of batchSteps(scene, [{ name: 'forest', geos: belt.map((m) => m.geometry), cast: true }], out)) yield* y(0.92);   // eslint-disable-line no-unused-vars
+    meshes += out.length;
+    lap('batch');
   }
   if (!glassG.empty) { const m = realMesh(glassG.build(), { snow: false, cast: false }); m.renderOrder = 2; m.name = 'glass'; scene.add(m); }
   finalizeSigns(scene);
+  lap('signs');
+  yield* y(0.96);
   // The hills and the silhouette forest are far beyond the AO pre-pass anyway. (Far blocks no longer
   // need a noAO toggle: that pass only draws within its far plane, and the batches cull per block.)
   for (const m of scene.children) if (/^(hills|silhouettes)$/.test(m.name)) m.userData.noAO = true;
   // Everything built here is static: matrices fixed, CPU-side vertex arrays dropped after upload.
+  if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('townhash')) townStats.hash = townHash(scene, before);
   for (const m of scene.children) if (!before.has(m)) makeStatic(m);
   uploadGeometry();   // the world's vertex buffers go to the GPU now, not in the first frame
+  lap('upload');
   // Start compiling the world's shaders now, in the background, while the cars and people are built.
-  precompile();
+  precompile(scene, { warm: false });
+  lap('precompile');
   // Car grip and skid marks ask fx.surfaceAt (see fx.js, car.js); footsteps can use it too.
   fx.surfaceAt = surfaceAt;
   mapLabels.push(['Oves område', 'oveHouse'], ['Centrum', 'centrum'], ['Sjukhuset', 'hospital'], ['Kyrkan', 'church'], ['Kyrkogården', 'cemetery'], ['Bilhallen', 'dealer'], ['Förskolan', 'preschool'], ['Kommunhuset', 'kommun'], ['Bensin & Service', 'gas'], ['Parken', 'park'], ['Fotbollsplanen', 'field']);
-  Object.assign(townStats, { buildMs: Math.round(performance.now() - t0), batchMs: Math.round(batchMs), meshes, landmarks: Object.keys(landmarks).length, violationSpots: violationSpots.length, litter: litterSpots.length, parkedCars: parkedCars.length });
+  Object.assign(townStats, { buildMs: Math.round(work()), batchMs: steps.batch || 0, wallMs: Math.round(performance.now() - t0), steps, meshes, landmarks: Object.keys(landmarks).length, violationSpots: violationSpots.length, litter: litterSpots.length, parkedCars: parkedCars.length });
+}
+
+// ?townhash (tests): a hash of every batch's buffers and runs (the world must come out byte-identical)
+function townHash(scene, before) {
+  let h = 0x811c9dc5 >>> 0, n = 0;
+  const mix = (a) => { const u = new Uint8Array(a.buffer, a.byteOffset, a.byteLength); for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 16777619) >>> 0; n += u.length; };
+  for (const m of scene.children) {
+    if (before.has(m) || !m.geometry) continue;
+    const g = m.geometry;
+    for (const k of Object.keys(g.attributes).sort()) mix(g.attributes[k].array);
+    if (g.index) mix(g.index.array);
+    if (m.runs) mix(new Float64Array(m.runs.flatMap((r) => [r.start, r.count, r.sphere.radius, r.box.min.x, r.box.max.z])));
+  }
+  return { hash: h.toString(16), bytes: n };
 }
 
 export function tickTown(t) {

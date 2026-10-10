@@ -114,6 +114,12 @@ export class StaticBatch extends THREE.BatchedMesh {
 // the scene and returns them. The geos arrays are emptied (the source geometries are let go).
 export function batchStatic(scene, cats) {
   const out = [];
+  for (const _ of batchSteps(scene, cats, out));   // eslint-disable-line no-unused-vars
+  return out;
+}
+// The same in steps (a generator: buildTownAsync yields to the browser between them): after the
+// sizes of a category, after each block's copy and after each surface's batch.
+export function* batchSteps(scene, cats, out = []) {
   prepareKind('batch');
   for (const cat of cats) {
     const geos = cat.geos.filter(Boolean);
@@ -130,6 +136,7 @@ export function batchStatic(scene, cats) {
       return r;
     });
     // pass 2: one set of packed buffers per surface, filled block by block
+    yield;
     for (const e of per.values()) {
       const n = e.verts;
       e.P = new Float32Array(n * 3); e.T = new Float32Array(n * 4);
@@ -138,29 +145,39 @@ export function batchStatic(scene, cats) {
       e.I = n > 65535 ? new Uint32Array(e.idx) : new Uint16Array(e.idx);
       e.v = 0; e.i = 0; e.runs = [];
     }
-    geos.forEach((geo, k) => {
+    for (let k = 0; k < geos.length; k++) {
+      if (k) yield;
+      const geo = geos[k];
       const A = geo.attributes, P = A.position.array, N = A.normal.array, Cc = A.color.array, T = A.tri.array, TN = A.trin.array, I = geo.index.array;
       for (const q of rs[k]) {
         const e = per.get(q.s), nv = q.v1 - q.v0, vb = e.v;
         e.P.set(P.subarray(q.v0 * 3, q.v1 * 3), vb * 3);
         e.T.set(T.subarray(q.v0 * 4, q.v1 * 4), vb * 4);
-        const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
-        for (let i = 0, o = q.v0 * 3, d = vb * 3; i < nv * 3; i++, o++, d++) {
-          const nn = N[o], tn = TN[o], c = Cc[o], p = P[o], ax = i % 3;
-          e.N[d] = Math.round((nn > 1 ? 1 : nn < -1 ? -1 : nn) * 32767);
-          e.TN[d] = Math.round((tn > 1 ? 1 : tn < -1 ? -1 : tn) * 127);
-          e.C[d] = e.hdr ? c : Math.round((c > 1 ? 1 : c < 0 ? 0 : c) * 65535);
-          if (p < lo[ax]) lo[ax] = p;
-          if (p > hi[ax]) hi[ax] = p;
+        const EN = e.N, ETN = e.TN, EC = e.C, hdr = e.hdr;
+        let lx = Infinity, ly = Infinity, lz = Infinity, hx = -Infinity, hy = -Infinity, hz = -Infinity;
+        for (let o = q.v0 * 3, d = vb * 3, end = q.v1 * 3; o < end; o += 3, d += 3) {
+          for (let c = 0; c < 3; c++) {
+            const nn = N[o + c], tn = TN[o + c], cc = Cc[o + c];
+            EN[d + c] = Math.round((nn > 1 ? 1 : nn < -1 ? -1 : nn) * 32767);
+            ETN[d + c] = Math.round((tn > 1 ? 1 : tn < -1 ? -1 : tn) * 127);
+            EC[d + c] = hdr ? cc : Math.round((cc > 1 ? 1 : cc < 0 ? 0 : cc) * 65535);
+          }
+          const px = P[o], py = P[o + 1], pz = P[o + 2];
+          if (px < lx) lx = px;
+          if (px > hx) hx = px;
+          if (py < ly) ly = py;
+          if (py > hy) hy = py;
+          if (pz < lz) lz = pz;
+          if (pz > hz) hz = pz;
         }
-        const off = vb - q.v0, ib = e.i;
-        for (let i = 0; i < q.ic; i++) e.I[ib + i] = I[q.i0 + i] + off;
-        const box = new THREE.Box3(new THREE.Vector3(...lo), new THREE.Vector3(...hi));
+        const off = vb - q.v0, ib = e.i, EI = e.I, i0 = q.i0;
+        for (let i = 0; i < q.ic; i++) EI[ib + i] = I[i0 + i] + off;
+        const box = new THREE.Box3(new THREE.Vector3(lx, ly, lz), new THREE.Vector3(hx, hy, hz));
         e.runs.push({ start: ib, count: q.ic, box, sphere: box.getBoundingSphere(new THREE.Sphere()) });
         e.v += nv; e.i += q.ic;
       }
       geo.dispose();
-    });
+    }
     cat.geos.length = 0;
     for (const [s, e] of per) {
       const g = new THREE.BufferGeometry();
@@ -180,6 +197,7 @@ export function batchStatic(scene, cats) {
       if (cat.noAO) bm.userData.noAO = true;
       bm.computeBoundingSphere(); bm.computeBoundingBox();
       scene.add(bm); out.push(bm);
+      yield;
     }
   }
   return out;
