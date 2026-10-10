@@ -453,6 +453,8 @@ class LightBuilder {
 
 const BLACK = 0x141516, TRIM = 0x1b1c1e, UNDER = 0x101112, DASH = 0x161718, INTER = 0x2c2c2e, HEADLINER = 0x5a5854;
 const SEAL = 0x0e0f10;
+// glass over black (a windscreen's frit band): the LOD glass colour, shaded as glass by car.js (lodGlass)
+const FRIT = 0x14181d;
 
 function stationsFor(P) {
   const keys = [P.z0, P.z1, ...(P.keys || [])];
@@ -658,7 +660,9 @@ export function buildLoftBody(P) {
           };
         }
         if (j === 4) return innerHead(gh.cornerAt ? gh.cornerAt(z) || cornerK : cornerK);
-        if (z > gh.ws) return !P.lod && (j === 5 || z < gh.ws + seal) ? innerHead(sealK) : glassK;
+        // gh.wsFrit: the windscreen's wrapped corners end in a glossy black frit band (the corner band
+        // and the seal strip next to it) instead of a matt black pillar band
+        if (z > gh.ws) return !P.lod && (j === 5 || z < gh.ws + seal) ? innerHead(gh.wsFrit && j === 5 && z >= gh.ws + seal ? gh.wsFrit : sealK) : glassK;
         if (z < gh.rw) {
           // gh.rwX: the rear window ends at |x| = rwX (body colour outside it: the C/D-pillars wrap
           // round the corner instead of the glass)
@@ -1005,12 +1009,16 @@ export function wheelGeometry(style) {
   if (wheelCache.has(style)) return wheelCache.get(style);
   const g = new GeoBuilder();
   const rr = style === 'sport' ? 0.72 : style === 'alloy5' ? 0.66 : 0.6; // rim radius / tyre radius
-  // tyre: a lathe round the x axis
-  const prof = [[rr - 0.01, 0.38], [rr + 0.04, 0.46], [0.8, 0.5], [0.93, 0.48], [0.99, 0.4], [1.0, 0.28], [1.0, -0.28], [0.99, -0.4], [0.93, -0.48], [0.8, -0.5], [rr + 0.04, -0.46]];
+  // tyre: a lathe round the x axis. three's LatheGeometry faces outwards only when the profile's
+  // height (here the wheel's x, after rotateZ: + = the outer face) ascends along the list: listed
+  // from the inner bead to the outer one. (Until phase 4 round 2 the list descended, so the tyre was
+  // built inside out: the near tread was back-face culled and the inside of the far tread showed
+  // below and behind the tyre as a dark crescent, lit from the wrong side.)
+  const prof = [[rr + 0.04, -0.46], [0.8, -0.5], [0.93, -0.48], [0.99, -0.4], [1.0, -0.28], [1.0, 0.28], [0.99, 0.4], [0.93, 0.48], [0.8, 0.5], [rr + 0.04, 0.46], [rr - 0.01, 0.38]];
   if (style === 'lod') {
     // far wheels: a dark tyre (tread + sidewall) round a small dark-grey rim, nothing that reads as a
     // pale disc from 50 m
-    const l = new THREE.LatheGeometry([[0.58, 0.44], [0.9, 0.5], [0.99, 0.42], [1, 0.3], [1, -0.3], [0.99, -0.42], [0.9, -0.5], [0.58, -0.44]].map(([r, x]) => new THREE.Vector2(r, x)), 12);
+    const l = new THREE.LatheGeometry([[0.58, -0.44], [0.9, -0.5], [0.99, -0.42], [1, -0.3], [1, 0.3], [0.99, 0.42], [0.9, 0.5], [0.58, 0.44]].map(([r, x]) => new THREE.Vector2(r, x)), 12);
     l.rotateZ(-Math.PI / 2);
     g.use('rubber').add(l, 0x161618);
     g.use('metal').add(PRIM.cyl(10), 0x5c6064, mat(0.4, 0, 0, 0, 0, Math.PI / 2, 1.16, 0.02, 1.16));
@@ -1026,7 +1034,8 @@ export function wheelGeometry(style) {
   g.use('plastic').add(PRIM.cyl(16), 0x0c0c0d, mat(-0.1, 0, 0, 0, 0, Math.PI / 2, rr * 2, 0.04, rr * 2));
   const face = 0.36;
   const ring = (surf, col, r0, r1, x0, x1, seg = 20) => {
-    // a conical annulus from (r0 at x0) to (r1 at x1)
+    // a conical annulus from (r0 at x0) to (r1 at x1); listed outer radius first (r0 > r1), it faces
+    // the outer side (+x) like the tyre - every ring below does
     const pts = [new THREE.Vector2(r0, x0), new THREE.Vector2(r1, x1)];
     const l = new THREE.LatheGeometry(pts, seg);
     l.rotateZ(-Math.PI / 2);
@@ -1118,28 +1127,34 @@ function base(o) {
 // that a slim black bumper (~0.24 m) over a thin lip. A tall glasshouse on a 0.93 m belt; a deeply
 // wrapped windscreen (45° at the centre, its black A-pillars nearly upright, 56°, set back by the
 // wrap); a flat roof; a long door; a small quarter window whose rear edge leans back, leaving a big
-// body-coloured C-pillar; the long fastback hatch glass (~20°) running down to within ~0.25 m of
-// the tail, a short lid with a crisp lip, then the near-vertical tail panel with the wide ribbed
-// lamps and the plate between them; the rear bumper like the front one.
+// body-coloured C-pillar; the long fastback hatch glass (~20°) running down to a crisp lip right at
+// the tail (phase 4 round 2: no flat lid behind the glass - side on, the roof, the hatch and the lip
+// are one fastback line), then the near-vertical tail panel with the wide ribbed lamps in a
+// full-width black band, the plate between them; the rear bumper like the front one. The windscreen's
+// wrapped corners end in a glossy black frit band (FRIT), not a matt black stripe.
 function saab900() {
   const zF = 1.355, zR = zF - 2.517;
   const P = base({
     key: 'saab900', len: 4.70, wid: 1.69, height: 1.42,
     z0: -2.29, z1: 2.26, axles: [zR, zF], wr: 0.31, ww: 0.195, wx: 0.715, wheel: 'saab3',
     arch: { r: 0.355, y: 0.3 },
-    keys: [2.17, 2.195, 2.21, 2.225, 2.24, 2.252, -2.283, -2.27, -2.256, -2.242, -2.228, -2.215, -2.2, -2.16, -2.1, -2.02, -1.9],
+    keys: [2.17, 2.195, 2.21, 2.225, 2.24, 2.252, -2.287, -2.282, -2.275, -2.266, -2.256, -2.247, -2.24, -2.232, -2.222, -2.2, -2.15, -2.1, -2.02, -1.9],
     // a little plan curvature: the sides bow out ~1 cm at the doors, so highlights slide along the car
     hw: [[-2.29, 0.792], [-2.25, 0.815], [-2.2, 0.83], [-2.05, 0.839], [-1.6, 0.844], [-0.2, 0.851], [1.5, 0.845], [1.85, 0.841], [2.05, 0.835], [2.17, 0.82], [2.23, 0.799], [2.26, 0.775]],
     yb: [[-2.29, 0.32], [-2.12, 0.26], [-1.85, 0.235], [1.85, 0.235], [2.12, 0.27], [2.26, 0.32]],
     belt: [
-      // the tail panel (near vertical), the lid's crisp lip, the short lid behind the glass
-      [-2.29, 0.55], [-2.283, 0.6], [-2.27, 0.7], [-2.256, 0.79], [-2.242, 0.86], [-2.228, 0.91], [-2.215, 0.94], [-2.2, 0.952],
-      [-2.16, 0.958], [-2.1, 0.964], [-2.02, 0.97], [-1.9, 0.958], [-1.5, 0.936], [-1.2, 0.918], [-0.4, 0.905], [0.5, 0.9],
+      // phase 4 round 2: the tail panel near vertical up to a crisp lip right at the tail (round 3 had
+      // a ~17 cm flat lid behind the glass that read as a saloon's boot side on); behind the lip the
+      // body top dips under the hatch glass, which runs down to it
+      [-2.29, 0.55], [-2.287, 0.6], [-2.282, 0.7], [-2.275, 0.79], [-2.266, 0.86], [-2.256, 0.91], [-2.247, 0.938], [-2.24, 0.952],
+      [-2.232, 0.96], [-2.222, 0.963], [-2.2, 0.958], [-2.15, 0.952], [-2.02, 0.955], [-1.9, 0.952], [-1.5, 0.934], [-1.2, 0.918], [-0.4, 0.905], [0.5, 0.9],
       // the bonnet falls to its front edge, then the lamp face drops to the bumper
       [0.95, 0.895], [1.3, 0.865], [1.7, 0.815], [2.0, 0.784], [2.12, 0.77], [2.17, 0.762], [2.195, 0.752], [2.21, 0.728],
       [2.225, 0.685], [2.24, 0.628], [2.252, 0.575], [2.26, 0.535]],
-    crownZ: [[-2.29, 0.006], [-2.215, 0.016], [-2.1, 0.04], [-1.8, 0.048], [1.0, 0.045], [1.6, 0.032], [2.1, 0.022], [2.195, 0.016], [2.26, 0.006]],
-    creases: [-2.215, 2.195],
+    // (the lip keeps its crown; under the hatch glass the body top is flat, ~2-3 cm below the glass -
+    // its crown there met the glass and z-fought through it)
+    crownZ: [[-2.29, 0.006], [-2.232, 0.012], [-2.21, 0.004], [-2.17, 0.0], [-1.95, 0.0], [-1.8, 0.03], [-1.6, 0.044], [1.0, 0.045], [1.6, 0.032], [2.1, 0.022], [2.195, 0.016], [2.26, 0.006]],
+    creases: [-2.232, 2.195],
     // round 3: the 900's rounded 'bathtub' sides - convex all the way from the tuck-under to the
     // shoulder, no feature line (the black moulding is the only line along the side)
     crown: 0.045, shoulder: 0.085, sill: 0.235, tuck: 0.055,
@@ -1149,18 +1164,23 @@ function saab900() {
       // round 3: a narrower greenhouse (the 900's tumblehome: the glass leans in ~16 deg from a ledge
       // along the shoulder), the hatch glass dropping ~0.1 m at its sides so it wraps round into the
       // C-pillars (rwWrap: the corner band is glass there, framed in black rubber; rwSealB along its foot)
-      z0: -2.12, z1: 0.95, cab0: -2.12, cab1: 0.95, dash: 0.5, ws: 0.47, rw: -1.02, inset: 0.03, y0: 0.95, corner: 0.06, bow: 0.016,
-      rwWrap: true, rwSealB: 0.05,
-      c: [[-2.12, 0.978], [-2.02, 0.997], [-1.9, 1.035], [-1.7, 1.103], [-1.5, 1.17], [-1.25, 1.265], [-1.05, 1.34], [-0.85, 1.395], [-0.6, 1.418], [-0.3, 1.425], [0.3, 1.415], [0.44, 1.397], [0.53, 1.35], [0.7, 1.175], [0.88, 0.975], [0.95, 0.94]],
-      e: [[-2.1, 0.966], [-2.0, 0.972], [-1.75, 1.0], [-1.5, 1.06], [-1.25, 1.15], [-1.05, 1.24], [-0.9, 1.3], [-0.7, 1.345], [-0.4, 1.36], [0.0, 1.362], [0.36, 1.35], [0.47, 1.318], [0.73, 0.915], [1.0, 0.87]],
-      xe: [[-2.1, 0.72], [-2.0, 0.705], [-1.76, 0.672], [-1.5, 0.632], [-1.2, 0.598], [-0.9, 0.584], [0.0, 0.578], [0.47, 0.594], [0.73, 0.648], [0.95, 0.695]],
+      z0: -2.222, z1: 0.95, cab0: -2.222, cab1: 0.95, dash: 0.5, ws: 0.47, rw: -1.02, inset: 0.03, y0: 0.95, corner: 0.06, bow: 0.016,
+      rwWrap: true, rwSealB: 0.035,
+      // phase 4 round 2: the hatch glass runs down to the lip (one fastback line from the roof to the tail)
+      c: [[-2.222, 0.972], [-2.17, 0.981], [-2.1, 0.996], [-2.02, 1.014], [-1.9, 1.042], [-1.7, 1.103], [-1.5, 1.17], [-1.25, 1.265], [-1.05, 1.34], [-0.85, 1.395], [-0.6, 1.418], [-0.3, 1.425], [0.3, 1.415], [0.44, 1.397], [0.53, 1.35], [0.7, 1.175], [0.88, 0.975], [0.95, 0.94]],
+      // (round 2 of phase 4: the hatch glass wraps ~2-3 cm further down into the C-pillars, so side on
+      // its curved edge reads as a dark band along the fastback line, not a sliver)
+      e: [[-2.2, 0.962], [-2.1, 0.964], [-2.0, 0.97], [-1.75, 0.99], [-1.5, 1.035], [-1.25, 1.12], [-1.05, 1.215], [-0.9, 1.3], [-0.7, 1.345], [-0.4, 1.36], [0.0, 1.362], [0.36, 1.35], [0.47, 1.318], [0.73, 0.915], [1.0, 0.87]],
+      xe: [[-2.2, 0.73], [-2.1, 0.72], [-2.0, 0.705], [-1.76, 0.672], [-1.5, 0.632], [-1.2, 0.598], [-0.9, 0.584], [0.0, 0.578], [0.47, 0.594], [0.73, 0.648], [0.95, 0.695]],
       insetZ: [[-2.12, 0.004], [-1.3, 0.006], [-0.9, 0.03], [0.95, 0.03]],
       // the door glass starts behind a raked line: in front of it the black triangular sail the
       // mirror stands on (a 900 signature), behind the B-pillar the small quarter window
       side: [{ f: 0.6, fs: 1.15, r: -0.35 }, { f: -0.40, r: -1.08, rs: 0.62 }],
       pillars: [[-0.35, -0.40, 'plastic', BLACK], [1.4, 0.5, 'plastic', BLACK]],
-      // the windscreen surround and A-pillars are black; the roof rail and C-pillars body colour
-      cornerAt: (z) => (z > 0.4 ? { s: 'plastic', c: BLACK } : null),
+      // the windscreen's wrapped corners: a glossy black frit band (glass over black - the LOD glass colour,
+      // which the car shading renders as glass: round 3's matt black band read as a stripe, not as the
+      // 900's wraparound windscreen); the roof rail and C-pillars body colour
+      cornerAt: (z) => (z > 0.4 ? { s: 'plastic', c: FRIT } : null), wsFrit: { s: 'plastic', c: FRIT },
     },
   });
   return P;
@@ -1180,8 +1200,9 @@ function saabDetails(P, g, M, L) {
   sweep(M, 'plastic', TRIM, rb, [[-0.12, 0.29], [-0.01, 0.292], [0.012, 0.308], [0.02, 0.34], [0.022, 0.383], [0.012, 0.389], [0.012, 0.437], [0.022, 0.443], [0.02, 0.482], [0.008, 0.507], [-0.02, 0.526], [-0.12, 0.526]], { creases: [1, 4, 5, 6, 7, 10] });
   sweep(M, 'chrome', 0x6e7276, rb, [[0.008, 0.405], [0.017, 0.408], [0.017, 0.42], [0.008, 0.423]], { creases: [1, 2] });
   // the black side moulding between the arches, with its grey line
-  sideStrip(M, P, 'plastic', TRIM, zR + R + 0.035, zF - R - 0.035, 0.4, 0.47, 0.016);
-  sideStrip(M, P, 'chrome', 0x6e7276, zR + R + 0.035, zF - R - 0.035, 0.428, 0.436, 0.02);
+  // (phase 4 round 2: a little taller and prouder, the insert brighter - it must read from 10 m)
+  sideStrip(M, P, 'plastic', TRIM, zR + R + 0.035, zF - R - 0.035, 0.392, 0.476, 0.02);
+  sideStrip(M, P, 'chrome', 0x8e9296, zR + R + 0.035, zF - R - 0.035, 0.427, 0.438, 0.025);
   // shut lines: the long door, the clamshell bonnet's edge along the wing at lamp-top height, the
   // hatch across the tail above the lamps
   shutLineV(M, P, 0.735, 0.27, 0.92);
@@ -1613,16 +1634,21 @@ function golf() {
     yb: [[-2.06, 0.36], [-1.95, 0.22], [1.9, 0.22], [2.06, 0.34]],
     // the tailgate below the glass leans back to the lamps, then the bumper; at the front the short
     // bonnet rounds down to the lamps
-    belt: [[-2.06, 0.6], [-2.05, 0.7], [-2.035, 0.79], [-2.01, 0.87], [-1.98, 0.935], [-1.94, 0.98], [-1.9, 1.005], [-1.7, 1.022], [-1.3, 1.012], [-0.4, 0.99], [0.4, 0.975], [1.0, 0.962], [1.3, 0.928], [1.6, 0.89], [1.8, 0.862], [1.88, 0.848], [1.92, 0.834], [1.96, 0.79], [1.99, 0.725], [2.02, 0.655], [2.045, 0.585], [2.06, 0.5]],
+    // (phase 4 round 2: the belt lower along the doors - ~0.95 m mid-car rising to 1.02 at the C-pillar,
+    // the Golf's wedge - and the cowl with it: a taller glasshouse on a shorter body side, not a slab)
+    belt: [[-2.06, 0.6], [-2.05, 0.7], [-2.035, 0.79], [-2.01, 0.87], [-1.98, 0.935], [-1.94, 0.98], [-1.9, 1.005], [-1.7, 1.02], [-1.3, 1.0], [-0.4, 0.965], [0.4, 0.948], [1.0, 0.935], [1.3, 0.91], [1.6, 0.876], [1.8, 0.846], [1.88, 0.83], [1.92, 0.815], [1.96, 0.772], [1.99, 0.71], [2.02, 0.645], [2.045, 0.58], [2.06, 0.5]],
     crownZ: [[-2.06, 0.008], [-1.95, 0.02], [-1.8, 0.035], [1.0, 0.035], [1.9, 0.025], [2.06, 0.008]],
     creases: [],
-    side: [[0, -0.06], [0.12, -0.02], [0.4, -0.003], [0.72, 0], [0.8, 0.006], [0.88, -0.01], [1, -0.045]],
+    // (phase 4 round 2: the upper side rolls in ~7 cm above the shoulder line and the door below it
+    // leans in towards the sill - round 3's section was a vertical wall from the sill to the glass)
+    side: [[0, -0.07], [0.12, -0.032], [0.4, -0.014], [0.62, -0.005], [0.8, 0.008], [0.88, -0.014], [1, -0.072]],
     gh: {
-      z0: -1.9, z1: 1.0, cab0: -1.9, cab1: 1.0, dash: 0.62, ws: 0.2, rw: -1.58, rwX: 0.54, inset: 0.05, y0: 1.0, corner: 0.055,
-      c: [[-1.9, 1.02], [-1.84, 1.12], [-1.76, 1.24], [-1.67, 1.36], [-1.6, 1.42], [-1.5, 1.45], [-1.2, 1.47], [-0.6, 1.48], [-0.1, 1.475], [0.12, 1.462], [0.22, 1.44], [0.5, 1.29], [0.8, 1.11], [0.96, 1.005], [1.0, 0.985]],
-      e: [[-1.88, 1.01], [-1.62, 1.37], [-1.45, 1.41], [-0.3, 1.422], [0.1, 1.412], [0.25, 1.385], [0.8, 0.99], [0.86, 0.97]],
-      xe: [[-1.88, 0.7], [-1.55, 0.672], [-0.3, 0.662], [0.3, 0.705], [0.8, 0.82]],
-      side: [{ f: 0.78, r: -0.24 }, { f: -0.33, r: -1.3, rs: 0.68 }],
+      z0: -1.9, z1: 1.0, cab0: -1.9, cab1: 1.0, dash: 0.62, ws: 0.2, rw: -1.58, rwX: 0.54, inset: 0.045, y0: 1.0, corner: 0.055,
+      c: [[-1.9, 1.02], [-1.84, 1.115], [-1.76, 1.23], [-1.68, 1.33], [-1.6, 1.4], [-1.5, 1.445], [-1.2, 1.47], [-0.6, 1.48], [-0.1, 1.475], [0.12, 1.462], [0.22, 1.44], [0.5, 1.285], [0.8, 1.095], [0.96, 0.985], [1.0, 0.958]],
+      e: [[-1.88, 1.01], [-1.62, 1.37], [-1.45, 1.41], [-0.3, 1.422], [0.1, 1.412], [0.25, 1.385], [0.8, 0.975], [0.86, 0.95]],
+      xe: [[-1.88, 0.68], [-1.55, 0.652], [-0.3, 0.642], [0.3, 0.685], [0.8, 0.8]],
+      // the rear door glass ends further forward (a broader C-pillar, the Golf's signature)
+      side: [{ f: 0.78, r: -0.24 }, { f: -0.33, r: -1.24, rs: 0.74 }],
       pillars: [[-0.24, -0.33, 'plastic', BLACK]],
     },
   });
@@ -1641,11 +1667,11 @@ function golfDetails(P, g, M, L) {
   sideStrip(M, P, 'plastic', TRIM, zR + R + 0.03, zF - R - 0.03, 0.22, 0.28, 0.008, false);
   // the crisp shoulder line through the door handles, from the headlamps to the tail lamps
   sideStrip(M, P, 'paint', 0xffffff, -1.98, 1.92, 0.866, 0.878, 0.005);
-  // The face (round 3): one dark band across the whole front, 0.69-0.84 m - big clear headlamps
+  // The face (round 3): one dark band across the whole front, 0.66-0.81 m since phase 4 round 2 (the bonnet front lowered with it) - big clear headlamps
   // tapering round the corners (a reflector body, a round projector, the indicator along the lower
   // outer edge) joined by a black grille bar of the same height with a chrome strip along its top -
   // over a body-coloured bumper with a wide trapezoid black intake and fog lamps in corner pockets.
-  const yt = 0.838, unit = [[0.36, 0.15], [0.48, 0.149], [0.6, 0.142], [0.7, 0.128], [0.78, 0.106], [0.845, 0.08], [0.88, 0.058]];
+  const yt = 0.812, unit = [[0.36, 0.15], [0.48, 0.149], [0.6, 0.142], [0.7, 0.128], [0.78, 0.106], [0.845, 0.08], [0.88, 0.058]];
   for (let k = 0; k < unit.length - 1; k++) {
     const [x0, h0] = unit[k], [x1, h1] = unit[k + 1], h = (h0 + h1) / 2, yc = yt - h / 2, q = surf3(P, (x0 + x1) / 2, yc, 1);
     const ww = ((x1 - x0) / Math.max(0.2, Math.hypot(q.n[2], q.n[1]))) * 1.06;
@@ -1655,8 +1681,8 @@ function golfDetails(P, g, M, L) {
   lampOn(L, P, 'head', 0.47, yt - 0.072, 0.09, 0.09, 1, { round: true, proud: 0.013, d: 0.04, lens: 0x7a8086, metal: 0.7, seg: 18 });
   lampOn(L, P, 'head', 0.635, yt - 0.068, 0.06, 0.06, 1, { round: true, proud: 0.013, d: 0.04, lens: 0x70767c, metal: 0.7, emit: 0x403a30, seg: 14 });
   lampStrip(L, P, 'ind', 0.7, 0.86, yt - 0.11, 0.022, 1, 2, { proud: 0.011, d: 0.03 });
-  shapeOn(g, P, 'plastic', 0x0b0b0c, [[-0.372, yt], [0.372, yt], [0.355, 0.69], [-0.355, 0.69]], 1, 0.03, { proud: 0.006 });
-  for (let k = 0; k < 3; k++) boxOn(g, P, 'plastic', 0x222326, 0, 0.72 + k * 0.035, 0.68, 0.009, 1, { proud: 0.014, d: 0.016 });
+  shapeOn(g, P, 'plastic', 0x0b0b0c, [[-0.372, yt], [0.372, yt], [0.355, yt - 0.148], [-0.355, yt - 0.148]], 1, 0.03, { proud: 0.006 });
+  for (let k = 0; k < 3; k++) boxOn(g, P, 'plastic', 0x222326, 0, yt - 0.118 + k * 0.035, 0.68, 0.009, 1, { proud: 0.014, d: 0.016 });
   boxOn(g, P, 'chrome', 0xb8bcc0, 0, yt - 0.016, 0.72, 0.012, 1, { proud: 0.014, d: 0.02 });
   // the lower front: a wide trapezoid intake with slats, fog lamps in black corner pockets
   shapeOn(g, P, 'plastic', 0x0b0b0c, [[-0.5, 0.49], [0.5, 0.49], [0.6, 0.26], [-0.6, 0.26]], 1, 0.04, { proud: 0.006 });

@@ -116,17 +116,36 @@ const GRIME_VERT_PARS = 'attribute float cgrime;\nvarying float vCarGrime;';
 const GRIME_FRAG = `
 float gCarGrime = 0.0;
 {
-  float gm = vCarGrime * uCarGrime;
+  // phase 4 round 2: road spray, not blotches. The film follows the baked exposure mask (vCarGrime) x
+  // the car's amount (CAR_GRIME_AMT), broken up by streaks that run back along the car on the sides
+  // (long along z, a few cm tall) and by soft drip runs on the front / rear faces, and it ends in a
+  // crisp, ragged spray line where the exposure falls below a threshold (higher up on a dirtier car;
+  // the mask rises round and behind every arch, so the line does too). Fine noise fades out when it
+  // gets finer than a couple of pixels (far cars). Derivatives are taken before the branch; a noise is
+  // only evaluated where it has weight (no more lookups per pixel than round 3's three).
+  float ge = vCarGrime, gAmt = CAR_GRIME_AMT;
+  float gm = ge * gAmt;
+  float kF = 1.0 - smoothstep( 0.003, 0.008, length( fwidth( gP ) ) );
+  float gFwE = fwidth( ge );
   if ( gm > 0.002 ) {
     vec3 q = gP;
-    float n1 = gNoise( vec3( q.x * 3.1, q.y * 8.5, q.z * 1.5 ) + 2.3 );           // broad spray clouds along the car
-    float n3 = gNoise( vec3( q.x * 9.0, q.y * 34.0, q.z * 4.2 ) + 7.7 );          // fine horizontal streaks
-    float n2 = gNoise( q * 31.0 + 3.1 );                                            // droplet speckle
-    float g = gm * ( 0.8 + 0.22 * ( n1 - 0.5 ) + 0.26 * ( n3 - 0.5 ) ) + ( n2 - 0.5 ) * 0.16 * min( gm, 0.6 );
+    float kS = 1.0 - smoothstep( 0.35, 0.75, abs( gTN.z ) );                     // 1 on the sides, 0 on the front / rear faces
+    float n3 = 0.5, nF = 0.5, n2 = 0.5;
+    if ( kS > 0.0 ) n3 = gNoise( vec3( q.x * 1.5, q.y * 40.0, q.z * 1.5 ) + 7.7 );      // spray streaks along the car
+    if ( kS < 1.0 ) n3 = mix( 0.5 + ( gNoise( vec3( q.x * 24.0, q.y * 3.0, q.z * 24.0 ) + 4.1 ) - 0.5 ) * 0.6, n3, kS );   // drip runs
+    if ( kF * kS > 0.0 ) nF = gNoise( vec3( q.x * 8.0, q.y * 105.0, q.z * 3.2 ) + 1.3 );   // finer streaks
+    // droplet speckle: a fine lattice turned 37 deg in the side plane (an axis-aligned value-noise
+    // lattice read as square pixels on a door)
+    if ( kF > 0.0 ) n2 = gNoise( vec3( q.x * 61.0, ( 0.8 * q.y + 0.6 * q.z ) * 61.0, ( 0.8 * q.z - 0.6 * q.y ) * 61.0 ) + 3.1 );
+    float g = gm * ( 0.8 + 0.42 * ( n3 - 0.5 ) + 0.18 * kF * kS * ( nF - 0.5 ) ) + ( n2 - 0.5 ) * 0.16 * kF * min( gm, 0.6 );
     g = smoothstep( 0.1, 0.95, g );
+    float th = mix( 0.42, 0.2, clamp( gAmt, 0.0, 1.0 ) );
+    float ee = ge + 0.22 * ( n3 - 0.5 ) + 0.1 * kF * kS * ( nF - 0.5 );
+    float ew = mix( 0.1, 0.022, kS ) + gFwE * 1.5;
+    g *= smoothstep( th - ew, th + ew, ee );
     // dried salt (pale grey-beige) higher up, the wet road film (dark grey-brown) at the very bottom
     vec3 salt = vec3( 0.2, 0.19, 0.17 ), wet = vec3( 0.055, 0.05, 0.044 );
-    vec3 gc = mix( wet, salt, clamp( smoothstep( 0.16, 0.48, q.y ) * 0.75 + ( n2 - 0.5 ) * 0.5, 0.0, 1.0 ) );
+    vec3 gc = mix( wet, salt, clamp( smoothstep( 0.16, 0.48, q.y ) * 0.75 + ( n3 - 0.5 ) * 0.35 + ( n2 - 0.5 ) * 0.2 * kF, 0.0, 1.0 ) );
     diffuseColor.rgb = mix( diffuseColor.rgb, gc, g * CAR_GRIME_K );
     roughnessFactor = mix( roughnessFactor, 0.82, g );
     metalnessFactor = mix( metalnessFactor, 0.0, g );
@@ -166,8 +185,9 @@ function carShade(m, { spec = null, baseSpec = null, f90 = null, road = true, ca
       if (inst === 'paint') f = f.replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= vCarM;\nroughnessFactor = mix( 0.4, roughnessFactor, vCarM );');
     }
     if (grime) {
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n' + GRIME_VERT_PARS).replace('#include <begin_vertex>', '#include <begin_vertex>\nvCarGrime = cgrime' + (inst ? ' * cari.w;' : ';'));
-      f = f.replace('#include <common>', '#include <common>\nvarying float vCarGrime;\nuniform float uCarGrime;\n#define CAR_GRIME_K ' + grimeK.toFixed(3))
+      // the amount: the material's uCarGrime, or per instance (cari.w) on an instanced far-body batch
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n' + GRIME_VERT_PARS + (inst ? '\nvarying float vCarAmt;' : '')).replace('#include <begin_vertex>', '#include <begin_vertex>\nvCarGrime = cgrime;' + (inst ? ' vCarAmt = cari.w;' : ''));
+      f = f.replace('#include <common>', '#include <common>\nvarying float vCarGrime;\nuniform float uCarGrime;\n#define CAR_GRIME_K ' + grimeK.toFixed(3) + (inst ? '\nvarying float vCarAmt;\n#define CAR_GRIME_AMT vCarAmt' : '\n#define CAR_GRIME_AMT uCarGrime'))
         .replace('#include <clearcoat_normal_fragment_begin>', GRIME_FRAG + '#include <clearcoat_normal_fragment_begin>')
         .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\n#ifdef USE_CLEARCOAT\n material.clearcoat *= 1.0 - gCarGrime * 0.9;\n#endif');
       shader.uniforms.uCarGrime = uG;
@@ -678,7 +698,10 @@ export class Car {
   // Sleeping (round 4): a car nobody drives that has come to rest (no speed, no spin, the suspension
   // settled, on the ground, not smoking or burning) stops stepping after half a second: no physics,
   // no ground or solid queries. It wakes when it is hit (collideCars, a trailer shoving it), placed,
-  // damaged, given a driver or an AI, or when anything else moves it or gives it a speed.
+  // damaged, given a driver or an AI, or when anything else moves it or gives it a speed - or a push
+  // on its springs (`_sus.pv / rv / hv`: a kicked tyre rocks a parked car again, phase 4 round 2).
+  // A car towing a trailer never sleeps: its trailer collides with other cars only inside the car's
+  // step (a sleeping Patrick's trailer let the Saab drive straight into it).
   // `car.asleep` is public (read-only for others): collideCars skips pairs where both sleep, and a
   // broadphase may leave sleeping cars out. Wake one with car.wake().
   wake() {
@@ -689,7 +712,7 @@ export class Car {
   }
   sleepCheck(game) {
     const sus = this._sus;
-    const rest = CAR_PERF.sleep && !this.driver && !this.ai && !this.air && !(game && game.playerCar === this) &&
+    const rest = CAR_PERF.sleep && !this.driver && !this.ai && !this.trailer && !this.air && !(game && game.playerCar === this) &&
       !(this.dead && this.burn > 0) && (this.dead || this.hp >= 35) &&
       Math.abs(this.vx) < 0.02 && Math.abs(this.vz) < 0.02 && Math.abs(this.w) < 0.004 && Math.abs(this.vy) < 0.05 &&
       Math.abs(sus.pv) < 0.004 && Math.abs(sus.rv) < 0.004 && Math.abs(sus.hv) < 0.004 &&
@@ -698,13 +721,15 @@ export class Car {
     if (++this._still < 30) return;
     this.asleep = true;
     this.vx = this.vz = this.vy = this.w = 0;
+    sus.pv = sus.rv = sus.hv = 0;   // so that any push on the springs (a kick) wakes it, see step
     this.skidAmt = 0; this.braking = 0; this.reversing = false;
     this._sx = this.x; this._sz = this.z; this._sy = this.y; this._syaw = this.yaw;
   }
 
   step(dt, game) {
     if (this.asleep) {
-      if (!CAR_PERF.sleep || this.driver || this.ai || this.vx || this.vz || this.vy || this.w || this.air || (game && game.playerCar === this) ||
+      const sus = this._sus;
+      if (!CAR_PERF.sleep || this.driver || this.ai || this.trailer || this.vx || this.vz || this.vy || this.w || sus.pv || sus.rv || sus.hv || this.air || (game && game.playerCar === this) ||
         this.x !== this._sx || this.z !== this._sz || this.y !== this._sy || this.yaw !== this._syaw || (this.dead && this.burn > 0) || (!this.dead && this.hp < 35)) this.wake();
       else return;
     }

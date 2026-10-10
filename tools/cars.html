@@ -32,8 +32,8 @@
     // turned through 360° against the sun, for checking that no window blows out.
     import { THREE, initGfx, gfxReady, scene, camera, renderer, renderFrame, GeoBuilder, realMesh, setRoadGrid, gfxStats } from '../src/gfx.js';
     import { fx } from '../src/game/fx.js';
-    import { Car, CAR_TYPES } from '../src/actors/car.js';
-    import { MODEL_KEYS, carModel, wheelStats } from '../src/actors/carmodels.js';
+    import { Car, CAR_TYPES, carWheelMaterials } from '../src/actors/car.js';
+    import { MODEL_KEYS, carModel, wheelStats, wheelGeometry } from '../src/actors/carmodels.js';
     import { buildBust, randomPed, CHARS } from '../src/actors/models.js';
     import { mulberry32 } from '../src/util.js';
 
@@ -72,7 +72,7 @@
 
     // The lineup: every model nose to tail along the near lane, engines running.
     const kinds = MODEL_KEYS;
-    const COL = { saab900: 0x1d2c4a, volvo240: 0x8a1c18, volvo740: 0x2f3d55, audi: 0x2a2c30, bmw: 0x55595d, skoda: 0xd2d2d0, golf: 0x8f9397, kombi: 0x253a2c, taxi: 0x18191b, van: 0xd0d0cc };
+    const COL = { saab900: 0x34506e, volvo240: 0x8a1c18, volvo740: 0x2f3d55, audi: 0x2a2c30, bmw: 0x55595d, skoda: 0xd2d2d0, golf: 0x8f9397, kombi: 0x253a2c, taxi: 0x18191b, van: 0xd0d0cc };
     const lineup = [];
     let lx = -60;
     for (const k of kinds) {
@@ -85,7 +85,7 @@
     // sun); the hero Saab stands alone in front of the row so its long-lens front/rear views are clear.
     const studio = {};
     const SZ = 92;
-    kinds.forEach((k, i) => { studio[k] = k === 'saab900' ? add(k, -60, 55, Math.PI / 2, { color: COL[k], engineOn: true, quiet: true, grime: 0.35 }) : add(k, -165 + i * 30, SZ, Math.PI / 2, { color: COL[k], engineOn: true, quiet: true }); });
+    kinds.forEach((k, i) => { studio[k] = k === 'saab900' ? add(k, -60, 55, Math.PI / 2, { color: COL[k], engineOn: true, quiet: true, grime: 0.35 }) : add(k, -165 + i * 30, SZ, Math.PI / 2, { color: COL[k], engineOn: true, quiet: true, grime: 0.85 }); });
     // Drivers: the cast where models.js has them (Ove in his Saab, Anders in the Audi, Vita
     // skjortan in the Škoda), random pedestrians otherwise. Busts are seated the way main.js must
     // do it: in the tilt frame at seatLocal().
@@ -98,7 +98,7 @@
     const tow = add('volvo740', 200, 40, Math.PI / 2, { color: 0x8a8e90, engineOn: true, trailer: true, quiet: true });
     seatBust(tow, 1);
     const parked = add('saab900', 200, 85, Math.PI / 2, { color: 0x7a1c18, snow: true, engineOn: false });
-    const street = add('saab900', 110, 3.2, -Math.PI / 2, { color: 0x1d2c4a, engineOn: true, grime: 0.35 });
+    const street = add('saab900', 110, 3.2, -Math.PI / 2, { color: COL.saab900, engineOn: true, grime: 0.35 });
     seatBust(street, 1, 'ove');
     // The glass test car (turned by the spin views).
     const spinCar = add('golf', 150, 55, Math.PI / 2, { color: 0x8f9397, engineOn: true, quiet: true });
@@ -119,6 +119,18 @@
     V.saab_cornerL = () => look(loc(hero, 1.9, 0.9, 3.6), loc(hero, 0.7, 0.55, 2.15), 32);
     V.saab_mirror = () => look(loc(hero, -1.6, 1.25, 2.2), loc(hero, -0.8, 1.0, 0.65), 30);
     V.saab_hatch = () => look(loc(hero, -2.2, 2.2, -5.2), loc(hero, 0, 1.0, -1.6), 36);
+    // phase 4 round 2: the tail side on (the hatch line into the lip), the windscreen's wrapped corners
+    // from a front 3/4 above, and the game's chase camera on the hero in the open (hero_chase; the
+    // same into the sun: hero_chase_sun)
+    V.saab_tail_side = () => look(loc(hero, 3.4, 1.05, -1.7), loc(hero, 0.6, 0.85, -1.75), 34);
+    V.saab_hatch_close = () => look(loc(hero, -0.9, 1.75, -3.7), loc(hero, 0, 0.95, -2.1), 30);
+    V.saab_lip = () => look(loc(hero, 1.6, 1.25, -3.3), loc(hero, 0.5, 0.95, -2.2), 24);
+    V.saab_ws = () => look(loc(hero, 2.4, 1.85, 3.6), loc(hero, 0.2, 1.05, 0.55), 36);
+    V.saab_apillar = () => look(loc(hero, 2.3, 1.3, 2.9), loc(hero, 0.6, 1.08, 0.62), 26);
+    V.saab_apillar_shade = () => look(loc(hero, -2.3, 1.3, 2.9), loc(hero, -0.6, 1.08, 0.62), 26);
+    const chaseOn = (c, yaw) => { const b = 4.4 + 0.8 * c.spec.len, py = c.height + 0.42, a = yaw + Math.PI; look([c.x + Math.sin(a) * b * Math.cos(0.15), py + b * Math.sin(0.15), c.z + Math.cos(a) * b * Math.cos(0.15)], [c.x, py, c.z], 54); };
+    V.hero_chase = () => chaseOn(hero, hero.yaw);
+    V.hero_chase_sun = () => { hero.place(hero.x, hero.z, Math.PI - 0.6); hero.y = 0; hero.sync(0); chaseOn(hero, hero.yaw); };
     V.lineup_b = () => look([lineup[6].x - 6, 3.4, 13], [lineup[6].x + 12, 0.8, 2.5], 52);
     V.lineup_c = () => look([lineup[lineup.length - 1].x + 9, 4.5, 15], [lineup[lineup.length - 1].x - 12, 1.0, 2.5], 52);
     V.saab_street = () => around(street, -0.8, 7, 1.6, 0.7, 42);
@@ -150,6 +162,8 @@
     V.parked_snow = () => around(parked, -0.9, 6.5, 2.2, 0.7, 40);
     V.lod_near = () => around(studio.volvo740, -0.7, 39, 1.8, 0.7, 7);
     V.lod_far = () => around(studio.volvo740, -0.7, 52, 2.3, 0.7, 5.3);
+    V.saab_lod = () => around(hero, Math.PI + 0.6, 52, 2.6, 0.7, 5.6);
+    V.saab_lod_near = () => around(hero, Math.PI + 0.6, 39, 2.0, 0.7, 7.4);
     // round 4: low close-ups of the tyres and arches (the wheel-well liner must not show below or behind
     // a tyre), and the same with the wheels hidden (wheel_probe: only the liner is left in the arch)
     const hideWheels = (on) => scene.traverse((o) => { if (o.name?.startsWith('wheels:')) o.visible = !on; });
@@ -158,6 +172,22 @@
     V.wheel_low = () => look(loc(hero, 3.2, 0.22, 0.2), loc(hero, 0.7, 0.3, 0.1), 50);
     V.van_wheel = () => { const c = studio.van; look(loc(c, 2.6, 0.5, 3.6), loc(c, 0.8, 0.36, 1.7), 34); };
     V.wheel_probe = () => { hideWheels(true); look(loc(hero, 2.6, 0.45, 2.9), loc(hero, 0.7, 0.32, 1.25), 34); };
+    // phase 4 round 2: every wheel style alone on the lot, upright, its outer face turned towards the
+    // camera - the front row with the game's (front-side) wheel materials, the back row the same with
+    // DoubleSide. The rows must look the same: a tyre built inside out is a C-shape / a crescent in the
+    // front row (wheels_bare from above, wheels_bare_low at hub height).
+    const WSTY = ['saab3', 'alloy5', 'alloy7', 'sport', 'steel', 'van', 'truck', 'lod'];
+    WSTY.forEach((st, i) => {
+      const geo = wheelGeometry(st);
+      for (const [row, side] of [[0, THREE.FrontSide], [1, THREE.DoubleSide]]) {
+        const w = new THREE.Mesh(geo, carWheelMaterials(geo).map((m) => { m.side = side; return m; }));
+        w.scale.set(0.2, 0.31, 0.31); w.position.set(40 + i * 1.3, 0.31, 30 + row * 1.6); w.rotation.y = Math.PI / 2 - 0.75;
+        w.castShadow = w.receiveShadow = true;
+        scene.add(w);
+      }
+    });
+    V.wheels_bare = () => look([44.5, 3.0, 22.6], [44.5, 0.3, 30.8], 50);
+    V.wheels_bare_low = () => look([44.5, 0.32, 23.2], [44.5, 0.32, 31], 56);
     for (let k = 0; k < 8; k++) V['spin' + k] = () => { spinCar.place(spinCar.x, spinCar.z, (k / 8) * Math.PI * 2); spinCar.y = 0; spinCar.sync(0); look([spinCar.x - 4, 1.9, spinCar.z - 6.5], [spinCar.x, 0.8, spinCar.z], 40); };
     for (const k of kinds) {
       if (k === 'saab900') continue;
@@ -172,7 +202,7 @@
     let view = 'lineup', blinkCar = null, brakeCar = null;
     const all = Object.keys(V).filter((v) => !v.startsWith('spin'));
     window.__views = params.has('only') ? params.get('only').split(',').filter((v) => V[v]) : all;
-    window.__setView = (v) => { view = v; blinkCar = null; brakeCar = null; hideWheels(false); for (const c of cars) { c.hazard = false; c.braking = 0; } V[v](); if (blinkCar) blinkCar.hazard = true; document.getElementById('lbl').textContent = v; };
+    window.__setView = (v) => { if (hero.yaw !== Math.PI / 2) { hero.place(hero.x, hero.z, Math.PI / 2); hero.y = 0; hero.sync(0); } view = v; blinkCar = null; brakeCar = null; hideWheels(false); for (const c of cars) { c.hazard = false; c.braking = 0; } V[v](); if (blinkCar) blinkCar.hazard = true; document.getElementById('lbl').textContent = v; };
     if (params.has('grimedbg')) {
       // the road-grime mask by height on the Golf's front face (z > 1.9)
       const geo = studio.golf.body.geometry, pos = geo.attributes.position, gr = geo.attributes.cgrime, bands = {};

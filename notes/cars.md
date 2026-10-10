@@ -1,4 +1,4 @@
-# Cars — notes for later agents (phase 2, area C; fix rounds 1, 2, 3 and 4 (perf) applied)
+# Cars — notes for later agents (phase 2, area C; fix rounds 1, 2, 3 and 4 (perf) and phase 4 round 2 applied)
 
 Files: `src/actors/car.js` (physics, `Car`, specs, materials, lights, plates, LOD, snow caps),
 `src/actors/carmodels.js` (lofted models, wheel instancing, plate atlas, lamp + glow materials),
@@ -45,12 +45,15 @@ wrapping to the arches and joined by the black side moulding. Round 3: rounded '
 (convex from the tuck-under to an 8.5 cm shoulder radius, no feature line), a narrower greenhouse
 with tumblehome (glass from x 0.72 at the belt to 0.58 at the roof), the black triangular sail the
 mirror stands on at the front of the door glass, drip rails over the doors, a deeply wrapped
-windscreen with black A-pillars, a long door, a smaller quarter window whose rear edge leans back,
-a big body-coloured C-pillar with the slotted vent. The fastback hatch glass (~19°) now runs down to
-z −2.12 (a 10 cm lid to the crisp lip at 0.95 m) and wraps round into the C-pillars (`gh.rwWrap`:
-the corner band is glass, its sides drop ~0.1 m), framed in black rubber along its sides and foot
-(`rwSealB`); a dark parcel shelf under it. Then the near-vertical tail panel: the hatch cut at 0.79
-m, wide ribbed tail lamps (red over amber outer / clear reversing inner) in black surrounds either
+windscreen with black A-pillars (phase 4 round 2: a glossy black frit band, `FRIT` = the LOD glass
+colour, which the car shading renders as glass - see below), a long door, a smaller quarter window
+whose rear edge leans back, a big body-coloured C-pillar with the slotted vent. The fastback hatch
+glass (~19°) runs down to a crisp lip right at the tail (phase 4 round 2: z −2.222, the lip crease
+at −2.232, 0.96 m; round 3 left a ~17 cm flat lid behind the glass that read as a saloon's boot side
+on) and wraps round into the C-pillars (`gh.rwWrap`: the corner band is glass, its sides drop
+~0.12-0.14 m), framed in black rubber along its sides and foot (`rwSealB` 0.035); a dark parcel shelf
+under it, the body top under the glass flat and 2-3 cm below it. Then the near-vertical tail panel: the
+hatch cut at 0.79 m, wide ribbed tail lamps (red over amber outer / clear reversing inner) in black surrounds either
 side of the black plate panel, SAAB letters on the lid; the rear bumper like the front one; a short
 tailpipe angled down from a silencer under the tail, a dark floor pan under the car.
 
@@ -205,7 +208,9 @@ point), `ghRail` (drip rails), `bandOn` (a band of boxes following the body roun
 `underbody(g, P)` (floor pan, subframes, tank: the space under a car is not empty daylight).
 Round 4: `wheelWells(g, P)` is a dark half-disc wall 5 cm inboard of each tyre following the arch
 (radius `arch.r`, its flat edge at the arch centre ~ the axle; closed by a thin strip): round 3's box
-reached 0.4 r below the axle and stuck out behind and below the tyre as a dark flap in close-ups.
+reached 0.4 r below the axle and stuck out behind and below the tyre in close-ups. (The dark
+crescent / "flap" under every tyre that round 1 and round 4 chased was **not** the liner: the tyres
+were built inside out - see Phase 4, round 2.)
 
 **Side sections (round 3):** every car's lower body is convex in section with continuous curvature
 (default `side` [[0, −0.05], [0.2, −0.016], [0.45, −0.002], [0.6, 0], [0.75, −0.008], [0.88, −0.026],
@@ -297,8 +302,9 @@ car's). Galvanised steel (0x868a8c; round 2's pale galv read as white paint), th
 L = 2.3 m (= v/L·sin Δψ), so reversing jackknifes; Δψ limited to 75° (`trailer.jackknifed`). A tiny
 constant drift (0.004 rad/m) stands for road camber, so even dead-straight reversing wanders off
 (74.5° after 8 s at 2.2 m/s if nobody corrects); **a 0.4 s steering tap while backing reaches the
-limit after 1.7 s** (measured; the round-2 note's 2.9 s was wrong - the code did not change, the
-note did); driving forward straightens it (0.5° after 6 s). Box OBB pushed out of static solids by
+limit after 1.7 s or 2.9 s** - the measurement flips between the two from run to run with the same
+code (phase 4 round 2: three runs in a row gave 2.9 / 1.7 / 1.7 s; nothing in the trailer or the
+physics changed), so both earlier notes were right; driving forward straightens it (0.5° after 6 s). Box OBB pushed out of static solids by
 swinging about the hitch, or by shoving the car. A burnt car's trailer is restored by `repair()`'s
 material now too. Exposes `x, z, yaw, len, wid, hx, hz, axleL, drawbar, obb`; `reset()`, `detach()`.
 
@@ -411,6 +417,18 @@ onStopped })` — API unchanged (`rubber` optional everywhere):
   12 m behind), **`lodab`** (instanced far bodies vs per-car, same frame:
   `cars_lodab_<view>_inst / _single.png`). cars.html views `wheel_f, wheel_r, wheel_low, van_wheel,
   wheel_probe` (tyres and arches from low close; the probe hides the wheels: only the liner is left).
+- Phase 4 round 2: **`wheelfaces`** (every wheel style's tyre must face outwards - the winding of each
+  tread / outer-sidewall triangle against its position - and every rim's outer face must face +x by far
+  more area than it faces back; failures go to the run's errors), **`trailersleep`** (Patrick's kombi +
+  trailer left 2 s on an open street must stay awake, the Saab driven into the trailer from 6 m with W
+  for 1.8 s must stop at contact, ~3.6 m centre to centre; then a kick on a sleeping parked car's tyre
+  must rock it; failures go to the errors), **`grimegpu`** (gfxStats.gpuMs median / min over 120
+  frames at the big car park and on Solrosvägen; run with `QUERY='&gputime'` and `EXCLUSIVE=1`).
+  cars.html views `wheels_bare` / `wheels_bare_low` (every wheel style alone: front row the game's
+  front-side materials, back row DoubleSide - the rows must match), `saab_tail_side`, `saab_lip`,
+  `saab_hatch_close`, `saab_ws`, `saab_apillar(_shade)`, `hero_chase` / `hero_chase_sun` (the game's
+  chase camera on the hero, away from / into the sun), `saab_lod` / `saab_lod_near`. The look-dev Saab
+  is the world's phase-4 slate blue (0x34506e); the studio row carries grime 0.85 (was random).
 - Lamp colours: sample the lit lens cores in `brake` / `hazard`; the lighting terms: add `&dbg=1|2|3|4&tm=none&contrast=0&toe=1&sdesat=1&exposure=1`
   (QUERY for shot.mjs; note the clear coat is added on top of every dbg term).
 
@@ -488,18 +506,22 @@ cars now emit sparsely). **systems** - stages.js's day-7 chaser: spawn it facing
 3. **dispose()** - 60 cars spawned in view and removed with `dispose()`: renderer geometries +2..6 (the
    town and peds, not per car), textures and programs +0; with a seated bust in each +61 -> +0..2.
 4. **First entry hitch** - `warmCars` (see For main.js).
-5. **Wheel-well liners** - half-disc walls that follow the arch, nothing below the axle (the van's
-   flap behind the front tyre is gone; `wheel_*` views).
+5. **Wheel-well liners** - half-disc walls that follow the arch, nothing below the axle. (This did
+   *not* remove the dark crescent under the tyres, as this note claimed: that was the inside-out tyre
+   lathe, fixed in phase 4 round 2.)
 6. **Exhaust** - see Materials.
 
 ## Known weaknesses
 
-- The Saab from the chase camera reads as a dark, rounded hatchback rather than unmistakably a 900:
-  the hatch glass is a dark pane (no strong sky sheen, especially in shade), the windscreen wrap is
-  still the round-2 black corner band, no Turbo spoiler.
-- The Golf is much closer (face band, tail lamps) but still a little tall and slab-ish from the side;
-  no VW roundel (the brief forbids logos), so the Golf, Audi and BMW lean on their shapes and
-  lettering.
+- The Saab: a hatchback with one fastback line now, but the hatch glass is still a dark pane from the
+  chase camera (at ~55° the glass reflects ~5 % of the sky; under it the dark parcel shelf), no Turbo
+  spoiler. Seen through the hatch glass at a grazing angle, the far C-pillar's inner lining shows a
+  stair-step edge (the offset inner layer of the loft; round 3 already had it).
+- The Golf: lower belt, rolled-in upper side, lower nose and a broader C-pillar (phase 4 round 2), but
+  still upright and flat-sided from a long lens; the roof stays at the real 1.48 m. No VW roundel (the
+  brief forbids logos), so the Golf, Audi and BMW lean on their shapes and lettering.
+- Shaded lower doors mirror the road (`ROAD_GLSL`), not the snow banks: a dark car in shade stays
+  dark below the shoulder (the round-2 choice against two-tone cars).
 - In the sunlit front 3/4 the shoulder (facing the sun) is still ~2× the lower door's L - a soft
   gradient now, not a band; the rear door is at 1.6×.
 - The AI: a smitare or chaser shoved off the asphalt by ramming can still spend 10+ s getting back
@@ -511,3 +533,64 @@ cars now emit sparsely). **systems** - stages.js's day-7 chaser: spawn it facing
   camera compiles and uploads in that frame.
 - Lamps are boxes with a shader pattern, not modelled reflector bowls; wheels don't show suspension
   travel; the trailer is kinematic.
+
+## Phase 4, round 2 (the whole-game review's cars list)
+
+1. **Tyres were built inside out** (major) - `wheelGeometry()` lathed the tyre profile (and the far
+   'lod' one) from the outer bead to the inner one, i.e. descending in the lathe's height: three's
+   `LatheGeometry` faces outwards only for an ascending profile, so tread and sidewalls faced the axle.
+   From outside the near tread was back-face culled and the inside of the far tread showed below and
+   behind the tyre: the dark crescent / "flap" of round 1 and 4 (the liner fixes never touched it), and
+   the tyres were lit from the wrong side. Both profiles are reversed now (a comment says why); the rim
+   `ring()` lathes all run from the outer radius inwards and already faced +x (checked: `wheelfaces`,
+   and `wheels_bare` FrontSide = DoubleSide for all eight styles). Nothing else changed: no DoubleSide,
+   same triangle counts; `wheelCache` is per page load (nothing persistent to clear).
+2. **The Saab 900** (major) - the hatch glass runs down to a crisp lip at the very tail (the ~17 cm flat
+   lid behind it, which read as a saloon's boot side on and from the chase camera, is gone; the lip is
+   the crease, the body top under the glass flat and 2-3 cm below it so nothing z-fights); the glass
+   wraps ~2-3 cm further down into the C-pillars; the windscreen's wrapped corners and the strip beside
+   them are a glossy black frit (`FRIT` = 0x14181d, the LOD glass colour: the `plastic` car shader's
+   `lodGlass` path renders it as dark glass - roughness 0.07, the sky like glass) instead of round 3's
+   matt black band; the rubbing strip is taller and prouder (0.392-0.476 m, 2 cm proud) with a brighter
+   insert (0x8e9296, 0.427-0.438). The tail lamps already sat in a full-width black band. No
+   hockey-stick C-pillar (that is a 9-3 / 9-5 detail). len / wid / height / axles / seat / hitch
+   unchanged. Triangles 20,644 -> 21,336 near, 4,326 -> 4,390 LOD; draw calls unchanged (7).
+   The paint colour is the world's (src/world/ove.js, phase 4 round 2: a slate-blue metallic ~0x34506e);
+   with it the title shot's bonnet reads (76, 93, 115) and the shaded door (21, 30, 50) sRGB (navy:
+   (67, 79, 98) / (12, 16, 29)).
+3. **Sleeping cars** (minor) - a car with a trailer never falls asleep (`sleepCheck`: `!this.trailer`;
+   also a reason to wake): its trailer collides with other cars only inside the car's step, and a
+   sleeping Patrick's trailer let the Saab drive into it (the review measured the Saab's centre 0.13 m
+   from the trailer's; now it stops at 3.60 m, `trailersleep`). A sleeping car zeroes its spring
+   velocities and wakes when anything pushes its springs (`_sus.pv / rv / hv` non-zero): main.js's
+   `kickTyre` (`c._sus.rv += ...`) rocks a sleeping parked car again with no change in main.js (max roll
+   0.026 rad on a Volvo 740; was 0). Anyone else who pokes a parked car's springs gets the same.
+4. **The Golf** (minor, partly) - belt ~2.5 cm lower along the doors (0.965 / 0.948 at -0.4 / 0.4,
+   still rising to 1.02 at the C-pillar), the cowl and the windscreen foot with it; the upper side rolls
+   in 7 cm above the shoulder line (was 4.5) and the door below it leans in towards the sill; the bonnet
+   front and the whole face band 2.6 cm lower (lamps / grille 0.66-0.81 m); the rear door glass ends 6 cm
+   further forward (a broader C-pillar). The roof stays at the real Mk6's 1.48 m (the review suggested
+   1.43; the physics height is 1.48 too). Triangles 18.4k -> 18.7k.
+5. **Road grime** (minor) - `GRIME_FRAG` is directional spray now: streaks long along the car and a few
+   cm tall on the sides (q.y x40, q.z x1.5) plus finer ones, soft drip runs on front / rear faces
+   (`gTN.z` picks the face), round 3's broad blotchy cloud dropped, a crisp ragged top edge where the exposure
+   mask falls below a threshold (0.42 at grime 0 -> 0.2 at 1: the mask rises round and behind every
+   arch, so the spray line does too; soft on front / rear faces), the droplet speckle on a lattice turned
+   37 deg and finer (61/m: the axis-aligned 31/m lattice read as square pixels), the salt / wet colour
+   varied by the streaks, fine noise faded by `fwidth` (far cars). Salt and wet colours unchanged. The
+   amount reaches the shader as `CAR_GRIME_AMT` (the material's `uCarGrime`, or per instance `vCarAmt` =
+   `cari.w` on the instanced far bodies; it used to be folded into `vCarGrime`). Derivatives are taken
+   before the branch, and a noise is only looked up where it has weight (at most three per pixel, as in
+   round 3): `grimegpu` (EXCLUSIVE, `&gputime`, min of 120 frames, 3 alternating runs each) big car
+   park 2.50 / 2.75 / 2.62 ms with round 3's grime vs 2.69 / 2.70 / 2.74 with this one, Solrosvägen
+   2.67 / 2.88 / 2.25 vs 2.61 / 2.49 / 2.93 - no difference above the noise (medians 3.7-5.2 ms for
+   both: the GPU is shared).
+
+API: nothing new or removed. `car.asleep` semantics: never true for a car with a trailer; a push on
+the springs wakes it.
+
+Measured (my copy, 1280x720, RTX 4070 shared): physics unchanged (0-100 7.6 s, top 140, 100->0 39 m,
+full lock at 60: no squeal, 0.57 rad/s); trailer reversing 2.2 m/s, 0 light flips, 74.5 deg drift;
+carcost: start view 488 calls with cars vs 393 without, aerial 502 vs 462, 60-61 fps; draw calls per
+near car unchanged.
+

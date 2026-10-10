@@ -2,7 +2,7 @@
 //   PORT=8803 ../browserslot node tools/shot.mjs physics trailer carflee carcost pullover seating
 // physics / trailer simulate a car off-screen (far outside the town, on asphalt) with the real
 // modules, step by step, so the numbers don't depend on frame timing; the others play in town.
-export default ({ page, ev, shot, frames, sleep, hold, tap, fps, OUT }) => {
+export default ({ page, ev, shot, frames, sleep, hold, tap, fps, OUT, errors = [] }) => {
   // A stand-alone car far from town (no solids out there) driven by fixed controls.
   const SIM = `
     const { Car, PLAYER } = await import('./src/actors/car.js');
@@ -78,7 +78,114 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, fps, OUT }) => {
     requestAnimationFrame(tick);
   }), n);
   const memStats = () => ev(async () => { const { renderer } = await import('./src/gfx.js'); const i = renderer.info; return { geos: i.memory.geometries, tex: i.memory.textures, programs: i.programs?.length, cars: __game.cars.length, heapMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1048576).toFixed(0) : null }; });
+  const fail = (msg) => { console.log('[t] FAIL', msg); errors.push(msg); };
   return {
+    // Phase 4 round 2: every wheel style's tyre must face outwards (three's LatheGeometry faces out only
+    // for an ascending profile; the tyre used to be built inside out). For each rubber triangle of the
+    // tread and the outer sidewalls (centroid radius > 0.85 of the tyre's), the winding normal must point
+    // away from the wheel's centre; and the rim's outer face (everything else beyond x 0.2: the lathed
+    // rings, spoke windows, nuts) must face the outer side (+x) by far more area than it faces back.
+    async wheelfaces() {
+      const r = await ev(async () => {
+        const { wheelGeometry } = await import('./src/actors/carmodels.js');
+        const out = {};
+        for (const st of ['saab3', 'alloy5', 'alloy7', 'sport', 'steel', 'van', 'truck', 'lod']) {
+          const geo = wheelGeometry(st), pos = geo.attributes.position, idx = geo.index, surfs = geo.userData.surfaces;
+          let ok = 0, bad = 0, rimPos = 0, rimNeg = 0;
+          const P = (i) => [pos.getX(i), pos.getY(i), pos.getZ(i)];
+          for (const gr of geo.groups) {
+            const surf = surfs[gr.materialIndex];
+            for (let t = gr.start; t < gr.start + gr.count; t += 3) {
+              const a = P(idx ? idx.getX(t) : t), b = P(idx ? idx.getX(t + 1) : t + 1), c = P(idx ? idx.getX(t + 2) : t + 2);
+              const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+              const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+              const m = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+              const rr = Math.hypot(m[1], m[2]);
+              if (Math.hypot(...n) < 1e-9) continue;
+              if (surf === 'rubber') {
+                if (rr < 0.85) continue;
+                if (n[0] * m[0] + n[1] * m[1] + n[2] * m[2] > 0) ok++; else bad++;
+              } else if (m[0] > 0.2) {
+                // (n is the un-normalised cross product: its x is twice the area projected on the wheel's plane)
+                if (n[0] > 0) rimPos += n[0]; else rimNeg -= n[0];
+              }
+            }
+          }
+          const k = rimPos / Math.max(1e-9, rimNeg);
+          // (the far 'lod' wheel's rim is two closed discs: as much area faces back as out)
+          out[st] = { tyre: bad ? bad + '/' + (ok + bad) + ' inward' : 'out (' + ok + ')', rim: st === 'lod' ? 'ok (closed discs)' : (k > 2 ? 'ok' : 'backwards') + ' (+x/-x area ' + (k > 1e3 ? 'all +x' : k.toFixed(1)) + ')' };
+        }
+        return out;
+      });
+      console.log('[t] wheelfaces', JSON.stringify(r));
+      for (const [st, o] of Object.entries(r)) if (!o.tyre.startsWith('out') || !o.rim.startsWith('ok')) fail('wheelfaces ' + st + ' ' + JSON.stringify(o));
+    },
+    // Phase 4 round 2 (the code review): a parked car towing a trailer must not fall asleep (its trailer
+    // collides with other cars only inside the car's step). Patrick's kombi + trailer on an open street,
+    // left 2 s to settle, then the Saab driven into the trailer from 6 m behind with W held for 1.8 s: it
+    // must stop at contact (centre to centre ~3.6 m), not inside the trailer. Then a kick on a sleeping
+    // parked car's tyre: it must wake and rock on its springs.
+    async trailersleep() {
+      const setup = await ev(async () => {
+        const g = __game, L = await import('./src/world/layout.js');
+        if (g.playerCar) g.exitCar(true);
+        const p = g.named.patrickCar, s = g.named.saab;
+        if (!p || !p.trailer) return { err: 'no patrickCar with a trailer' };
+        const x = L.rc(4) + L.LANE, z = L.rc(3) + 40;
+        for (const o of [...g.cars]) if (o !== p && o !== s && Math.hypot(o.x - x, o.z - z) < 70) g.removeCar(o);
+        p.place(x, z, 0);
+        s.place(x, p.trailer.z - 3.6 - 6, 0);
+        g.player.teleport(x + 4, z - 14, 0);
+        g.cam.snapNext = true;
+        window.__ts = { x, z };
+        return { x, z };
+      });
+      if (setup.err) { fail('trailersleep: ' + setup.err); return; }
+      await frames(120);
+      const before = await ev(() => { const p = __game.named.patrickCar; return { asleep: p.asleep, trailerZ: +p.trailer.z.toFixed(2) }; });
+      await ev(() => { const g = __game, s = g.named.saab; g.enterCar(s); s.place(s.x, s.z, 0); g.cam.snapNext = true; });
+      await frames(10);
+      await hold(['KeyW'], 1800);
+      await frames(60);
+      const r = await ev(() => { const g = __game, s = g.named.saab, t = g.named.patrickCar.trailer; return { saabZ: +s.z.toFixed(2), trailerZ: +t.z.toFixed(2), gap: +(t.z - s.z).toFixed(2), saabLen: s.spec.len, trailerLen: t.len }; });
+      console.log('[t] trailersleep', JSON.stringify({ patrickAsleepAfter2s: before.asleep, ...r }));
+      await shot('cars_trailersleep');
+      if (before.asleep) fail('trailersleep: Patrick\'s car (with its trailer) fell asleep');
+      if (r.gap < 3.3) fail('trailersleep: the Saab ended ' + r.gap + ' m from the trailer centre (contact ~3.6)');
+      // the kick: a sleeping parked car (not the player's), Ove beside it
+      const k = await ev(async () => {
+        const g = __game;
+        if (g.playerCar) g.exitCar(true);
+        const c = g.cars.find((c) => c.asleep && !c.trailer && !c.name && c.kind !== 'bus' && c.kind !== 'garbage');
+        if (!c) return { err: 'no sleeping car' };
+        const fx = Math.cos(c.yaw), fz = -Math.sin(c.yaw);   // the car's left (+X local): kick towards its side
+        g.player.teleport(c.x + fx * 1.6, c.z + fz * 1.6, Math.atan2(-fx, -fz));
+        const was = c.asleep;
+        g.kickTyre(c, -fx, -fz);
+        window.__kc = { c, max: 0 };
+        return { kind: c.kind, wasAsleep: was };
+      });
+      if (k.err) { fail('kick: ' + k.err); return; }
+      for (let i = 0; i < 30; i++) { await frames(1); await ev(() => { const o = window.__kc; o.max = Math.max(o.max, Math.abs(o.c.roll)); }); }
+      const kr = await ev(() => { const o = window.__kc; return { maxRoll: +o.max.toFixed(4), asleepNow: o.c.asleep }; });
+      console.log('[t] kick', JSON.stringify({ ...k, ...kr }));
+      if (kr.maxRoll < 0.01) fail('kick: a kicked sleeping car did not rock (max roll ' + kr.maxRoll + ')');
+    },
+    // Phase 4 round 2: GPU time of a frame full of dirty cars (the road-grime shader): the big car park
+    // from a fixed spot and Solrosvägen-like street views, median / min of gfxStats.gpuMs over 120 frames.
+    // Run with QUERY='&gputime' (and EXCLUSIVE=1 on the slot wrapper).
+    async grimegpu() {
+      await frames(60);
+      const sample = () => ev(() => new Promise((res) => { const g = (window.__gfx || {}); const a = []; const f0 = window.__frame; const tick = async () => { const { gfxStats } = await import('./src/gfx.js'); a.push(gfxStats.gpuMs); if (window.__frame - f0 >= 120) { a.sort((x, y) => x - y); res({ median: +a[a.length >> 1].toFixed(2), min: +a[0].toFixed(2), n: a.length }); } else requestAnimationFrame(tick); }; requestAnimationFrame(tick); }));
+      await ev(() => { const g = __game, p = window.__lm('parking'); let s = null; for (let k = 0; k < 16 && !s; k++) { const a = k * 0.39, x = p.x + Math.cos(a) * 12, z = p.z + Math.sin(a) * 12; if (g.spotFree(x, z)) s = { x, z }; } s ||= g.freeSpot(p.x, p.z, 4, 12); g.player.teleport(s.x, s.z, Math.atan2(p.x - s.x, p.z - s.z)); g.cam.yaw = g.player.yaw; g.cam.snapNext = true; });
+      await frames(60);
+      const lot = await sample();
+      await shot('cars_grimegpu_lot');
+      await ev(() => { const g = __game, c = g.named.saab; g.enterCar(c); c.place(-30, -40 + 2.75, Math.PI / 2); g.cam.yaw = Math.PI / 2; g.cam.snapNext = true; });
+      await frames(60);
+      const street = await sample();
+      console.log('[t] grimegpu', JSON.stringify({ lot, street }));
+    },
     // Round 4 (perf): draw calls per pass for cars vs the rest, car CPU, renderFrame ms, fps, at the
     // start view, on Solrosvägen in the Saab (chase cam), at the big car park and from above.
     async carperf() {
