@@ -202,6 +202,7 @@ export class Trailer {
       for (const k of game.cars) {
         if (k === c || Math.abs(k.x - this.x) > r + k.radius || Math.abs(k.z - this.z) > r + k.radius) continue;
         if (!obbVsObb(o, k.obb, _ch)) continue;
+        k.wake?.();
         const d = Math.min(_ch.depth, 0.5), share = c.mass / (c.mass + k.mass);
         k.x -= _ch.nx * d * share; k.z -= _ch.nz * d * share;
         const vn = (k.vx - c.vx) * _ch.nx + (k.vz - c.vz) * _ch.nz;
@@ -274,6 +275,12 @@ export class Trailer {
     this.showPlate(false);
     if (this.root.parent) this.root.parent.remove(this.root);
     releasePlate(this.plate);
+  }
+  // Round 4 (Car.dispose): detach, and free the trailer's own lamp material and wheel tracking.
+  dispose() {
+    this.detach();
+    this._wheelsOff?.();
+    this.lightMat.dispose();
   }
 }
 

@@ -1,4 +1,4 @@
-# Cars — notes for later agents (phase 2, area C; fix rounds 1, 2 and 3 applied)
+# Cars — notes for later agents (phase 2, area C; fix rounds 1, 2, 3 and 4 (perf) applied)
 
 Files: `src/actors/car.js` (physics, `Car`, specs, materials, lights, plates, LOD, snow caps),
 `src/actors/carmodels.js` (lofted models, wheel instancing, plate atlas, lamp + glow materials),
@@ -93,6 +93,15 @@ default by name and state: Ove's `saab` 0.35, `andersAudi` 0.3, `adrianSaab` 0.5
   geometry (the trailer uses it). `GRIME_LV`, `grimeLevel(a)` exported too.
 - `car.beacon` channel: the sopbil's amber roof beacons flash (two flashes per turn) while its
   engine runs.
+- Round 4: **`car.asleep`** (read-only), **`car.wake()`**, **`car.dispose()`**, **`warmCars(renderer,
+  scene, camera)`**, `CAR_PERF` / `setCarPerf({ instLod, sleep, autoWarm })` (A/B switches),
+  `car.syncView()` (the camera-dependent part of `sync`), `carStats(n)` (instanced far bodies /
+  batches / sleeping cars / the warm-up's timings; `n` > 0 benches the instance rewrite). See "For
+  main.js" below. `car.root.userData.isCar = true`; the car's meshes are named `car:body`,
+  `car:bodyLod`, `car:glass`, `car:lights`, `car:glow`, `car:plate`, `car:snowCap(Lod)`.
+  The car's root and tilt matrices are written by `sync()` (`matrixAutoUpdate = false`), the meshes in
+  the tilt frame are static: move a car with `place()` / its `x, z, yaw` and `sync()`, never through
+  `car.root.position`.
 
 ## Materials (deviations from DESIGN §10.4 — all inside car.js, gfx.js untouched)
 
@@ -160,8 +169,13 @@ grimeK, glass, lodGlass })` in car.js:
 - **Glow** (`glowMaterial(ch)`): one extra mesh per car (`car.glow`, additive, shares the channel
   array) with a soft camera-facing disc per brake / indicator / reversing / beacon lamp. Visible
   only while one of those lamps is lit (no draw call otherwise).
-- **Exhaust** (round 3): a puff every ~0.3–0.45 s at idle (was 0.1 s: overlapping puffs piled up
-  into cotton balls), none above ~4 m/s, none when the camera is within 4 m of the tailpipe.
+- **Exhaust** (round 4): a faint puff every 0.45–0.6 s at idle (longer while creeping off), none
+  above 3 m/s, none when the camera is within 9 m *behind* the tailpipe (the chase camera, a car ahead
+  at a junction) or within 3 m from any side; `fx.exhaust(x, y, z, vx, vz, EXHAUST)` passes the
+  rendering area's optional `{ alpha, size }` - `EXHAUST = { alpha: 0.6, size: 0.8 }` in car.js, meant as
+  multipliers of fx's default puff (an fx.js without them ignores the argument; if fx defines them
+  as absolute values, change EXHAUST). Measured (`exhaust`): idling Saab, 0 puffs in 3 s from the
+  chase camera, 6 from the side at 5 m, 5 from 12 m behind.
 
 ## Physics (arcade, heavier)
 
@@ -189,6 +203,9 @@ window wraps round into the pillars, framed in black rubber), `P.sideF` / `P.sid
 section's sample heights), `P.creaseHard`, and the helpers `ghPt(P, z, j)` (a greenhouse section
 point), `ghRail` (drip rails), `bandOn` (a band of boxes following the body round a corner),
 `underbody(g, P)` (floor pan, subframes, tank: the space under a car is not empty daylight).
+Round 4: `wheelWells(g, P)` is a dark half-disc wall 5 cm inboard of each tyre following the arch
+(radius `arch.r`, its flat edge at the arch centre ~ the axle; closed by a thin strip): round 3's box
+reached 0.4 r below the axle and stuck out behind and below the tyre as a dark flap in close-ups.
 
 **Side sections (round 3):** every car's lower body is convex in section with continuous curvature
 (default `side` [[0, −0.05], [0.2, −0.016], [0.45, −0.002], [0.6, 0], [0.75, −0.008], [0.88, −0.026],
@@ -233,8 +250,22 @@ keep their own material (round 2's pool-growth bug). `wheelDebug()` lists the po
 LOD: beyond 46 m (back under 40 m) a car shows `bodyLod` (coarse loft, glossy dark glass - see
 Materials - no interior, arches with 8 segments, ~2.6–4.4k tris, the unlit lamp lenses baked in as
 plastic 4 mm inside the lamp mesh's lenses) and LOD wheels, and hides the near glass. The plate
-stays out to 72 m. A far car's lamp mesh draws only while its engine runs. Cars beyond 95 m cast
-no shadow. There is no third LOD and no instancing of bodies (see weaknesses).
+stays out to 72 m (still one call per car: the per-car plate mesh). A far car's lamp mesh draws only
+while its engine runs; a seated bust (main.js's `driverBust`) is hidden behind the far body's opaque
+glass. Cars beyond 95 m cast no shadow. There is no third LOD.
+
+**Instanced far bodies (round 4):** every far car that isn't a wreck is one instance of an
+`InstancedMesh` per model and snow state (`carlod:<kind>|0/1`, the LOD geometry's own buffers plus
+per-instance `cari` = paint rgb (linear) + grime, `carm` = metallic 1 / solid 0; materials from
+`instMaterial` = the car materials with `carShade({ inst })`), its snow cap in a second one
+(`carlod:cap:...`). Its per-car `bodyLod` / `snowCapLod` stay hidden (`car._inst`); a wreck far away
+draws its own burnt `bodyLod`. The instances are rewritten in the scene's render hook (carmodels
+`addRenderHook`) only when the view or a car changed (`carsChanged()`), culled per car against the
+camera (the sphere inflated 7 m so a low-sun shadow from just off-screen stays), casters (< 95 m)
+first: the shadow pass draws only those, and none into the near cascade (~30 m) except the bus and
+the sopbil (their 13-15 m shadows can reach it). The wheel instances use the same dedupe (they used to
+be rewritten for the AO pre-pass and again for the main pass), and an empty wheel pool is hidden (it
+set up its program in every pass; with programs still compiling that stalled a frame).
 
 Snow caps (`snowCapGeometry(geo, glass)`, cached per body): the upward-facing paint lifted along its
 normal by up to 4.5 cm, plus the upward-facing panes (~1.4 cm), in `'snow'`. One extra draw call
@@ -319,6 +350,37 @@ onStopped })` — API unchanged (`rubber` optional everywhere):
 - `flee` (smitare) re-plans a new destination when stuck three times; swerves only on straights onto
   asphalt (round 2). `route` arrival by dwell time near the end point (round 2).
 
+## For main.js (round 4)
+
+- **`removeCar(car)` should end with `car.dispose()`** (after `scene.remove(car.root)`; dispose also
+  removes it if it is still in). It frees the plate's atlas slot and geometry, the plate string, the
+  car's own lamp material and glow material, its trailer's lamp material and plate, the seated bust's
+  geometry (buildBust bakes one per bust: the 60-car test leaked exactly one geometry per removed
+  traffic car), and stops tracking its wheels. Shared model geometries, snow caps and paint/surface
+  materials stay. A disposed car must not be re-added. (enterCar's carjack and seat() take the bust
+  out with `car.tilt.remove(car.driverBust)` and drop it: dispose its geometry there too, or keep it.)
+- **`await warmCars(renderer, scene, camera)`** once during loading, after the town and the cars
+  exist (e.g. with the rendering area's compileAsync, before the first frame): one of every model
+  with and without snow (near body, glass, lamps, glow, plate, snow caps, far body, a wreck, the
+  trailer), every instanced far-body batch and wheel pool, compiled against the real scene into a
+  render target like the composer's (so the program variants match the main pass), then drawn once
+  into a 1x1 target with a plain material so every car geometry is on the GPU. A second call returns
+  the first one's promise. **If main.js never calls it, the cars do it themselves 2 s after the first
+  frame** (`CAR_PERF.autoWarm`; in the game that is the title screen): the shaders compile in the
+  background; build 27-31 ms + compile 23 ms in one task, upload 12-14 ms; the worst game frame
+  meanwhile 26 ms (the explicit call during loading costs no game frame). Measured: 8-10 programs,
+  150-335 ms in all; Ove's first entry into the Saab straight from the start view then has its worst
+  frame at 19-28 ms (was 37-42 ms) with no car program compiled and no car geometry uploaded but 7
+  plates; what is left is the town's blocks / ground / twigs coming into view (world). Entering from
+  beside the Saab: no car program (the three new ones are world blocks and markers).
+- **`car.asleep`**: parked cars nobody drives fall asleep 0.5 s after coming to rest and stop
+  stepping (no physics, ground or solid queries) until something wakes them (`car.wake()`):
+  `collideCars` contact, a trailer shoving them, `place()`, `damage()`, a driver or an AI, or anything
+  else that moves them or gives them a speed (checked in `step`). `collideCars(a, b)` returns at once
+  when both sleep; a broadphase may leave sleeping cars out of the pair list entirely (a sleeping car
+  can't start a contact; a moving one wakes it). A sleeping car with nothing lit (`!running`, no
+  hazard, no indicator) skips `sync()` except `syncView()` (LOD, plate, shadow).
+
 ## Testing
 
 - `node tools/pageshot.mjs tools/cars.html cars` (through `../browserslot` with your own `PORT`) —
@@ -338,6 +400,17 @@ onStopped })` — API unchanged (`rubber` optional everywhere):
   violation spot on its own flee AI - the first at the hospital spot where round 2 wedged - chased by
   a Saab on the chase AI, no teleports; stuck windows, seconds off the asphalt, then TAGEN and how
   the pull-over ends; `RP`, `RPT`, `RPDBG=1`), **`chasecheck`** (see Drivers; `CCDBG=1`).
+- Round 4: **`carperf`** (draw calls per pass split into cars / rest and main-pass car calls by part,
+  car.sync / parked car.step / collideCars pair costs, stepWorld / syncAll per frame, renderFrame ms,
+  fps; start view, Solrosvägen in the Saab, the big car park, aerial), **`carleak`** (60 cars spawned
+  in view and removed + `dispose()`: renderer geometries / textures / programs; `CARLEAK=bust` seats a
+  bust in each), **`carentry`** (Ove's first entry into the Saab straight from the start view: frame
+  times and the programs / geometries created in that moment, listed with the objects using them;
+  `WARM=1` runs `warmCars` first, `AUTO=1` waits for the automatic one and reports the frames meanwhile,
+  `CE=near` walks up to the Saab first), **`exhaust`** (puffs in 3 s from the chase camera, the side,
+  12 m behind), **`lodab`** (instanced far bodies vs per-car, same frame:
+  `cars_lodab_<view>_inst / _single.png`). cars.html views `wheel_f, wheel_r, wheel_low, van_wheel,
+  wheel_probe` (tyres and arches from low close; the probe hides the wheels: only the liner is left).
 - Lamp colours: sample the lit lens cores in `brake` / `hazard`; the lighting terms: add `&dbg=1|2|3|4&tm=none&contrast=0&toe=1&sdesat=1&exposure=1`
   (QUERY for shot.mjs; note the clear coat is added on top of every dbg term).
 
@@ -391,6 +464,34 @@ Requests for others: **fx** - `fx.exhaust` could take alpha and size (the puff s
 cars now emit sparsely). **systems** - stages.js's day-7 chaser: spawn it facing Ove and pass
 `rubber` (the API honours it on cruise only).
 
+## Round 4 (perf, the final reviews' cars issues)
+
+1. **Draw calls** - far bodies instanced per model and snow state (above), busts hidden in far cars,
+   the instance and wheel writes deduplicated per view/change, far casters kept out of the near
+   cascade. Car calls per frame across passes (shadow / AO / main), 159 cars, 1280x720, RTX 4070, the
+   same instrumentation (`carperf`) on GAME's round-3 cars and on these:
+   - start view: 316 (71 / 89 / 156) -> 134 (41 / 29 / 63); all calls 1630 -> 1268
+   - Solrosvägen in the Saab (chase camera): 582 (93 / 154 / 335) -> 287 (57 / 55 / 174); 2229 -> 1639
+   - the big car park (fixed spot): 491 (82 / 127 / 283) -> 245 (48 / 45 / 151); 2128 -> 1636
+   - aerial: 465 (2 / 176 / 287) -> 86 (5 / 27 / 54); 2707 -> 1942
+   (the near-car share moves ~±8 % between runs with where the traffic happens to be)
+   What is left in the main pass on Solrosvägen: near bodies 50, far batches 31 (60 cars in 15
+   batches), plates 20, wheel pools 18, lamps 15, glass 12, snow caps 11 + far caps 9, busts 5.
+   `lodab`: the instanced and the per-car far bodies are the same image (the only differences are a
+   traffic car that moved between the shots and the speckle seed of the paint's snow).
+2. **CPU** - 137 of 159 cars asleep half a second after load. car.sync over all visible cars 0.13-0.24
+   -> 0.03-0.05 ms per frame, a parked car.step pass 0.11-0.13 -> 0.013-0.04 ms per step, the n²
+   collideCars loop 0.47-0.79 -> 0.21-0.34 ms (pairs of sleepers return at once; the broadphase is
+   gameplay's), the game's stepWorld 1.55-1.94 -> 1.08-1.16 ms and syncAll 0.68-1.04 -> 0.56-0.75 ms
+   per frame; one instance rewrite 0.011-0.018 ms. renderFrame CPU (noisy, the GPU is shared) e.g.
+   start 9.6 -> 7.9 ms, Solrosvägen 9.3 -> 7.7 ms. 60 fps everywhere.
+3. **dispose()** - 60 cars spawned in view and removed with `dispose()`: renderer geometries +2..6 (the
+   town and peds, not per car), textures and programs +0; with a seated bust in each +61 -> +0..2.
+4. **First entry hitch** - `warmCars` (see For main.js).
+5. **Wheel-well liners** - half-disc walls that follow the arch, nothing below the axle (the van's
+   flap behind the front tyre is gone; `wheel_*` views).
+6. **Exhaust** - see Materials.
+
 ## Known weaknesses
 
 - The Saab from the chase camera reads as a dark, rounded hatchback rather than unmistakably a 900:
@@ -403,7 +504,10 @@ cars now emit sparsely). **systems** - stages.js's day-7 chaser: spawn it facing
   gradient now, not a band; the rear door is at 1.6×.
 - The AI: a smitare or chaser shoved off the asphalt by ramming can still spend 10+ s getting back
   (car parks count as off-road for flee/traffic); the three-point turn needs a clear street.
-- No instanced LOD bodies (cars stay the largest CPU cost: +2.9 ms at the start view); near bodies are
-  ~25 % heavier in triangles than round 2.
+- Near bodies are drawn one by one (body 4-5 surfaces + glass + lamps + plate + snow cap); near
+  bodies are ~25 % heavier in triangles than round 2. Plates of far cars (46-72 m) are still one call
+  each. Snowed-in and clean far cars of one model are two batches (snow is a shader define).
+- `warmCars` only helps once main.js calls it; until then the first car of a type / variant near the
+  camera compiles and uploads in that frame.
 - Lamps are boxes with a shader pattern, not modelled reflector bowls; wheels don't show suspension
   travel; the trailer is kinematic.

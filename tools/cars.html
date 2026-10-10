@@ -150,6 +150,14 @@
     V.parked_snow = () => around(parked, -0.9, 6.5, 2.2, 0.7, 40);
     V.lod_near = () => around(studio.volvo740, -0.7, 39, 1.8, 0.7, 7);
     V.lod_far = () => around(studio.volvo740, -0.7, 52, 2.3, 0.7, 5.3);
+    // round 4: low close-ups of the tyres and arches (the wheel-well liner must not show below or behind
+    // a tyre), and the same with the wheels hidden (wheel_probe: only the liner is left in the arch)
+    const hideWheels = (on) => scene.traverse((o) => { if (o.name?.startsWith('wheels:')) o.visible = !on; });
+    V.wheel_f = () => look(loc(hero, 2.6, 0.45, 2.9), loc(hero, 0.7, 0.32, 1.25), 34);
+    V.wheel_r = () => look(loc(hero, 2.4, 0.4, -3.4), loc(hero, 0.7, 0.32, -1.16), 34);
+    V.wheel_low = () => look(loc(hero, 3.2, 0.22, 0.2), loc(hero, 0.7, 0.3, 0.1), 50);
+    V.van_wheel = () => { const c = studio.van; look(loc(c, 2.6, 0.5, 3.6), loc(c, 0.8, 0.36, 1.7), 34); };
+    V.wheel_probe = () => { hideWheels(true); look(loc(hero, 2.6, 0.45, 2.9), loc(hero, 0.7, 0.32, 1.25), 34); };
     for (let k = 0; k < 8; k++) V['spin' + k] = () => { spinCar.place(spinCar.x, spinCar.z, (k / 8) * Math.PI * 2); spinCar.y = 0; spinCar.sync(0); look([spinCar.x - 4, 1.9, spinCar.z - 6.5], [spinCar.x, 0.8, spinCar.z], 40); };
     for (const k of kinds) {
       if (k === 'saab900') continue;
@@ -164,7 +172,7 @@
     let view = 'lineup', blinkCar = null, brakeCar = null;
     const all = Object.keys(V).filter((v) => !v.startsWith('spin'));
     window.__views = params.has('only') ? params.get('only').split(',').filter((v) => V[v]) : all;
-    window.__setView = (v) => { view = v; blinkCar = null; brakeCar = null; for (const c of cars) { c.hazard = false; c.braking = 0; } V[v](); if (blinkCar) blinkCar.hazard = true; document.getElementById('lbl').textContent = v; };
+    window.__setView = (v) => { view = v; blinkCar = null; brakeCar = null; hideWheels(false); for (const c of cars) { c.hazard = false; c.braking = 0; } V[v](); if (blinkCar) blinkCar.hazard = true; document.getElementById('lbl').textContent = v; };
     if (params.has('grimedbg')) {
       // the road-grime mask by height on the Golf's front face (z > 1.9)
       const geo = studio.golf.body.geometry, pos = geo.attributes.position, gr = geo.attributes.cgrime, bands = {};

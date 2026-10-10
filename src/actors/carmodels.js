@@ -838,12 +838,29 @@ function shapeGeo(pts, d, bevel = 0.006) {
   return geo;
 }
 
-// Wheel-well liners: dark boxes inboard of each tyre so you can't see through the arches.
+// Wheel-well liners, so you can't see through the arch over a tyre into daylight under the car: a
+// dark half-disc wall a few cm inboard of the tyre that follows the arch (radius arch.r, its flat
+// edge at the arch centre ~ the axle), closed along that edge. Round 4: round 3's box (1.3 r tall,
+// 1.9 r long, reaching 0.4 r below the axle) stuck out past the tyre's silhouette below and behind
+// it as a dark jagged flap in every close-up; nothing here goes below the tyre's upper half.
+const halfDiscCache = new Map();
+function halfDisc(n) {
+  let g = halfDiscCache.get(n);
+  if (!g) {
+    // a unit half-cylinder: axis along x (thickness 1), the curved rim over the top (y >= 0)
+    g = new THREE.CylinderGeometry(1, 1, 1, n, 1, false, Math.PI, Math.PI);
+    g.rotateZ(-Math.PI / 2);
+    halfDiscCache.set(n, g);
+  }
+  return g;
+}
 function wheelWells(g, P) {
   g.use('plastic');
+  const r = P.arch.r + 0.008, t = 0.03, y = P.arch.y + 0.004;
   for (const a of P.axles) for (const sx of [1, -1]) {
-    const x = sx * (P.wx - P.ww / 2 - 0.09);
-    g.box(UNDER, x, P.arch.y + P.arch.r * 0.25, a, 0.14, P.arch.r * 1.3, P.arch.r * 1.9);
+    const x = sx * (P.wx - P.ww / 2 - 0.05);
+    g.add(halfDisc(P.lod ? 6 : 14), UNDER, mat(x, y, a, 0, 0, 0, t, r, r));
+    g.box(UNDER, x, y + 0.004, a, t, 0.008, r * 2 - 0.01);   // the flat edge (the cut face is open)
   }
 }
 
@@ -982,6 +999,7 @@ function wipers(g, P, z, n = 2) {
 // Wheels: unit geometry (tyre radius 1, width 1 along x, outer face at +x). car.js scales each
 // instance by (width, r, r) and turns the right-hand ones round.
 
+const WHEEL_STYLES = ['saab3', 'alloy5', 'alloy7', 'sport', 'steel', 'van', 'truck', 'lod'];
 const wheelCache = new Map();
 export function wheelGeometry(style) {
   if (wheelCache.has(style)) return wheelCache.get(style);
@@ -2217,6 +2235,38 @@ export const wheelSink = {
     p.n++;
   },
 };
+// The scene's onBeforeRender runs for every render of the scene (the AO / shadow pre-pass and the
+// main pass): the per-frame instance writes (wheels here, car.js's instanced far bodies through
+// addRenderHook) run only when the view or some car changed since the last time - car.js calls
+// carsChanged() whenever a car moves, switches LOD, dies or enters / leaves the scene. A town of
+// parked, sleeping cars seen from a still camera costs nothing per frame.
+let gen = 1, lastGen = 0, lastCam = null;
+const lastView = new Float64Array(32);
+const renderHooks = [];
+export function carsChanged() { gen++; }
+export function addRenderHook(fn) { renderHooks.push(fn); hookScene(); }
+function viewChanged(cam) {
+  const a = cam.matrixWorld.elements, b = cam.projectionMatrix.elements;
+  let ch = cam !== lastCam;
+  for (let i = 0; i < 16; i++) {
+    if (lastView[i] !== a[i]) { lastView[i] = a[i]; ch = true; }
+    if (lastView[16 + i] !== b[i]) { lastView[16 + i] = b[i]; ch = true; }
+  }
+  lastCam = cam;
+  return ch;
+}
+function hookScene() {
+  if (hooked || !scene) return;
+  hooked = true;
+  const prev = scene.onBeforeRender;
+  scene.onBeforeRender = function (r, s, cam, rt) {
+    prev.call(this, r, s, cam, rt);
+    if (!viewChanged(cam) && gen === lastGen) return;
+    lastGen = gen;
+    updateWheels(cam);
+    for (const f of renderHooks) f(cam, _frustum);
+  };
+}
 function updateWheels(cam) {
   _pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
   _frustum.setFromProjectionMatrix(_pm);
@@ -2233,6 +2283,7 @@ function updateWheels(cam) {
   }
   for (const p of pools.values()) {
     p.mesh.count = p.n;
+    p.mesh.visible = p.n > 0;   // an empty pool would still set up its program in every pass
     p.mesh.instanceMatrix.needsUpdate = true;
     if (p.mesh.instanceColor) p.mesh.instanceColor.needsUpdate = true;
   }
@@ -2240,18 +2291,16 @@ function updateWheels(cam) {
 // Keep obj (with .root, .x, .z, .radius, .writeWheels) in the wheel system while its root is in
 // the scene.
 export function trackWheels(obj) {
-  const on = () => {
-    if (!hooked && scene) {
-      hooked = true;
-      const prev = scene.onBeforeRender;
-      scene.onBeforeRender = function (r, s, cam, rt) { prev.call(this, r, s, cam, rt); updateWheels(cam); };
-    }
-    wheeled.add(obj);
-  };
+  const on = () => { hookScene(); wheeled.add(obj); gen++; };
+  const off = () => { wheeled.delete(obj); gen++; };
   obj.root.addEventListener('added', on);
-  obj.root.addEventListener('removed', () => wheeled.delete(obj));
+  obj.root.addEventListener('removed', off);
+  obj._wheelsOff = () => { obj.root.removeEventListener('added', on); obj.root.removeEventListener('removed', off); off(); };
   if (obj.root.parent) on();
 }
+// Make every wheel pool now (the warm-up: their materials compile at load, not when the first car
+// of a style comes near).
+export function makeWheelPools() { for (const s of WHEEL_STYLES) wheelPool(s); return [...pools.values()].map((p) => p.mesh); }
 // Pool state for debugging (style, capacity, instances drawn, materials).
 export function wheelDebug() { return [...pools.values()].map((p) => ({ style: p.style, cap: p.cap, n: p.n, count: p.mesh.count, inScene: !!p.mesh.parent, col: !!p.mesh.instanceColor, mats: (Array.isArray(p.mesh.material) ? p.mesh.material : [p.mesh.material]).map((m) => m.name + ':' + m.color.getHexString()) })); }
 export function wheelStats() { let n = 0; for (const p of pools.values()) n += p.n; return { styles: pools.size, wheels: n, tracked: wheeled.size }; }

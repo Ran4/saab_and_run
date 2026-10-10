@@ -14,7 +14,213 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, fps, OUT }) => {
     const run = (c, sec, ctl, each) => { const dt = 1 / 60; for (let i = 0; i < sec * 60; i++) { Object.assign(c.ctrl, typeof ctl === 'function' ? ctl(i * dt) : ctl); c.step(dt, stub); each?.(i * dt); } };
     const kmh = (c) => c.forwardSpeed * 3.6;
   `;
+  // Draw-call instrumentation (round 4): counts renderBufferDirect calls per pass (the AO pre-pass,
+  // the shadow cascades rendered inside it, the main pass, post) and per category (car = anything
+  // under a car root, the instanced LOD batches, the wheel pools, plates; other = the rest).
+  const instrument = () => ev(async () => {
+    if (window.__dc) return;
+    const { renderer, scene } = await import('./src/gfx.js');
+    const R = renderer, D = (window.__dc = { on: false, phase: 0, inScene: false, cam: null, n: {}, parts: {}, frames: 0 });
+    const isCar = (o) => { if (o.name && (o.name.startsWith('wheels:') || o.name.startsWith('carlod:') || o.name.startsWith('plates:'))) return true; for (let p = o; p; p = p.parent) if (p.userData?.isCar) return true; return false; };
+    const rbd = R.renderBufferDirect.bind(R);
+    R.renderBufferDirect = function (camera, sc, geometry, material, object, group) {
+      // count real draws only (an instanced mesh with count 0 draws nothing)
+      if (D.on && !(object.isInstancedMesh && object.count === 0)) {
+        const pass = !D.inScene ? 'post' : camera !== D.cam ? 'shadow' : D.phase === 1 && D.ao ? 'ao' : 'main';
+        const car = isCar(object);
+        const k = pass + ':' + (car ? 'car' : 'other');
+        D.n[k] = (D.n[k] || 0) + 1;
+        // main-pass car calls by part (car:body, car:plate, carlod:..., wheels:..., bust = anything else in a car)
+        if (car && pass === 'main') { const part = object.name?.startsWith('car:') ? object.name : object.name?.startsWith('carlod:cap') ? 'lodcap' : object.name?.startsWith('carlod') ? 'lodbatch' : object.name?.startsWith('wheels') ? 'wheels' : 'seated'; D.parts[part] = (D.parts[part] || 0) + 1; }
+      }
+      return rbd(camera, sc, geometry, material, object, group);
+    };
+    const rr = R.render.bind(R);
+    R.render = function (s, c) { const top = s === scene; if (top) { D.phase++; D.cam = c; D.inScene = true; } try { return rr(s, c); } finally { if (top) D.inScene = false; } };
+    const reset = R.info.reset.bind(R.info);
+    R.info.reset = function () { if (D.on) D.frames++; D.ao = D.phase >= 2; D.phase = 0; return reset(); };
+    // tag car roots (the Car constructor sets userData.isCar from round 4 on; older code doesn't)
+    for (const c of __game?.cars || []) c.root.userData.isCar = true;
+  });
+  const passCalls = async (n = 40) => {
+    await ev(() => { for (const c of __game?.cars || []) c.root.userData.isCar = true; const D = window.__dc; D.n = {}; D.parts = {}; D.frames = 0; D.on = true; });
+    await frames(n);
+    return ev(() => { const D = window.__dc; D.on = false; const f = Math.max(1, D.frames - 1), o = {}; for (const [k, v] of Object.entries(D.n)) o[k] = +(v / f).toFixed(1); const car = ['ao', 'shadow', 'main'].map((p) => o[p + ':car'] || 0); o.carTotal = +car.reduce((a, b) => a + b, 0).toFixed(1); o.allTotal = +Object.values(o).reduce((a, b) => a + b, 0).toFixed(1) - o.carTotal; o.allTotal = +(o.allTotal + o.carTotal).toFixed(1); o.mainCarParts = Object.fromEntries(Object.entries(D.parts).map(([k, v]) => [k, +(v / f).toFixed(1)])); return o; });
+  };
+  // Pure car CPU: car.sync / car.step over every car 120 times in one go (performance.now() is
+  // coarse, so time the whole batch), plus the game's own stepWorld / syncAll per frame.
+  const carCpu = () => ev(async () => {
+    const g = __game, N = 120, cars = g.cars.filter((c) => c.root.visible);
+    let t = performance.now();
+    for (let k = 0; k < N; k++) for (const c of cars) c.sync(1 / 60);
+    const sync = (performance.now() - t) / N;
+    // step a copy of the state? step only cars without AI (parked, the bulk) - moving cars would coast
+    const still = g.cars.filter((c) => !c.ai && !c.driver);
+    t = performance.now();
+    for (let k = 0; k < N; k++) for (const c of still) c.step(1 / 60, g);
+    const stepParked = (performance.now() - t) / N;
+    let pairs = performance.now();
+    const { collideCars } = await import('./src/actors/car.js');
+    const all = g.cars;
+    for (let k = 0; k < N; k++) for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) collideCars(all[i], all[j], g);
+    pairs = (performance.now() - pairs) / N;
+    const asleep = g.cars.filter((c) => c.asleep).length;
+    const cs = (await import('./src/actors/car.js')).carStats?.(200);
+    return { inst: cs && `${cs.instanced} in ${cs.batches} batches, rewrite ${cs.writeMs} ms`, cars: g.cars.length, synced: cars.length, syncMs: +sync.toFixed(3), parked: still.length, stepParkedMs: +stepParked.toFixed(3), collidePairsMs: +pairs.toFixed(3), asleep, lod: g.cars.filter((c) => c.lod).length };
+  });
+  const loopCpu = (n = 180) => ev((n) => new Promise((res) => {
+    const g = __game, sw = g.stepWorld, sa = g.syncAll;
+    let a = 0, b = 0, f = 0;
+    g.stepWorld = function (h) { const t = performance.now(); sw.call(this, h); a += performance.now() - t; };
+    g.syncAll = function (dt, ti) { const t = performance.now(); sa.call(this, dt, ti); b += performance.now() - t; };
+    const f0 = window.__frame;
+    const tick = () => { if (window.__frame - f0 >= n) { g.stepWorld = sw; g.syncAll = sa; const k = window.__frame - f0; res({ stepWorldMs: +(a / k).toFixed(3), syncAllMs: +(b / k).toFixed(3) }); } else requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }), n);
+  const memStats = () => ev(async () => { const { renderer } = await import('./src/gfx.js'); const i = renderer.info; return { geos: i.memory.geometries, tex: i.memory.textures, programs: i.programs?.length, cars: __game.cars.length, heapMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1048576).toFixed(0) : null }; });
   return {
+    // Round 4 (perf): draw calls per pass for cars vs the rest, car CPU, renderFrame ms, fps, at the
+    // start view, on Solrosvägen in the Saab (chase cam), at the big car park and from above.
+    async carperf() {
+      await instrument();
+      await frames(60);
+      const pose = async (name) => {
+        await frames(30);
+        const dc = await passCalls();
+        const cpu = await carCpu();
+        const loop = await loopCpu();
+        const s = await ev(() => { const s = window.__stats(); return { calls: s.calls, aoCalls: s.aoCalls, tris: +(s.tris / 1e6).toFixed(2), renderMs: s.cpuMs }; });
+        console.log('[t] carperf', name, JSON.stringify({ ...s, ...dc }), JSON.stringify({ ...cpu, ...loop }), 'fps', await fps());
+      };
+      await pose('start');
+      await shot('carperf_start');
+      await ev(() => { const g = __game, c = g.named.saab; g.enterCar(c); c.place(-30, -40 + 2.75, Math.PI / 2); g.cam.yaw = Math.PI / 2; g.cam.snapNext = true; });
+      await frames(20);
+      await pose('street');
+      await shot('carperf_street');
+      // (a fixed spot 12 m off the car park's centre, the first free one round it)
+      await ev(() => { const g = __game, p = window.__lm('parking'); g.exitCar(true); let s = null; for (let k = 0; k < 16 && !s; k++) { const a = k * 0.39, x = p.x + Math.cos(a) * 12, z = p.z + Math.sin(a) * 12; if (g.spotFree(x, z)) s = { x, z }; } s ||= g.freeSpot(p.x, p.z, 4, 12); g.player.teleport(s.x, s.z, Math.atan2(p.x - s.x, p.z - s.z)); g.cam.yaw = g.player.yaw; g.cam.snapNext = true; });
+      await frames(20);
+      await pose('lot');
+      await shot('carperf_lot');
+      await ev(() => { __game.aerial = true; });
+      await frames(10);
+      await pose('aerial');
+      await shot('carperf_aerial');
+      await ev(() => { __game.aerial = false; });
+    },
+    // Round 4: the instanced far bodies against the per-car ones, same frame: a long lens on the big car
+    // park and down Solrosvägen from ~60-150 m, and from above (cars_lodab_<view>_inst / _single.png).
+    async lodab() {
+      await frames(60);
+      const views = [['lot', 'parking', 70, 12, 22], ['street', null, 0, 0, 0], ['aerial', null, 0, 0, 0]];
+      for (const [name, lmk, d, h, fov] of views) {
+        await ev(([name, lmk, d, h, fov]) => {
+          const g = __game, cam = g.cam.cam;
+          g.cam.update = function () {};
+          g.hideHud = true; document.getElementById('hud').style.display = 'none';
+          if (name === 'aerial') { g.aerial = true; return; }
+          g.aerial = false;
+          if (lmk) { const p = window.__lm(lmk); cam.position.set(p.x - d * 0.7, h, p.z - d * 0.7); cam.lookAt(p.x, 0.8, p.z); cam.fov = fov; }
+          else { cam.position.set(-150, 2.2, -37.25); cam.lookAt(0, 1.0, -37.25); cam.fov = 18; }
+          cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+        }, [name, lmk, d, h, fov]);
+        await frames(30);
+        for (const inst of [true, false]) {
+          await ev(async (inst) => { const { setCarPerf } = await import('./src/actors/car.js'); setCarPerf({ instLod: inst }); }, inst);
+          await frames(8);
+          await shot(`cars_lodab_${name}_${inst ? 'inst' : 'single'}`);
+        }
+        await ev(async () => { const { setCarPerf } = await import('./src/actors/car.js'); setCarPerf({ instLod: true }); });
+      }
+    },
+    // Round 4: exhaust at idle: Ove's Saab idling on Solrosvägen seen from the chase camera (no puffs
+    // within 9 m behind the tailpipe), from the side at 5 m and from 12 m behind (puffs), and a car
+    // idling ahead at a junction seen from the Saab's chase camera. Counts the puffs fx gets per view.
+    async exhaust() {
+      await ev(async () => {
+        const g = __game, c = g.named.saab, { fx } = await import('./src/game/fx.js');
+        g.enterCar(c); c.place(-30, -40 + 2.75, Math.PI / 2); g.cam.yaw = Math.PI / 2; g.cam.snapNext = true;
+        for (const o of [...g.cars]) if (o !== c && o.traffic && Math.hypot(o.x + 10, o.z + 37) < 60) g.removeCar(o);
+        const ex = fx.exhaust;
+        window.__puffs = 0;
+        fx.exhaust = function (...a) { window.__puffs++; return ex.apply(this, a); };
+      });
+      await frames(30);
+      const count = async (name, setup) => {
+        if (setup) await ev(setup);
+        await ev(() => { window.__puffs = 0; });
+        await sleep(3000);
+        const n = await ev(() => window.__puffs);
+        await shot('cars_exhaust_' + name);
+        console.log('[t] exhaust', name, 'puffs in 3 s', n);
+      };
+      await count('chase');
+      await count('side', () => { const g = __game, cam = g.cam.cam, c = g.playerCar; g.cam.update = function () {}; cam.position.set(c.x - 1.5, 1.2, c.z + 5); cam.lookAt(c.x - 1.8, 0.5, c.z); cam.fov = 50; cam.updateProjectionMatrix(); });
+      await count('behind12', () => { const g = __game, cam = g.cam.cam, c = g.playerCar; cam.position.set(c.x - 12, 1.7, c.z + 1.2); cam.lookAt(c.x, 0.6, c.z); cam.fov = 45; cam.updateProjectionMatrix(); });
+    },
+    // Round 4: 60 cars spawned in view and removed (+ car.dispose() when it exists); renderer
+    // geometries / textures / programs before and after (after a warm-up of every type). CARLEAK=bust
+    // also seats a bust (main.js's addBust: people's buildBust) in each.
+    async carleak() {
+      const cycle = (k, bust) => ev(async ([k, bust]) => {
+        const g = __game, { Car } = await import('./src/actors/car.js'), { MODEL_KEYS } = await import('./src/actors/carmodels.js'), { randomPed } = await import('./src/actors/models.js');
+        const p = g.player, kind = MODEL_KEYS[k % MODEL_KEYS.length];
+        const c = new Car(kind, { snow: k % 3 === 0 });
+        c.place(p.x + Math.sin(p.yaw) * 9, p.z + Math.cos(p.yaw) * 9, p.yaw + 1.2);
+        if (bust) g.addBust(randomPed(Math.random), c);
+        c.hazard = k % 2 === 0; c.braking = 1;
+        g.addCar(c);
+        window.__lc = c;
+      }, [k, bust]);
+      const drop = () => ev(() => { const c = window.__lc; __game.removeCar(c); c.dispose?.(); });
+      const bust = process.env.CARLEAK === 'bust';
+      for (let k = 0; k < 24; k++) { await cycle(k, bust); await frames(3); await drop(); await frames(1); }
+      await frames(10);
+      const a = await memStats();
+      for (let k = 0; k < 60; k++) { await cycle(k * 7 + 3, bust); await frames(3); await drop(); await frames(1); }
+      await frames(10);
+      const b = await memStats();
+      console.log('[t] carleak', bust ? '(with busts)' : '', 'before', JSON.stringify(a), 'after 60', JSON.stringify(b), 'dispose', await ev(() => typeof window.__lc.dispose));
+    },
+    // Round 4: the first entry into Ove's Saab: frame times and the programs / geometries the renderer
+    // creates in that moment (listed).
+    async carentry() {
+      // CE=near: walk up to the Saab first (teleport beside it, 90 frames); default: straight from the
+      // start view (enterCar from wherever Ove stands, as a warp or a test would)
+      // WARM=1: run car.js's warmCars first, as the loader would
+      // AUTO=1: wait for the cars' own fallback warm-up (2 s after the first frame) instead
+      if (process.env.AUTO) await ev(() => { const g = __game, L = g.loop; window.__wt = []; g.loop = function (t) { const s = performance.now(); L.call(this, t); window.__wt.push(+(performance.now() - s).toFixed(1)); }; });
+      if (process.env.AUTO) { for (let k = 0; k < 40; k++) { const w = await ev(async () => (await import('./src/actors/car.js')).carStats().warm); if (w) { const wt = await ev(() => { const a = window.__wt; delete __game.loop; return { n: a.length, max: Math.max(...a), over20: a.filter((x) => x > 20).length }; }); console.log('[t] carentry auto warm-up', JSON.stringify(w), 'frames meanwhile', JSON.stringify(wt)); break; } await sleep(250); } }
+      if (process.env.WARM) console.log('[t] carentry warmCars', JSON.stringify(await ev(async () => { const { warmCars } = await import('./src/actors/car.js'); const { renderer, scene, camera } = await import('./src/gfx.js'); return warmCars(renderer, scene, camera); })));
+      if (process.env.CE === 'near') await ev(() => { const g = __game, c = g.named.saab; const s = g.freeSpot(c.x + 2, c.z, 0, 1); g.player.teleport(s.x, s.z, Math.atan2(c.x - s.x, c.z - s.z)); g.cam.yaw = g.player.yaw; g.cam.snapNext = true; });
+      await frames(90);
+      const snap = () => ev(async () => {
+        const { renderer, scene } = await import('./src/gfx.js');
+        const geos = new Map();
+        scene.traverse((o) => { const gg = o.geometry; if (gg && gg._listeners?.dispose?.length) { let p = o, path = []; while (p && p !== scene) { path.push(p.name || p.type); p = p.parent; } geos.set(gg.uuid, path.reverse().slice(0, 4).join('/')); } });
+        return { geos: [...geos.entries()], programs: (renderer.info.programs || []).map((p) => p.id + ':' + p.name + '|' + p.cacheKey.slice(0, 90)), n: renderer.info.memory.geometries };
+      });
+      const a = await snap();
+      await ev(() => { const g = __game, L = g.loop; window.__lt = []; g.loop = function (t) { const s = performance.now(); L.call(this, t); window.__lt.push(+(performance.now() - s).toFixed(1)); }; });
+      if (process.env.CE === 'near') await tap('KeyE');
+      else await ev(() => { const g = __game; g.enterCar(g.named.saab); g.cam.snapNext = true; });
+      await frames(40);
+      const b = await snap();
+      const lt = await ev(() => window.__lt.slice(0, 12));
+      const A = new Set(a.geos.map((x) => x[0])), newG = b.geos.filter((x) => !A.has(x[0]));
+      const P = new Set(a.programs), newP = b.programs.filter((x) => !P.has(x));
+      const byPath = {}; for (const [, p] of newG) byPath[p] = (byPath[p] || 0) + 1;
+      // who uses the new programs
+      const users = await ev(async (ids) => {
+        const { renderer, scene } = await import('./src/gfx.js'), out = {};
+        scene.traverse((o) => { for (const m of [].concat(o.material || [])) { const pr = renderer.properties.get(m)?.currentProgram; if (pr && ids.includes(pr.id)) (out[pr.id] ||= new Set()).add((o.name || o.type) + '<' + (o.parent?.name || o.parent?.type || '') + ':' + m.type); } });
+        return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, [...v].slice(0, 4)]));
+      }, newP.map((x) => +x.split(':')[0]));
+      console.log('[t] carentry in car', await ev(() => !!__game.playerCar), 'frame ms', lt.join(' '), '| geometries', a.n, '->', b.n, '| programs', a.programs.length, '->', b.programs.length);
+      console.log('[t] carentry new programs', JSON.stringify(newP), 'used by', JSON.stringify(users));
+      console.log('[t] carentry new geometries by object', JSON.stringify(Object.entries(byPath).sort((x, y) => y[1] - x[1]).slice(0, 25)));
+    },
     // 0-100 km/h, top speed, braking 100-0, a full-lock turn and a handbrake turn at 60 km/h.
     async physics() {
       const r = await ev(new Function(`return (async () => { ${SIM}

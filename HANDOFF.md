@@ -105,7 +105,7 @@ borta. Granskningarna finns kvar i journalen ovan. Nu körs stegen som enskilda 
 |---|---|
 | rendering (gfx/fx/markers + world/town.js, batch.js; auto-kvalitet, batching, pre-pass, laddning, avgaser, svärta, snö) | startad 10-10 ~04:00 i `saab_work/render` |
 | värld (häckar, adventsstjärna/lampor, kyrkogårdsgrind, planteringar, snögubbe, kvistkort, 2 texter) | ✅ klar ~06:30 (loft-ändlock stängda = skåran, `kit.glow` under bloom-tröskeln, grind, granris-plantering, snögubbe, kvistkort tonas 9–20 m, anslagstavlan vänd rätt) |
-| bilar (instansade LOD-kroppar, sovande bilar, Car.dispose, förvärmning, hjulhusflik, avgaser) | startad ~04:00 |
+| bilar (instansade LOD-kroppar, sovande bilar, Car.dispose, förvärmning, hjulhusflik, avgaser) | ✅ klar ~07:40: bil-draw calls ungefär halverade (start 316 → 134), 137/159 bilar sover, `car.dispose()` + `warmCars()` (main.js ska anropa — gameplay A) |
 | folk (runtime-LOD, ansikten, Jimmys luva, knäböj) | ✅ klar ~06:00: THREE.LOD per person (folk 7.05 → 2.14 M tris summerat över 6 poser), oljekarta/relief/köldrodnad, tre unga män åtskilda, `st.kneel` + `kneelPoint`. OBS: hudshadern använder gfx.js-interna (`gBump`, `TRI_SPECK` …) |
 | gameplay B (story/filmkamera/tid på dygnet/dag 6/kontinuitet; `reviews/p4_gameplay_B.json`) | startad ~05:00 i `saab_work/story` |
 | gameplay A (robusthet, input, save, UI/titel, småprat, loop-prestanda, docs; `reviews/p4_gameplay_A.json`) | startar när B, bilar och rendering landat (behöver Car.dispose/asleep + setQuality('auto')) |

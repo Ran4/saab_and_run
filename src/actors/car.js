@@ -2,12 +2,12 @@
 // squat / dive on a soft suspension), realistic shared models (carmodels.js), lights, Swedish
 // licence plates, an optional trailer (trailer.js). See notes/cars.md for the API.
 
-import { THREE, realMesh, surfaceMaterial, MAT, camera, LIGHTING } from '../gfx.js';
+import { THREE, realMesh, surfaceMaterial, MAT, camera, scene, renderer as gfxRenderer, LIGHTING } from '../gfx.js';
 import { queryBlocks, obbVsBlock, obbVsObb, groundAt, topAt, RAMP } from '../world/collision.js';
 import { isRoad } from '../world/layout.js';
 import { clamp, damp, pick } from '../util.js';
 import { fx as FX } from '../game/fx.js';
-import { carModel, snowCapGeometry, trackWheels, lightMaterial, glowMaterial, randomPlate, claimPlate, releasePlate, allocPlate, freePlate, plateGeometry, setWheelMaterials, CH } from './carmodels.js';
+import { carModel, snowCapGeometry, trackWheels, lightMaterial, glowMaterial, randomPlate, claimPlate, releasePlate, allocPlate, freePlate, plateGeometry, setWheelMaterials, CH, carsChanged, addRenderHook, makeWheelPools, MODEL_KEYS } from './carmodels.js';
 import { Trailer } from './trailer.js';
 
 // Physics/spec per type. Speeds in m/s, accelerations in m/s². maxSpeed/accel are what AI and
@@ -138,9 +138,12 @@ float gCarGrime = 0.0;
 // cap on the base layer only: paint whose clear coat carries the sharp glint), env (sky reflection
 // multiplier, replaces the surface's), road, cabin, grime (GRIME_LV index; 0 = none), grimeK (how far
 // the grime colour replaces the surface colour), glass (Fresnel opacity for the see-through glass).
-function carShade(m, { spec = null, baseSpec = null, f90 = null, road = true, cabin = null, grime = 0, grimeK = 0.85, glass = false, lodGlass = false } = {}, tag = '') {
+// inst ('paint' | true): the material of an instanced far-body batch (round 4): the paint colour
+// (paint only), the road grime and metallic-or-solid come per instance (attributes cari = paint
+// rgb + grime, carm = 1 metallic / 0 solid) instead of per material.
+function carShade(m, { spec = null, baseSpec = null, f90 = null, road = true, cabin = null, grime = 0, grimeK = 0.85, glass = false, lodGlass = false, inst = false } = {}, tag = '') {
   const compile = m.onBeforeCompile, key = m.customProgramCacheKey;
-  const uG = { value: GRIME_LV[grime] || 0 };
+  const uG = { value: inst ? 1 : GRIME_LV[grime] || 0 };
   m.userData.carGrime = uG;
   m.onBeforeCompile = function (shader, r) {
     compile.call(this, shader, r);
@@ -155,8 +158,15 @@ function carShade(m, { spec = null, baseSpec = null, f90 = null, road = true, ca
     // reflection: no Fresnel rise of its own (a rough base lobe at a glance lit whole bonnets white
     // against the low sun)
     if (f90 !== null) f = f.replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>\nmaterial.specularF90 = ${f90[0].toFixed(3)};\nmaterial.specularColor *= ${f90[1].toFixed(3)};\nmaterial.specularColorBlended = mix( material.specularColor, diffuseColor.rgb, metalnessFactor );`);
+    if (inst) {
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 cari;\nattribute float carm;\nvarying float vCarM;')
+        .replace('#include <color_vertex>', '#include <color_vertex>\nvCarM = carm;' + (inst === 'paint' ? '\nvColor.rgb *= cari.rgb;' : ''));
+      f = f.replace('#include <common>', '#include <common>\nvarying float vCarM;');
+      // solid paint: no metal, a slightly smoother base (paintMat: metalness 0.3 / 0, roughness 0.45 / 0.4)
+      if (inst === 'paint') f = f.replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\nmetalnessFactor *= vCarM;\nroughnessFactor = mix( 0.4, roughnessFactor, vCarM );');
+    }
     if (grime) {
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n' + GRIME_VERT_PARS).replace('#include <begin_vertex>', '#include <begin_vertex>\nvCarGrime = cgrime;');
+      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\n' + GRIME_VERT_PARS).replace('#include <begin_vertex>', '#include <begin_vertex>\nvCarGrime = cgrime' + (inst ? ' * cari.w;' : ';'));
       f = f.replace('#include <common>', '#include <common>\nvarying float vCarGrime;\nuniform float uCarGrime;\n#define CAR_GRIME_K ' + grimeK.toFixed(3))
         .replace('#include <clearcoat_normal_fragment_begin>', GRIME_FRAG + '#include <clearcoat_normal_fragment_begin>')
         .replace('#include <lights_physical_fragment>', '#include <lights_physical_fragment>\n#ifdef USE_CLEARCOAT\n material.clearcoat *= 1.0 - gCarGrime * 0.9;\n#endif');
@@ -192,7 +202,7 @@ function carShade(m, { spec = null, baseSpec = null, f90 = null, road = true, ca
     shader.uniforms.uCarSun = uCarSun;
     shader.fragmentShader = f;
   };
-  m.customProgramCacheKey = () => key.call(m) + '|car3' + tag + (spec ?? '') + '|' + (baseSpec ?? '') + (road ? 'r' : '') + (cabin ? 'c' + cabin.join(',') : '') + (grime ? 'g' + grimeK : '') + (glass ? 'f' + glass[1] : '') + (f90 !== null ? 'F' + f90.join(',') : '') + (lodGlass ? 'L' : '');
+  m.customProgramCacheKey = () => key.call(m) + '|car3' + tag + (spec ?? '') + '|' + (baseSpec ?? '') + (road ? 'r' : '') + (cabin ? 'c' + cabin.join(',') : '') + (grime ? 'g' + grimeK : '') + (glass ? 'f' + glass[1] : '') + (f90 !== null ? 'F' + f90.join(',') : '') + (lodGlass ? 'L' : '') + (inst ? 'I' + inst : '');
   return m;
 }
 // Paint: a rougher, less metallic base layer (a broad dim sheen, capped low) under the mirror clear
@@ -301,6 +311,143 @@ function bodyMesh(geo, color, snow, solid, grime = 0) {
   return mesh;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Round 4 (perf): far bodies drawn instanced. Every car beyond the LOD distance (parked or driving,
+// not wrecked) is one instance of an InstancedMesh per model and snow state ('carlod:<kind>|<snow>'),
+// with its snow cap in a second one; paint colour, road grime and metallic/solid come per instance
+// (carShade inst). Instances are rewritten in the scene's render hook (carmodels addRenderHook: only
+// when the view or a car changed), culled per car against the camera (inflated so shadows cast from
+// just off-screen stay), the shadow casters (< SHADOW_DIST) first: the shadow pass draws only those
+// (onBeforeShadow trims the count). CAR_PERF.instLod = false draws them one by one as before;
+// CAR_PERF.sleep = false keeps every car awake (both for A/B tests).
+export const CAR_PERF = { instLod: true, sleep: true, autoWarm: true };
+const instMatCache = new Map();
+function instMaterial(s, snow) {
+  const k = s + '|' + snow;
+  let m = instMatCache.get(k);
+  if (m) return m;
+  if (s === 'paint' || s === 'paintsolid') {
+    m = surfaceMaterial('paint', { snow, unique: true });
+    m.color.set(0xffffff);
+    delete m.defines.TRI_CURVE;
+    m.userData.uniforms.uEnvCC.value = 0.72;
+    m.userData.uniforms.uEnvSpec.value = 0.6;
+    m.metalness = 0.3; m.roughness = 0.45;
+    carShade(m, { spec: 2.2, baseSpec: 0.2, f90: [0.06, 0.12], grime: 1, inst: 'paint' }, 'paint');
+  } else if (CAR_SURF[s]) {
+    const d = CAR_SURF[s];
+    m = surfaceMaterial(s, { snow, unique: true });
+    if (d.rough !== undefined) m.roughness = d.rough;
+    if (d.env !== undefined) m.userData.uniforms.uEnvSpec.value = d.env;
+    carShade(m, { spec: d.spec ?? null, f90: d.f90 ?? null, road: d.road ?? true, cabin: d.cabin ?? null, grime: d.grime ? 1 : 0, grimeK: d.grimeK ?? 0.85, lodGlass: !!d.lodGlass, inst: true }, s);
+  } else m = surfaceMaterial(s, { snow });
+  instMatCache.set(k, m);
+  return m;
+}
+const lodBatches = new Map();
+const lodCars = new Set();
+function lodBatch(kind, snow) {
+  const key = kind + '|' + (snow ? 1 : 0);
+  let b = lodBatches.get(key);
+  if (b) return b;
+  const src = carModel(kind).lod;
+  // the LOD geometry's buffers, shared (same attribute objects = same GPU buffers), plus the
+  // per-instance attributes
+  const geo = new THREE.BufferGeometry();
+  for (const [n, a] of Object.entries(src.attributes)) geo.setAttribute(n, a);
+  geo.setIndex(src.index);
+  for (const gr of src.groups) geo.addGroup(gr.start, gr.count, gr.materialIndex);
+  geo.userData = { surfaces: src.userData.surfaces };
+  const capGeo = snow ? snowCapGeometry(src, null) : null;
+  b = { key, geo, mats: src.userData.surfaces.map((s) => instMaterial(s, snow)), capGeo, capMat: capGeo ? surfaceMaterial('snow') : null, cap: 0, mesh: null, capMesh: null, list: [] };
+  growBatch(b, 48);
+  lodBatches.set(key, b);
+  return b;
+}
+function growBatch(b, need) {
+  const cap = Math.max(need, b.cap * 2);
+  b.geo.setAttribute('cari', new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4));
+  b.geo.setAttribute('carm', new THREE.InstancedBufferAttribute(new Float32Array(cap), 1));
+  const mk = (geo, mat, name, cast) => {
+    const m = new THREE.InstancedMesh(geo, mat, cap);
+    m.name = name; m.frustumCulled = false; m.castShadow = cast; m.receiveShadow = true;
+    m.count = 0; m.visible = false;
+    m.userData.n = 0; m.userData.nCast = 0;
+    if (cast) {
+      // the near cascade (~30 m round the camera) gets none: no far car's shadow reaches it, except
+      // the bus's and the sopbil's (13-15 m long in the low sun)
+      const tall = b.key.startsWith('bus') || b.key.startsWith('garbage');
+      m.onBeforeShadow = function (r, o, cam, sc) { this.count = !tall && sc.right - sc.left < 160 ? 0 : this.userData.nCast; };
+      m.onAfterShadow = function () { this.count = this.userData.n; };
+    }
+    scene.add(m);
+    return m;
+  };
+  if (b.mesh) { scene.remove(b.mesh); b.mesh.dispose(); }
+  if (b.capMesh) { scene.remove(b.capMesh); b.capMesh.dispose(); }
+  b.mesh = mk(b.geo, b.mats, 'carlod:' + b.key, true);
+  if (b.capGeo) b.capMesh = mk(b.capGeo, b.capMat, 'carlod:cap:' + b.key, false);
+  b.cap = cap;
+}
+const _sph = new THREE.Sphere();
+function writeLodBatches(cam, frustum) {
+  if (!scene) return;
+  for (const b of lodBatches.values()) b.list.length = 0;
+  const cx = cam.position.x, cz = cam.position.z;
+  for (const c of lodCars) {
+    if (!c._inst || !c.root.visible || !c.root.parent) continue;
+    const dx = c.x - cx, dz = c.z - cz;
+    c._camD2 = dx * dx + dz * dz;
+    _sph.center.set(c.x, c.y + c.height * 0.5, c.z);
+    _sph.radius = c.radius + 7;     // + a long low-sun shadow from a car just off-screen
+    if (!frustum.intersectsSphere(_sph)) continue;
+    (c._batch ||= lodBatch(c.kind, c.snowy)).list.push(c);
+  }
+  for (const b of lodBatches.values()) {
+    const n = b.list.length;
+    if (n > b.cap) growBatch(b, n);
+    const M = b.mesh.instanceMatrix.array, C = b.geo.attributes.cari.array, K = b.geo.attributes.carm.array;
+    const CM = b.capMesh?.instanceMatrix.array;
+    let i = 0, nCast = 0;
+    for (let pass = 0; pass < 2; pass++) {
+      for (const c of b.list) {
+        if ((c._camD2 < SHADOW_DIST * SHADOW_DIST) !== (pass === 0)) continue;
+        const e = c._im.elements;
+        for (let k = 0; k < 16; k++) M[i * 16 + k] = e[k];
+        if (CM) for (let k = 0; k < 16; k++) CM[i * 16 + k] = e[k];
+        const p = c._paintLin;
+        C[i * 4] = p.r; C[i * 4 + 1] = p.g; C[i * 4 + 2] = p.b; C[i * 4 + 3] = GRIME_LV[c.grimeLv];
+        K[i] = c.solid ? 0 : 1;
+        i++;
+        if (pass === 0) nCast++;
+      }
+    }
+    const m = b.mesh;
+    m.count = m.userData.n = n; m.userData.nCast = nCast; m.visible = n > 0; m.castShadow = nCast > 0;
+    if (n) { m.instanceMatrix.needsUpdate = true; b.geo.attributes.cari.needsUpdate = true; b.geo.attributes.carm.needsUpdate = true; }
+    if (b.capMesh) {
+      b.capMesh.count = b.capMesh.userData.n = n; b.capMesh.visible = n > 0;
+      if (n) b.capMesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+}
+addRenderHook(writeLodBatches);
+// Test numbers: how many far bodies are instanced in how many batches right now, and the cost of one
+// instance rewrite (bench: `n` rewrites against the current camera).
+const _bf = new THREE.Frustum(), _bm = new THREE.Matrix4();
+export function carStats(n = 0) {
+  let inst = 0, batches = 0;
+  for (const b of lodBatches.values()) if (b.mesh?.count) { inst += b.mesh.count; batches++; }
+  let ms = null;
+  if (n && camera) {
+    _bf.setFromProjectionMatrix(_bm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    const t = performance.now();
+    for (let k = 0; k < n; k++) writeLodBatches(camera, _bf);
+    ms = +((performance.now() - t) / n).toFixed(4);
+  }
+  return { instanced: inst, batches, cars: lodCars.size, asleep: [...lodCars].filter((c) => c.asleep).length, writeMs: ms, warm: warmDone };
+}
+
 const _m4 = new THREE.Matrix4(), _m4b = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _v = new THREE.Vector3(), _s = new THREE.Vector3();
 
 let nextId = 1;
@@ -324,9 +471,15 @@ export class Car {
     this.solid = opts.solid ?? (SOLID_TYPES.has(this.kind) || (!!spec.solid && opts.color === undefined && Math.random() < 0.6));
     this.color = opts.color ?? (SOLID_TYPES.has(this.kind) ? spec.color : this.kind === 'taxi' ? pick(TAXI) : this.solid ? pick(SOLID) : pick(COLORS));
     this.root = new THREE.Group();
+    this.root.userData.isCar = true;
     this.tilt = new THREE.Group();
     this.root.add(this.tilt);
+    // round 4: the root's and the tilt's matrices are written by sync() (matrixAutoUpdate off: a
+    // sleeping car's subtree costs nothing in updateMatrixWorld); the meshes in the tilt frame never
+    // move (identity, static)
+    this.root.matrixAutoUpdate = this.tilt.matrixAutoUpdate = false;
     const snow = opts.snow ?? false;
+    this.snowy = !!snow;
     // road grime: opts.grime (0..1.1), else by type and state - a parked car under snow has stood
     // since the last salted drive (more), the bus and the sopbil work all day, everyday traffic 0.5-1
     // (Ove washes his Saab; Anders' Audi is new)
@@ -339,6 +492,7 @@ export class Car {
     this.bodyLod = bodyMesh(model.lod, this.color, snow, this.solid, this.grimeLv);
     this.bodyLod.userData.baseMaterial = this.bodyLod.material;
     this.bodyLod.visible = false;
+    this.body.name = 'car:body'; this.bodyLod.name = 'car:bodyLod';
     this.tilt.add(this.bodyLod);
     // parked cars under the first snow: a real snow cap on the roof, bonnet and boot (the paint's
     // own snow mask alone reads as grey frost)
@@ -347,15 +501,18 @@ export class Car {
         const cg = snowCapGeometry(geo, k === 'snowCap' ? model.glass : null);
         if (!cg) continue;
         this[k] = realMesh(cg, { cast: false });
+        this[k].name = 'car:' + k;
         this[k].visible = k === 'snowCap';
         this.tilt.add(this[k]);
       }
     }
     this.lod = false;
+    this._inst = false;             // drawn by the instanced far-body batch (round 4)
     if (model.glass) {
       const gm = realMesh(model.glass, { snow: false, cast: false, material: glassMaterials(model.glass) });
       gm.renderOrder = 2;
       gm.userData.noAO = true;
+      gm.name = 'car:glass';
       this.tilt.add(gm);
       this.glass = gm;
     }
@@ -364,12 +521,14 @@ export class Car {
       this.lights = new THREE.Mesh(model.lights, this.lightMat);
       this.lights.castShadow = false;
       this.lights.userData.noAO = true;
+      this.lights.name = 'car:lights';
       this.tilt.add(this.lights);
       if (model.glows) {
         this.glow = new THREE.Mesh(model.glows, glowMaterial(this.lightMat.userData.ch));
         this.glow.castShadow = false;
         this.glow.userData.noAO = true;
         this.glow.renderOrder = 3;
+        this.glow.name = 'car:glow';
         this.glow.visible = false;   // only while a brake / indicator / reversing lamp is lit
         this.tilt.add(this.glow);
       }
@@ -378,8 +537,8 @@ export class Car {
     this.plate = opts.plate ? claimPlate(opts.plate) : this.name === 'saab' ? claimPlate('ORV 455') : randomPlate();
     this.plateQuads = [...model.plates, ...(model.badges || []).map((b) => ({ ...b, badge: b.text }))];
     this.plateMesh = null;
-    this.root.addEventListener('added', () => this.showPlate(true));
-    this.root.addEventListener('removed', () => this.showPlate(false));
+    this.root.addEventListener('added', () => { this.showPlate(true); lodCars.add(this); carsChanged(); });
+    this.root.addEventListener('removed', () => { this.showPlate(false); lodCars.delete(this); carsChanged(); });
     // wheels (drawn instanced by carmodels.js)
     this.wheelSpin = 0;
     this.wheels = model.wheels.map((w) => ({ ...w, steer: 0 }));
@@ -417,12 +576,22 @@ export class Car {
     this.indicator = 0;                           // -1 left, 0 off, +1 right
     this.reversing = false;
     this.braking = 0;
-    this.exhaustT = Math.random() * 0.1;
+    this.exhaustT = Math.random() * 0.5;
     this.trailer = null;
     this.onSnow = false;
+    // round 4: sleeping (see step / wake) and the instanced far body (see sync / setLod)
+    this.asleep = false;
+    this._still = 0;
+    this._quiet = false;
+    this._cast = true;
+    this._im = new THREE.Matrix4();          // root x tilt: the far body's instance matrix
+    this._paintLin = new THREE.Color(this.color);
     this.updateObb();
     this.root.position.set(this.x, this.y, this.z);
     this.root.rotation.y = this.yaw;
+    this.root.updateMatrix();
+    this.tilt.updateMatrix();
+    this.tilt.traverse((o) => { if (o !== this.tilt) { o.matrixAutoUpdate = false; o.updateMatrix(); } });
     if (opts.trailer) this.attachTrailer(typeof opts.trailer === 'object' ? opts.trailer : {});
   }
 
@@ -457,11 +626,13 @@ export class Car {
   setHeadlights(on) { this.headlights = !!on; }
 
   showPlate(on) {
-    if (on && !this.plateMesh) {
+    if (on && !this.plateMesh && !this._noPlate) {
       this.plateH = allocPlate(this.plate, this.kind === 'taxi', this.grime * 0.8);
       this.plateMesh = new THREE.Mesh(plateGeometry(this.plateQuads, this.plateH.slot), this.plateH.page.material);
       this.plateMesh.castShadow = false;
       this.plateMesh.userData.noAO = true;
+      this.plateMesh.matrixAutoUpdate = false;
+      this.plateMesh.name = 'car:plate';
       this.tilt.add(this.plateMesh);
       if (this.trailer) this.trailer.showPlate(true);
     } else if (!on && this.plateMesh) {
@@ -495,6 +666,7 @@ export class Car {
   }
 
   place(x, z, yaw) {
+    this.wake();
     this.x = x; this.z = z; this.yaw = yaw; this.vx = this.vz = this.vy = this.w = 0;
     this.y = groundAt(x, z, 0.2, 0.6);
     this.air = false;
@@ -503,7 +675,39 @@ export class Car {
     if (this.trailer) this.trailer.reset();
   }
 
+  // Sleeping (round 4): a car nobody drives that has come to rest (no speed, no spin, the suspension
+  // settled, on the ground, not smoking or burning) stops stepping after half a second: no physics,
+  // no ground or solid queries. It wakes when it is hit (collideCars, a trailer shoving it), placed,
+  // damaged, given a driver or an AI, or when anything else moves it or gives it a speed.
+  // `car.asleep` is public (read-only for others): collideCars skips pairs where both sleep, and a
+  // broadphase may leave sleeping cars out. Wake one with car.wake().
+  wake() {
+    if (!this.asleep) return;
+    this.asleep = false;
+    this._still = 0;
+    this._quiet = false;
+  }
+  sleepCheck(game) {
+    const sus = this._sus;
+    const rest = CAR_PERF.sleep && !this.driver && !this.ai && !this.air && !(game && game.playerCar === this) &&
+      !(this.dead && this.burn > 0) && (this.dead || this.hp >= 35) &&
+      Math.abs(this.vx) < 0.02 && Math.abs(this.vz) < 0.02 && Math.abs(this.w) < 0.004 && Math.abs(this.vy) < 0.05 &&
+      Math.abs(sus.pv) < 0.004 && Math.abs(sus.rv) < 0.004 && Math.abs(sus.hv) < 0.004 &&
+      Math.abs(sus.p) < 0.002 && Math.abs(sus.r) < 0.002 && Math.abs(sus.h) < 0.002;
+    if (!rest) { this._still = 0; return; }
+    if (++this._still < 30) return;
+    this.asleep = true;
+    this.vx = this.vz = this.vy = this.w = 0;
+    this.skidAmt = 0; this.braking = 0; this.reversing = false;
+    this._sx = this.x; this._sz = this.z; this._sy = this.y; this._syaw = this.yaw;
+  }
+
   step(dt, game) {
+    if (this.asleep) {
+      if (!CAR_PERF.sleep || this.driver || this.ai || this.vx || this.vz || this.vy || this.w || this.air || (game && game.playerCar === this) ||
+        this.x !== this._sx || this.z !== this._sz || this.y !== this._sy || this.yaw !== this._syaw || (this.dead && this.burn > 0) || (!this.dead && this.hp < 35)) this.wake();
+      else return;
+    }
     const s = this.spec, c = this.ctrl;
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
     const rx = -fz, rz = fx;
@@ -630,6 +834,7 @@ export class Car {
       }
       this.burn -= dt;
     }
+    this.sleepCheck(game);
   }
 
   // A four/five-speed gearbox for the engine note: revs climb through each gear and drop at shifts.
@@ -715,6 +920,7 @@ export class Car {
   damage(amount, game) {
     if (this.dead || amount <= 0) return;
     if (this.invulnerable) return;
+    this.wake();
     this.hp -= amount * (this.damageScale ?? 1);
     if (this.hp <= 0) {
       this.hp = 0;
@@ -728,6 +934,7 @@ export class Car {
       this.vy = 6; this.air = true;
       this.w += (Math.random() - 0.5) * 3;
       this.hazard = false; this.indicator = 0;
+      this.setLod(this.lod);   // a wreck far away is drawn on its own (burnt), not instanced
       game?.onCarDestroyed(this);
     }
   }
@@ -738,7 +945,8 @@ export class Car {
     this.burn = 0;
     this.body.material = this.body.userData.baseMaterial;
     this.bodyLod.material = this.bodyLod.userData.baseMaterial;
-    if (this.glass) this.glass.visible = !this.lod;
+    this.wake();
+    this.setLod(this.lod);
   }
 
   // Lamp intensities per channel (see carmodels CH). Red and amber stay under the tone mapper's
@@ -766,6 +974,9 @@ export class Car {
   }
 
   sync(dt) {
+    // round 4: a sleeping car with nothing lit or blinking has nothing to update but what depends on
+    // the camera (LOD, plate, shadow); its pose, lamps and instance matrix stay as they are
+    if (this._quiet && this.asleep && !this.running && !this.hazard && !this.indicator) { this.syncView(); return; }
     const s = this.spec;
     this.root.position.set(this.x, this.y, this.z);
     this.root.rotation.y = this.yaw;
@@ -781,8 +992,40 @@ export class Car {
     this.pitch = sus.p; this.roll = sus.r; this.heave = sus.h;
     this.tilt.rotation.set(this.groundPitch + sus.p, 0, sus.r);
     this.tilt.position.y = sus.h;
+    this.root.updateMatrix();
+    this.tilt.updateMatrix();
+    this._im.multiplyMatrices(this.root.matrix, this.tilt.matrix);
+    carsChanged();
     for (const w of this.wheels) w.steer = w.front ? -this.steerAngle : 0;
-    // level of detail by distance to the camera (with a little hysteresis); far cars cast no shadow
+    this.syncView();
+    const t = performance.now() / 1000;
+    this.updateLights(t);
+    if (this.trailer) this.trailer.sync(dt, t);
+    // cold-morning exhaust vapour from running cars near the camera (round 4, the art review: faint
+    // puffs every 0.45-0.6 s at idle and while creeping off - round 3's 0.3 s piled up into cotton
+    // balls behind the chase camera - none above ~3 m/s, where cold vapour is shredded at once, and
+    // none when the camera is within 9 m behind the tailpipe (the chase camera, a car ahead at a
+    // junction: the puff would hang right in front of the lens) or within 3 m from any side)
+    if (this.running && camera) {
+      const dx = this.x - camera.position.x, dz = this.z - camera.position.z, v = this.speed;
+      if (dx * dx + dz * dz < 40 * 40 && v < 3) {
+        this.exhaustT -= dt;
+        if (this.exhaustT <= 0) {
+          this.exhaustT = (0.45 + Math.random() * 0.15) * (v < 1.2 ? 1 : 1 + (v - 1.2) * 0.9);
+          const e = this.model.exhaust;
+          _v.set(e[0], e[1], e[2]).applyMatrix4(this._im);
+          const cx = camera.position.x - _v.x, cz = camera.position.z - _v.z, d2 = cx * cx + cz * cz + (camera.position.y - _v.y) ** 2;
+          const behind = cx * fx + cz * fz < 0;
+          if (d2 > 9 && !(behind && d2 < 81)) FX.exhaust(_v.x, _v.y, _v.z, this.vx * 0.6 - fx * 1.4, this.vz * 0.6 - fz * 1.4, EXHAUST);
+        }
+      }
+    }
+    this._quiet = this.asleep && !this.running && !this.hazard && !this.indicator;
+  }
+
+  // What depends on the camera only: level of detail by distance (with a little hysteresis), the
+  // plate's range, shadow casting, the lamp mesh of a far car.
+  syncView() {
     if (camera) {
       const dx = this.x - camera.position.x, dz = this.z - camera.position.z, d2 = dx * dx + dz * dz;
       const lod = this.lod ? d2 > LOD_IN * LOD_IN : d2 > LOD_OUT * LOD_OUT;
@@ -791,40 +1034,45 @@ export class Car {
       // switch at 46 m, a visible pop on a car ahead in the chase camera
       if (this.plateMesh) this.plateMesh.visible = d2 < PLATE_DIST * PLATE_DIST;
       const cast = d2 < SHADOW_DIST * SHADOW_DIST;
-      this.body.castShadow = this.bodyLod.castShadow = cast;
+      if (cast !== this._cast) { this._cast = cast; this.body.castShadow = this.bodyLod.castShadow = cast; }
     }
-    const t = performance.now() / 1000;
     // a parked far car's lenses are baked into its LOD body: no lamp mesh (one draw call per far car)
     if (this.lights) this.lights.visible = !this.lod || this.running;
-    this.updateLights(t);
-    if (this.trailer) this.trailer.sync(dt, t);
-    // cold-morning exhaust vapour from running cars near the camera: a sparse puff now and then at
-    // idle and while pulling away (round 3: every ~0.3 s instead of 0.1 - overlapping puffs piled up
-    // into cotton balls), none above ~4 m/s (cold vapour is shredded at once), and none while the camera
-    // is within a few metres of the tailpipe (a puff right in front of the lens is a white blob)
-    if (this.running && camera) {
-      const dx = this.x - camera.position.x, dz = this.z - camera.position.z, v = this.speed;
-      if (dx * dx + dz * dz < 40 * 40 && v < 4) {
-        this.exhaustT -= dt;
-        if (this.exhaustT <= 0) {
-          this.exhaustT = (0.28 + Math.random() * 0.16) * (v < 1.5 ? 1 : 1 + (v - 1.5) * 0.8);
-          const e = this.model.exhaust;
-          _v.set(e[0], e[1], e[2]);
-          this.tilt.updateWorldMatrix(true, false);
-          _v.applyMatrix4(this.tilt.matrixWorld);
-          if (_v.distanceToSquared(camera.position) > 4 * 4) FX.exhaust(_v.x, _v.y, _v.z, this.vx * 0.6 - fx * 1.6, this.vz * 0.6 - fz * 1.6);
-        }
-      }
-    }
+    // a far car's glass is opaque: whoever sits in it can't be seen (main.js's busts: 2 calls each)
+    if (this.driverBust?.isObject3D) this.driverBust.visible = !this.lod;
   }
 
   setLod(on) {
     this.lod = on;
+    const inst = on && !this.dead && CAR_PERF.instLod;
+    this._inst = inst;
     this.body.visible = !on;
-    this.bodyLod.visible = on;
+    this.bodyLod.visible = on && !inst;
     if (this.snowCap) this.snowCap.visible = !on && !this.dead;
-    if (this.snowCapLod) this.snowCapLod.visible = on && !this.dead;
+    if (this.snowCapLod) this.snowCapLod.visible = on && !this.dead && !inst;
     if (this.glass) this.glass.visible = !on && !this.dead;
+    carsChanged();
+  }
+
+  // Release what is this car's own (round 4; main.js's removeCar calls it after taking the car out
+  // of the scene): its plate's atlas slot and plate geometry, the plate string, its lamp and glow
+  // materials, its trailer's, and the seated bust's geometry (main.js's addBust: people's buildBust
+  // bakes one geometry per bust; its materials are shared). Model geometries, snow caps and the paint
+  // / surface materials are shared per type and colour and stay. Seated characters are unseated by
+  // removeCar and are not touched. A disposed car must not be added to the scene again.
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (this.root.parent) this.root.parent.remove(this.root);
+    this.showPlate(false);
+    releasePlate(this.plate);
+    lodCars.delete(this);
+    this._wheelsOff?.();
+    if (this.trailer) { this.trailer.dispose(); this.trailer = null; }
+    this.lightMat?.dispose();
+    this.glow?.material.dispose();
+    if (this.driverBust?.isObject3D) { this.driverBust.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); this.driverBust = null; }
+    carsChanged();
   }
 
   // Called by the wheel system before rendering: one matrix per wheel (on the ground, following
@@ -845,14 +1093,21 @@ export class Car {
 const _blocks = [];
 const _hit = {};
 const LOD_OUT = 46, LOD_IN = 40, SHADOW_DIST = 95, PLATE_DIST = 72;
+// fx.exhaust's optional look (the rendering area's puff: alpha and size multipliers; older fx.js
+// ignores the argument)
+const EXHAUST = { alpha: 0.6, size: 0.8 };
 
 const _ch = {};
+// Two sleeping cars can't be in contact (they were resolved before they fell asleep, and placing or
+// moving one wakes it): skipped. Any contact wakes both.
 export function collideCars(a, b, game) {
+  if (a.asleep && b.asleep) return;
   const rr = a.radius + b.radius;
   const dx = a.x - b.x, dz = a.z - b.z;
   if (dx * dx + dz * dz > rr * rr) return;
   if (a.y > b.y + b.height - 0.3 || b.y > a.y + a.height - 0.3) return;
   if (!obbVsObb(a.obb, b.obb, _ch)) return;
+  a.wake(); b.wake();
   const ma = a.mass, mb = b.mass;
   const d = Math.min(_ch.depth, 1.2);
   a.x += _ch.nx * d * mb / (ma + mb); a.z += _ch.nz * d * mb / (ma + mb);
@@ -881,4 +1136,94 @@ export function collideCars(a, b, game) {
     }
   }
   a.updateObb(); b.updateObb();
+}
+
+// ---------------------------------------------------------------------------------------------
+// Round 4: the warm-up at load. Without it, the first time a car type (or a snow / LOD / wreck
+// variant of it) comes near, its shaders compile and its geometry uploads in that frame (Ove's first
+// entry into the Saab from the start: a 42 ms frame, 23 car meshes and a program). warmCars builds one
+// of every model with and without snow (near body, glass, lamps, glow, plate, snow caps, far body, a
+// wreck, the trailer), makes every instanced far-body batch and wheel pool, compiles all their
+// materials against the real scene's lights / fog / environment (compileAsync when there is one,
+// rendering into a target like the composer's so the program variants match) and then draws the
+// meshes once into a 1x1 target with a plain material, which uploads every car geometry. It frees
+// what it made (the batches and the wheel pools stay: the game uses them). main.js: call it once
+// after the town and the cars exist, e.g. `await warmCars(renderer, scene, camera)` during loading.
+// Resolves with { programs, ms }; a second call returns the first one's promise. If nobody calls it,
+// the cars do it themselves 2 s after the first frame (CAR_PERF.autoWarm; on the title screen in the
+// game): the shaders compile in the background, the geometry upload is one ~1-frame hitch then.
+let warmP = null, autoWarmT = null, warmDone = null;
+export function warmCars(renderer, scn = scene, cam = camera) {
+  if (autoWarmT) { clearTimeout(autoWarmT); autoWarmT = null; }
+  return (warmP ||= doWarm(renderer, scn, cam));
+}
+addRenderHook(() => {
+  if (warmP || autoWarmT || !CAR_PERF.autoWarm || !gfxRenderer) return;
+  autoWarmT = setTimeout(() => { autoWarmT = null; if (!warmP && scene && camera) warmCars(gfxRenderer, scene, camera).catch((e) => console.warn('warmCars', e)); }, 2000);
+});
+async function doWarm(renderer, scn, cam) {
+  const t0 = performance.now(), p0 = renderer.info.programs?.length ?? 0;
+  const group = new THREE.Group();
+  group.name = 'carWarmup';
+  group.position.set(cam.position.x, -50, cam.position.z);   // out of sight, should a frame draw it
+  const cars = [];
+  for (const kind of MODEL_KEYS) for (const snow of [false, true]) {
+    const c = new Car(kind, { snow, solid: snow, engineOn: true, trailer: kind === 'volvo740' && !snow });
+    c._noPlate = cars.length > 0;   // one plate is enough (one plate material); no new atlas page
+    group.add(c.root);
+    cars.push(c);
+  }
+  scn.add(group);
+  const wreck = new THREE.Mesh(carModel('volvo240').body, MAT.burnt);
+  wreck.castShadow = wreck.receiveShadow = true;
+  group.add(wreck);
+  // nothing of it is drawn by the game's frames while the shaders compile (compile ignores visibility;
+  // the wheel system skips hidden roots)
+  const hide = (on) => { for (const o of group.children) o.visible = !on; };
+  hide(true);
+  const extra = [];
+  for (const kind of MODEL_KEYS) for (const snow of [false, true]) { const b = lodBatch(kind, snow); extra.push(b.mesh); if (b.capMesh) extra.push(b.capMesh); }
+  extra.push(...makeWheelPools());
+  for (const c of cars) {
+    c.body.visible = c.bodyLod.visible = true;
+    for (const o of [c.glass, c.lights, c.glow, c.snowCap, c.snowCapLod, c.plateMesh]) if (o) o.visible = true;
+  }
+  // compile (the render target decides tone mapping / output colour space in the program variants:
+  // the main pass draws into the composer's target)
+  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
+  const prevRT = renderer.getRenderTarget();
+  renderer.setRenderTarget(rt);
+  const roots = [group, ...extra];
+  const t1 = performance.now();
+  let waits = [];
+  try {
+    waits = roots.map((o) => (renderer.compileAsync ? renderer.compileAsync(o, cam, scn) : (renderer.compile(o, cam, scn), null)));
+  } finally { renderer.setRenderTarget(prevRT); }
+  const t2 = performance.now();
+  await Promise.all(waits.filter(Boolean));
+  const t3 = performance.now();
+  // upload every geometry: one draw of each mesh with a plain material into the 1x1 target
+  hide(false);
+  for (const m of extra) if (m.geometry) group.add(new THREE.Mesh(m.geometry));
+  const plain = new THREE.MeshBasicMaterial(), swapped = [];
+  group.traverse((o) => { if (o.isMesh) { swapped.push(o, o.material, o.frustumCulled, o.visible); o.material = plain; o.frustumCulled = false; o.visible = true; } });
+  renderer.setRenderTarget(rt);
+  try { renderer.render(group, cam); } finally { renderer.setRenderTarget(prevRT); }
+  for (let i = 0; i < swapped.length; i += 4) { const o = swapped[i]; o.material = swapped[i + 1]; o.frustumCulled = swapped[i + 2]; o.visible = swapped[i + 3]; }
+  for (const c of cars) if (c.plateH) renderer.initTexture?.(c.plateH.page.tex);
+  scn.remove(group);
+  for (const c of cars) c.dispose();
+  plain.dispose();
+  rt.dispose();
+  carsChanged();
+  const t4 = performance.now();
+  return (warmDone = { programs: (renderer.info.programs?.length ?? 0) - p0, ms: +(t4 - t0).toFixed(0), buildMs: +(t1 - t0).toFixed(0), compileMs: +(t2 - t1).toFixed(0), waitMs: +(t3 - t2).toFixed(0), uploadMs: +(t4 - t3).toFixed(0) });
+}
+
+// A/B switches for tests (round 4): setCarPerf({ instLod: false }) draws far bodies one by one,
+// setCarPerf({ sleep: false }) wakes every car and keeps them awake.
+export function setCarPerf(o) {
+  Object.assign(CAR_PERF, o);
+  for (const c of lodCars) { if (!CAR_PERF.sleep) c.wake(); c.setLod(c.lod); }
+  carsChanged();
 }
