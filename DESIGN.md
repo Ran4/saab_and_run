@@ -130,7 +130,9 @@ minute). At 0: **KAOS I OMRÅDET** — Anders calls an extra föreningsmöte, �
 
 ### 4.3 Avbrott — neighbours interrupt (`src/game/interruptions.js`)
 In free roam (not during story missions, which script their own), a neighbour calls every
-70–110 s (first one ~45 s after free roam begins). Phone rings (`audio.ring`), `hud.incomingCall`
+70–110 s (first one ~45 s after free roam begins; never while a story mission runs, never within
+40 s after one, and never as Ove walks up to the neighbour whose day it is: within 14 m of the
+giver it waits). Phone rings (`audio.ring`), `hud.incomingCall`
 card with portrait ("Parvaneh ringer…"), two short lines as radio toasts, Ove answers grumpily
 ("Ja?" / "Vad är det nu då?"). If Ove was writing a report, **the call cancels it** (that's the
 joke). Then a short errand with a patience timer (90–150 s) shown with `hud.setErrand`.
@@ -180,17 +182,35 @@ honom hela vägen till Göteborg."). All reachable without double jumps.
 
 Each day: a giver NPC at a landmark (amber marker over the head, E to talk), intro dialogue in the
 letterbox, a banner (`Dag N · Veckodag`, the mission's name), stages, `UPPDRAG KLART` + reward in
-kr, the outro, then free roam. The outro is staged: Ove stands at the day's `outroAt` (his garage
-door on day 1, his front door on day 4, Bilhallen's forecourt on day 5) and **every** other speaker
-is brought within 4 m of him, in plain view (nothing taller than 0.6 m between them); with two other
-speakers the camera turns to whoever talks, and a line can carry its own camera beat ("Adrian. Den
-där." frames the Saab for sale). World tags, the beacon and the arrow are hidden while the
-letterbox is up; the `UPPDRAG KLART` banner is gone before the first outro line. Days 1-6 end at
-17:30 ("Dagen är slut"); the next day is offered after **two more reports or 75 s of free roam** (a
-`Dag N` / "Ny dag" banner, the clock jumps to 06:30, everyone goes where they spend the day, the
-Saab is back at home unless Ove is in or near it; `?test` skips the wait unless `&gate`).
+kr, the outro, then free roam. For the intro Ove steps to a free spot ~2 m in front of the giver
+(along the way their door faces, same level, nothing between them; he stays put if he already
+stands so), a running smitare chase ends quietly (no SMET!) and small-talk bubbles are cleared.
+The outro is staged: Ove stands at the day's `outroAt` (his garage door on day 1, the walkway in
+front of Rune and Anita's door on day 3 (never on Rune's ramp), a step out from his own door on
+day 4, Bilhallen's forecourt on day 5) and **every** other speaker is brought within 4 m of him, in
+plain view (nothing taller than 0.6 m between them, never on a ramp); in intros and outros the
+camera turns to whoever talks (a cut), and a line can carry its own camera beat ("Adrian. Den
+där." frames the Saab for sale; the finale has its own shots). **Dialogue shots** (`cam.frame`,
+camera.js) are judged by what the lens would see: both speakers' heads in the picture between
+the letterbox bars and unblocked (walls, sheds, props over 0.5 m, tree trunks and crowns, the
+world's camBlocks (railings, lamp posts, overhangs), parked cars, other people), nothing within
+1.5 m of the lens and as little as possible within 3 m, no pole in the middle of the picture,
+never closer than the distance at which the two fit; two-shots from both sides and up to ~70°
+round, at eye height and a little above, then over-the-shoulder shots as the fallback.
+`UPPDRAG KLART` is shown over a held shot of what was just done (`cam.showcase`: the Saab in its
+garage, Ove at a door; the chase camera only when the car is still moving fast), nobody moving.
+World tags, the beacon and the arrow are hidden while the letterbox is up; the `UPPDRAG KLART`
+banner is gone before the first outro line. **Time of day** (late November: light from about nine
+to three): a day starts at **10:30** and days 1-6 end at **14:30** ("Dagen är slut"); the clock
+is saved (and so is a pending gate). The next day dawns after **three more reports (not before
+35 s) or 90 s of free roam**, counting only time with no errand, call, chase or dialogue on (a day
+never dawns in the middle of an errand): a `Dag N` / "Tisdagsmorgon" banner, the clock jumps to
+10:30, everyone goes where they spend the day (whoever is away that day is gone at once, not left
+standing at their door), the Saab is back at home unless Ove is in or near it; `?test` skips the
+wait unless `&gate`. North on the minimap and the big map is **+z** (the low sun then stands in
+the south-west, as it does in the early afternoon).
 Fail: `UPPDRAG MISSLYCKADES` (it waits for the player: no time-out), E retries from the start of
-the day (or from `def.retry.from`: day 5 restarts on the race grid with Adrian aboard), Q gives up
+the day (or from `def.retry.from`: day 5 restarts on the race grid with Adrian aboard), Q (gamepad B) gives up
 (the giver waits; taking the day up again plays the two-line `retryIntro`). Whoever rode with Ove
 when it failed goes home (a taxi), nobody is left on the street. Titles are "Dag 1 – Släpkärran" etc.
 During a mission the avbrott scheduler pauses; missions phone in their own calls
@@ -201,7 +221,9 @@ neighbours in the scene), `away` (neighbours who are elsewhere that day: hidden 
 Stage kinds (`src/game/stages.js`): `getInCar`, `goto` (+ `calls`, `radio`, `with`, `via` (guide
 points: the Akut driveway), timer, and a `chaser`: a car hunting Ove like the Hit & Run cops; it
 can wait parked first; its cruise has a rubber band (×1.3 beyond 80 m); contact for ~1.2 s within
-6.5 m = **STOPPAD**, the car held 2.5 s and −20 kr, the chaser backs off a few seconds; `catchFails`
+6.5 m = **STOPPAD**, the car held 2.5 s and −20 kr, the chaser backs off a few seconds (3 s longer
+after each stop; after three stops in one drive he gives up: "Jag skickar ett brev, Ove!
+Rekommenderat!"); `catchFails`
 / the def's `bustFails` turn contact into a fail instead), `pickup` (+ `walk`: they walk there),
 `dropoff` (+ `walk`), `escort`, `fetch`, `holdAt` (+ `cut`: one press of E, the job happens off
 screen), `catchCat` (patience: it bolts from a stride or a close approach and outruns Ove, sits
@@ -210,7 +232,9 @@ reverse-only, on-screen guidance in the objective line, `clear` tows away felpar
 way), `report` (forced spawns near a landmark, smitare off), `race` (a cut to the grid, Ove in the
 right-hand lane, countdown, opponent in a named car, rubber band on its cruise), `destroy`
 (re-themed: stop a fleeing car by ramming it (≤ 30 Ork a hit) and staying on its bumper; an "Ork"
-bar; it pulls over), `grab` (pick something up by the stopped car), `talk` (a mid-mission
+bar; it pulls over; it can wait parked first (`at`, `wait`, `wake`: it sets off when Ove's car comes
+close), it only gets away (`escape` m for 6 s) after Ove has been within 60 m of it once and after a
+`grace` period, and it eases off (×0.85) while Ove is far behind), `grab` (pick something up by the stopped car), `talk` (a mid-mission
 conversation), `cut` (to black and back: a time skip, the clock), `wait`.
 
 1. **Släpkärran** (Måndag, 100 kr) — giver `patrick` at `parvanehHouse` (Parvaneh beside him). The
@@ -227,15 +251,17 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    guide leading through the Akut driveway → drop her at the canopy (`hospitalDrop`; she walks in)
    → park in `hospitalSpot`. Outro: "Jag betalar inte för att stå still!" — and she decides he will
    teach her to drive. **From now on Patrick wears a cast.**
-3. **Elementet** (Onsdag, 150 kr) — giver `anita` at `runeHouse`. Fetch the elementnyckel at
-   `oveGarage` (brass, Ove's since 1991) → Anita phones: two cars block the soprum → report 2 at
+3. **Elementet** (Onsdag, 150 kr) — giver `anita` at `runeHouse`. The elementnyckel's hook in
+   `oveGarage` is empty (hold E: "Tom krok. Rune lånade elementnyckeln 1998.") → fetch it from
+   Rune's Volvo in the garage row (`runeVolvo`; brass, Ove's since 1991, Rune's since 1998) → Anita
+   phones: two cars block the soprum → report 2 at
    `garbageRoom` → at `runeHouse` "Gå in och lufta elementen": one press of E and a cut to black
    ("Ove går in och luftar elementen. Ett i taget."). Outro: Rune, lucid for a second: "...Saab." —
    "Ja, Rune. Saab."
 4. **Katten** (Torsdag, 150 kr) — giver `jimmy` at `jimmyHouse`. The stray sits in the snow by the
    `bikeShed` (somewhere open) → `catchCat` (110 s): running after it never works; Jimmy first says
    "Spring efter den!", then "Nej, vänta! Stå still!"; standing still, the cat comes to Ove ("Kiss,
-   kiss... Hmpf.") → carry it home to `oveHouse`, "in i värmen". Outro at his door: "Den får stanna.
+   kiss... Hmpf.") → carry it home to `oveHouse`, "in i värmen". Outro just outside his door: "Den får stanna.
    Tills vidare." **From now on the cat sits by Ove's door.**
 5. **Saab, inte Audi** (Fredag, 200 kr) — giver `adrian` at `adrianSpot`, `anders` beside him.
    Adrian wants an Audi; Anders brags. Get in the `saab` → pick up Adrian → a cut to the grid on
@@ -246,8 +272,12 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    900 for sale (35 000:-) beside them: Adrian buys a Saab. **From now on Adrian's Saab stands in
    `adrianBay` in the lot.**
 6. **Vita skjortan** (Lördag, 250 kr) — giver `anita`; the municipality wants Rune in a home and
-   took his papers. Get in the `saab` → `destroy`: stop Vita skjortan's white Škoda (rams take at
-   most 30 Ork each, staying on its bumper drains 8/s; he pulls over) → `talk`: he steps out ("Det
+   took his papers; he sits in his white Škoda by the lot entrance. The Saab stands along the aisle
+   facing the entrance that morning. Get in the `saab` (Anita phones 8 s later) → `destroy`: the
+   Škoda waits on the west street by the entrance until Ove's car comes within 30 m, then flees
+   (cruise 19, ×0.85 while Ove is over 80 m behind; it gets away only beyond 250 m, after he has
+   been on it, never in the first 20 s); rams take at most 30 Ork each, staying on its bumper drains
+   8/s; he pulls over: **TAGEN!** → `talk`: he steps out ("Det
    här är inte över, Ove. Vi har papper på allt." — "Det har jag också.") → `grab` the folder →
    bring it to `runeHouse`. Outro: a signature is missing; Rune stays.
 7. **Värkarna** (Söndag, 500 kr, light snowfall) — giver `patrick` (arm in a cast) at
@@ -256,12 +286,16 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    walks to the lot → pick her up → timed drive to the hospital: the Škoda sets off after Ove
    (`chaser`, STOPPAD on contact) while every neighbour phones (Anita, Sara: "...Ja. Men INTE NU!",
    Jimmy, Adrian, Anders) → drop her off: "Gå nu, Ove. Det är söndag. Hälsa Sonja från mig." → cut:
-   **Senare samma dag**, 15:40, the Saab in the hospital car park → on the way to the cemetery
-   Patrick phones: a boy, he fainted (only a little) → buy flowers at the `flowerShop` kiosk → hold E
-   3 s at `sonjaGrave` "Lägg blommorna på Sonjas grav" (the flowers stay on the plinth,
-   `graveFlowers`). Outro: Ove alone, telling Sonja about the week. Final banner **OMRÅDET ÄR I
-   ORDNING** (the Ordning meter is lifted to at least 90 to match); free roam (patrol, avbrott) goes
-   on.
+   **Senare samma dag**, 15:40 (the afternoon light: a dimmer sun and sky, more haze; steady
+   snowfall), the Saab in the hospital car park → on the way to the cemetery Patrick phones: a boy,
+   he fainted (only a little) → buy flowers at the `flowerShop` kiosk → at `sonjaGrave` one press of
+   E "Lägg blommorna på Sonjas grav": Ove goes down on one knee (`st.kneel`) and lays them on the
+   spruce twigs in front of the stone (they stay). Outro: Ove alone on one knee, telling Sonja about
+   the week, in the finale's own shots: over his shoulder to the stone (the gilded SONJA, the
+   flowers, the lantern), the reverse from beside the stone, back to the stone. Final banner
+   **OMRÅDET ÄR I ORDNING** over a wide shot of the grave in the snow (the Ordning meter is lifted to
+   at least 90 to match); then Ove gets up and free roam (patrol, avbrott) goes on; the snowfall and
+   the afternoon light end 40 s later.
 
 ## 6. World contract (`src/world/*`)
 
@@ -386,29 +420,38 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
 Built in phase 1. Everything below is the actual API; later agents rely only on this section.
 
 ### 10.1 What the renderer does (so you know what you get for free)
-- **Pipeline:** `WebGLRenderer` -> `EffectComposer` (HalfFloat, 4x MSAA) -> `UnrealBloomPass`
-  (threshold 2.6, only lights / sun glints / fire bloom) -> `OutputPass` (ACES Filmic, exposure
-  1.45, then a display grade: a toe lift (display-linear ^ 0.8 - ACES alone crushes shade into
-  navy-black), saturation 1.0 falling to 0.65 x in the deepest tones, a gentle S-curve on the upper
-  half only, + sRGB).
+- **Pipeline:** `WebGLRenderer` -> `EffectComposer` (HalfFloat; only the scene pass is 4x MSAA,
+  the second target is plain and unused: the OutputPass draws to the screen without a swap) ->
+  `UnrealBloomPass` (threshold 2.6, only lights / sun glints / fire bloom) -> `OutputPass` (ACES
+  Filmic, exposure 1.45, then a display grade: a toe lift (display-linear ^ 0.86 - ACES alone crushes
+  shade into navy-black), a soft black point (x² / (x + 0.03), rescaled: the deepest tones go to
+  black, mid tones barely move, nothing clips), saturation 1.0 falling to 0.65 x in the deepest
+  tones, a gentle S-curve on the upper half only, + sRGB).
   Call **`renderFrame()`** once per frame instead of `renderer.render(scene, camera)` (main.js
-  does). It runs a pre-pass that renders the sun's shadow cascades and the normal/depth buffer for
-  ambient occlusion (GTAO), then the main pass. `renderer.render()` still works for one-off
-  renders to a render target (portraits), but gets no AO/bloom/tone mapping (output is linear).
+  does). Per frame it: updates the scene's matrices **once** (`scene.matrixWorldAutoUpdate` is
+  false; don't rely on a render call updating them); renders the sun's shadow cascades in a
+  shadow-only pass (the near cascade every frame, the far one every 2nd frame on high / 3rd on low and
+  at once when the camera jumps > 6 m or turns > 10 deg - moving things beyond 30 m update their
+  shadows at 30/20 Hz); on high renders the GTAO normal/depth pre-pass through a camera whose far plane
+  is 80 m (AO is a 0.9 m contact term at half resolution: nothing further is drawn there); then the
+  main pass. `renderer.render()` still works for one-off renders to a render target (portraits), but
+  gets no AO/bloom/tone mapping (output is linear).
 - **Light:** one `SunLight` (`sun`, 13 deg elevation, azimuth 143 deg: it shines from +x/-z, so
   shadows fall towards -x/+z; intensity 6, warm low-sun colour (1, 0.80, 0.58)) with two cascaded
   shadow maps (crisp to 30 m, coarse to 210 m), and image-based light from a CC0 winter HDRI
   (`assets/sky/passendorf_snow_2k.hdr`, sun clamped out, saturation 0.62, tinted (0.94, 1, 1.05)
   so shade is cold blue rather than lilac, intensity 0.62). The environment's lower hemisphere is
   faded to the photo's mean ground colour (the photo's field has nothing to do with our town, and
-  paint/glass would mirror it). Measured at 1280x720: sunlit snow ~226 sRGB, shaded snow ~(143, 158,
-  181) (blue-grey, not violet), shaded asphalt ~(52, 57, 66), sunlit asphalt ~(180, 176, 172). The
+  paint/glass would mirror it). Measured at 1280x720 (round-6 grade): sunlit snow ~222 sRGB, shaded
+  snow ~(129, 143, 167) (blue-grey, not violet), shaded asphalt ~(55, 58, 65), sunlit asphalt ~(161,
+  150, 139); the darkest 1 % of a gameplay frame ~15-31 (was 36-51: a veiled, milky image). The
   HDRI is also the sky, its sun warped onto `SUN_DIR`; the sky turns into the fog colour below ~2.5-7
   deg of the *photo's* elevation (a low photo sun stretches its treeline upwards, so the cut is made
   there), and below ~14 deg nothing in it may be darker than the haze, so the photo's own ground and
   treeline never show and **the 3D hills are the horizon** (keep something tall-ish out there).
   There is **no hemisphere/ambient light**; don't add one (the HDRI does that job).
-- **Fog:** height fog (density 0.0022 at y <= 0, falling off with a 35 m scale height, integrated
+- **Fog:** height fog (density 0.0016 at y <= 0 - it was 0.0022, a milky floor on everything 10-30 m
+  away - falling off with a 35 m scale height, integrated
   along the view ray: haze lies in the valley, aerial views stay clear) plus a thin exp2 far haze
   (`scene.fog` = FogExp2 0.0012, also thinning with altitude). Colour from the sky, tinted warm
   towards the sun. Applied by every built-in material through the fog chunk; custom shaders use
@@ -417,9 +460,14 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
 - **AO** (GTAO at half resolution, radius 0.9 m, thickness 0.5 m - contact occlusion, not metre-wide
   clouds on a wall behind a bin - raised to the power 1.3) darkens *indirect* light inside every
   MeshStandard/MeshPhysical material, and a quarter of it also darkens *direct* light on
-  upward-facing receivers (contact cue under cars, at wall feet). Things that must not occlude
-  (particles, glows, beams, see-through shells) set `obj.userData.noAO = true`; transparent
-  single-material meshes, Points, Lines and Sprites are skipped automatically.
+  upward-facing receivers (contact cue under cars, at wall feet). On snow the AO darkens neutrally
+  (a hint cooler), not towards the warm sun (it took the blue skylight and left a coffee stain).
+  Things that must not occlude (particles, glows, beams, see-through shells, cards) set
+  `obj.userData.noAO = true` - that also keeps them out of the shadow pass; transparent
+  single-material meshes, Points, Lines and Sprites are skipped automatically. The pre-pass object
+  lists are rebuilt every 20 frames (something added in between joins at the next rebuild).
+  `sceneDepthTexture()` (AO's depth, for soft particles) only holds geometry within 80 m:
+  `sceneDepthRange()` is its (near, far); a cleared texel (1.0) means "nothing near".
 - **Glints:** direct (sun) specular is clamped to 3x before bloom (snow crystals to 14x), so
   wet or glossy surfaces glint without white smears. Snow sparkle is a sun-only glint (round,
   pixel-sized crystal facets at 1.4 cm and 4.5 cm, added to the sun's specular, so it never darkens
@@ -429,16 +477,39 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
 - **Shadow pre-pass detail:** a mesh whose material is an array is drawn as **one** call in the
   shadow and AO passes (surfaces don't matter there). So every part of a multi-surface mesh casts
   a shadow, including any 'tinted' glass in it. Put see-through car glass in **its own** mesh
-  (single 'tinted' material -> casts no shadow, no AO), as car.js does.
-- **Draw calls:** one draw call per surface per mesh in the main pass. Merge static things per
-  block with `GeoBuilder` (one mesh per block per builder); prefer `InstancedMesh` for repeated
-  props. Old town as of phase 1 round 3: ~1550-1650 calls/frame (~780 of them in the shadow/AO
-  pre-pass), ~2.85M triangles drawn (all passes; the scene itself is ~1.3M, the biggest being
-  instanced fence boards, coins and lamp posts), `renderFrame` ~5-6.5 ms CPU at 1280x720 on the RTX
-  4070, 60 fps. Cars are the biggest consumer of calls (body ~7 surfaces + glass + 4 wheels x 2
-  each): merge wheel surfaces if you can.
-- **Quality:** `?lowgfx` in the URL, or `setQuality('low' | 'high')` at runtime (`getQuality()`).
-  High = pixel ratio capped at 1.5. Low = no AO, no bloom, no MSAA, 1024 shadow maps, pixel ratio 1.
+  (single 'tinted' material -> casts no shadow, no AO), as car.js does. Each object kind (Mesh,
+  InstancedMesh, SkinnedMesh, BatchedMesh) gets its own depth (`customDepthMaterial`, unless you set
+  one or the material is alpha-tested) and AO-normal material, and instanced / skinned / batched
+  users of a shared surface material are given that kind's own copy (`kindSweep`): one material
+  used by several kinds made three.js re-evaluate its program at every switch.
+- **Draw calls:** one draw call per surface per mesh in the main pass. Static world geometry is
+  merged per block with `GeoBuilder` (buildTown: one builder per block for solids, ground and
+  twigs) and then **batched by surface across the town** (`src/world/batch.js`, `StaticBatch`, a
+  `THREE.BatchedMesh`): one batch per category (block / ground / twigs / forest belt) and surface,
+  the block's part of it as a culled range; neighbouring visible ranges are merged, so a surface is a
+  handful of draws per pass whatever the view (the streets join the ground batches). The surface
+  shader handles `USE_BATCHING`. Everything buildTown adds is `makeStatic` (fixed matrices, CPU
+  vertex arrays dropped after upload). `?nobatch` restores the per-block meshes (A/B: same image).
+  Prefer `InstancedMesh` for repeated props. The static world went from ~450-1,200 main-pass calls
+  to ~35-45; whole frames (round 6, 1280x720, RTX 4070, all passes, high, with the cars' and people's
+  own round-6 LODs): start 493 calls (was 1375), lot 761 (1583), Solrosvagen 747 (2104), drone_nw 783
+  (1667), aerial 533 (2211); `renderFrame` 4.7-6.6 ms CPU (was 8.5-9.6). See notes/rendering.md.
+  Cars, props and people are now the biggest consumers of calls.
+- **Quality:** `setQuality('auto' | 'high' | 'low')` (returns `qualityInfo()`), `getQuality()` ->
+  the setting, `qualityInfo()` -> `{ setting, tier, scale, pixelRatio, gpu, integrated, reason }`
+  (what actually runs: `tier` 'high' | 'low', `reason` e.g. 'integrated GPU', 'slow (24.1 ms)',
+  'chosen'). Two tiers: **high** = GTAO, bloom, 4x MSAA, 2048 shadow maps with 16-tap PCF, far
+  cascade every 2nd frame; **low** = no AO pre-pass and no bloom (a shadow-only pre-pass), no MSAA,
+  1024 maps with 4-tap PCF, far cascade every 3rd frame (about 0.5-0.8x the GPU time and 10-40 %
+  fewer calls than high). The pixel ratio is capped at 1 device pixel per CSS pixel (`&pr=x` forces x). **auto** (the
+  default outside tests) = low on integrated GPUs (WEBGL_debug_renderer_info: Intel, AMD Radeon(TM)
+  Graphics / Vega APUs, plain Apple M-chips, mobile, software), else high, dropping to low (once)
+  when the first ~4 s of frames average over 20 ms; **auto and low** also scale the render resolution
+  0.6/0.7-1.0 with the frame time (down a step when frames take > 18.5 ms, undone if that did not
+  help - CPU-bound - and probed back up after a few seconds at full rate). **high** is always full
+  resolution. Tests (`?test`) default to high without the dynamic scale (deterministic shots);
+  `&q=auto|high|low`, `?lowgfx` (= low) and `&dynscale` override. Tier switches need no shader
+  recompiles.
 - Look-dev URL overrides (for testing only): `&hdri=winter_river_2k` (hazier alternative sky),
   `&sunelev=13&sunaz=143`, `&exposure=1.45`, `&tm=aces|agx|neutral|none`, `&sunint=6`,
   `&suncol=1,0.8,0.58`, `&envint=0.62`, `&envsat=0.55`, `&envtint=0.97,1,1.02`, `&fog=0.0012`
@@ -446,7 +517,10 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
   (grade), `&aostr=1.3&aorad=0.9&aoscale=1&aothick=0.5&aofall=1&aoexp=1.6`, `&aoview` (shows the AO
   term only), `&dbg=1|2|3|4` (albedo / indirect diffuse / indirect specular / direct light of every
   surface; use with `&tm=none&contrast=0&toe=1&sdesat=1&exposure=1` to read linear values off a
-  screenshot), `&glintdbg` (snow crystal cells in green, their glints in red).
+  screenshot), `&glintdbg` (snow crystal cells in green, their glints in red), `&black=0.03` (soft
+  black point), `&aofar=80` (AO pre-pass far plane), `&farevery=n` (far cascade every n frames),
+  `&gputime` (GPU timer -> `gfxStats.gpuMs`), `&debug` (shader error checks, on in tests),
+  `&nobatch`, `&nomultidraw` (BatchedMesh without WEBGL_multi_draw).
 
 ### 10.2 Surfaces: saying what things are made of
 `GeoBuilder` keeps all its methods (`add, box, boxB, sphere, cyl, cone, ico, build, empty,
@@ -469,7 +543,7 @@ transformed (`geo.translate`, `applyMatrix4`, moving meshes), so cars and people
 | `tile` (alias `roof`) | wavy concrete pantiles (*betongpannor*), rows ~0.36 m along the part's X; in thin snow the crests show as broken dark lines down the slope, the cover varying smoothly from tile to tile and over the roof (some areas white, some barer) | `0x303034` | yes |
 | `metalroof` | box-profile sheet metal, ribs along the part's Z (down the slope); ribs poke through thin snow | `0x3a3c3e` | yes |
 | `asphalt` | aged coarse-aggregate asphalt, no snow (plowed). On the street grid (`setRoadGrid`): slightly damp all over, two paler dry wheel tracks per lane, a wetter grimy band along the kerbs, transverse cracks and a centre-joint crack; everywhere: sparse patch repairs, darker damp patches. Damp shade reads dark neutral grey | `0x6a6866` (pass `null`, or about this) | no |
-| `marking` | road paint on asphalt grain (white lines, zebra) | `0xd8d8d2` | no |
+| `marking` | road paint on asphalt grain (white lines, zebra); polygon offset, so it wins over coplanar asphalt at any distance | `0xd8d8d2` | no |
 | `concrete` | smooth cast concrete (plinths, kerbs, stairs, balconies) | `0xa8a8a4` | yes |
 | `paving` | concrete sidewalk slabs ~0.4 m; its thin snow is compacted remnant snow lying in the joints and hollows (any textured surface with snow < 0.5 does this) | `0x9e9c98` | thin |
 | `snow` | fresh snow with drifts and sparkle (lawns, fields, banks); large wind swells, and sastrugi on gentle slopes, that the low sun rakes on far fields | `0xf3f4f5` | - |
@@ -482,7 +556,7 @@ transformed (`geo.translate`, `applyMatrix4`, moving meshes), so cars and people
 | `spruce` | `foliage` plus branch whorls on the sloped faces of cones every ~0.42 m (bright tip edge, shadowed gap, continuous across the period: no seam lines), with snow in thin broken bands on the upper side of each whorl | `0x34472f` | yes |
 | `fabric` | woven wool cloth (coats, seats, awnings), 0.3 m tile | `0x3a4250` | no |
 | `leather` | grained leather (shoes, gloves, bags) | `0x3a2618` | no |
-| `skin` | skin: smooth, slightly rough | `0xd8a888` | no |
+| `skin` | skin: smooth, slightly rough; light wraps round the terminator with a red shift (vec3 wrap 0.42 / 0.22 / 0.15) and its shade keeps a little warmth from the cold skylight | `0xd8a888` | no |
 | `hair` | strand-like procedural detail (hair, fur, beards) | `0x4a3a2a` | no |
 | `paint` | metallic car paint with a mirror clear coat (roughness 0.015, faint orange peel); a fake body curvature (normals bent outwards from the car's centre, in the mesh's own frame: assumes a car-sized mesh centred at x=z=0, y~0.85) slides the sky and horizon across flat panels | `0x2a3a5a` | yes (parked cars) |
 | `paintsolid` | solid (non-metallic) car paint, same clear coat and curvature | `0xc8c8c4` | yes |
@@ -513,7 +587,20 @@ Unknown names fall back to `plain`. `SURFACES` (exported) holds the table (scale
   `new THREE.InstancedMesh(geo, realMaterials(geo), n)` (props.js, pickups.js do this).
 - **`surfaceMaterial(name, { snow, unique, intensity })`** -> one surface material (shared and
   cached unless `unique`). Use it for non-GeoBuilder geometry after
-  **`ensureSurfaceAttributes(geo)`** (adds white vertex colours and triplanar attributes).
+  **`ensureSurfaceAttributes(geo)`** (adds white vertex colours and triplanar attributes). Shared
+  materials on an InstancedMesh / SkinnedMesh / BatchedMesh are swapped for that kind's own copy by
+  the renderer (same shader and programs); don't compare `mesh.material` against the shared one.
+- **`makeStatic(root, { freeArrays = true })`**: matrices fixed (`matrixAutoUpdate` false) and the
+  geometry's CPU arrays dropped once uploaded (bounds computed first; no raycasts or re-uploads
+  afterwards). buildTown applies it to everything it adds.
+- **`precompile(root = scene)`** -> promise: compiles every program `root` needs against the scene
+  (lights, fog, environment) **as the composer's scene pass sees it** (linear HDR target, no tone
+  mapping - a plain `renderer.compileAsync` while the screen is bound compiles tone-mapped variants
+  the game never uses), with KHR_parallel_shader_compile, without blocking. buildTown starts one for
+  the world; the first `renderFrame` issues the rest. **`uploadGeometry(root = scene)`** draws
+  everything under `root` once into a 1x1 target (no colour, no depth) so its vertex buffers are
+  uploaded now rather than in the first frame (buildTown does it for the world). main.js should call
+  both at 'Tar porträtt…' and await the precompile before the loop starts.
 - Geometry from `GeoBuilder.build()` has attributes `position, normal, color, tri (vec4), trin`
   and `geo.userData.surfaces` (surface name per group). If you push your own geometry into
   `g.parts`, it is accepted (missing attributes are added; built multi-surface geometry is split
@@ -570,17 +657,20 @@ Unknown names fall back to `plain`. `SURFACES` (exported) holds the table (scale
   (centre lines along x and z at `offset + k * pitch`, asphalt half-width, lane-centre offset,
   grid covers |x|, |z| <= `extent`), for wheel tracks, damp kerbs and transverse cracks.
   Defaults match `world/layout.js` (80, 40, 5.5, 2.75, 285.5); call it if the grid changes.
-- **Snowfall:** `fx.snowfall(on, intensity = 0.6)` - flakes in a 36 m box around the camera,
-  eased in/out over a few seconds (finale).
+- **Snowfall:** `fx.snowfall(on, intensity = 0.6)` - small flakes (~1 cm, at least a pixel; smaller
+  ones fade rather than shrink) with a short motion streak along their fall, in a 40 m box around the
+  camera plus a denser 14 m box close to it, eased in/out over a few seconds (finale).
 
 ### 10.6 Particles (`src/game/fx.js`)
 Same API as before; all lit by the sun/sky, soft (fade where they touch geometry), fogged:
 `fx.init(scene)`, `fx.tick(dt)`, `fx.spawn(x, y, z, color, { vx, vy, vz, s0, s1, life, drag,
 grav })` (saturated bright colours become glowing additive particles, others soft lit smoke),
-`fx.smoke(x, y, z, dark)` (engine smoke / pale steam), `fx.exhaust(x, y, z, vx, vz)` (cold-morning
-tailpipe vapour; call every ~0.1 s from a running car's tailpipe), `fx.fire(x, y, z)`,
+`fx.smoke(x, y, z, dark)` (engine smoke / pale steam), `fx.exhaust(x, y, z, vx, vz, { alpha, size })`
+(cold-morning tailpipe vapour: thin, bluish, spreading and fraying away over 1.8 s; `alpha` and `size`
+are multipliers of that default puff, e.g. `{ alpha: 0.6, size: 0.8 }` at idle), `fx.fire(x, y, z)`,
 `fx.explosion(x, y, z)`, `fx.dust(x, z, n, y)` (= snow powder kicked up), `fx.sparkle(x, y, z,
-color, n)` (small glints), `fx.sparks(x, y, z, n)` (hot streaks that bounce), `fx.shame(x, y, z,
+color, n)` (pickups: tiny additive glints - a pinpoint with a thin four-point star that twinkles,
+tinted by the colour), `fx.sparks(x, y, z, n)` (hot streaks that bounce), `fx.shame(x, y, z,
 n)` (neutral puff now), `fx.splash(x, z)` (slush), `fx.skid(x, z, yaw, w, kind)` (tyre track
 decal; `kind` 'snow' = pale compressed rut, else dark rubber on asphalt; if `kind` is omitted
 `fx.surfaceAt(x, z)` is asked when the world sets it), `fx.snowfall(on, intensity)`.
@@ -610,8 +700,11 @@ to the constructors if needed.
 desaturated, tinted, x env intensity), `fog` colour, `fogExp2` - for custom shaders), `FOG_GLSL`,
 `setRoadGrid`,
 `gfxReady` (promise: await it after `initGfx()` before building content; main.js does),
-`renderFrame, setQuality, getQuality, setSnow, getSnow, setWetness, setLight, gfxStats`
-(`ms, calls, tris, aoCalls`; also in `__stats()`), `sceneDepthTexture()`, `followSun()` and
+`renderFrame, setQuality, getQuality, qualityInfo, precompile, uploadGeometry, makeStatic, prepareKind, setSnow,
+getSnow, setWetness, setLight, gfxStats` (`ms` (renderFrame CPU, smoothed), `calls, tris, aoCalls`
+(shadow + AO pre-pass calls); `pass.{shadow, ao, main}` = [calls, tris] of the last frame,
+`cpu.{matrices, pre, main}` ms, `gpuMs` with `&gputime`, `first` = { ms, programs } of the first
+frame; also in `__stats()`), `sceneDepthTexture()`, `sceneDepthRange()`, `followSun()` and
 `tickSky(t)` (kept for main.js; `tickSky` drives water/time uniforms), `mat, PRIM, makeWedge,
 GeoBuilder, textCanvas, signMesh, toonGradient` (dummy).
 Assets: `assets/tex/*` (made by `uv run tools/textures.py [keys...]`), `assets/sky/*.hdr`, licences in

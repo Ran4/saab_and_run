@@ -3,11 +3,13 @@
 // kommunhuset, a petrol station, a park, a football field and forest at the edges.
 // See DESIGN.md section 6 (contract) and notes/world.md (API, deviations).
 //
-// Static geometry is merged per block (one realMesh for solids, one for flat ground cover, so one
-// draw call per surface per block), printed signs are batched in a few atlas meshes (signs.js),
-// breakables are instanced (props.js).
+// Static geometry is merged per block (one GeoBuilder for solids, one for flat ground cover, one for
+// twigs) and then batched by surface across the town (batch.js: one BatchedMesh per surface with one
+// instance per block, so one draw call per surface per pass and per-block culling), printed signs
+// are batched in a few atlas meshes (signs.js), breakables are instanced (props.js).
 
-import { GeoBuilder, realMesh, camera } from '../gfx.js';
+import { GeoBuilder, realMesh, makeStatic, precompile, uploadGeometry } from '../gfx.js';
+import { batchStatic, touchSurfaces } from './batch.js';
 import { P, N, HALF, CURB, rc, blockInterior, MAP, landmarks, carFreeZones, isCarFree } from './layout.js';
 import { Frame } from './kit.js';
 import { oveBlock } from './ove.js';
@@ -30,8 +32,12 @@ const RADHUS_YAW = { '2,3': 0, '1,3': 0, '3,4': Math.PI, '5,3': 0 };
 
 export const townStats = {};
 
+// ?nobatch: the old per-block meshes (one mesh per block per builder) instead of the batches.
+const BATCH = typeof location === 'undefined' || !new URLSearchParams(location.search).has('nobatch');
+
 export function buildTown(scene) {
   const t0 = performance.now();
+  const before = new Set(scene.children);
   const chunks = [];
   // (S.fineG: the thin branches and twigs of the block's trees, round 5 - no shadow, no AO pre-pass)
   for (let i = 0; i < N; i++) { chunks.push([]); for (let j = 0; j < N; j++) { const S = new GeoBuilder(), F = new GeoBuilder(); S.fineG = new GeoBuilder(); chunks[i].push({ S, F }); } }
@@ -72,41 +78,66 @@ export function buildTown(scene) {
   placeCollectibles(centres);
   topUpLitter();
 
-  // Meshes: per block solids + flat ground cover, the road surface, shelter glass, signs.
-  let meshes = 0;
-  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
-    const { S, F } = chunks[i][j];
-    if (!S.empty) { const m = realMesh(S.build()); m.name = `block${i}${j}`; scene.add(m); meshes++; }
-    if (!F.empty) { const m = realMesh(F.build(), { cast: false }); m.name = `ground${i}${j}`; scene.add(m); meshes++; }
-    if (!S.fineG.empty) { const m = realMesh(S.fineG.build(), { cast: false }); m.name = `twigs${i}${j}`; m.userData.noAO = true; scene.add(m); meshes++; }
+  // Meshes: per block solids (S: cast + receive), flat ground cover (F: no cast) and thin twigs
+  // (S.fineG: no cast, no AO), the road surface (joins the ground), shelter glass, signs. Batched
+  // (batch.js): one BatchedMesh per category and surface with one instance per block, so a surface
+  // is one draw call per pass and blocks are still culled one by one. One category at a time, the
+  // builders emptied as they go (lower peak memory).
+  let meshes = 0, batchMs = 0;
+  if (BATCH) {
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const { S, F } = chunks[i][j]; touchSurfaces(S); touchSurfaces(F); touchSurfaces(S.fineG); }
+    touchSurfaces(roadG);
   }
-  { const m = realMesh(roadG.build(), { cast: false }); m.name = 'roads'; scene.add(m); }
+  const take = (B) => { if (B.empty) return null; const g = B.build(); B.parts = []; return g; };
+  const cats = [
+    ['block', (c) => take(c.S), { cast: true }],
+    ['ground', (c) => take(c.F), { cast: false }],
+    ['twigs', (c) => take(c.S.fineG), { cast: false, noAO: true }],
+  ];
+  for (const [name, get, o] of cats) {
+    const geos = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const g = get(chunks[i][j]);
+      if (!g) continue;
+      if (BATCH) { geos.push(g); continue; }
+      const m = realMesh(g, { cast: o.cast });
+      m.name = `${name}${i}${j}`;
+      if (o.noAO) m.userData.noAO = true;
+      scene.add(m); meshes++;
+    }
+    if (name === 'ground') {
+      const g = take(roadG);
+      if (g && BATCH) geos.push(g);
+      else if (g) { const m = realMesh(g, { cast: false }); m.name = 'roads'; scene.add(m); meshes++; }
+    }
+    if (BATCH) { const tb = performance.now(); meshes += batchStatic(scene, [{ name, geos, ...o }]).length; batchMs += performance.now() - tb; }
+  }
+  // The outskirts' forest belt (24 sector meshes, ~8 surfaces each) joins the batches as well.
+  if (BATCH) {
+    const belt = scene.children.filter((m) => m.name === 'forestbelt' && m.isMesh && !before.has(m));
+    for (const m of belt) scene.remove(m);
+    const tb = performance.now();
+    meshes += batchStatic(scene, [{ name: 'forest', geos: belt.map((m) => m.geometry), cast: true }]).length;
+    batchMs += performance.now() - tb;
+  }
   if (!glassG.empty) { const m = realMesh(glassG.build(), { snow: false, cast: false }); m.renderOrder = 2; m.name = 'glass'; scene.add(m); }
   finalizeSigns(scene);
-  // Far meshes leave the AO / shadow pre-pass (tickTown): GTAO's 0.9 m contact occlusion is a
-  // fraction of a pixel there, and nothing that far casts into the 210 m shadow cascade (a 10 m
-  // building's shadow at 13 deg is ~43 m long, hence the margin). The hills and the silhouette
-  // forest are always that far.
-  farMeshes.length = 0;
-  for (const m of scene.children) {
-    if (!m.isMesh || !m.geometry) continue;
-    if (/^(hills|silhouettes)$/.test(m.name)) { m.userData.noAO = true; continue; }
-    if (!/^(block|ground|forestbelt|roads)/.test(m.name)) continue;
-    m.geometry.computeBoundingSphere();
-    const b = m.geometry.boundingSphere;
-    farMeshes.push([m, b.center.x, b.center.y, b.center.z, b.radius]);
-  }
+  // The hills and the silhouette forest are far beyond the AO pre-pass anyway. (Far blocks no longer
+  // need a noAO toggle: that pass only draws within its far plane, and the batches cull per block.)
+  for (const m of scene.children) if (/^(hills|silhouettes)$/.test(m.name)) m.userData.noAO = true;
+  // Everything built here is static: matrices fixed, CPU-side vertex arrays dropped after upload.
+  for (const m of scene.children) if (!before.has(m)) makeStatic(m);
+  uploadGeometry();   // the world's vertex buffers go to the GPU now, not in the first frame
+  // Start compiling the world's shaders now, in the background, while the cars and people are built.
+  precompile();
   // Car grip and skid marks ask fx.surfaceAt (see fx.js, car.js); footsteps can use it too.
   fx.surfaceAt = surfaceAt;
   mapLabels.push(['Oves område', 'oveHouse'], ['Centrum', 'centrum'], ['Sjukhuset', 'hospital'], ['Kyrkan', 'church'], ['Kyrkogården', 'cemetery'], ['Bilhallen', 'dealer'], ['Förskolan', 'preschool'], ['Kommunhuset', 'kommun'], ['Bensin & Service', 'gas'], ['Parken', 'park'], ['Fotbollsplanen', 'field']);
-  Object.assign(townStats, { buildMs: Math.round(performance.now() - t0), meshes, landmarks: Object.keys(landmarks).length, violationSpots: violationSpots.length, litter: litterSpots.length, parkedCars: parkedCars.length });
+  Object.assign(townStats, { buildMs: Math.round(performance.now() - t0), batchMs: Math.round(batchMs), meshes, landmarks: Object.keys(landmarks).length, violationSpots: violationSpots.length, litter: litterSpots.length, parkedCars: parkedCars.length });
 }
 
-const farMeshes = [], FAR_AO = 240;
 export function tickTown(t) {
   for (const a of animated) a.tick(t);
-  const c = camera.position;
-  for (const [m, x, y, z, r] of farMeshes) m.userData.noAO = Math.hypot(c.x - x, c.y - y, c.z - z) - r > FAR_AO;
 }
 
 // Seven Saab emblems and seven of Sonja's photographs, each reachable on foot (ground level, or

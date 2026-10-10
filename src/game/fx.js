@@ -1,14 +1,16 @@
 // Particles: soft, lit, camera-facing sprites (smoke, exhaust, steam, snow powder), additive fire
-// and sparks with motion streaks, tyre tracks, and gentle snowfall around the camera.
+// and sparks with motion streaks, star-shaped glints, tyre tracks, and snowfall around the camera
+// (small flakes with a short motion streak, denser close to the camera).
 // Same API as the old cartoon puffs: spawn/smoke/fire/explosion/dust/sparkle/sparks/shame/splash/
 // skid/tick, plus snowfall(on, intensity) and exhaust(x, y, z, vx, vz).
 
-import { THREE, LIGHTING, SUN_DIR, FOG_GLSL, sceneDepthTexture, camera as gameCamera, renderer as gameRenderer } from '../gfx.js';
+import { THREE, LIGHTING, SUN_DIR, FOG_GLSL, sceneDepthTexture, sceneDepthRange, camera as gameCamera, renderer as gameRenderer } from '../gfx.js';
 
 const MAX = 900;          // alpha-blended puffs
 const MAXA = 500;         // additive (fire, sparks, glints)
 const SKIDS = 1400;
-const FLAKES = 16000;
+const FLAKES = 22000;     // snowfall, in a 40 m box round the camera...
+const FLAKES_NEAR = 18000;// ...plus a 14 m box (several times the density close to the camera)
 
 // Shared uniforms for all particle shaders.
 const U = {
@@ -28,10 +30,10 @@ const U = {
 // Puffs are procedural (no sprite texture): a soft ball whose edge is eaten away by a per-particle
 // noise field that drifts and erodes with age, so smoke and powder billow and fray instead of being
 // smooth discs. Three modes (iMisc.w): 0 lit puff (smoke, steam, snow powder: lit by the sun and the
-// sky like a translucent ball, brighter on the sun side of its own billows), 1 flat glow (sparks,
-// glints: colour = emission), 2 fire (colour from a temperature ramp, hottest in the core of each
-// flame and cooling with age: white-yellow -> orange -> dark red; the core is far above the bloom
-// threshold so flames read in daylight).
+// sky like a translucent ball, brighter on the sun side of its own billows), 1 flat glow (sparks:
+// colour = emission), 2 fire (colour from a temperature ramp, hottest in the core of each flame and
+// cooling with age: white-yellow -> orange -> dark red; the core is far above the bloom threshold so
+// flames read in daylight), 3 glint (a tiny hot core with a thin four-point star that twinkles).
 const PUFF_VERT = `
 attribute vec4 iPos;    // xyz, size
 attribute vec4 iCol;    // rgb (linear albedo, emission or fire tint), alpha
@@ -126,7 +128,14 @@ void main() {
   vec2 o = vec2( vMisc.y * 37.0, vMisc.y * 91.0 );
   float dens, a;
   vec3 col;
-  if ( mode > 1.5 ) {
+  if ( mode > 2.5 ) {
+    // glint: a pinpoint and a thin four-point star (turning with the sprite), twinkling
+    float tw = 0.55 + 0.45 * sin( age * 38.0 + vMisc.y * 40.0 );
+    float core = exp( - r * r * 40.0 );
+    float star = max( exp( - abs( vQ.x ) * 26.0 ) * ( 1.0 - abs( vQ.y ) ), exp( - abs( vQ.y ) * 26.0 ) * ( 1.0 - abs( vQ.x ) ) );
+    a = ( core + star * 0.6 * tw ) * vCol.a * ( 0.7 + 0.3 * tw );
+    col = vCol.rgb;
+  } else if ( mode > 1.5 ) {
     // fire: a flame tongue / fireball blob with a noisy, licking edge; hotter in the core
     float n = pFbm( vQ * 1.7 + o + vec2( 0.0, - age * 2.2 ) );
     dens = ( 1.0 - r ) * 1.5 + ( n - 0.5 ) * 1.3 - age * 0.45;
@@ -150,7 +159,9 @@ void main() {
   // soft contact with the scene: the puff is a ball of this size, so it fades out as the geometry
   // cuts through its depth (no straight edge where it meets a kerb or a wall)
   if ( uSoft > 0.5 ) {
-    float scene = linDepth( texture2D( tDepth, gl_FragCoord.xy / uRes ).x );
+    // (the depth pre-pass only holds geometry within its far plane: a cleared texel = nothing there)
+    float dz = texture2D( tDepth, gl_FragCoord.xy / uRes ).x;
+    float scene = dz >= 0.99999 ? 1e6 : linDepth( dz );
     float th = max( vSize * 0.5 * sqrt( max( 1.0 - r * r, 0.0 ) ), 0.05 );
     a *= clamp( ( scene - ( vDepth - th ) ) / ( 2.0 * th ), 0.0, 1.0 );
   }
@@ -262,42 +273,61 @@ void main() {
 }`;
 
 // ---------------------------------------------------------------------------------------------
-// Snowfall: GPU-wrapped points in a box that travels with the camera.
+// Snowfall: GPU-wrapped flakes in two boxes that travel with the camera (40 m, and 14 m for the
+// density close by). Each flake is a camera-facing streak quad: ~1 cm wide (at least a pixel; a
+// flake smaller than that fades instead of shrinking, so nothing shimmers) and stretched along its
+// projected fall over ~1/45 s, so close flakes read as short streaks and far ones as specks.
 
 const SNOW_VERT = `
-attribute vec4 seed;
+attribute vec4 seed;    // xyz: position in the box (0..1), w: index (0..1) against the snow amount
+attribute float box;    // box size (m)
 uniform float uTime;
 uniform vec3 uCam;
-uniform float uBox;
 uniform float uCount;
 uniform vec3 uSunCol;
 uniform vec3 uSky;
 uniform vec2 uRes;
+uniform float uPx;      // radians per pixel (vertical)
 varying float vA;
 varying vec3 vCol;
+varying vec2 vQ;
 void main() {
-  float fall = 0.9 + seed.w * 0.7;
-  vec3 p = seed.xyz * uBox;
+  float fall = 0.8 + fract( seed.x * 13.17 + seed.z * 7.3 ) * 0.7;
+  float ph = seed.w * 20.0 + seed.y * 7.0;
+  vec3 p = seed.xyz * box;
   p.y -= uTime * fall;
-  p.x += uTime * 0.35 + sin( uTime * 0.7 + seed.w * 20.0 ) * 0.4;
+  p.x += uTime * 0.35 + sin( uTime * 0.7 + ph ) * 0.4;
   p.z += sin( uTime * 0.5 + seed.x * 30.0 ) * 0.4;
-  vec3 rel = mod( p - uCam + uBox * 0.5, uBox ) - uBox * 0.5;
+  vec3 rel = mod( p - uCam + box * 0.5, box ) - box * 0.5;
   vec3 w = uCam + rel;
+  vec3 vel = vec3( 0.35 + cos( uTime * 0.7 + ph ) * 0.28, - fall, cos( uTime * 0.5 + seed.x * 30.0 ) * 0.2 );
   vec4 mv = viewMatrix * vec4( w, 1.0 );
-  gl_Position = projectionMatrix * mv;
-  float d = -mv.z;
-  gl_PointSize = clamp( ( 0.03 + fract( seed.x * 7.13 ) * 0.025 ) * uRes.y / max( d, 0.1 ) * 1.2, 1.2, 26.0 );
-  float idx = seed.w;
-  vA = step( idx, uCount ) * smoothstep( 0.3, 1.5, d ) * smoothstep( uBox * 0.5, uBox * 0.3, length( rel ) ) * 0.85;
+  vec4 c0 = projectionMatrix * mv;
+  vec4 c1 = projectionMatrix * viewMatrix * vec4( w - vel * 0.022, 1.0 );
+  float dist = - mv.z;
+  vA = 0.0; vQ = vec2( 0.0 ); vCol = vec3( 0.0 );
+  if ( dist < 0.25 || c1.w < 0.05 ) { gl_Position = vec4( 2.0, 2.0, 2.0, 1.0 ); return; }
+  vec2 s0 = c0.xy / c0.w * 0.5 * uRes, s1 = c1.xy / c1.w * 0.5 * uRes;
+  vec2 d = s1 - s0; float len = length( d );
+  vec2 dir = len > 1e-3 ? d / len : vec2( 0.0, - 1.0 ), nrm = vec2( - dir.y, dir.x );
+  float size = 0.007 + fract( seed.y * 7.13 ) * 0.006;           // flake diameter (m)
+  float px = size / ( dist * uPx );
+  float wPx = max( px, 1.15 ), lPx = max( len, wPx );
+  vec2 sp = s0 + dir * ( position.y * lPx ) + nrm * ( position.x * wPx );
+  gl_Position = vec4( sp / ( 0.5 * uRes ) * c0.w, c0.z, c0.w );
+  vQ = vec2( position.x * 2.0, position.y );
+  // sub-pixel flakes fade instead of shrinking; long streaks spread the same light thinner
+  float cover = min( 1.0, px / 1.15 ) * clamp( wPx * 2.0 / ( lPx + wPx ), 0.35, 1.0 );
+  vA = step( seed.w, uCount ) * cover * smoothstep( 0.3, 1.2, dist ) * smoothstep( box * 0.5, box * 0.3, length( rel ) ) * 0.9;
   vCol = uSky * 1.4 + uSunCol * 0.18;
 }`;
 const SNOW_FRAG = `
 varying float vA;
 varying vec3 vCol;
+varying vec2 vQ;
 void main() {
-  vec2 c = gl_PointCoord - 0.5;
-  float a = smoothstep( 0.5, 0.15, length( c ) ) * vA;
-  if ( a < 0.01 ) discard;
+  float a = ( 1.0 - smoothstep( 0.35, 1.0, abs( vQ.x ) ) ) * ( 1.0 - 0.55 * vQ.y ) * vA;
+  if ( a < 0.004 ) discard;
   gl_FragColor = vec4( vCol * a, a );
 }`;
 
@@ -320,7 +350,7 @@ function glow(x, y, z, rgb, o = {}) {
   return add.spawn({
     x, y, z, vx: o.vx ?? 0, vy: o.vy ?? 0, vz: o.vz ?? 0, r: rgb[0], g: rgb[1], b: rgb[2], a: o.a ?? 1,
     s0: o.s0 ?? 0.3, s1: o.s1 ?? 0.1, life: o.life ?? 0.5, drag: o.drag ?? 1, grav: o.grav ?? 0, buoy: o.buoy ?? 0,
-    rot: Math.random() * 6.28, spin: rnd(2), fadeIn: o.fadeIn ?? 30, fadeOut: o.fadeOut ?? 1, mode: 1, ramp: o.ramp || null, stretch: o.stretch || 0, floor: o.floor,
+    rot: Math.random() * 6.28, spin: o.spin ?? rnd(2), fadeIn: o.fadeIn ?? 30, fadeOut: o.fadeOut ?? 1, mode: o.mode ?? 1, ramp: o.ramp || null, stretch: o.stretch || 0, floor: o.floor,
   });
 }
 // A flame tongue or fireball blob: colour from the temperature ramp in the shader. heat 0..1 at birth,
@@ -359,17 +389,26 @@ export const fx = {
     for (let i = 0; i < SKIDS; i++) skidMesh.setMatrixAt(i, _m.makeScale(0, 0, 0));
     scene.add(skidMesh);
 
-    const seeds = new Float32Array(FLAKES * 4);
-    for (let i = 0; i < FLAKES; i++) { seeds[i * 4] = Math.random(); seeds[i * 4 + 1] = Math.random(); seeds[i * 4 + 2] = Math.random(); seeds[i * 4 + 3] = i / FLAKES; }
-    const fg = new THREE.BufferGeometry();
-    fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FLAKES * 3), 3));
-    fg.setAttribute('seed', new THREE.BufferAttribute(seeds, 4));
+    const NF = FLAKES + FLAKES_NEAR;
+    const seeds = new Float32Array(NF * 4), boxes = new Float32Array(NF);
+    for (let i = 0; i < NF; i++) {
+      const near = i >= FLAKES, k = near ? (i - FLAKES) / FLAKES_NEAR : i / FLAKES;
+      seeds[i * 4] = Math.random(); seeds[i * 4 + 1] = Math.random(); seeds[i * 4 + 2] = Math.random(); seeds[i * 4 + 3] = k;
+      boxes[i] = near ? 14 : 40;
+    }
+    const fg = new THREE.InstancedBufferGeometry();
+    fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0]), 3));
+    fg.setIndex([0, 1, 2, 0, 2, 3]);
+    fg.setAttribute('seed', new THREE.InstancedBufferAttribute(seeds, 4));
+    fg.setAttribute('box', new THREE.InstancedBufferAttribute(boxes, 1));
+    fg.instanceCount = NF;
     const fm = new THREE.ShaderMaterial({
-      uniforms: { uTime: U.uTime, uCam: { value: new THREE.Vector3() }, uBox: { value: 36 }, uCount: { value: 0 }, uSunCol: U.uSunCol, uSky: U.uSky, uRes: U.uRes },
+      uniforms: { uTime: U.uTime, uCam: { value: new THREE.Vector3() }, uCount: { value: 0 }, uSunCol: U.uSunCol, uSky: U.uSky, uRes: U.uRes, uPx: { value: 0.0015 } },
       vertexShader: SNOW_VERT, fragmentShader: SNOW_FRAG, transparent: true, depthWrite: false, premultipliedAlpha: true,
       blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+      side: THREE.DoubleSide,   // the streak quads are built in screen space, either winding
     });
-    snow = new THREE.Points(fg, fm);
+    snow = new THREE.Mesh(fg, fm);
     snow.frustumCulled = false;
     snow.visible = false;
     snow.renderOrder = 7;
@@ -396,9 +435,15 @@ export const fx = {
       life: dark ? 3.2 : 2.0, a: dark ? 0.62 : 0.34, drag: 1.4, buoy: dark ? 0.6 : 0.2, fadeOut: 1.3, fadeIn: 3, erode: dark ? 0.45 : 0.6,
     });
   },
-  // Cold-morning exhaust: a small pale vapour puff drifting back from the tailpipe.
-  exhaust(x, y, z, vx = 0, vz = 0) {
-    puff(x + rnd(0.05), y, z + rnd(0.05), [0.8, 0.81, 0.83], { vx: vx * 0.3 + rnd(0.3), vy: 0.25 + Math.random() * 0.3, vz: vz * 0.3 + rnd(0.3), s0: 0.14, s1: 0.95, life: 1.3, a: 0.3, drag: 2.2, buoy: 0.15, erode: 0.7 });
+  // Cold-morning exhaust: thin pale vapour from the tailpipe that spreads, rises a little and frays
+  // away (faint enough that overlapping puffs never pile up into a ball). opts: { alpha, size }
+  // multiply the opacity and the size (cars pass fainter / smaller puffs, e.g. at idle).
+  exhaust(x, y, z, vx = 0, vz = 0, opts = {}) {
+    const ka = opts.alpha ?? 1, ks = opts.size ?? 1;
+    puff(x + rnd(0.04), y, z + rnd(0.04), [0.86, 0.89, 0.93], {
+      vx: vx * 0.3 + rnd(0.45), vy: 0.2 + Math.random() * 0.3, vz: vz * 0.3 + rnd(0.45), s0: 0.08 * ks, s1: 1.6 * ks,
+      life: 1.8, a: 0.1 * ka, drag: 2.0, buoy: 0.3, erode: 0.85, fadeIn: 5, fadeOut: 1.2,
+    });
   },
   // A burning wreck (called every ~0.06 s): flame tongues licking upwards, now and then a thick dark puff.
   fire(x, y, z) {
@@ -438,12 +483,16 @@ export const fx = {
   dust(x, z, n = 3, y = 0.3) {
     for (let k = 0; k < n; k++) puff(x + rnd(0.4), y, z + rnd(0.4), [0.9, 0.92, 0.95], { vy: 0.4 + Math.random() * 0.7, vx: rnd(1.2), vz: rnd(1.2), s0: 0.25, s1: 1.3, life: 1.1, a: 0.16, drag: 2.6, grav: 0.5, fadeIn: 5, fadeOut: 1.6, erode: 0.9 });
   },
-  // Little glints (pickups): small additive specks in the given colour that fall.
+  // Little glints (pickups): pinpoints of light with a thin four-point star, tinted by the colour,
+  // thrown up softly and twinkling as they sink (additive, small: no confetti).
   sparkle(x, y, z, color = 0xffd23f, n = 10) {
-    const rgb = lin(color).map((v) => v * 4 + 0.6);
+    const c = lin(color), rgb = c.map((v) => v * 3.2 + 0.8);
     for (let k = 0; k < n; k++) {
-      const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 2.5;
-      glow(x, y, z, rgb, { vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 1.5 + Math.random() * 3, s0: 0.07, s1: 0.03, life: 0.6 + Math.random() * 0.3, drag: 2, grav: 7, stretch: 0.03 });
+      const a = Math.random() * Math.PI * 2, sp = 0.6 + Math.random() * 1.6;
+      glow(x + rnd(0.12), y + rnd(0.12), z + rnd(0.12), rgb, {
+        vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: 0.8 + Math.random() * 1.6, s0: 0.1 + Math.random() * 0.06, s1: 0.04,
+        life: 0.55 + Math.random() * 0.45, drag: 2.6, grav: 2.2, mode: 3, spin: rnd(1.5), fadeIn: 25, fadeOut: 1.3,
+      });
     }
   },
   // Metal-on-metal sparks: hot streaks that fall and bounce.
@@ -489,7 +538,7 @@ export const fx = {
     const dtex = sceneDepthTexture();
     U.tDepth.value = dtex; U.uSoft.value = dtex ? 1 : 0;
     const cam = gameCamera;
-    if (cam) U.uNearFar.value.set(cam.near, cam.far);
+    U.uNearFar.value.copy(sceneDepthRange());
     if (gameRenderer) gameRenderer.getDrawingBufferSize(U.uRes.value);
     alpha.tick(dt);
     add.tick(dt);
@@ -501,8 +550,10 @@ export const fx = {
     this.snowAmount += (this.snowTarget - this.snowAmount) * Math.min(1, dt * 0.5);
     snow.visible = this.snowAmount > 0.01;
     if (snow.visible && cam) {
-      snow.material.uniforms.uCam.value.copy(cam.position);
-      snow.material.uniforms.uCount.value = this.snowAmount;
+      const u = snow.material.uniforms;
+      u.uCam.value.copy(cam.position);
+      u.uCount.value = this.snowAmount;
+      u.uPx.value = 2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2) / Math.max(1, U.uRes.value.y);
     }
   },
 };
