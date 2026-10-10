@@ -55,6 +55,8 @@ Kontaktark: `out/phase1_sheet.png`.
 
 ## Hur du fortsätter
 
+**Git (från 2026-10-10):** spelmappen är ett git-repo (gren `develop`). Commita efter varje tillbakakopiering från en agent.
+
 ### Fas 2 — ÅTERUPPTAGEN 2026-10-09 (ny session, utan Workflow-verktyget)
 Datorn startades om 10-09, så scratchpad-kopiorna (och de halvgjorda fixarna för folk/bilar) är
 borta. Granskningarna finns kvar i journalen ovan. Nu körs stegen som enskilda bakgrundsagenter
