@@ -1,0 +1,940 @@
+// Everything you hear is synthesised, no samples: a Saab four-cylinder with fake gear changes,
+// tyre hiss and snow crunch, a dual-tone horn, an old Swedish landline ring, a carpenter's pencil
+// on paper, a rubber stamp, a doorbell, a cat, footsteps in snow - and a sparse, melancholic
+// piano-and-strings score in A minor (generative, so it never loops the same bars).
+//
+// Every sound goes through `sfx` (or the music bus) -> master -> a gentle compressor. A small
+// synthesised room reverb is shared by the music and the "domestic" sounds (bells, phone).
+// Contract: DESIGN.md section 9; notes/ui.md.
+
+let ctx = null, S = null;           // the live AudioContext and its node graph (see setup())
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const MUSIC_LEVEL = 0.36;
+
+// ---------------------------------------------------------------------------------------------
+// Graph
+
+function setup(c) {
+  const s = { c };
+  s.master = c.createGain();
+  s.master.gain.value = audio.muted ? 0 : 0.75;
+  s.comp = c.createDynamicsCompressor();
+  s.comp.threshold.value = -16; s.comp.knee.value = 12; s.comp.ratio.value = 4;
+  s.comp.attack.value = 0.004; s.comp.release.value = 0.22;
+  s.master.connect(s.comp).connect(c.destination);
+  s.sfx = c.createGain(); s.sfx.gain.value = 1; s.sfx.connect(s.master);
+  s.musicBus = c.createGain(); s.musicBus.gain.value = audio.musicOn ? MUSIC_LEVEL : 0;
+  s.duck = c.createGain(); s.duck.gain.value = 1;
+  s.musicBus.connect(s.duck).connect(s.master);
+  // Reverb: a synthesised stereo room tail (2.6 s, darker as it decays).
+  s.verb = c.createConvolver();
+  s.verb.buffer = makeImpulse(c, 2.6);
+  s.verbOut = c.createGain(); s.verbOut.gain.value = 0.9;
+  s.verb.connect(s.verbOut).connect(s.master);
+  s.musicVerb = c.createGain(); s.musicVerb.gain.value = 0.55;
+  s.musicBus.connect(s.musicVerb).connect(s.verb);
+  s.sfxVerb = c.createGain(); s.sfxVerb.gain.value = 1; s.sfxVerb.connect(s.verb);
+  s.noise = makeNoise(c);
+  s.crunch = makeCrunch(c);
+  s.pianoWave = c.createPeriodicWave(new Float32Array(12), Float32Array.from([0, 1, 0.42, 0.24, 0.17, 0.1, 0.07, 0.05, 0.034, 0.022, 0.014, 0.009]));
+  s.bellA = makeBell(c, 1310, 0.45);
+  s.bellB = makeBell(c, 1460, 0.42);
+  buildEngine(s);
+  buildTyres(s);
+  return s;
+}
+
+function makeNoise(c) {
+  const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  return b;
+}
+
+// Granular snow crunch: thousands of tiny resonant cracks whose density and loudness swell in
+// bursts (the "squeak-crunch" of compacting snow). Looped for tyres, sliced for footsteps.
+function makeCrunch(c) {
+  const sr = c.sampleRate, len = sr * 2;
+  const b = c.createBuffer(1, len, sr), d = b.getChannelData(0);
+  let env = 0.5, envT = 0, envTarget = 0.5, t = 0;
+  while (t < len) {
+    if (t >= envT) { envTarget = Math.pow(Math.random(), 0.7); envT = t + sr * rnd(0.02, 0.07); }
+    env += (envTarget - env) * 0.35;
+    const gl = Math.floor(sr * rnd(0.0015, 0.007));
+    const amp = Math.pow(Math.random(), 2.4) * env;
+    const f = rnd(900, 6500), r = rnd(0.86, 0.95), w = (2 * Math.PI * f) / sr;
+    const a1 = 2 * r * Math.cos(w), a2 = -r * r;
+    let y1 = 0, y2 = 0;
+    for (let i = 0; i < gl && t + i < len; i++) {
+      const x = (Math.random() * 2 - 1) * Math.exp(-i / (gl * 0.28));
+      const y = x + a1 * y1 + a2 * y2;
+      y2 = y1; y1 = y;
+      d[t + i] += y * amp * 0.12;
+    }
+    t += Math.floor(sr * rnd(0.0008, 0.0016 + 0.006 * (1 - env)));
+  }
+  // Crossfade the ends so the loop has no click.
+  const xf = Math.floor(sr * 0.02);
+  for (let i = 0; i < xf; i++) { const k = i / xf; d[i] = d[i] * k + d[len - xf + i] * (1 - k); }
+  // Normalise by RMS, not by peak (one loud grain used to set the level of everything: the
+  // buffer's loudness varied ~6 dB from session to session), then soft-clip the outliers.
+  // CRUNCH_RMS is the old buffers' typical level, so the tyres, skids and pen keep their mix.
+  let ss = 0;
+  for (let i = 0; i < len; i++) ss += d[i] * d[i];
+  const g = CRUNCH_RMS / (Math.sqrt(ss / len) || 1);
+  for (let i = 0; i < len; i++) d[i] = 0.9 * Math.tanh((d[i] * g) / 0.9);
+  // Footsteps get their own copy with the spikes squashed (a dense, even crunch: a random slice of
+  // the bursty buffer varied 6-11 dB from step to step) and the offsets of the slices within
+  // ±1 dB of the median (b.step, b.step.slices).
+  const st = c.createBuffer(1, len, sr), q = st.getChannelData(0);
+  for (let i = 0; i < len; i++) q[i] = 0.1 * Math.tanh((d[i] / CRUNCH_RMS) * 0.4);
+  // Judge each slice as the step hears it: through its band-pass (~1.85 kHz, Q 0.6), weighted by
+  // the step's decaying envelope.
+  const bp = new Float32Array(len);
+  {
+    const w0 = (2 * Math.PI * 1850) / sr, al = Math.sin(w0) / (2 * 0.6), a0 = 1 + al;
+    const b0 = al / a0, b2 = -al / a0, a1 = (-2 * Math.cos(w0)) / a0, a2 = (1 - al) / a0;
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+    for (let i = 0; i < len; i++) { const y = b0 * q[i] + b2 * x2 - a1 * y1 - a2 * y2; x2 = x1; x1 = q[i]; y2 = y1; y1 = y; bp[i] = y; }
+  }
+  const W = Math.floor(sr * 0.14), cand = [];
+  for (let k = 0; k < 80; k++) {
+    const a = Math.floor(sr * 0.05 + (k / 80) * (len - sr * 0.35));
+    let e = 0;
+    for (let i = 0; i < W; i++) { const v = bp[a + i]; e += v * v * (1 - i / W); }
+    cand.push([a / sr, 10 * Math.log10(e / W + 1e-12)]);
+  }
+  const med = cand.map((x) => x[1]).sort((x, y) => x - y)[cand.length >> 1];
+  st.slices = cand.filter((x) => Math.abs(x[1] - med) <= 1).map((x) => x[0]);
+  b.step = st;
+  return b;
+}
+const CRUNCH_RMS = 0.045;
+
+// One strike of a small telephone bell: inharmonic partials, the high ones dying first.
+function makeBell(c, f0, dur) {
+  const sr = c.sampleRate, len = Math.floor(sr * dur);
+  const b = c.createBuffer(1, len, sr), d = b.getChannelData(0);
+  const P = [[1, 1, 0.16], [2.32, 0.55, 0.09], [3.86, 0.35, 0.05], [5.4, 0.2, 0.03], [7.1, 0.1, 0.02]];
+  for (let i = 0; i < len; i++) {
+    const t = i / sr;
+    let v = 0;
+    for (const [m, a, tau] of P) v += a * Math.sin(2 * Math.PI * f0 * m * t) * Math.exp(-t / tau);
+    d[i] = v * 0.4 * Math.min(1, t / 0.0008);
+  }
+  return b;
+}
+
+function makeImpulse(c, secs) {
+  const sr = c.sampleRate, len = Math.floor(sr * secs);
+  const b = c.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = b.getChannelData(ch);
+    let lp = 0;
+    for (let i = 0; i < len; i++) {
+      const t = i / len;
+      const k = 0.55 + 0.42 * t;                       // the tail gets darker
+      lp = lp * k + (Math.random() * 2 - 1) * (1 - k);
+      const early = i < sr * 0.08 && Math.random() < 0.004 ? (Math.random() * 2 - 1) * 0.5 : 0;
+      d[i] = (lp * 2.2 + early) * Math.pow(1 - t, 2.2) * Math.min(1, i / (sr * 0.012));
+    }
+  }
+  return b;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Engine: a Saab four (two firings per crank turn: f = rpm / 30), five fake gears.
+
+function buildEngine(s) {
+  const c = s.c;
+  const e = s.eng = { on: false, rpm: 0, gear: 1, shiftT: 0, last: 0, offT: 0, startT: -10, boost: 0, lastLoad: 0 };
+  // Exhaust tone: harmonics of the firing frequency, strongest low, a bump around the 4th-6th.
+  const real = new Float32Array(17), imag = new Float32Array(17);
+  const amps = [0, 1, 0.75, 0.42, 0.5, 0.38, 0.3, 0.16, 0.2, 0.1, 0.08, 0.06, 0.05, 0.035, 0.03, 0.02, 0.015];
+  for (let i = 1; i < 17; i++) { imag[i] = amps[i] * (i % 2 ? 1 : -1); real[i] = amps[i] * 0.3 * Math.sin(i * 1.7); }
+  e.wave = c.createPeriodicWave(real, imag);
+  e.o1 = c.createOscillator(); e.o1.setPeriodicWave(e.wave);
+  e.o2 = c.createOscillator(); e.o2.type = 'sine';                 // half order: the crank's lope
+  e.o3 = c.createOscillator(); e.o3.type = 'sawtooth'; e.o3.detune.value = 9; // a little valvetrain buzz
+  e.g1 = c.createGain(); e.g1.gain.value = 0.9;
+  e.g2 = c.createGain(); e.g2.gain.value = 0.2;    // (kept low: at idle it is a ~13 Hz sine)
+  e.g3 = c.createGain(); e.g3.gain.value = 0.04;    // (0.07 buzzed at full throttle)
+  e.drive = c.createGain(); e.drive.gain.value = 1;
+  e.shape = c.createWaveShaper();
+  const curve = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) { const x = (i / 1023) * 2 - 1; curve[i] = Math.tanh(x * 1.8) / Math.tanh(1.8); }
+  e.shape.curve = curve;
+  // Everything below ~35 Hz (the half order, and the firing fundamental at idle) is inaudible on
+  // most speakers but would eat the master compressor's headroom and throb: high-pass it. The
+  // ear still hears the idle pitch from the harmonics.
+  e.hp = c.createBiquadFilter(); e.hp.type = 'highpass'; e.hp.frequency.value = 35; e.hp.Q.value = 0.7;
+  e.body = c.createBiquadFilter(); e.body.type = 'peaking'; e.body.frequency.value = 105; e.body.Q.value = 1.1; e.body.gain.value = 5;
+  e.lp = c.createBiquadFilter(); e.lp.type = 'lowpass'; e.lp.Q.value = 0.8; e.lp.frequency.value = 500;
+  e.am = c.createGain(); e.am.gain.value = 1;
+  e.lfo = c.createOscillator(); e.lfo.frequency.value = 7;
+  e.lfoG = c.createGain(); e.lfoG.gain.value = 0.1;
+  e.lfo.connect(e.lfoG).connect(e.am.gain);
+  // Intake / exhaust rush.
+  e.ns = c.createBufferSource(); e.ns.buffer = s.noise; e.ns.loop = true;
+  e.nbp = c.createBiquadFilter(); e.nbp.type = 'bandpass'; e.nbp.Q.value = 1.1; e.nbp.frequency.value = 300;
+  e.ng = c.createGain(); e.ng.gain.value = 0.05;
+  // Turbo whistle (a Saab is a Saab).
+  e.tw = c.createOscillator(); e.tw.type = 'sine'; e.tw.frequency.value = 2400;
+  e.twg = c.createGain(); e.twg.gain.value = 0;
+  // Starter motor.
+  e.st = c.createOscillator(); e.st.type = 'sawtooth'; e.st.frequency.value = 170;
+  e.stam = c.createGain(); e.stam.gain.value = 0;
+  e.stlp = c.createBiquadFilter(); e.stlp.type = 'lowpass'; e.stlp.frequency.value = 1400;
+  e.out = c.createGain(); e.out.gain.value = 0;
+  e.o1.connect(e.g1).connect(e.drive);
+  e.o2.connect(e.g2).connect(e.drive);
+  e.o3.connect(e.g3).connect(e.drive);
+  e.drive.connect(e.shape).connect(e.hp).connect(e.body).connect(e.lp).connect(e.am).connect(e.out);
+  e.ns.connect(e.nbp).connect(e.ng).connect(e.am);
+  e.tw.connect(e.twg).connect(e.out);
+  e.st.connect(e.stlp).connect(e.stam).connect(s.sfx);
+  e.out.connect(s.sfx);
+  for (const o of [e.o1, e.o2, e.o3, e.lfo, e.ns, e.tw, e.st]) o.start();
+}
+
+// Rolling tyres (damp asphalt hiss or packed snow), skids (squeal or crunch).
+function buildTyres(s) {
+  const c = s.c;
+  const t = s.tyre = {};
+  t.road = c.createBufferSource(); t.road.buffer = s.noise; t.road.loop = true;
+  t.roadLp = c.createBiquadFilter(); t.roadLp.type = 'lowpass'; t.roadLp.frequency.value = 400; t.roadLp.Q.value = 0.5;
+  t.roadG = c.createGain(); t.roadG.gain.value = 0;
+  t.road.connect(t.roadLp).connect(t.roadG).connect(s.sfx);
+  t.snow = c.createBufferSource(); t.snow.buffer = s.crunch; t.snow.loop = true;
+  t.snowBp = c.createBiquadFilter(); t.snowBp.type = 'bandpass'; t.snowBp.frequency.value = 1100; t.snowBp.Q.value = 0.6;
+  t.snowG = c.createGain(); t.snowG.gain.value = 0;
+  t.snow.connect(t.snowBp).connect(t.snowG).connect(s.sfx);
+  // Skid on asphalt: a wobbling, narrow squeal (quiet: cold damp roads hiss more than they sing).
+  t.sq = c.createBufferSource(); t.sq.buffer = s.noise; t.sq.loop = true;
+  t.sqBp = c.createBiquadFilter(); t.sqBp.type = 'bandpass'; t.sqBp.frequency.value = 1150; t.sqBp.Q.value = 9;
+  t.sqTone = c.createOscillator(); t.sqTone.type = 'triangle'; t.sqTone.frequency.value = 960;
+  t.sqVib = c.createOscillator(); t.sqVib.frequency.value = 7.5;
+  t.sqVibG = c.createGain(); t.sqVibG.gain.value = 22;
+  t.sqVib.connect(t.sqVibG).connect(t.sqTone.frequency);
+  t.sqToneG = c.createGain(); t.sqToneG.gain.value = 0.12;
+  t.sqG = c.createGain(); t.sqG.gain.value = 0;
+  t.sq.connect(t.sqBp).connect(t.sqG);
+  t.sqTone.connect(t.sqToneG).connect(t.sqG);
+  t.sqG.connect(s.sfx);
+  // Skid on snow: the crunch loop, lower and louder.
+  t.sk = c.createBufferSource(); t.sk.buffer = s.crunch; t.sk.loop = true; t.sk.playbackRate.value = 0.8;
+  t.skBp = c.createBiquadFilter(); t.skBp.type = 'bandpass'; t.skBp.frequency.value = 800; t.skBp.Q.value = 0.5;
+  t.skG = c.createGain(); t.skG.gain.value = 0;
+  t.sk.connect(t.skBp).connect(t.skG).connect(s.sfx);
+  for (const o of [t.road, t.snow, t.sq, t.sqTone, t.sqVib, t.sk]) o.start(0, Math.random());
+}
+
+// Gear model: top speed fraction reached at ~6000 rpm in each gear.
+const GEAR_TOP = [0, 0.24, 0.43, 0.63, 0.83, 1.08];
+const TOP_SPEED = 38; // m/s (~137 km/h), the Saab's arcade top speed
+
+// ---------------------------------------------------------------------------------------------
+// Small building blocks for one-shot sounds.
+
+function env(g, t, peak, attack, decay) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+}
+function osc(type, freq, t, dur, peak, { to = null, attack = 0.005, dest = null, detune = 0, wave = null } = {}) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  if (wave) o.setPeriodicWave(wave); else o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  o.detune.value = detune;
+  env(g, t, peak, attack, dur);
+  o.connect(g).connect(dest || S.sfx);
+  o.start(t); o.stop(t + attack + dur + 0.05);
+  return g;
+}
+// soft: a gentler tail (linear attack, then a decay with time constant dur / 3) instead of the
+// exponential drop to silence, which keeps only the first ~30 ms of the slice.
+function burst(t, dur, peak, freq, type = 'bandpass', q = 1, { buf = null, rate = 1, attack = 0.002, dest = null, to = null, offset = null, soft = false } = {}) {
+  const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  s.buffer = buf || S.noise;
+  s.playbackRate.value = rate;
+  f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
+  if (to) f.frequency.exponentialRampToValueAtTime(to, t + dur);
+  if (soft) { g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + attack); g.gain.setTargetAtTime(0, t + attack, dur / 3); }
+  else env(g, t, peak, attack, dur);
+  s.connect(f).connect(g).connect(dest || S.sfx);
+  s.start(t, offset ?? Math.random() * (s.buffer.duration - dur - 0.1 > 0 ? s.buffer.duration - dur - 0.1 : 0));
+  s.stop(t + attack + dur + 0.05);
+  return g;
+}
+const now = (d = 0) => ctx.currentTime + d;
+const verbSend = (node, amount) => { const g = ctx.createGain(); g.gain.value = amount; node.connect(g).connect(S.sfxVerb); };
+
+// A soft piano note (two slightly detuned strings, a damped bright attack, a hammer knock).
+function piano(m, t, vel, dur, dest) {
+  const f = mtof(m);
+  const g = ctx.createGain(), lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.Q.value = 0.4;
+  const pitchN = clamp((m - 36) / 60, 0, 1);
+  lp.frequency.setValueAtTime(Math.min(10000, f * (3 + 10 * vel)), t);
+  lp.frequency.setTargetAtTime(f * 1.5 + 250, t + 0.01, 0.3 + (1 - pitchN) * 0.6);
+  const tau = 0.9 + (1 - pitchN) * 2.6;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vel * 0.3, t + 0.005);
+  g.gain.setTargetAtTime(vel * 0.13, t + 0.005, 0.08);
+  g.gain.setTargetAtTime(0, t + 0.25, tau);
+  g.gain.setTargetAtTime(0, t + dur, 0.28);
+  for (const det of [-3.5, 3.5]) {
+    const o = ctx.createOscillator();
+    o.setPeriodicWave(S.pianoWave);
+    o.frequency.value = f; o.detune.value = det;
+    o.connect(lp);
+    o.start(t); o.stop(t + dur + 1.6);
+  }
+  lp.connect(g).connect(dest);
+  // Hammer.
+  const hs = ctx.createBufferSource(), hf = ctx.createBiquadFilter(), hg = ctx.createGain();
+  hs.buffer = S.noise; hf.type = 'bandpass'; hf.frequency.value = Math.min(6000, f * 3); hf.Q.value = 0.7;
+  env(hg, t, vel * 0.025, 0.002, 0.035);
+  hs.connect(hf).connect(hg).connect(dest);
+  hs.start(t, Math.random()); hs.stop(t + 0.06);
+}
+
+// A soft string pad chord: detuned saws with a slow bow, vibrato, warm low-pass.
+function pad(notes, t, dur, vel, dest) {
+  const f = ctx.createBiquadFilter(), g = ctx.createGain(), hs = ctx.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = 1100; f.Q.value = 0.3;
+  hs.type = 'highshelf'; hs.frequency.value = 2500; hs.gain.value = -9;
+  g.gain.setValueAtTime(0, t);
+  g.gain.setTargetAtTime(vel, t, 0.7);
+  g.gain.setTargetAtTime(0, t + dur, 1.1);
+  const vib = ctx.createOscillator(), vibG = ctx.createGain();
+  vib.frequency.value = rnd(4.4, 5.2); vibG.gain.value = 5;
+  vib.connect(vibG);
+  vib.start(t); vib.stop(t + dur + 5);
+  for (const m of notes) for (const det of [-7, 6]) {
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth'; o.frequency.value = mtof(m); o.detune.value = det + rnd(-2, 2);
+    vibG.connect(o.detune);
+    o.connect(f);
+    o.start(t); o.stop(t + dur + 5);
+  }
+  f.connect(hs).connect(g).connect(dest);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Public API
+
+export const audio = {
+  muted: false,
+  musicOn: true,
+  gear: 1,          // the engine's current fake gear (read-only, for anyone curious)
+  get ready() { return !!ctx; },
+
+  init() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    S = setup(ctx);
+    if (this.musicOn) startMusic();
+  },
+
+  setMuted(m) {
+    this.muted = m;
+    if (S) S.master.gain.setTargetAtTime(m ? 0 : 0.75, ctx.currentTime, 0.05);
+  },
+  setMusic(on) {
+    this.musicOn = on;
+    if (!S) return;
+    S.musicBus.gain.setTargetAtTime(on ? MUSIC_LEVEL : 0, ctx.currentTime, 0.4);
+    if (on) startMusic();
+  },
+  duckMusic(amount) { if (S) S.duck.gain.setTargetAtTime(clamp(amount, 0, 1), ctx.currentTime, 0.3); },
+
+  // on: engine running; revs/load from the car (old car.js: revs = 0.85 * |v| / maxSpeed + 0.2 *
+  // throttle, load = throttle); optional speed (m/s, signed) gives proper gearing and tyre noise;
+  // optional surface 'snow' | 'asphalt' picks the rolling sound.
+  engine(on, revs = 0, load = 0, speed = null, surface = 'asphalt') {
+    if (!S) return;
+    const e = S.eng, ty = S.tyre, t = ctx.currentTime;
+    const dt = clamp(t - e.last, 0, 0.1);
+    e.last = t;
+    if (!on) {
+      if (e.on) {
+        e.on = false; e.offT = t;
+        e.out.gain.setTargetAtTime(0, t, 0.12);
+        e.o1.frequency.setTargetAtTime(14, t, 0.18); e.o2.frequency.setTargetAtTime(7, t, 0.18);
+        e.twg.gain.setTargetAtTime(0, t, 0.1);
+        ty.roadG.gain.setTargetAtTime(0, t, 0.15); ty.snowG.gain.setTargetAtTime(0, t, 0.15);
+        e.rpm = 0;
+      }
+      return;
+    }
+    if (!e.on) {
+      e.on = true;
+      e.gear = 1;
+      // A cold start after a while off: crank, catch, flare.
+      if (t - e.offT > 2.5) {
+        e.startT = t;
+        e.stam.gain.cancelScheduledValues(t);
+        e.stam.gain.setValueAtTime(0, t);
+        for (let k = 0; k < 6; k++) { e.stam.gain.setValueAtTime(0.05, t + k * 0.105); e.stam.gain.setValueAtTime(0.018, t + k * 0.105 + 0.06); }
+        e.stam.gain.setTargetAtTime(0, t + 0.62, 0.03);
+        e.rpm = 250;
+      } else e.rpm = Math.max(e.rpm, 800);
+    }
+    load = clamp(load || 0, 0, 1);
+    let sf = speed != null ? Math.abs(speed) / TOP_SPEED : clamp((revs - (load > 0.05 ? 0.2 : 0)) / 0.85, 0, 1.2);
+    // Gear changes with hysteresis; a short dip in load while the clutch is out.
+    e.shiftT -= dt;
+    if (e.shiftT <= 0) {
+      const up = load > 0.6 ? 0.9 : load > 0.15 ? 0.62 : 0.48;
+      if (e.gear < 5 && sf > GEAR_TOP[e.gear] * up) { e.gear++; e.shiftT = 0.24; }
+      else if (e.gear > 1 && sf < GEAR_TOP[e.gear - 1] * 0.4) { e.gear--; e.shiftT = 0.16; }
+    }
+    this.gear = e.gear;
+    let target = 800 + (sf / GEAR_TOP[e.gear]) * 5400;
+    if (e.gear === 1 && sf < 0.09) target = Math.max(target, 820 + load * 2900);
+    const sinceStart = t - e.startT;
+    if (sinceStart < 0.65) target = 250;
+    else if (sinceStart < 1.4) target = Math.max(target, 1500 - (sinceStart - 0.65) * 900);
+    target = clamp(target, 0, 6400);
+    const k = 1 - Math.exp(-dt / (e.shiftT > 0.1 ? 0.06 : 0.11));
+    e.rpm += (target - e.rpm) * k;
+    const clutch = e.shiftT > 0.08 ? 0.25 : 1;
+    const ld = load * clutch;
+    const f = Math.max(6, e.rpm / 30);
+    const rn = clamp((e.rpm - 800) / 5400, 0, 1);
+    e.o1.frequency.setTargetAtTime(f, t, 0.025);
+    e.o2.frequency.setTargetAtTime(f / 2, t, 0.025);
+    e.o3.frequency.setTargetAtTime(f * 2, t, 0.025);
+    e.lfo.frequency.setTargetAtTime(Math.max(2, f / 4), t, 0.05);
+    e.lfoG.gain.setTargetAtTime(0.13 - rn * 0.09, t, 0.1);
+    // Full throttle: more growl, not more fizz (the load term used to open the low-pass to ~2.8 kHz
+    // and drive the shaper hard: a buzzy ~1.5 kHz centroid ~8-11 dB over the music for a whole chase).
+    e.drive.gain.setTargetAtTime(0.8 + ld * 1.0, t, 0.05);
+    e.lp.frequency.setTargetAtTime(240 + f * 4.5 + ld * 800, t, 0.04);
+    e.nbp.frequency.setTargetAtTime(240 + f * 3.2, t, 0.05);
+    e.ng.gain.setTargetAtTime(0.03 + ld * 0.16 + rn * 0.05, t, 0.05);
+    const vol = sinceStart < 0.65 ? 0.025 : 0.022 + ld * 0.03 + rn * 0.022;
+    e.out.gain.setTargetAtTime(vol, t, 0.06);
+    // Turbo: spools with load at revs, blows off when the throttle snaps shut.
+    e.boost += ((ld > 0.5 ? rn : 0) - e.boost) * (1 - Math.exp(-dt / 0.6));
+    e.tw.frequency.setTargetAtTime(1800 + e.boost * 3200, t, 0.08);
+    e.twg.gain.setTargetAtTime(e.boost * 0.006, t, 0.08);
+    if (e.lastLoad > 0.7 && load < 0.15 && e.boost > 0.35) {
+      burst(t, 0.28, 0.035 * e.boost, 2600, 'bandpass', 1.2, { to: 1400 });
+      e.boost *= 0.3;
+    }
+    e.lastLoad = load;
+    // Tyres rolling.
+    const v = speed != null ? Math.abs(speed) : sf * TOP_SPEED;
+    const roll = clamp(v / 30, 0, 1.3);
+    const snow = surface === 'snow';
+    ty.roadLp.frequency.setTargetAtTime(220 + v * 28, t, 0.1);
+    ty.roadG.gain.setTargetAtTime(snow ? roll * 0.012 : Math.pow(roll, 1.4) * 0.05, t, 0.1);
+    ty.snow.playbackRate.setTargetAtTime(0.5 + roll * 0.7, t, 0.1);
+    ty.snowG.gain.setTargetAtTime(snow ? Math.min(1, roll * 1.6) * 0.06 : 0, t, 0.1);
+  },
+  // amount 0..1; surface 'snow' crunches instead of squealing.
+  skid(amount, surface = 'asphalt') {
+    if (!S) return;
+    const ty = S.tyre, t = ctx.currentTime;
+    const a = clamp(amount || 0, 0, 1);
+    const snow = surface === 'snow';
+    ty.sqG.gain.setTargetAtTime(snow ? 0 : a * 0.075, t, 0.05);
+    ty.sqBp.frequency.setTargetAtTime(1050 + a * 250, t, 0.1);
+    ty.skG.gain.setTargetAtTime(snow ? a * 0.2 : 0, t, 0.05);
+    ty.sk.playbackRate.setTargetAtTime(0.7 + a * 0.5, t, 0.1);
+  },
+
+  // Generic helpers (old code calls these directly).
+  tone(freq, dur, type = 'sine', vol = 0.12, slideTo = null, delay = 0) {
+    if (!S) return;
+    // The old cartoon square waves are softened into triangles.
+    osc(type === 'square' ? 'triangle' : type, freq, now(delay), dur, vol * (type === 'square' || type === 'sawtooth' ? 0.6 : 1), { to: slideTo });
+  },
+  noise(dur, vol = 0.2, freq = 1000, type = 'lowpass', delay = 0, q = 1) {
+    if (!S) return;
+    burst(now(delay), dur, vol, freq, type, q);
+  },
+
+  // A pantburk: a little aluminium clink.
+  coin() {
+    if (!S) return;
+    const t = now();
+    osc('sine', rnd(2250, 2450), t, 0.09, 0.13);
+    osc('sine', rnd(3600, 3900), t + 0.003, 0.06, 0.08);
+    osc('sine', rnd(5200, 5600), t + 0.002, 0.04, 0.045);
+    burst(t, 0.015, 0.16, 7000, 'highpass', 0.7);
+    osc('sine', 1568, t + 0.06, 0.25, 0.045);          // a quiet "kr" confirmation
+  },
+  // A small hop: a coat rustling and a boot pushing off the snow.
+  jump() {
+    if (!S) return;
+    const t = now();
+    burst(t, 0.13, 0.5, 1300, 'bandpass', 0.7);
+    burst(t + 0.02, 0.07, 0.4, 420, 'lowpass', 0.7);
+    burst(t, 0.09, 0.5, 1600, 'bandpass', 0.6, { buf: S.crunch, rate: 0.9, attack: 0.006 });
+  },
+  // A boot against a tyre: rubbery thunk.
+  kick() {
+    if (!S) return;
+    const t = now();
+    osc('sine', 105, t, 0.16, 0.32, { to: 58 });
+    burst(t, 0.09, 0.22, 420, 'lowpass', 0.8);
+    burst(t, 0.03, 0.08, 1800, 'bandpass', 1.5);
+  },
+  // Something breaks: a crack, a clatter, maybe glass.
+  smash() {
+    if (!S) return;
+    const t = now();
+    burst(t, 0.18, 0.22, 2200, 'highpass', 0.7);
+    burst(t, 0.28, 0.2, 650, 'bandpass', 1.1);
+    osc('sine', 120, t, 0.12, 0.14, { to: 60 });
+    for (let k = 0; k < 6; k++) osc('sine', rnd(2800, 6200), t + rnd(0.02, 0.35), rnd(0.04, 0.12), rnd(0.008, 0.025));
+  },
+  // Car crash, i 0..1: thump, crumple, ringing metal, glass at the heavy end.
+  crash(i = 1) {
+    if (!S) return;
+    i = clamp(i, 0, 1);
+    const t = now();
+    osc('sine', 72, t, 0.32, 0.45 * i, { to: 38 });
+    burst(t, 0.42, 0.42 * i, 900, 'lowpass', 0.8);
+    burst(t + 0.01, 0.25, 0.16 * i, 2400, 'bandpass', 1.4);
+    for (const f of [1180, 2630, 3950]) burst(t + rnd(0, 0.03), rnd(0.25, 0.45), 0.05 * i, f * rnd(0.9, 1.1), 'bandpass', 14);
+    if (i > 0.55) for (let k = 0; k < 8; k++) osc('sine', rnd(3000, 7500), t + rnd(0.05, 0.5), rnd(0.03, 0.1), rnd(0.006, 0.02) * i);
+  },
+  thud() { if (!S) return; const t = now(); osc('sine', 115, t, 0.13, 0.22, { to: 62 }); burst(t, 0.08, 0.12, 320, 'lowpass', 0.7); },
+  boing() {
+    if (!S) return;
+    const t = now();
+    osc('sine', 150, t, 0.32, 0.17, { to: 340 });
+    osc('triangle', 300, t + 0.02, 0.22, 0.045, { to: 520 });
+    burst(t, 0.05, 0.09, 900, 'bandpass', 2);
+  },
+  ouch() {
+    if (!S) return;
+    const t = now();
+    const g = ctx.createGain(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), o = ctx.createOscillator();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(165, t); o.frequency.exponentialRampToValueAtTime(115, t + 0.22);
+    f1.type = 'bandpass'; f1.frequency.value = 650; f1.Q.value = 4;
+    f2.type = 'bandpass'; f2.frequency.value = 1150; f2.Q.value = 5;
+    env(g, t, 0.34, 0.02, 0.2);
+    o.connect(f1).connect(g); o.connect(f2).connect(g); g.connect(S.sfx);
+    o.start(t); o.stop(t + 0.3);
+  },
+  // Slush.
+  splash() { if (!S) return; const t = now(); burst(t, 0.45, 0.3, 1100, 'bandpass', 0.5); burst(t, 0.3, 0.17, 1, 'bandpass', 0.5, { buf: S.crunch, rate: 0.7 }); },
+  door() {
+    if (!S) return;
+    const t = now();
+    osc('sine', 88, t, 0.18, 0.42, { to: 52 });
+    burst(t, 0.1, 0.3, 600, 'lowpass', 0.7);
+    burst(t + 0.012, 0.025, 0.2, 3200, 'bandpass', 3);
+    burst(t + 0.03, 0.06, 0.06, 1400, 'bandpass', 4);
+  },
+  pickup() {
+    if (!S) return;
+    const t = now();
+    for (const [m, d] of [[76, 0], [81, 0.09]]) { osc('sine', mtof(m), t + d, 0.45, 0.05); osc('sine', mtof(m) * 4, t + d, 0.12, 0.012); }
+  },
+  squash() { if (!S) return; const t = now(); burst(t, 0.12, 0.55, 900, 'bandpass', 2); osc('sine', 300, t, 0.08, 0.16, { to: 120 }); },
+  // Dialogue voice: one soft, wordless murmur (hud.runDialog plays one per word, at most ~4 a
+  // second): a breathy voiced hum through a gentle vowel formant that glides, under the words
+  // rather than a beep per letter. pitch: the character's voice (old CHARS voice values, ~150-400).
+  talk(pitch = 300) {
+    if (!S) return;
+    const t = now(), dur = rnd(0.12, 0.17);
+    const f0 = clamp(pitch * 0.5, 85, 260) * rnd(0.92, 1.08);
+    const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f0 * 1.04, t); o.frequency.linearRampToValueAtTime(f0 * rnd(0.86, 0.96), t + dur);
+    lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = 0.3;
+    // Two soft formants gliding between vowels.
+    const fa = rnd(420, 760), fb = rnd(1000, 1900);
+    for (const [f, k, a2] of [[fa, rnd(0.8, 1.2), 1], [fb, rnd(0.85, 1.15), 0.45]]) {
+      const bp = ctx.createBiquadFilter(), bg = ctx.createGain();
+      bp.type = 'bandpass'; bp.Q.value = 2;
+      bp.frequency.setValueAtTime(f, t); bp.frequency.linearRampToValueAtTime(f * k, t + dur);
+      bg.gain.value = a2;
+      o.connect(bp).connect(bg).connect(lp);
+    }
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.085, t + 0.035);
+    g.gain.setValueAtTime(0.085, t + dur * 0.55);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    lp.connect(g).connect(S.sfx);
+    o.start(t); o.stop(t + dur + 0.03);
+    // Breath.
+    burst(t, dur * 0.9, 0.028, rnd(1300, 2000), 'bandpass', 0.9, { attack: 0.03 });
+  },
+  checkpoint() {
+    if (!S) return;
+    const t = now();
+    for (const [m, d] of [[79, 0], [86, 0.11]]) { const g = osc('sine', mtof(m), t + d, 0.6, 0.045); verbSend(g, 0.4); osc('sine', mtof(m) * 2.76, t + d, 0.15, 0.006); }
+  },
+  // Clock tick / countdown: a dry wood-block click.
+  tick() { if (!S) return; const t = now(); burst(t, 0.025, 1.1, 2600, 'bandpass', 6); osc('sine', 1900, t, 0.03, 0.26, { attack: 0.002 }); osc('sine', 1900 * 2.7, t, 0.012, 0.05, { attack: 0.001 }); },
+  // The Saab's dual-tone horn while held.
+  horn(on) {
+    if (!S) return;
+    if (on && !S.hornNodes) S.hornNodes = hornVoice(ctx.currentTime, 0.1);
+    else if (!on && S.hornNodes) {
+      const h = S.hornNodes; S.hornNodes = null;
+      const t = ctx.currentTime;
+      h.g.gain.cancelScheduledValues(t);
+      h.g.gain.setTargetAtTime(0, t, 0.025);
+      for (const o of h.oscs) o.stop(t + 0.2);
+    }
+  },
+  // A short honk from another car (vol 0..1, e.g. by distance).
+  honk(vol = 1, dur = 0.3) {
+    if (!S) return;
+    const t = ctx.currentTime, h = hornVoice(t, 0.07 * clamp(vol, 0, 1));
+    h.g.gain.setTargetAtTime(0, t + dur, 0.025);
+    for (const o of h.oscs) o.stop(t + dur + 0.2);
+  },
+  // Short piano motifs (they ring in the same room as the score).
+  jingle(kind) {
+    if (!S) return;
+    const seq = {
+      start: [[57, 0, 0.55], [64, 0.16, 0.5], [69, 0.32, 0.5], [72, 0.5, 0.55]],
+      complete: [[48, 0, 0.5], [55, 0.12, 0.45], [64, 0.24, 0.5], [71, 0.4, 0.45], [72, 0.75, 0.6], [76, 0.75, 0.4]],
+      fail: [[64, 0, 0.5], [60, 0.28, 0.45], [57, 0.56, 0.5], [45, 0.56, 0.4]],
+      record: [[81, 0, 0.35], [88, 0.09, 0.3], [84, 0.18, 0.3], [91, 0.3, 0.25]],
+    }[kind];
+    if (!seq) return;
+    const t = now(0.01);
+    const out = ctx.createGain(); out.gain.value = 0.32; out.connect(S.sfx); verbSend(out, 0.6);
+    for (const [m, d, v] of seq) piano(m, t + d, v, 2.2, out);
+  },
+  // KAOS: a church bell tolling twice, far off. (alarm() is the new name.)
+  shameBell() {
+    if (!S) return;
+    const t = now();
+    const out = ctx.createGain(); out.gain.value = 0.4; out.connect(S.sfx); verbSend(out, 0.8);
+    for (const d of [0, 1.15]) {
+      for (const [m, a, dur] of [[0.5, 0.16, 4], [1, 0.2, 2.6], [1.19, 0.1, 2.0], [1.5, 0.06, 1.6], [2, 0.08, 1.8], [2.52, 0.04, 1.1], [3.01, 0.03, 0.9]]) {
+        osc('sine', 196 * m * rnd(0.998, 1.002), t + d, dur, a, { attack: 0.004, dest: out });
+      }
+      burst(t + d, 0.05, 0.05, 2500, 'bandpass', 2, { dest: out });
+    }
+  },
+  alarm() { this.shameBell(); },
+
+  // An old Swedish landline ringing (one long burr, a pause, again) while on.
+  ring(on) {
+    if (!S) return;
+    if (on) {
+      if (S.ringer) return;
+      const bus = ringBus();
+      const r = S.ringer = { bus, srcs: [], next: ctx.currentTime + 0.05, n: 0 };
+      scheduleRing(r, ctx.currentTime + 0.6);
+      r.timer = setInterval(() => scheduleRing(r, ctx.currentTime + 0.6), 150);
+    } else if (S.ringer) {
+      const r = S.ringer; S.ringer = null;
+      clearInterval(r.timer);
+      const t = ctx.currentTime;
+      r.bus.gain.setTargetAtTime(0, t, 0.03);
+      for (const s of r.srcs) { try { s.stop(t + 0.15); } catch (e) { /* already stopped */ } }
+    }
+  },
+  // A carpenter's pencil scratching on paper while on.
+  pen(on) {
+    if (!S) return;
+    if (on) {
+      if (S.penner) return;
+      const bus = ctx.createGain(); bus.gain.value = 1; bus.connect(S.sfx);
+      const p = S.penner = { bus, srcs: [], next: ctx.currentTime + 0.02 };
+      schedulePen(p, ctx.currentTime + 0.4);
+      p.timer = setInterval(() => schedulePen(p, ctx.currentTime + 0.4), 100);
+    } else if (S.penner) {
+      const p = S.penner; S.penner = null;
+      clearInterval(p.timer);
+      const t = ctx.currentTime;
+      p.bus.gain.setTargetAtTime(0, t, 0.02);
+      for (const s of p.srcs) { try { s.stop(t + 0.1); } catch (e) { /* already stopped */ } }
+    }
+  },
+  // The ANMÄLD stamp hitting the notebook on a knee: thump, paper slap, a knock.
+  stamp() {
+    if (!S) return;
+    const t = now();
+    osc('sine', 170, t, 0.1, 0.38, { to: 68 });
+    burst(t, 0.055, 0.32, 2200, 'lowpass', 0.7);
+    burst(t + 0.004, 0.09, 0.2, 480, 'bandpass', 2);
+    burst(t + 0.002, 0.02, 0.1, 5200, 'highpass', 0.7);
+  },
+  // Ding-dong.
+  doorbell() {
+    if (!S) return;
+    const t = now();
+    const out = ctx.createGain(); out.gain.value = 0.7; out.connect(S.sfx); verbSend(out, 0.5);
+    for (const [m, d] of [[76, 0], [72, 0.6]]) {
+      const f = mtof(m);
+      osc('sine', f, t + d, 1.7, 0.16, { attack: 0.003, dest: out });
+      osc('sine', f * 2.76, t + d, 0.5, 0.035, { attack: 0.002, dest: out });
+      osc('sine', f * 5.4, t + d, 0.18, 0.012, { attack: 0.001, dest: out });
+      burst(t + d, 0.02, 0.05, 3000, 'bandpass', 2, { dest: out });
+    }
+  },
+  // Mee-ow: a voiced buzz through vowel formants sliding i -> a -> u, with a pitch arch.
+  catMeow() {
+    if (!S) return;
+    const t = now(), dur = rnd(0.5, 0.8);
+    const f0 = rnd(480, 600), fPeak = f0 * rnd(1.3, 1.55), fEnd = f0 * rnd(0.8, 0.95);
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.linearRampToValueAtTime(fPeak, t + dur * 0.35);
+    o.frequency.linearRampToValueAtTime(fEnd, t + dur);
+    const vib = ctx.createOscillator(), vg = ctx.createGain(); vib.frequency.value = 6.5; vg.gain.value = 14; vib.connect(vg).connect(o.detune);
+    const g = ctx.createGain(), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200;
+    const F = [[[700, 0], [1250, 0.35], [650, 1]], [[2300, 0], [1900, 0.4], [1100, 1]]];
+    for (const [k, path] of F.entries()) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = k ? 7 : 5;
+      path.forEach(([fr, at], i) => (i ? bp.frequency.linearRampToValueAtTime(fr, t + at * dur) : bp.frequency.setValueAtTime(fr, t)));
+      const bg = ctx.createGain(); bg.gain.value = k ? 0.6 : 1;
+      o.connect(bp).connect(bg).connect(lp);
+    }
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.15, t + 0.05);
+    g.gain.setValueAtTime(0.15, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    lp.connect(g).connect(S.sfx);
+    o.start(t); o.stop(t + dur + 0.05); vib.start(t); vib.stop(t + dur + 0.05);
+    burst(t, dur * 0.8, 0.02, 3000, 'bandpass', 1.5);
+  },
+  // One footstep: 'snow' (default) crunches, 'asphalt'/'paving' scrape, 'gravel', 'wood', 'ice'.
+  step(surface = 'snow') {
+    if (!S) return;
+    const t = now();
+    if (surface === 'snow' || surface === 'grass' || surface === 'lawn') {
+      // An even slice of the step crunch (see makeCrunch), loud enough to sit over the music.
+      const sb = S.crunch.step || S.crunch, sl = sb.slices;
+      burst(t, rnd(0.13, 0.16), 1.0, rnd(1600, 2100), 'bandpass', 0.6, { buf: sb, rate: rnd(0.9, 1.06), attack: 0.014, soft: true, offset: sl?.length ? sl[(Math.random() * sl.length) | 0] : null });
+      burst(t, 0.06, 0.06, 380, 'lowpass', 0.7);
+      osc('sine', 85, t, 0.05, 0.05, { to: 60 });
+    } else if (surface === 'gravel') {
+      burst(t, 0.14, 0.2, 1100, 'bandpass', 0.6, { buf: S.crunch, rate: 0.55, attack: 0.008 });
+      burst(t, 0.05, 0.08, 500, 'lowpass', 0.7);
+    } else if (surface === 'wood') {
+      osc('sine', 190, t, 0.07, 0.1, { to: 150 });
+      burst(t, 0.05, 0.1, 750, 'bandpass', 2);
+    } else if (surface === 'ice') {
+      burst(t, 0.04, 0.08, 3500, 'bandpass', 2);
+      osc('sine', 1300, t, 0.05, 0.01, { to: 1700 });
+    } else {
+      burst(t, 0.035, 0.12, 800, 'lowpass', 0.8);             // heel
+      osc('sine', 125, t, 0.035, 0.05, { to: 90 });
+      burst(t + 0.03, rnd(0.04, 0.07), 0.05, rnd(2000, 2800), 'bandpass', 1.1); // sole scrape
+      burst(t + 0.01, 0.05, 0.03, 4000, 'bandpass', 1, { buf: S.crunch, rate: 1.4 }); // grit
+    }
+  },
+
+  // Test hook: render `fn(audio, offlineCtx)` into an OfflineAudioContext of `secs` seconds and
+  // return the AudioBuffer (the live graph is untouched). `fn` may await offlineCtx.suspend(t).
+  async _offline(secs, fn, sr = 44100) {
+    const saved = [ctx, S];
+    const oc = new OfflineAudioContext(2, Math.ceil(secs * sr), sr);
+    ctx = oc; S = setup(oc);
+    let buf;
+    try {
+      const run = fn(this, oc, { scheduleMusic: (t0, t1) => scheduleMusicWindow(t0, t1), scheduleRing: (t1) => { const r = { bus: ringBus(), srcs: [], next: 0.05, n: 0 }; scheduleRing(r, t1); }, schedulePen: (t1) => { const bus = oc.createGain(); bus.connect(S.sfx); schedulePen({ bus, srcs: [], next: 0.02 }, t1); } });
+      const rendering = oc.startRendering();
+      await run;
+      buf = await rendering;
+    } finally { [ctx, S] = saved; }
+    return buf;
+  },
+};
+
+function hornVoice(t, vol) {
+  const g = ctx.createGain(), sh = ctx.createWaveShaper(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
+  const curve = new Float32Array(512);
+  for (let i = 0; i < 512; i++) { const x = (i / 511) * 2 - 1; curve[i] = Math.tanh(x * 3); }
+  sh.curve = curve;
+  bp.type = 'bandpass'; bp.frequency.value = 2100; bp.Q.value = 0.8;
+  lp.type = 'lowpass'; lp.frequency.value = 4800;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.02);
+  const oscs = [];
+  for (const f of [405, 498]) {
+    const o = ctx.createOscillator(), og = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f * 0.96, t);
+    o.frequency.exponentialRampToValueAtTime(f, t + 0.035);
+    og.gain.value = 0.5;
+    o.connect(og).connect(sh);
+    o.start(t);
+    oscs.push(o);
+  }
+  sh.connect(bp).connect(lp).connect(g).connect(S.sfx);
+  const send = ctx.createGain(); send.gain.value = 0.15; g.connect(send).connect(S.sfxVerb);
+  return { g, oscs };
+}
+
+// Ring cadence of a Swedish landline (Televerket / Ericsson Dialog): one long burr per cycle, the
+// clapper hitting the two bells alternately ~22 times a second. The real pause is ~5 s; it is
+// shortened for gameplay. Retune here.
+const RING_CLAPPER_HZ = 22, RING_ON = 1.0, RING_OFF = 3.0;
+// The bell's bus: a gentle 4.5 kHz roll-off takes the glassy top off (it loops until answered, so it
+// must not grate), a little room.
+function ringBus() {
+  const lp = ctx.createBiquadFilter(), bus = ctx.createGain();
+  lp.type = 'lowpass'; lp.frequency.value = 4500; lp.Q.value = 0.5;
+  bus.gain.value = 1;
+  lp.connect(bus).connect(S.sfx);
+  verbSend(bus, 0.25);
+  bus.input = lp;
+  return bus;
+}
+function scheduleRing(r, until) {
+  const c = ctx;
+  const hits = Math.round(RING_ON * RING_CLAPPER_HZ);
+  while (r.next < until) {
+    const t0 = r.next;
+    for (let k = 0; k < hits; k++) {
+      const t = t0 + k / RING_CLAPPER_HZ + rnd(-0.002, 0.002);
+      const s = c.createBufferSource(), g = c.createGain();
+      s.buffer = k % 2 ? S.bellB : S.bellA;
+      // The clapper takes a few strikes to get going, and the last ones are a little softer.
+      const swell = Math.min(1, 0.6 + k * 0.13) * (k > hits - 3 ? 0.85 : 1);
+      g.gain.value = swell * rnd(0.85, 1) * 0.11;
+      s.connect(g).connect(r.bus.input || r.bus);
+      s.start(t);
+      r.srcs.push(s);
+    }
+    r.n++;
+    r.next = t0 + RING_ON + RING_OFF;
+  }
+  if (r.srcs.length > 80) r.srcs.splice(0, r.srcs.length - 80);
+}
+
+// Pencil strokes: grainy hiss bursts (crunch grains pitched up + filtered noise) with gaps.
+function schedulePen(p, until) {
+  const c = ctx;
+  while (p.next < until) {
+    const t = p.next, dur = rnd(0.06, 0.22), vol = rnd(0.07, 0.15);
+    const fc = rnd(2600, 4800);
+    for (const [buf, rate, v, q] of [[S.crunch, rnd(1.8, 2.6), vol, 0.9], [S.noise, 1, vol * 0.35, 1.4]]) {
+      const s = c.createBufferSource(), hp = c.createBiquadFilter(), bp = c.createBiquadFilter(), g = c.createGain();
+      s.buffer = buf; s.playbackRate.value = rate;
+      hp.type = 'highpass'; hp.frequency.value = 1500;
+      bp.type = 'bandpass'; bp.frequency.setValueAtTime(fc, t); bp.frequency.linearRampToValueAtTime(fc * rnd(0.85, 1.2), t + dur); bp.Q.value = q;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(v, t + 0.015);
+      g.gain.setValueAtTime(v * rnd(0.6, 1), t + dur * 0.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(hp).connect(bp).connect(g).connect(p.bus);
+      s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.02);
+      p.srcs.push(s);
+    }
+    p.next = t + dur + rnd(0.025, 0.09);
+  }
+  if (p.srcs.length > 60) p.srcs.splice(0, p.srcs.length - 60);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Music: sparse, melancholic piano over a soft string pad, A minor, ~64 bpm. Generative: each
+// 4-bar phrase picks a progression, a texture and (sometimes) a melody that develops a motif.
+
+// name: [bass, chord tones, colour tone]. The colour tone is the one extra note the right hand may
+// add: the 9th where it is diatonic and soft (Am add9 = B, F add9 = G, C add9 = D, G add9 = A,
+// Dm add9 = E, Fmaj9 = G), the 7th on Em (D), and only the plain fifth on the E major dominant (its
+// 9th would be F#, and the old fixed "+14" gave A#: a tritone over the bass).
+const CHORDS = {
+  Am: [45, [57, 60, 64], 71], F: [41, [53, 57, 60], 67], C: [48, [55, 60, 64], 74], G: [43, [55, 59, 62], 69],
+  Dm: [50, [53, 57, 62], 76], Em: [40, [55, 59, 64], 74], E: [40, [56, 59, 64], 71], Fmaj7: [41, [57, 60, 64], 67],
+};
+const PROGS = [
+  ['Am', 'F', 'C', 'G'], ['Am', 'Em', 'F', 'C'], ['F', 'C', 'Dm', 'Am'], ['Am', 'Dm', 'G', 'C'],
+  ['Dm', 'Am', 'F', 'E'], ['F', 'G', 'Em', 'Am'], ['Am', 'G', 'Fmaj7', 'E'], ['C', 'G', 'Am', 'Fmaj7'],
+];
+const SCALE = [57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79];
+const SCALE_HARM = SCALE.map((m) => (m % 12 === 7 ? m + 1 : m)); // G -> G# (over E major)
+const RHYTHMS = [
+  [[0, 1.5], [1.5, 0.5], [2, 2]], [[0, 3], [3, 1]], [[1, 1], [2, 1], [3, 1]], [[0, 2], [2, 2]],
+  [[0.5, 1.5], [2, 1], [3, 1]], [[0, 4]], [[2, 1], [3, 1]],
+];
+const ARPS = [[2, 3, 5], [1, 3, 4, 6], [2, 4, 6], [3, 5, 7], [2, 5], [1, 2, 3, 5, 6]];
+
+function startMusic() {
+  if (!S) return;
+  const M = S.music ||= { next: 0, bar: 0, phrase: null, lastProg: -1, motif: null, mel: 64, count: 0 };
+  if (M.timer) return;
+  M.next = Math.max(M.next, ctx.currentTime + 0.4);
+  const tick = () => {
+    if (!S || S.music !== M) return;
+    if (!audio.musicOn) { M.next = Math.max(M.next, ctx.currentTime + 0.4); M.phrase = null; return; }
+    scheduleMusicWindow(M.next, ctx.currentTime + 1.4);
+  };
+  tick();
+  M.timer = setInterval(tick, 250);
+}
+// Schedules whole bars starting at or after t0 until `until` (also used offline by tests).
+function scheduleMusicWindow(t0, until) {
+  const M = S.music ||= { next: 0, bar: 0, phrase: null, lastProg: -1, motif: null, mel: 64, count: 0 };
+  if (M.next < t0) M.next = t0;
+  const beat = 60 / 64, barLen = beat * 4;
+  while (M.next < until) {
+    if (!M.phrase || M.bar >= 4) newPhrase(M);
+    playBar(M, M.next, beat);
+    M.bar++;
+    M.next += barLen;
+  }
+}
+function newPhrase(M) {
+  let pi;
+  do pi = Math.floor(Math.random() * PROGS.length); while (pi === M.lastProg);
+  M.lastProg = pi;
+  M.count++;
+  const textures = M.count === 1 ? ['sparse'] : M.count % 5 === 0 ? ['breath'] : ['arp', 'arp', 'melody', 'melody', 'sparse'];
+  const texture = textures[Math.floor(Math.random() * textures.length)];
+  // A motif is kept for a while and varied: same rhythm, notes shifted by a step or two.
+  if (!M.motif || Math.random() < 0.3) M.motif = { rhythm: RHYTHMS[Math.floor(Math.random() * RHYTHMS.length)], shape: [0, 1, 2, 3].map(() => Math.floor(rnd(-2, 3))) };
+  M.phrase = { prog: PROGS[pi], texture, melodyBars: texture === 'melody' ? [0, 1, 2, 3].filter(() => Math.random() < 0.7) : [], vel: rnd(0.35, 0.55) };
+  M.bar = 0;
+}
+function playBar(M, t, beat) {
+  const P = M.phrase, name = P.prog[M.bar], [bass, tones, colour] = CHORDS[name];
+  const scale = name === 'E' ? SCALE_HARM : SCALE;
+  const bus = S.musicBus;
+  const h = () => rnd(-0.012, 0.012);
+  const v = P.vel;
+  // Strings: always, quieter in sparse phrases, alone in "breath" phrases.
+  pad([bass + 12, ...tones], t, beat * 4.2, P.texture === 'breath' ? 0.026 : P.texture === 'sparse' ? 0.016 : 0.02, bus);
+  if (P.texture === 'breath') { if (M.bar === 0) piano(bass, t + 0.05, v * 0.8, beat * 6, bus); return; }
+  // Left hand: the root, low, sometimes the fifth on beat 3.
+  piano(bass, t + h(), v * rnd(0.85, 1.05), beat * 4.5, bus);
+  if (Math.random() < 0.45) piano(bass + 7, t + beat * 2 + h(), v * 0.6, beat * 2.5, bus);
+  const rh = [...tones.map((m) => m + 12), colour];
+  if (P.texture === 'arp' || (P.texture === 'melody' && !P.melodyBars.includes(M.bar))) {
+    const pat = ARPS[Math.floor(Math.random() * ARPS.length)];
+    pat.forEach((slot, i) => piano(rh[i % rh.length] - (Math.random() < 0.3 ? 12 : 0), t + slot * beat / 2 + h(), v * rnd(0.55, 0.8), beat * 3, bus));
+  } else if (P.texture === 'sparse') {
+    if (Math.random() < 0.6) piano(rh[Math.floor(Math.random() * rh.length)], t + beat * (Math.random() < 0.5 ? 1 : 2) + h(), v * 0.65, beat * 3, bus);
+  }
+  if (P.texture === 'melody' && P.melodyBars.includes(M.bar)) {
+    const R = M.motif.rhythm;
+    R.forEach(([pos, len], i) => {
+      // The motif moves in scale steps; strong beats land on the nearest chord tone.
+      // (M.mel may be a G# left over from an E bar: look it up in either scale.)
+      let idx = SCALE.indexOf(M.mel);
+      if (idx < 0) idx = SCALE_HARM.indexOf(M.mel);
+      if (idx < 0) idx = 4;
+      idx = clamp(idx + M.motif.shape[i % 4], 3, SCALE.length - 2);
+      let note = scale[idx];
+      if (pos === 0 || pos === 2) {
+        const pool = scale.filter((m) => m >= 62 && tones.some((c) => (((m - c) % 12) + 12) % 12 === 0));
+        let bestD = 99;
+        for (const m of pool) { const d = Math.abs(m - scale[idx]); if (d < bestD) { bestD = d; note = m; } }
+      }
+      M.mel = note;
+      piano(note, t + pos * beat + h(), clamp(v * rnd(0.8, 1.0) + 0.06, 0, 0.8), Math.max(len * beat * 1.3, 0.8), bus);
+    });
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "saab-and-run",
+  "version": "1.0.0",
+  "description": "Saab & Run – En man som heter Ove: en omvänd Hit & Run i three.js där Ove patrullerar radhusområdet och anmäler felparkeringar",
+  "scripts": {
+    "start": "python3 -m http.server 8790 --bind 127.0.0.1",
+    "test": "node tools/shot.mjs story"
+  },
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
+  },
+  "private": true
+}

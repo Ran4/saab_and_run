@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>Saab & Run - folk</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <style>
+    html, body { margin: 0; overflow: hidden; background: #6a7078; }
+    #lbl { position: fixed; left: 12px; top: 8px; font: 600 15px/1.3 "Barlow Condensed", "Arial Narrow", sans-serif; color: #fff; text-shadow: 0 1px 2px #000; letter-spacing: 0.02em; }
+    #ports { position: fixed; inset: 0; display: none; align-content: flex-start; flex-wrap: wrap; gap: 10px; padding: 46px 14px; background: #3a4048; }
+    #ports figure { margin: 0; flex: none; text-align: center; font: 600 14px "Arial Narrow", sans-serif; color: #e8e6e0; }
+    #ports img { width: 196px; height: 196px; border-radius: 6px; background: #59626c; display: block; }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "../node_modules/three/build/three.module.js", "three/addons/": "../node_modules/three/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="ports"></div>
+  <div id="lbl"></div>
+  <script type="module">
+    // Look-dev page for the people (models.js): pageshot.mjs walks through window.__views.
+    import { THREE, initGfx, gfxReady, scene, camera, renderer, renderFrame, GeoBuilder, realMesh, gfxStats } from '../src/gfx.js';
+    import { CHARS, buildCharacter, animateCharacter, randomPed, buildBust, buildCat, carryPoint, GAIT, LOD_DIST, buildFarLevels, faceTuning, kneelPoint } from '../src/actors/models.js';
+    import { mulberry32 } from '../src/util.js';
+
+    const params = new URLSearchParams(location.search);
+    // &pore=0.13&crease=0.55&relief=0.0008: the faces' micro-detail (before anything is built)
+    { const t = {}; for (const k of ['pore', 'crease', 'relief']) if (params.get(k)) t[k] = +params.get(k); if (Object.keys(t).length) console.log('[t] faceTuning', JSON.stringify(faceTuning(t))); }
+    window.THREE = THREE;
+    initGfx(document.getElementById('app'));
+    await gfxReady;
+
+    // Ground: snowy paving with a snow bank and a falu-red house wall behind, per view area.
+    function backdrop(x0, z0, w = 16) {
+      const g = new GeoBuilder();
+      g.use('paving', { snow: 0.5 }).boxB(null, x0, -0.1, z0, w + 20, 0.1, 40);
+      g.use('snow').boxB(null, x0, -0.05, z0 - 6.2, w + 20, 0.35, 2.2);
+      g.use('wood').boxB(0x8a2a1e, x0, 0, z0 - 9, w + 20, 3.4, 0.3);
+      for (let k = -4; k <= 4; k++) {
+        g.use('painted').boxB(0xebe7de, x0 + k * 3.2, 1.0, z0 - 8.83, 1.3, 1.4, 0.06);
+        g.use('glass').boxB(null, x0 + k * 3.2, 1.06, z0 - 8.8, 1.14, 1.26, 0.04);
+      }
+      const m = realMesh(g.build());
+      scene.add(m);
+      return m;
+    }
+
+    const areas = {};
+    const area = (name, x, z, w) => { const grp = new THREE.Group(); grp.position.set(x, 0, z); scene.add(grp); backdrop(x, z, w); areas[name] = grp; return grp; };
+    const people = []; // { m, st, dt0 }
+    // &far=1: everybody gets the game's far level (as Character does), so the perf view measures it
+    const farOn = !!params.get('far');
+    const add = (grp, def, x, z, yaw = 0, st = {}, opts) => {
+      const m = buildCharacter(def, opts ?? (farOn ? { far: def.name === 'ped' ? LOD_DIST.ped : LOD_DIST.cast } : undefined));
+      m.root.position.set(x, 0, z);
+      m.root.rotation.y = yaw;
+      grp.add(m.root);
+      const s = { t: Math.random() * 5, speed: 0, ...st };
+      people.push({ m, st: s, still: !!st.still });
+      animateCharacter(m, s, 0);
+      return m;
+    };
+    const tris = (m) => (m.mesh ? m.mesh.geometry.index.count / 3 : 0);
+    // the car interior's steering wheel (carmodels.js interior()): 0.5 m above and ahead of the seat point
+    const wheelFor = (grp, x, seatY, z, yaw = 0) => {
+      const w = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.12, 6, 16), new THREE.MeshStandardMaterial({ color: 0x1a1a1c, roughness: 0.6 }));
+      const o = new THREE.Group(); o.position.set(x, seatY, z); o.rotation.y = yaw; grp.add(o);
+      w.position.set(0, 0.5, 0.5); w.rotation.x = -0.45; w.scale.set(0.38, 0.38, 0.5); o.add(w);
+    };
+
+    // --- the cast, two rows of six
+    const castA = ['ove', 'parvaneh', 'patrick', 'patrickCast', 'sara', 'nasanin'];
+    const castB = ['jimmy', 'adrian', 'anita', 'rune', 'anders', 'vitskjorta'];
+    const gCast = area('cast', 0, 0, 12);
+    const info = [];
+    castA.forEach((k, i) => { const m = add(gCast, CHARS[k], -2.6 + i * 1.04, 0); info.push([k, tris(m), m.mesh.geometry.userData.surfaces.join('/')]); });
+    castB.forEach((k, i) => { const m = add(gCast, CHARS[k], -2.6 + i * 1.04, -3.2); info.push([k, tris(m), m.mesh.geometry.userData.surfaces.join('/')]); });
+    console.log('[t] cast', JSON.stringify(info));
+
+    // --- heads: the cast's faces at eye height 1.6 m, front / profile (facing +X) / three-quarter
+    const headKeys = ['ove', 'parvaneh', 'patrick', 'jimmy', 'adrian', 'anita', 'rune', 'anders', 'vitskjorta', 'sara', 'nasanin', 'ped'];
+    const rh = mulberry32(5);
+    const pedHead = randomPed(rh);
+    const eyeAt = (m, y) => { m.root.updateMatrixWorld(true); const p = m.head.getWorldPosition(new THREE.Vector3()); m.root.position.y += y - p.y; };
+    for (const [name, yaw, x0] of [['heads', 0, 660], ['profiles', Math.PI / 2, 720], ['heads34', 0.62, 780]]) {
+      const g = area(name, x0, 0, 8);
+      headKeys.forEach((k, i) => {
+        const def = k === 'ped' ? pedHead : CHARS[k];
+        const m = add(g, def, -0.9 + (i % 4) * 0.6, -Math.floor(i / 4) * 3, yaw, { still: true, t: 1 });
+        eyeAt(m, 1.6);
+      });
+    }
+    // --- hands: relaxed (bare, gloves, mittens, a ped), and the grip / fist / phone / write poses
+    const gHands = area('hands', 840, 0, 8);
+    const handM = {};
+    [['relax', 'ove', {}], ['glove', 'anders', {}], ['mitt', 'sara', {}], ['cast', 'patrickCast', {}], ['ped', pedHead, {}],
+     ['drive', 'ove', { seated: true, driving: true }], ['fist', 'ove', { cheer: true }], ['phone', 'ove', { phone: true }], ['write', 'ove', { write: true }],
+     ['push', 'anita', { push: true }], ['wave', 'ove', { wave: true }], ['stick', { ...CHARS.anita, name: 'stickwoman', aid: 'stick', bag: null }, {}], ['board', 'vitskjorta', {}], ['wheel', 'rune', { speed: 1.2 }], ['talk', 'jimmy', { talk: true }]].forEach(([n, k, st], i) => {
+      const m = add(gHands, typeof k === 'string' ? CHARS[k] : k, -6 + i * 1.6, (i % 2) * -1.5, 0, { ...st, still: !st.speed && !st.talk, t: 1.3 });
+      if (st.seated) { m.root.position.y = 0.55 + 0.12 - m.legLen; wheelFor(gHands, m.root.position.x, 0.55, m.root.position.z - 0.12); }
+      handM[n] = m;
+    });
+    window.__handM = handM;
+    // --- hips: every coat type at 0.8 m, standing, mid-stride and seated (coat over trousers)
+    const gHips = area('hips', 900, 0, 10);
+    const coatTypes = ['parka', 'puffer', 'pufferLong', 'wool', 'jacket', 'bomber', 'quilted', 'cardigan'];
+    coatTypes.forEach((ct, i) => {
+      const def = { name: 'hip_' + ct, kind: 'adult', sex: i % 2 ? 'f' : 'm', age: 40, height: 1.78, build: 1 + (i % 3) * 0.12, skin: 0xd9a383, hair: { style: 'short', color: 0x3a2a1e },
+        coat: { type: ct, color: [0x2a3448, 0x6e4a2e, 0x3e4434, 0xa07e52, 0x1d2636, 0x3c4434, 0x4a4a46, 0x8a3a3a][i] }, trousers: { type: ['jeans', 'slacks', 'joggers'][i % 3], color: 0x5a6a84 } };
+      add(gHips, def, -3.5 + i * 1.0, 0, 0, { still: true, t: 1 });
+      const mw = add(gHips, def, -3.5 + i * 1.0, -2.2, Math.PI / 2, { speed: 1.5, still: true, t: 1 });
+      mw.phase = 0.9; animateCharacter(mw, people[people.length - 1].st, 0);
+      const ms = add(gHips, def, -3.5 + i * 1.0, -4.4, 0.5, { seated: true, driving: false, still: true, t: 1 });
+      ms.root.position.y = 0.55 + 0.12 - ms.legLen;
+    });
+
+    // --- the cast from the side (facing +X)
+    const gSide = area('side', 480, 0, 14);
+    [...castA, ...castB].forEach((k, i) => add(gSide, CHARS[k], -5.5 + i * 1.0, i % 2 ? -0.5 : 0, Math.PI / 2));
+
+    // --- a crowd of twelve pedestrians
+    const gCrowd = area('crowd', 60, 0, 12);
+    const r = mulberry32(+(params.get('seed') || 21));
+    const pinfo = [];
+    for (let i = 0; i < 24; i++) {
+      const d = randomPed(r);
+      const row = Math.floor(i / 8);
+      const m = add(gCrowd, d, -3.9 + (i % 8) * 1.08 + (row % 2) * 0.5, -row * 2.2, (r() - 0.5) * 0.6);
+      pinfo.push([d.age, d.sex, d.coat.type, d.hat?.type || '-', d.aid || '-', tris(m)]);
+    }
+    console.log('[t] peds', JSON.stringify(pinfo));
+
+    // --- walk cycle: Ove at four phases, then brisk and jog
+    const gWalk = area('walk', 120, 0, 12);
+    for (let i = 0; i < 4; i++) { const m = add(gWalk, CHARS.ove, -3 + i * 1.5, 0, Math.PI / 2, { speed: 1.4, still: true }); m.phase = (i / 4) * Math.PI * 2; animateCharacter(m, people[people.length - 1].st, 0); }
+    for (let i = 0; i < 2; i++) { const m = add(gWalk, CHARS.ove, 3.3 + i * 1.6, 0, Math.PI / 2, { speed: i ? 5.5 : 3.2, still: true }); m.phase = 0.6; animateCharacter(m, people[people.length - 1].st, 0); }
+
+    // --- poses
+    const gPose = area('poses', 180, 0, 14);
+    const poses = [
+      ['ove', { write: true }], ['ove', { phone: true }], ['ove', { seated: true, driving: true }], ['parvaneh', { seated: true, driving: false }],
+      ['ove', { wave: true }], ['jimmy', { talk: true }], ['ove', { push: true }], ['ove', { kick: 0.5 }],
+      ['ove', { cheer: true }], ['patrick', { flung: true, flungT: 0.25 }], ['adrian', { down: true, downLeft: 3 }], ['anita', { down: true, downLeft: 0.6 }],
+    ];
+    poses.forEach(([k, st], i) => {
+      const x = -3.9 + (i % 6) * 1.55, z = i < 6 ? 0 : -2.8;
+      const seat = st.seated;
+      const m = add(gPose, CHARS[k], x, z, -0.45, { ...st, still: true });
+      if (seat) {
+        // a crude seat: the hip joint ends up 0.12 above the seat surface, like in a car
+        const sy = 0.55;
+        m.root.position.y = sy + 0.12 - m.legLen;
+        const s = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.5), new THREE.MeshStandardMaterial({ color: 0x3a3a3e, roughness: 0.8 }));
+        s.position.set(x, sy - 0.04, z - 0.02); s.rotation.y = -0.45; gPose.add(s);
+        if (st.driving) wheelFor(gPose, x - Math.sin(-0.45) * 0.12, sy, z - Math.cos(-0.45) * 0.12, -0.45);
+      }
+    });
+
+    // --- the new poses: carry, work (bend / low / shovel / wall), cheer
+    const gPose2 = area('poses2', 1020, 0, 12);
+    const poses2 = [['ove', { carry: true }], ['ove', { work: true }], ['ove', { work: true, workKind: 'low' }], ['ove', { work: true, workKind: 'shovel' }], ['anita', { work: true, workKind: 'wall' }], ['ove', { cheer: true }]];
+    const p2m = window.__p2m = poses2.map(([k, st], i) => add(gPose2, CHARS[k], -3.9 + i * 1.55, 0, -0.45, { ...st, still: true, t: 1.2 }));
+    {
+      // a cat in Ove's arms for the carry pose
+      const c3 = buildCat(); c3.hold(true); c3.animate(0, 0);
+      gPose2.add(c3.root); window.__carryCat = c3;
+      // in the arms, as main.js does it: the root at carryPoint, the carrier's yaw + 90 deg
+      const m = p2m[0]; m.root.updateMatrixWorld(true);
+      const c = carryPoint(m, new THREE.Vector3()).sub(gPose2.position);
+      c3.root.position.copy(c); c3.root.rotation.y = -0.45 + Math.PI / 2;
+    }
+
+    // --- the kneel (Sonja's grave): holding the flowers (going down), laying them (kneelReach 0.5, 1),
+    // resting (after); a low grave plinth ~0.5 m ahead; red balls at kneelPoint (the bouquet)
+    const gKneel = area('kneel', 1200, 0, 10);
+    const kneelM = [[{}, 'hold'], [{ kneelReach: 0.5 }, 'reach .5'], [{ kneelReach: 1 }, 'lay'], [{ kneelReach: 0 }, 'rest']].map(([st, n], i) => {
+      const m = add(gKneel, CHARS.ove, -2.4 + i * 1.6, 0, 0, { kneel: true, still: true, t: 1.2, ...st });
+      const plinth = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.35), new THREE.MeshStandardMaterial({ color: 0x8a8a86, roughness: 0.8 }));
+      plinth.position.set(-2.4 + i * 1.6, 0.06, 0.62); gKneel.add(plinth);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), new THREE.MeshStandardMaterial({ color: 0xc02020 }));
+      gKneel.add(ball); m.ball = ball;
+      return m;
+    });
+    window.__kneelBalls = () => { for (const m of kneelM) { m.root.updateMatrixWorld(true); m.ball.position.copy(kneelPoint(m, new THREE.Vector3())).sub(gKneel.position); } };
+    window.__kneelBalls();
+
+    // --- levels of detail: the cast at lod 0 (left) and at the far level (right), forced; seen from
+    // the distances where the game switches (LOD_DIST.cast 15 m, LOD_DIST.ped 40 m)
+    const gLod = area('lods', 1140, 0, 24);
+    const lodKeys = ['ove', 'parvaneh', 'patrickCast', 'jimmy', 'anita', 'rune', 'vitskjorta', 'sara'];
+    const lodInfo = [];
+    for (const [side, far] of [[-1, false], [1, true]]) {
+      lodKeys.forEach((k, i) => {
+        const m = add(gLod, CHARS[k], side * 5.2 + (i - 3.5) * 1.15, 0, 0, { t: 1.3 + i }, { far: LOD_DIST.cast, lazyFar: false });
+        m.lodNode.autoUpdate = false;
+        m.lodNode.levels.forEach((l, j) => { l.object.visible = j === (far ? 1 : 0); });
+        if (far) lodInfo.push([k, m.mesh.geometry.index.count / 3, m.farMesh.geometry.index.count / 3, m.farMesh.geometry.userData.surfaces.join('/')]);
+      });
+    }
+    {
+      const rl = mulberry32(9);
+      for (let i = 0; i < 8; i++) {
+        const d = randomPed(rl);
+        for (const [side, far] of [[-1, false], [1, true]]) {
+          const m = add(gLod, d, side * 5.2 + (i - 3.5) * 1.15, -2.4, 0, { t: 2.1 + i }, { far: LOD_DIST.ped, lazyFar: false });
+          m.lodNode.autoUpdate = false;
+          m.lodNode.levels.forEach((l, j) => { l.object.visible = j === (far ? 1 : 0); });
+          if (far && i < 3) lodInfo.push(['ped' + i, m.mesh.geometry.index.count / 3, m.farMesh.geometry.index.count / 3, m.farMesh.geometry.userData.surfaces.join('/')]);
+        }
+      }
+    }
+    console.log('[t] lod tris [key, near, far, far surfaces]', JSON.stringify(lodInfo));
+
+    // --- Rune and his wheelchair, Anita pushing; the cat
+    const gRune = area('rune', 240, 0, 10);
+    add(gRune, CHARS.rune, 0, 0, 0.5);
+    add(gRune, CHARS.anita, -0.45, -0.85, 0.5, { push: true });
+    add(gRune, CHARS.rune, 2.2, 0.4, -0.9, { speed: 1.0 });
+    const cat = buildCat();
+    cat.root.position.set(-1.3, 0, 0.9); cat.root.rotation.y = 1.2; cat.sit(true);
+    gRune.add(cat.root);
+    const cat2 = buildCat();
+    cat2.root.position.set(-1.9, 0, 0.3); cat2.root.rotation.y = 2.4;
+    gRune.add(cat2.root);
+    console.log('[t] cat tris', cat.mesh.geometry.index.count / 3);
+    // --- the cat close up: profile standing / walking / sitting, Ove carrying it (as main.js does:
+    // the root at carryPoint, yaw + 90 deg, hold(true))
+    const cats = [[cat, 0], [cat2, 0.6]]; window.__cats = cats;
+    const gCat = area('cats', 1080, 0, 8);
+    {
+      const c1 = buildCat(); c1.root.position.set(-1.1, 0, 0); c1.root.rotation.y = Math.PI / 2; gCat.add(c1.root); cats.push([c1, 0]);
+      const c2 = buildCat(); c2.root.position.set(-0.45, 0, 0); c2.root.rotation.y = Math.PI / 2; gCat.add(c2.root); cats.push([c2, 0.7]);
+      const c3 = buildCat(); c3.root.position.set(0.25, 0, 0); c3.root.rotation.y = Math.PI / 2; c3.sit(true); gCat.add(c3.root); cats.push([c3, 0]);
+      const c4 = buildCat(); c4.root.position.set(0.95, 0, 0.1); c4.root.rotation.y = 0.35; c4.sit(true); gCat.add(c4.root); cats.push([c4, 0]);
+      const m = add(gCat, CHARS.ove, 2.3, -0.3, -0.5, { carry: true, still: true, t: 1.2 });
+      const c5 = buildCat(); c5.hold(true); gCat.add(c5.root); cats.push([c5, 0]);
+      window.__heldCat = () => {
+        m.root.updateMatrixWorld(true);
+        const v = carryPoint(m, new THREE.Vector3()).sub(gCat.position);
+        c5.root.position.copy(v); c5.root.rotation.y = m.root.rotation.y + Math.PI / 2;
+      };
+      window.__heldCat();
+    }
+    {
+      // build times (ms each): busts are made at runtime for traffic, peds at startup
+      const rt = mulberry32(77), defs = Array.from({ length: 20 }, () => randomPed(rt));
+      let t0 = performance.now(); const bs = defs.map((d) => buildBust(d)); const tb = (performance.now() - t0) / 20;
+      t0 = performance.now(); const ps = defs.map((d) => buildCharacter(d)); const tp = (performance.now() - t0) / 20;
+      t0 = performance.now(); for (const k of ['ove', 'parvaneh', 'anders', 'rune']) buildCharacter(CHARS[k]); const tc = (performance.now() - t0) / 4;
+      const btris = bs.reduce((a, b) => a + b.children[0].geometry.index.count / 3, 0) / 20;
+      console.log('[t] build ms', JSON.stringify({ bust: +tb.toFixed(2), ped: +tp.toFixed(2), cast: +tc.toFixed(2), bustTris: Math.round(btris) }));
+    }
+
+    // --- busts (traffic drivers) on seats
+    const gBust = area('busts', 300, 0, 10);
+    const rb = mulberry32(3);
+    for (let i = 0; i < 6; i++) {
+      const b = buildBust(i === 0 ? CHARS.anders : randomPed(rb));
+      b.position.set(-2.5 + i * 1.0, 0.6, 0); b.rotation.y = -0.5;
+      gBust.add(b);
+      const s = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.5), new THREE.MeshStandardMaterial({ color: 0x3a3a3e, roughness: 0.8 }));
+      s.position.set(-2.5 + i * 1.0, 0.56, 0); gBust.add(s);
+    }
+
+    // --- performance: 35 peds + 12 cast + Ove walking, 22 busts, everything in view
+    const gPerf = area('perf', 400, 0, 40);
+    const rp = mulberry32(11);
+    const perfPeople = [];
+    for (let i = 0; i < 35; i++) perfPeople.push(add(gPerf, randomPed(rp), -12 + (i % 9) * 3, -2 - Math.floor(i / 9) * 3.2, rp() * 6, { speed: 1.2 + rp() * 0.6 }));
+    const castAll = ['ove', 'parvaneh', 'patrick', 'sara', 'nasanin', 'jimmy', 'adrian', 'anita', 'rune', 'anders', 'vitskjorta', 'patrickCast', 'ove'];
+    castAll.forEach((k, i) => perfPeople.push(add(gPerf, CHARS[k], -12 + i * 2, 3, 0, {})));
+    for (let i = 0; i < 22; i++) { const b = buildBust(randomPed(rp)); b.position.set(-13 + (i % 11) * 2.6, 0.55, 7 + Math.floor(i / 11) * 2.5); gPerf.add(b); }
+
+    if (farOn) { const t0 = performance.now(); buildFarLevels(); console.log('[t] far levels built in', (performance.now() - t0).toFixed(0), 'ms'); }
+
+    // --- views
+    const V = {
+      cast_a: { area: 'cast', at: [0, 1.05, 5.6], look: [0, 0.85, 0], fov: 40, label: 'Ove, Parvaneh, Patrick, Patrick (gips), Sara, Nasanin' },
+      cast_b: { area: 'cast', at: [0, 1.05, 2.4], look: [0, 0.8, -3.2], fov: 40, label: 'Jimmy, Adrian, Anita, Rune, Anders, Vita skjortan', hideRow: 0 },
+      cast_side: { area: 'side', at: [0, 1.05, 6.8], look: [0, 0.85, -0.25], fov: 50, label: 'från sidan' },
+      parv_side: { area: 'side', at: [-4.5, 1.0, 2.6], look: [-4.5, 0.9, -0.5], fov: 40, label: 'Parvaneh från sidan' },
+      kids_side: { area: 'side', at: [-1.0, 0.7, 2.4], look: [-1.0, 0.55, -0.25], fov: 44, label: 'Sara, Nasanin från sidan' },
+      crowd: { area: 'crowd', at: [0, 1.15, 5.8], look: [0, 0.8, -1.0], fov: 42, label: 'tolv fotgängare' },
+      crowd_l: { area: 'crowd', at: [-1.4, 1.3, 2.6], look: [-1.4, 0.95, -0.6], fov: 44, label: 'fotgängare, vänster' },
+      crowd_r: { area: 'crowd', at: [1.6, 1.3, 2.6], look: [1.6, 0.95, -0.6], fov: 44, label: 'fotgängare, höger' },
+      street: { area: 'perf', at: [-3, 1.65, 14], look: [0, 1.0, 0], fov: 50, label: 'gata' },
+      ove_face: { area: 'heads', at: [-0.9, 1.6, 0.75], look: [-0.9, 1.59, 0], fov: 26, label: 'Ove' },
+      ...Object.fromEntries(headKeys.flatMap((k, i) => [['f_' + k, { area: 'heads', at: [-0.9 + (i % 4) * 0.6, 1.6, -Math.floor(i / 4) * 3 + 0.62], look: [-0.9 + (i % 4) * 0.6, 1.585, -Math.floor(i / 4) * 3], fov: 26, label: k }],
+        ['f34_' + k, { area: 'heads34', at: [-0.9 + (i % 4) * 0.6, 1.6, -Math.floor(i / 4) * 3 + 0.62], look: [-0.9 + (i % 4) * 0.6, 1.585, -Math.floor(i / 4) * 3], fov: 26, label: k + ' snett' }],
+        ['b_' + k, { area: 'heads', at: [-0.9 + (i % 4) * 0.6 + 0.25, 1.62, -Math.floor(i / 4) * 3 - 0.6], look: [-0.9 + (i % 4) * 0.6, 1.5, -Math.floor(i / 4) * 3], fov: 30, label: k + ' bakifrån' }],
+        // the eyes and brows close up (~0.1 mm per pixel)
+        ['e_' + k, { area: 'heads', at: [-0.9 + (i % 4) * 0.6, 1.605, -Math.floor(i / 4) * 3 + 0.42], look: [-0.9 + (i % 4) * 0.6, 1.6, -Math.floor(i / 4) * 3], fov: 12, label: k + ': ögon' }]])),
+      ove_side: { area: 'profiles', at: [-0.9, 1.6, 0.75], look: [-0.9, 1.59, 0], fov: 26, label: 'Ove från sidan' },
+      ove_34: { area: 'heads34', at: [-0.9, 1.6, 0.75], look: [-0.9, 1.59, 0], fov: 26, label: 'Ove snett' },
+      ear_ove: { area: 'profiles', at: [-0.93, 1.6, 0.42], look: [-0.93, 1.585, 0], fov: 22, label: 'Ove: örat' },
+      ear_rune: { area: 'profiles', at: [0.27, 1.6, -2.58], look: [0.27, 1.585, -3], fov: 22, label: 'Rune: örat' },
+      ...Object.fromEntries(['a', 'b', 'c'].flatMap((r, ri) => [['heads', 'hf'], ['profiles', 'hp'], ['heads34', 'h3']].map(([ar, p]) => [p + '_' + r, { area: ar, at: [0, 1.6, -ri * 3 + 2.1], look: [0, 1.56, -ri * 3], fov: 30, label: ar + ' ' + headKeys.slice(ri * 4, ri * 4 + 4).join(', ') }]))),
+      ...Object.fromEntries(['relax', 'glove', 'mitt', 'cast', 'ped', 'drive', 'fist', 'phone', 'write', 'push', 'wave', 'stick', 'board', 'wheel', 'talk'].map((n) => ['hand_' + n, { area: 'hands', focus: () => handM[n], hand: n === 'write' || n === 'wave' || n === 'board' ? 1 : 0, fov: 30, label: 'hand: ' + n }])),
+      hips_a: { area: 'hips', at: [-1.5, 0.95, 1.6], look: [-1.5, 0.85, 0], fov: 46, label: 'höfter: parka, puffer, lång puffer, ull' },
+      hips_b: { area: 'hips', at: [2.5, 0.95, 1.6], look: [2.5, 0.85, 0], fov: 46, label: 'höfter: jacka, bomber, quiltad, kofta' },
+      hips_walk: { area: 'hips', at: [0, 0.95, 0.3], look: [0, 0.85, -2.2], fov: 60, label: 'höfter i steg' },
+      hips_seat: { area: 'hips', at: [0.5, 1.2, -2.2], look: [0, 0.7, -4.4], fov: 64, label: 'höfter sittande' },
+      walk: { area: 'walk', at: [0.5, 1.0, 6.2], look: [0.5, 0.9, 0], fov: 42, label: 'gångcykel 0 / 0.25 / 0.5 / 0.75, rask gång 3.2 m/s, jogg 5.5 m/s' },
+      poses_a: { area: 'poses', at: [0, 1.25, 5.2], look: [0, 0.8, 0], fov: 46, label: 'anteckna, telefon, kör, passagerare, vinkar, pratar' },
+      poses_b: { area: 'poses', at: [0, 1.3, 2.4], look: [0, 0.6, -2.8], fov: 46, label: 'skjuter, sparkar däck, jublar, flyger, ligger, reser sig' },
+      rune: { area: 'rune', at: [0.9, 1.25, 3.2], look: [0.3, 0.7, 0], fov: 40, label: 'Rune, Anita, katten' },
+      cat: { area: 'rune', at: [-1.2, 0.45, 1.9], look: [-1.55, 0.2, 0.6], fov: 36, label: 'katten' },
+      cat_side: { area: 'cats', at: [-0.3, 0.3, 1.75], look: [-0.3, 0.17, 0], fov: 38, label: 'katten: står, går, sitter' },
+      cat_face: { area: 'cats', at: [1.07, 0.28, 0.55], look: [0.97, 0.24, 0.1], fov: 30, label: 'katten: ansikte' },
+      cat_held: { area: 'cats', at: [1.45, 1.4, 1.15], look: [2.3, 1.12, -0.25], fov: 30, label: 'Ove bär katten' },
+      cat_held2: { area: 'cats', at: [3.5, 1.3, 0.8], look: [2.3, 1.12, -0.25], fov: 30, label: 'Ove bär katten, från sidan' },
+      busts: { area: 'busts', at: [0, 1.3, 3.6], look: [0, 0.9, 0], fov: 40, label: 'förare (byster)' },
+      perf: { area: 'perf', at: [0, 9, 22], look: [0, 0.5, 1], fov: 55, label: 'prestanda: 48 personer + 22 byster' },
+      ...Object.fromEntries(['write', 'phone', 'drive', 'pass', 'wave', 'talk', 'push', 'kick', 'cheer', 'flung', 'down', 'getup'].map((n, i) => {
+        const x = -3.9 + (i % 6) * 1.55, z = i < 6 ? 0 : -2.8;
+        return ['p_' + n, { area: 'poses', at: [x + 1.1, 1.45, z + 1.75], look: [x, 0.95, z], fov: 42, label: n }];
+      })),
+      poses_c: { area: 'poses2', at: [0, 1.3, 5.0], look: [0, 0.75, 0], fov: 50, label: 'bär, arbetar (böjd, låg, skottar, element), jublar' },
+      ...Object.fromEntries(['carry', 'work', 'worklow', 'shovel', 'wall', 'cheer2'].map((n, i) => {
+        const x = -3.9 + i * 1.55;
+        return ['p_' + n, { area: 'poses2', at: [x + 1.1, 1.45, 1.75], look: [x, 0.85, 0], fov: 42, label: n }];
+      })),
+      hand_writer: { area: 'hands', focus: () => handM.write, hand: 0, fov: 30, label: 'hand: write (penna)' },
+      p_shovel2: { area: 'poses2', at: [-0.9, 0.75, -0.75], look: [0.5, 0.35, 0.5], fov: 44, label: 'skottar, från sidan' },
+      p_worklow2: { area: 'poses2', at: [-2.4, 0.75, -0.75], look: [-1.0, 0.3, 0.5], fov: 44, label: 'däck, från sidan' },
+      hand_fist2: { area: 'hands', focus: () => handM.fist, hand: 0, fov: 30, label: 'hand: fist (inifrån)', flip: true },
+      // Jimmy's open jacket over the hoodie: the hood's rim and collar from the front, 3/4 and the back
+      hood_a: { area: 'heads', at: [0.9, 1.42, 0.95], look: [0.9, 1.32, 0], fov: 30, label: 'Jimmy: luvan, framifrån' },
+      hood_b: { area: 'heads34', at: [0.9, 1.42, 0.95], look: [0.9, 1.32, 0], fov: 30, label: 'Jimmy: luvan, snett' },
+      hood_c: { area: 'heads', at: [1.25, 1.55, -0.85], look: [0.9, 1.35, 0], fov: 30, label: 'Jimmy: luvan, bakifrån' },
+      // the near (left) and far (right) levels side by side from the switch distances and closer
+      lods_15: { area: 'lods', at: [0, 1.7, 15], look: [0, 0.9, -1], fov: 52, label: 'lod 0 (vänster) / fjärran (höger), 15 m' },
+      lods_40: { area: 'lods', at: [0, 1.7, 40], look: [0, 0.9, -1], fov: 52, label: 'lod 0-1 (vänster) / fjärran (höger), 40 m' },
+      lods_l: { area: 'lods', at: [-5.2, 1.5, 6], look: [-5.2, 0.9, -1], fov: 52, label: 'lod 0 / lod 1, 6 m' },
+      lods_r: { area: 'lods', at: [5.2, 1.5, 6], look: [5.2, 0.9, -1], fov: 52, label: 'fjärran, 6 m (visas från 15 / 40 m)' },
+      kneel_a: { area: 'kneel', at: [0, 1.2, 4.2], look: [0, 0.55, 0], fov: 45, label: 'knäböj: håller blommorna, sträcker sig, lägger dem, vilar' },
+      kneel_b: { area: 'kneel', at: [4.5, 1.0, 1.0], look: [0, 0.5, 0.2], fov: 45, label: 'knäböj från sidan' },
+      kneel_c: { area: 'kneel', at: [-1.8, 1.3, 2.0], look: [-1.8, 0.5, 0.1], fov: 40, label: 'knäböj: sträcker sig (0.5) / lägger (1)' },
+      empty: { area: 'empty', at: [0, 9, 22], look: [0, 0.5, 1], fov: 55, label: 'tom' },
+      slip: { area: 'walk', at: [0.5, 1.0, 6.2], look: [0.5, 0.9, 0], fov: 42, label: 'fotglidning (logg)' },
+      portraits: { area: 'cast', at: [0, 1.05, 5.6], look: [0, 0.85, 0], fov: 40, label: 'porträtt (renderPortrait)', ports: true },
+      // the same with a lower, more frontal key and more fill (a suggestion for hud.js' PORTRAIT)
+      portraits_soft: { area: 'cast', at: [0, 1.05, 5.6], look: [0, 0.85, 0], fov: 40, label: 'porträtt, mjukt ljus (keyPos [-1.4, 0.8, 1.3], fill 0.55, env 0.5)', ports: true, soft: true },
+      // the portraits at twice the size (256 px renders shown 1:1), in two sheets
+      portraits_big1: { area: 'cast', at: [0, 1.05, 5.6], look: [0, 0.85, 0], fov: 40, label: 'porträtt 1:1', ports: true, big: 0 },
+      portraits_big2: { area: 'cast', at: [0, 1.05, 5.6], look: [0, 0.85, 0], fov: 40, label: 'porträtt 1:1', ports: true, big: 1 },
+    };
+    areas.empty = area('empty', 520, 0, 40);
+    // foot slip: the ground-contact point (heel or toe, whichever is lower) of Ove walking at speed v
+    // should not move; logs its mean horizontal speed while it is within 1.5 cm of the ground
+    window.__slip = (v, def = CHARS.ove) => {
+      const m = buildCharacter(def), st = { t: 0, speed: v };
+      const D = m.D, F = D.footLen, hv = new THREE.Vector3(), tv = new THREE.Vector3();
+      const prev = [null, null];
+      let sum = 0, n = 0, sgn = 0;
+      for (let f = 0; f < 360; f++) {
+        const dt = 1 / 60;
+        st.t += dt; m.root.position.z += v * dt;
+        animateCharacter(m, st, dt);
+        m.root.updateMatrixWorld(true);
+        for (const i of [0, 1]) {
+          const fm = m.feet[i].matrixWorld;
+          hv.set(0, -D.ankleY, -0.24 * F).applyMatrix4(fm); tv.set(0, -D.ankleY, 0.76 * F).applyMatrix4(fm);
+          const heel = hv.y < tv.y, c = heel ? hv : tv, p = prev[i] && (heel ? prev[i][0] : prev[i][1]);
+          if (f > 60 && p && c.y < 0.015) { sum += Math.abs(c.z - p.z) / dt; sgn += (c.z - p.z) / dt; n++; }
+          prev[i] = [hv.clone(), tv.clone()];
+        }
+      }
+      window.__slipSigned = +(sgn / Math.max(1, n)).toFixed(3);
+      return +(sum / Math.max(1, n)).toFixed(3);
+    };
+    window.__gaitSweep = () => {
+      const out = [];
+      for (const v of [0.6, 1.2, 1.8, 2.5, 3.2, 4.5, 5.5]) {
+        let best = null;
+        for (let g = 0.55; g <= 1.4; g += 0.05) {
+          GAIT.walk = g; GAIT.run = g;
+          const a = window.__slip(v), sg = window.__slipSigned;
+          if (!best || a < best[1]) best = [+g.toFixed(2), a, sg];
+        }
+        out.push([v, ...best]);
+      }
+      GAIT.walk = GAIT.run = 1;
+      return out;
+    };
+    let view = 'cast_a';
+    let frameN = 0, perfLogged = {};
+    window.__views = Object.keys(V).filter((k) => !params.get('views') || params.get('views').split(',').includes(k));
+    window.__setView = (name) => {
+      view = name; frameN = 0; animMs = 0;
+      const v = V[name];
+      const a = areas[v.area];
+      if (v.focus) {
+        // close-up of one hand (v.hand: 0 right, 1 left), from the front-side
+        const m = v.focus();
+        m.root.updateMatrixWorld(true);
+        const h = m.hands[v.hand].getWorldPosition(new THREE.Vector3()), f = m.fings[v.hand].getWorldPosition(new THREE.Vector3());
+        const c = h.clone().lerp(f, 0.7);
+        const side = v.hand ? 1 : -1;
+        if (v.flip) camera.position.set(c.x + side * 0.08, c.y + 0.04, c.z + 0.5);   // straight from the front
+        else camera.position.set(c.x + side * 0.32, c.y + 0.1, c.z + 0.42);
+        camera.lookAt(c);
+      } else {
+        camera.position.set(a.position.x + v.at[0], v.at[1], a.position.z + v.at[2]);
+        camera.lookAt(a.position.x + v.look[0], v.look[1], a.position.z + v.look[2]);
+      }
+      camera.fov = v.fov; camera.updateProjectionMatrix();
+      document.getElementById('lbl').textContent = v.label;
+      for (const k in areas) areas[k].visible = k === v.area;
+      gCast.children.forEach((c, i) => { c.visible = !(v.hideRow === 0 && i < 6); });
+      document.getElementById('ports').style.display = v.ports ? 'flex' : 'none';
+      if (v.ports) return makePortraits(!!v.soft, v.big);
+      if (name === 'slip') console.log('[t] slip', JSON.stringify([0.6, 1.2, 1.5, 1.8, 2.2, 3.2, 4.5, 5.5].map((v) => [v, window.__slip(v)])));
+      if (name === 'slip' && params.get('sweep')) console.log('[t] sweep [v, best scale, slip, signed]', JSON.stringify(window.__gaitSweep()));
+    };
+    let portraitsDone = null;
+    async function makePortraits(soft, big) {
+      const key = soft + '_' + big;
+      if (portraitsDone === key) return;
+      await new Promise((r) => setTimeout(r, 30));
+      portraitsDone = key;
+      try {
+        const { renderPortrait, PORTRAIT } = await import('../src/game/hud.js');
+        const saved = { keyPos: PORTRAIT.keyPos, fill: PORTRAIT.fill, env: PORTRAIT.env };
+        if (soft) Object.assign(PORTRAIT, { keyPos: [-1.4, 0.8, 1.3], fill: 0.55, env: 0.5 });
+        const box = document.getElementById('ports');
+        box.innerHTML = '';
+        const all = ['ove', 'parvaneh', 'patrick', 'patrickCast', 'sara', 'nasanin', 'jimmy', 'adrian', 'anita', 'rune', 'anders', 'vitskjorta'];
+        const list = big === undefined ? all : big ? ['jimmy', 'adrian', 'vitskjorta', 'patrickCast'] : ['ove', 'parvaneh', 'sara', 'nasanin', 'anita', 'rune', 'anders', 'patrick'];
+        const sz = big === undefined ? 196 : 300;
+        for (const k of list) {
+          const m = buildCharacter(CHARS[k]);
+          animateCharacter(m, { t: 1, speed: 0 }, 0);
+          const url = renderPortrait(renderer, m);
+          box.insertAdjacentHTML('beforeend', `<figure><img src="${url}" style="width:${sz}px;height:${sz}px"><figcaption>${CHARS[k].name}</figcaption></figure>`);
+        }
+        Object.assign(PORTRAIT, saved);
+      } catch (e) { console.error('portraits failed: ' + e.message); }
+    }
+
+    let last = performance.now(), animMs = 0, animN = 0;
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const ta = performance.now();
+      let na = 0;
+      for (const p of people) {
+        if (!p.m.root.parent?.visible) continue;
+        p.st.t += dt;
+        animateCharacter(p.m, p.st, p.still ? 0 : dt);
+        na++;
+      }
+      animMs += performance.now() - ta; animN = na;
+      for (const [c, v] of cats) if (c.root.parent?.visible) c.animate(dt, v);
+      if (window.__heldCat) window.__heldCat();
+      renderFrame();
+      frameN++;
+      if ((view === 'perf' || view === 'empty') && frameN === 60 && !perfLogged[view]) {
+        perfLogged[view] = true;
+        console.log('[t] ' + view, JSON.stringify({ calls: gfxStats.calls, aoCalls: gfxStats.aoCalls, tris: gfxStats.tris, ms: +gfxStats.ms.toFixed(2), animMsPerFrame: +(animMs / 60).toFixed(3), animated: animN }));
+      }
+      requestAnimationFrame(loop);
+    }
+    window.__setView(window.__views[0] || 'cast_a');
+    requestAnimationFrame(loop);
+    // let the perf views run their 60 frames before the screenshot
+    const origSet = window.__setView;
+    window.__setView = (name) => { const r = origSet(name); if (name === 'perf' || name === 'empty') return new Promise((res) => { const w = () => (perfLogged[name] ? res() : setTimeout(w, 50)); w(); }); return r; };
+    setTimeout(() => { window.__ready = true; }, 300);
+  </script>
+</body>
+</html>

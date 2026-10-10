@@ -1,0 +1,17 @@
+{
+ "wood": "#b1a49b",
+ "brick": "#a0735e",
+ "rooftile": "#693e29",
+ "metalroof": "#652315",
+ "asphalt": "#8f7d6d",
+ "concrete": "#b8b8b8",
+ "plaster": "#d6d2cf",
+ "paving": "#776c60",
+ "snow": "#ddedfa",
+ "grass": "#4d3c16",
+ "gravel": "#9d8365",
+ "bark": "#634f3e",
+ "fabric": "#cb6404",
+ "leather": "#4f2c10",
+ "metal": "#929598"
+}

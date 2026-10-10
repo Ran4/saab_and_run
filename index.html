@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>Saab &amp; Run – En man som heter Ove</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <!-- Fonts (Barlow, Barlow Condensed, Caveat; SIL OFL) are embedded in style.css: no network. -->
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // HUD/menu zoom (--ui), set before anything is drawn; hud.js keeps it updated on resize.
+    (function () { function f() { var s = Math.min(innerWidth / 1280, innerHeight / 720); document.documentElement.style.setProperty('--ui', Math.max(0.8, Math.min(2, s)).toFixed(4)); } f(); addEventListener('resize', f); })();
+  </script>
+  <script type="importmap">
+    { "imports": { "three": "./node_modules/three/build/three.module.js", "three/addons/": "./node_modules/three/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="hud"></div>
+
+  <div id="title">
+    <div class="title-shade"></div>
+    <div class="title-grid">
+      <div class="title-card">
+        <svg class="title-sign" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="50" r="47" fill="#f4f3ee"/>
+          <circle cx="50" cy="50" r="41" fill="none" stroke="#b8322a" stroke-width="10"/>
+          <g fill="#16191c">
+            <path d="M22 51.5q0-3 3-3.6l8.5-1.6 5.6-8.8q1.3-2 3.7-2h14.6q2.4 0 3.8 1.9l6.2 8.9 7.4 1.5q3.2.7 3.2 3.8v6.6q0 2-2 2H24q-2 0-2-2z"/>
+            <circle cx="34.5" cy="60" r="6.6"/><circle cx="65.5" cy="60" r="6.6"/>
+          </g>
+          <g fill="#f4f3ee"><path d="M41.6 46.3l4-6.8h6.6v6.8z M55 46.3v-6.8h4.6q1.1 0 1.7.9l4.1 5.9z"/><circle cx="34.5" cy="60" r="2.5"/><circle cx="65.5" cy="60" r="2.5"/></g>
+        </svg>
+        <div class="title-kicker">Ett spel om ordning och reda</div>
+        <h1><span class="t-saab">SAAB</span><span class="t-amp">&amp;</span><span class="t-run">RUN</span></h1>
+        <p class="t-sub">En man som heter Ove</p>
+        <p class="tag">Det är förbjudet att köra bil inom området.</p>
+        <div class="title-actions">
+          <button id="play" class="btn primary" disabled>Spela</button>
+          <div id="loading">Laddar…</div>
+        </div>
+        <p class="fine">Ett fanprojekt, fritt efter Fredrik Backmans roman. Inga Volvoägare tillfrågades.</p>
+      </div>
+      <div class="title-controls">
+        <div class="tc-head">Kontroller</div>
+        <table class="controls">
+          <thead><tr><th></th><th>Till fots</th><th>I bil</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> <span class="or">/ pilar</span></td><td>gå</td><td>köra, styra</td></tr>
+            <tr><td><kbd class="wide">Mus</kbd></td><td>titta</td><td>titta</td></tr>
+            <tr><td><kbd class="wide">Shift</kbd></td><td>rask gång</td><td class="na">–</td></tr>
+            <tr><td><kbd class="wide">Mellanslag</kbd></td><td>hoppa</td><td>handbroms</td></tr>
+            <tr><td><kbd>E</kbd></td><td>prata, kliva i, interagera <span class="hold">(håll)</span></td><td>kliva ur</td></tr>
+            <tr><td><kbd>F</kbd></td><td>anteckna felparkering <span class="hold">(håll)</span></td><td>anteckna felparkering <span class="hold">(håll)</span></td></tr>
+            <tr><td><kbd>J</kbd> <span class="or">/ klick</span></td><td>sparka (däck)</td><td class="na">–</td></tr>
+            <tr><td><kbd>H</kbd></td><td class="na">–</td><td>tuta</td></tr>
+            <tr><td><kbd>B</kbd></td><td class="na">–</td><td>titta bakåt</td></tr>
+            <tr class="span"><td><kbd>M</kbd><kbd>N</kbd><kbd>R</kbd><kbd class="wide">Esc</kbd></td><td colspan="2">karta · ljud · tillbaka till vägen · paus</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="pause">
+    <div class="pause-card">
+      <div class="pause-menu">
+        <div class="pm-kicker">Saab &amp; Run</div>
+        <h2>Paus</h2>
+        <button id="resume" class="btn primary">Fortsätt</button>
+        <div class="pm-opts">
+          <button id="opt-music" class="opt" type="button"><span>Musik</span><b>På</b></button>
+          <button id="opt-sound" class="opt" type="button"><span>Ljud</span><b>På</b></button>
+          <button id="opt-gfx" class="opt" type="button"><span>Grafik</span><b>Hög</b></button>
+          <button id="opt-controls" class="opt" type="button"><span>Kontroller</span><b>Visa</b></button>
+        </div>
+        <button id="opt-reset" class="btn danger" type="button">Radera sparat spel</button>
+        <div class="pm-keys"><kbd class="wide">Esc</kbd><kbd>P</kbd> fortsätt <kbd>N</kbd> ljud</div>
+      </div>
+      <div id="pause-log" class="paper log-page"></div>
+      <div id="pause-controls" class="title-controls pause-controls"></div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

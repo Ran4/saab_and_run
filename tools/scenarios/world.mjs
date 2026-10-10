@@ -1,0 +1,454 @@
+// World-area scenarios (owned by the world agent). Loaded by tools/shot.mjs.
+//   validate  - checks the whole DESIGN §6 contract in the page (spots, zones, landmarks, boxes,
+//               collectibles, pedLoops, car sweeps along mission routes, verge trees at junctions)
+//   wperf     - fps + __stats() at fixed camera poses (start, lot, centrum, hospital, street, aerial)
+//   wviews    - screenshots from fixed camera poses (WVIEWS=name1,name2 to pick a subset)
+//   meshstats - triangles / draw groups per world mesh
+//   atlas     - dumps the sign atlas pages to out/atlas_*.png
+export default ({ page, ev, shot, frames, sleep, fps, OUT }) => {
+  // Freeze the camera rig and place the camera ourselves (no gameplay camera, no HUD).
+  const cam = (at, look, fov = 55) => ev((at, look, fov) => {
+    const g = window.__game;
+    g.cam.update = function () {};
+    const c = g.cam.cam;
+    c.position.set(...at); c.lookAt(...look); c.fov = fov; c.updateProjectionMatrix();
+    document.getElementById('hud').style.display = 'none';
+  }, at, look, fov);
+
+  // Named camera poses: [at, look, fov?]
+  const VIEWS = {
+    start: [[-12.5, 1.7, 4.2], [8, 1.5, 4.0]],
+    walk_e: [[-14, 1.7, 3.8], [30, 2.5, 3.8]],
+    walk_w: [[14, 1.7, 3.8], [-30, 2.5, 3.8]],
+    ovehouse: [[-6.5, 1.7, 0.5], [-6.0, 2.6, 9.0]],
+    rune: [[5.0, 1.7, 0.5], [5.9, 2.0, 9.0]],
+    jimmy25: [[0, 1.7, 3.8], [11.3, 2.5, -1.0]],
+    jimmy: [[9.0, 1.7, 4.5], [11.3, 2.2, -2.0]],
+    anders: [[-24.5, 1.7, 4.5], [-27.5, 2.6, -2.0]],
+    ove25: [[-30, 1.7, 4.0], [-6, 2.0, 8.5]],
+    lot_w: [[30, 1.7, -24], [-30, 1.0, -22]],
+    lot_e: [[-30, 1.7, -22], [30, 1.0, -24]],
+    garages: [[2, 1.7, -27], [10, 1.6, -19]],
+    ovegarage: [[5.0, 1.7, -24], [5.0, 1.2, -14]],
+    drone_nw: [[-45, 28, -45], [0, 0, 0]],
+    drone_se: [[45, 26, 45], [0, 0, 0]],
+    drone_low: [[-30, 9, -38], [5, 0, 5]],
+    backgardens: [[-14, 8, 40], [-14, 1.0, 18]],
+    lotpile: [[22, 1.6, -20], [29.2, 1.0, -23], 45],
+    streetsign: [[46.5, 1.7, 52], [47.2, 2.4, 47.2], 40],
+    junction: [[47, 1.6, 47], [40, 1.0, 40]],
+    street: [[47, 1.7, 10], [47, 3, -80]],
+    street_trees: [[-34.5, 1.7, 30], [-34.5, 5, -60]],
+    birch40: [[-34.5, 1.7, 75], [-34.5, 7, 35]],
+    birch80: [[-34.5, 1.7, 115], [-34.5, 7, 35]],
+    birch150: [[-34.5, 1.7, 185], [-34.5, 7, 35]],
+    antisun: [[-80, 1.7, 30], [-34.5, 7, 0]],
+    hedge_near: [[-28.0, 1.5, 33.5], [-20.0, 0.8, 30.6]],
+    villa_hedge: [[-80, 1.6, -36.5], [-60, 0.8, -32]],
+    centrum: [[-82, 1.7, -78], [-82, 3, -110]],
+    centrum_lot: [[-110, 1.7, -60], [-60, 0.5, -76]],
+    centrum_drone: [[-50, 35, -40], [-80, 0, -90]],
+    hospital: [[160, 1.7, -150], [166, 2.5, -175]],
+    hospital_entr: [[166, 1.7, -156], [166, 2.0, -170]],
+    hospital_drone: [[200, 40, -110], [160, 0, -160]],
+    kommun: [[80, 1.7, -50], [80, 3, -75]],
+    church: [[-270, 1.7, 150], [-250, 6, 158]],
+    church_wall: [[-262, 1.2, 186], [-240, 0.6, 191]],
+    sonja: [[-233.8, 1.6, 215.2], [-233.8, 0.7, 218.6]],
+    sonja_far: [[-236, 1.8, 213.3], [-233.8, 0.8, 218.6]],
+    cemetery_gate: [[-242, 1.7, 203], [-240, 1.4, 210]],
+    cemetery_wide: [[-226, 1.7, 203], [-245, 1.0, 230]],
+    kiosk: [[-247.5, 1.7, 203.5], [-247.5, 1.9, 208.5]],
+    gas: [[-215, 1.7, -40], [-250, 2.0, -15]],
+    gas_drone: [[-200, 45, -60], [-240, 0, -15]],
+    dealer: [[232.8, 1.7, 60], [240, 2, 81]],
+    dealer_drone: [[200, 40, 40], [240, 0, 80]],
+    park: [[60, 1.7, -20], [100, 1.5, 0]],
+    field: [[0, 1.7, -205], [0, 1.0, -240]],
+    preschool: [[-74, 1.7, -112], [-74, 2.5, -140]],
+    edge_n: [[0, 1.7, -292], [0, 4, -330]],
+    edge_e: [[292, 1.7, 0], [330, 4, 0]],
+    spruce_near: [[-292, 1.7, -100], [-305, 5, -100]],
+    aerial: [[0, 420, 260], [0, 0, 0], 50],
+    hills_n: [[0, 60, 120], [0, 20, -500], 55],
+    // (round 6) the final review's world issues: the first frame's hedge end, hedges at 3-8 m in
+    // sun and shade, Parvaneh's star and snowman, a porch lamp, Ove's garage light, the garage row's
+    // lamps, the cemetery gate, a centrum planter, bare crowns against the sky
+    r6_hedge_end: [[-8.5, 1.6, 5.2], [-5.2, 0.6, 7.0]],
+    r6_hedge_row: [[-9.5, 1.6, 3.6], [-13.0, 0.7, 0.6]],
+    r6_hedge_sun: [[-12.6, 1.6, 4.0], [-15.0, 0.7, 7.0]],
+    r6_hedge_8m: [[-23.0, 1.7, 3.8], [-15.0, 0.6, 7.0]],
+    r6_star: [[-5.0, 1.7, 3.5], [-6.6, 1.8, -1.5]],
+    r6_porch: [[-26.4, 1.65, 1.8], [-27.6, 1.9, -1.5]],
+    r6_garage: [[5.3, 1.6, -19.8], [5.3, 2.0, -14.5]],
+    r6_garagerow: [[9.0, 1.7, -27.0], [9.0, 1.9, -19.0]],
+    r6_gate: [[-241.6, 1.6, 205.0], [-240.0, 1.1, 210.5]],
+    r6_gate_in: [[-238.0, 1.6, 214.5], [-240.0, 1.1, 209.0]],
+    r6_planter: [[-81.5, 1.6, -70.5], [-80.0, 0.5, -74.0]],
+    r6_sky: [[-34.5, 1.7, 30], [-34.5, 9, 8]],
+    r6_limes: [[-236.5, 1.7, 206], [-240, 8, 236]],
+    r6_planter_near: [[-79.0, 1.5, -72.2], [-80.0, 0.45, -74.0], 50],
+    r6_snowman: [[-7.3, 1.3, 1.6], [-8.1, 0.8, -0.9], 50],
+    r6_gate_near: [[-238.6, 1.5, 207.0], [-240.6, 1.0, 209.7], 55],
+    r6_thuja_sun: [[-226.0, 1.6, 207.6], [-232.0, 0.9, 209.3], 55],
+    r6_thuja_end: [[-235.0, 1.6, 206.2], [-236.6, 0.9, 209.4], 55],
+    r6_green_end: [[-15.6, 1.5, 3.2], [-13.9, 0.6, 0.6], 55],
+  };
+
+  const viewShot = async (name, prefix = 'w_') => {
+    const v = VIEWS[name];
+    await cam(v[0], v[1], v[2]);
+    await frames(14);
+    await shot(prefix + name);
+  };
+
+  return {
+    // (round 5) the follow camera round Rune's ramp (railings, a walkway lamp): Ove where the rune
+    // errand leaves him, the camera's yaw swept round; shots + where the boom ended.
+    async wcam() {
+      const yaws = (process.env.WYAWS || '0.8,1.6,2.4,3.14,-2.4,-1.6,-0.8,0').split(',').map(Number);
+      for (const [n, px, pz] of [['rune', 7.1, 6.9], ['ramp', 5.9, 7.6], ['lamp', 3.9, 5.6]]) {
+        for (const yaw of yaws) {
+          const r = await ev(({ px, pz, yaw }) => {
+            const g = __game;
+            if (g.playerCar) g.exitCar(true);
+            g.player.teleport(px, pz, yaw); g.cam.yaw = yaw; g.cam.pitch = 0.2; g.cam.manualT = 5; g.cam.snapNext = true;
+            return true;
+          }, { px, pz, yaw });
+          await frames(8);
+          const c = await ev(() => { const p = __game.cam.cam.position; return [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2), +__game.cam.boom.toFixed(2)]; });
+          console.log('[t] wcam', n, yaw, JSON.stringify(c));
+          if (!process.env.WNOSHOT) await shot(`wcam_${n}_${String(yaw).replace('-', 'm')}`);
+        }
+      }
+      // a dialogue framing (cam.frame) of Ove and someone at Rune's ramp, as when he brings Rune home
+      for (const [n, a, b] of [['cine1', [7.1, 6.9], [5.9, 5.7]], ['cine2', [6.6, 5.4], [5.9, 7.2]], ['cine3', [4.4, 5.6], [5.9, 5.7]]]) {
+        const c = await ev(({ a, b }) => {
+          const g = __game;
+          g.player.teleport(a[0], a[1], 0);
+          g.cam.frame({ x: a[0], y: 0.15, z: a[1], height: 1.75 }, { x: b[0], y: 0.15, z: b[1], height: 1.3 });
+          g.cam.pos.copy(g.cam.cine.pos); g.cam.look.copy(g.cam.cine.look);
+          const p = g.cam.cine.pos;
+          return [+p.x.toFixed(2), +p.y.toFixed(2), +p.z.toFixed(2)];
+        }, { a, b });
+        await frames(8);
+        console.log('[t] wcam', n, JSON.stringify(c));
+        if (!process.env.WNOSHOT) await shot(`wcam_${n}`);
+        await ev(() => __game.cam.release());
+      }
+    },
+
+    // (round 6) look-dev probe: WEVAL = a JS expression evaluated in the page (may be async; its
+    // JSON result is printed), WSHOTS = JSON [{ name, at: [x,y,z], look: [x,y,z], fov?, eval? }]
+    // camera shots (out/wp_<name>.png).
+    async wprobe() {
+      if (process.env.WEVAL) console.log('[t] eval', JSON.stringify(await ev((src) => (0, eval)(src), process.env.WEVAL)));
+      for (const s of JSON.parse(process.env.WSHOTS || '[]')) {
+        if (s.eval) console.log('[t] eval', JSON.stringify(await ev((src) => (0, eval)(src), s.eval)));
+        if (s.at) await cam(s.at, s.look, s.fov || 55);
+        await frames(s.frames || 14);
+        await shot('wp_' + s.name);
+      }
+    },
+
+    async wviews() {
+      const pick = process.env.WVIEWS ? process.env.WVIEWS.split(',') : Object.keys(VIEWS);
+      for (const n of pick) { if (!VIEWS[n]) { console.log('unknown view', n); continue; } await viewShot(n); }
+    },
+
+    async wperf() {
+      const out = {};
+      out.build = await ev(async () => { const t = await import('/src/world/town.js'); return t.townStats; });
+      for (const n of ['start', 'lot_e', 'centrum', 'hospital', 'street_trees', 'drone_nw', 'aerial']) {
+        await cam(...VIEWS[n]);
+        await frames(30);
+        const f = await fps();
+        const s = await ev(() => window.__stats());
+        out[n] = { fps: +f, ...s };
+        console.log('[t] perf', n, 'fps', f, JSON.stringify(s));
+      }
+      console.log('[t] perfjson', JSON.stringify(out));
+    },
+
+    // Triangles drawn per frame (all passes) by mesh category at the wperf poses: each category is
+    // hidden in turn and the drop in __stats().tris is its share.
+    async wtris() {
+      const cats = { blocks: /^block/, ground: /^ground/, forestbelt: /^forestbelt/, silhouettes: /^silhouettes/, signs: /^signs:/, props: /^props:|^cans/, roads: /^roads|^hills/, cars: /^(Mesh|wheels)/, people: /^SkinnedMesh/ };
+      const poses = (process.env.WPOSES || 'start,lot_e,centrum,street_trees,drone_nw,aerial').split(',');
+      for (const n of poses) {
+        await cam(...VIEWS[n]);
+        await frames(20);
+        const all = await ev(() => window.__stats().tris);
+        const row = { all: +(all / 1e6).toFixed(2) };
+        for (const [k, re] of Object.entries(cats)) {
+          await ev((src) => { const re = new RegExp(src); window.__hid = []; window.__game.player.root.parent.traverse((o) => { if ((o.isMesh || o.isInstancedMesh) && re.test(o.name || o.type) && o.visible) { o.visible = false; window.__hid.push(o); } }); }, re.source);
+          await frames(4);
+          const t = await ev(() => window.__stats().tris);
+          await ev(() => { for (const o of window.__hid) o.visible = true; });
+          row[k] = +((all - t) / 1e6).toFixed(2);
+        }
+        await frames(4);
+        console.log('[t] tris', n.padEnd(13), JSON.stringify(row));
+      }
+    },
+
+    async meshstats() {
+      const r = await ev(() => {
+        const g = window.__game;
+        const sc = g.player.root.parent;
+        const rows = [];
+        sc.traverse((o) => {
+          if (!o.isMesh) return;
+          const geo = o.geometry; if (!geo) return;
+          const tris = (geo.index ? geo.index.count : geo.attributes.position.count) / 3 * (o.isInstancedMesh ? o.count : 1);
+          rows.push({ name: o.name || o.type, tris: Math.round(tris), groups: Array.isArray(o.material) ? o.material.length : 1 });
+        });
+        const by = {};
+        for (const q of rows) { const k = q.name.replace(/\d+/g, '#'); by[k] ??= { n: 0, tris: 0, groups: 0 }; by[k].n++; by[k].tris += q.tris; by[k].groups += q.groups; }
+        return Object.entries(by).sort((a, b) => b[1].tris - a[1].tris).slice(0, 40);
+      });
+      for (const [k, v] of r) console.log('[t] mesh', k.padEnd(28), 'n', v.n, 'tris', v.tris, 'groups', v.groups);
+      console.log('[t] trees', JSON.stringify(await ev(async () => (await import('/src/world/kit.js')).treeStats)));
+      console.log('[t] snow', JSON.stringify(await ev(async () => (await import('/src/world/kit.js')).snowStats)));
+      console.log('[t] signs', JSON.stringify(await ev(async () => (await import('/src/world/signs.js')).signStats())));
+    },
+
+    async atlas() {
+      const n = await ev(async () => {
+        const s = await import('/src/world/signs.js');
+        const pages = s.signPages();
+        window.__atlas = [];
+        for (const k of Object.keys(pages)) pages[k].forEach((p, i) => window.__atlas.push([k + i, p.canvas.toDataURL('image/png')]));
+        return window.__atlas.length;
+      });
+      const fs = await import('fs');
+      for (let i = 0; i < n; i++) {
+        const [name, url] = await ev((i) => window.__atlas[i], i);
+        fs.writeFileSync(`${OUT}/atlas_${name}.png`, Buffer.from(url.split(',')[1], 'base64'));
+        console.log('saved atlas', name);
+      }
+    },
+
+    async validate() {
+      const res = await ev(async () => {
+        const L = await import('/src/world/layout.js');
+        const Cm = await import('/src/world/collision.js');
+        const T = await import('/src/world/town.js');
+        const { CURB, RHW, HALF, P, landmarks, isCarFree, carFreeZones, baseGround } = L;
+        const probs = [];
+        const P_ = (m) => { if (probs.length < 400) probs.push(m); };
+        const tmp = [];
+        const f1 = (v) => v.toFixed(1);
+        // Distance from the nearest road centre line along each axis (inside the grid).
+        const offAxis = (v) => { const m = (((v + HALF) % P) + P) % P; return Math.min(m, P - m); };
+        // Does an OBB (centre, yaw, w across, l along) overlap a solid taller than ground + step?
+        // Sampled on a 0.2 m grid (+ the edges). Returns the first offending block or null.
+        const obbHit = (x, z, yaw, w, l, step, skip) => {
+          const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+          const R = Math.hypot(w, l) / 2 + 0.1;
+          Cm.queryBlocks(x - R, z - R, x + R, z + R, tmp);
+          const list = tmp.filter((b) => !skip || !skip(b));
+          const nw = Math.max(2, Math.ceil(w / 0.2)), nl = Math.max(2, Math.ceil(l / 0.2));
+          for (let i = 0; i <= nw; i++) for (let j = 0; j <= nl; j++) {
+            const a = -w / 2 + (w * i) / nw, b = -l / 2 + (l * j) / nl;
+            const px = x + rx * a + fx * b, pz = z + rz * a + fz * b;
+            const g = baseGround(px, pz);
+            for (const bl of list) {
+              if (!Cm.contains(bl, px, pz)) continue;
+              if (Cm.topAt(bl, px, pz) > g + step) return bl;
+            }
+          }
+          return null;
+        };
+        const cars = T.parkedCars;
+        const carHit = (x, z, yaw, w, l, self, skip) => {
+          for (const c of cars) {
+            if (c === self || (skip && skip(c))) continue;
+            const dx = c.x - x, dz = c.z - z;
+            if (dx * dx + dz * dz > 36) continue;
+            // OBB vs OBB (SAT, car 1.9 x 4.7).
+            const A = { x, z, f: [Math.sin(yaw), Math.cos(yaw)], hw: w / 2, hl: l / 2 }, B = { x: c.x, z: c.z, f: [Math.sin(c.yaw), Math.cos(c.yaw)], hw: 0.95, hl: 2.35 };
+            const axes = [A.f, [A.f[1], -A.f[0]], B.f, [B.f[1], -B.f[0]]];
+            let sep = false;
+            for (const [ax, az] of axes) {
+              const pr = (o) => o.hl * Math.abs(ax * o.f[0] + az * o.f[1]) + o.hw * Math.abs(ax * o.f[1] - az * o.f[0]);
+              if (Math.abs(dx * ax + dz * az) > pr(A) + pr(B)) { sep = true; break; }
+            }
+            if (!sep) return c;
+          }
+          return null;
+        };
+        const obbOverlap = (ax, az, ay, ahw, ahl, bx, bz, by, bhw, bhl) => {
+          const A = { f: [Math.sin(ay), Math.cos(ay)], hw: ahw, hl: ahl }, B = { f: [Math.sin(by), Math.cos(by)], hw: bhw, hl: bhl };
+          const dx = bx - ax, dz = bz - az;
+          for (const [qx, qz] of [A.f, [A.f[1], -A.f[0]], B.f, [B.f[1], -B.f[0]]]) {
+            const pr = (o) => o.hl * Math.abs(qx * o.f[0] + qz * o.f[1]) + o.hw * Math.abs(qx * o.f[1] - qz * o.f[0]);
+            if (Math.abs(dx * qx + dz * qz) > pr(A) + pr(B)) return false;
+          }
+          return true;
+        };
+        const desc = (b) => b ? `${b.kind}@${f1(b.x ?? (b.minX + b.maxX) / 2)},${f1(b.z ?? (b.minZ + b.maxZ) / 2)} top ${b.top.toFixed(2)}` : '';
+
+        // ---- violation spots
+        const V = T.violationSpots;
+        const kinds = {};
+        let vOk = 0;
+        V.forEach((v, i) => {
+          kinds[v.kind] = (kinds[v.kind] || 0) + 1;
+          let bad = false;
+          const hb = obbHit(v.x, v.z, v.yaw, 1.9, 4.8, 0.6);
+          if (hb) { P_(`spot ${i} ${v.kind}/${v.where} (${f1(v.x)},${f1(v.z)}) solid ${desc(hb)}`); bad = true; }
+          const hc = carHit(v.x, v.z, v.yaw, 1.9, 4.8);
+          if (hc) { P_(`spot ${i} ${v.kind} (${f1(v.x)},${f1(v.z)}) overlaps parked ${hc.type} ${hc.name || ''}`); bad = true; }
+          const g = Cm.groundAt(v.x, v.z, 0.2, 0.6);
+          if (g > CURB + 0.06) { P_(`spot ${i} ${v.kind} not at ground level (${g.toFixed(2)})`); bad = true; }
+          const inGrid = Math.abs(v.x) < HALF + RHW && Math.abs(v.z) < HALF + RHW;
+          const d = inGrid ? Math.min(offAxis(v.x), offAxis(v.z)) : 99;
+          if (d < 5.5) { P_(`spot ${i} ${v.kind} only ${d.toFixed(2)} m from a road centre line`); bad = true; }
+          if (v.kind === 'carfree' && !isCarFree(v.x, v.z)) { P_(`carfree spot ${i} not in a carFreeZone`); bad = true; }
+          for (let k = 0; k < i; k++) { const u = V[k]; if (Math.hypot(u.x - v.x, u.z - v.z) < 5.3 && obbOverlap(u.x, u.z, u.yaw, 0.95, 2.4, v.x, v.z, v.yaw, 0.95, 2.4)) { P_(`spots ${k} and ${i} overlap`); bad = true; } }
+          if (!bad) vOk++;
+        });
+        // carFree must not cover lots / streets
+        for (const n of ['parking', 'guestParking', 'saabSpot', 'busStop']) { const m = landmarks[n]; if (m && isCarFree(m.x, m.z)) P_(`landmark ${n} is inside a carFreeZone`); }
+
+        // ---- landmarks (people stand there) and boxes (cars park there)
+        const req = ['oveHouse', 'oveStart', 'oveGarage', 'parvanehHouse', 'runeHouse', 'jimmyHouse', 'andersHouse', 'adrianSpot', 'bikeShed', 'garbageRoom', 'parking', 'guestParking', 'hospital', 'preschool', 'centrum', 'dealer', 'church', 'cemetery', 'sonjaGrave', 'kommun', 'gas', 'park', 'field', 'busStop', 'dealerFinish', 'graveFlowers'];
+        for (const n of req) if (!landmarks[n]) P_(`missing landmark ${n}`);
+        const BOXES = ['oveGarageSpot', 'parvanehDrive', 'hospitalSpot', 'saabSpot', 'adrianBay', 'hospitalDrop'];
+        for (const n of BOXES) if (!landmarks[n] || !landmarks[n].w || !landmarks[n].l) P_(`box ${n} missing or without w/l`);
+        // (round 5) the flowers' spot: on Sonja's plinth, in reach in front of the standing spot
+        { const f = landmarks.graveFlowers, s = landmarks.sonjaGrave;
+          if (f && s) { const d = Math.hypot(f.x - s.x, f.z - s.z), ahead = (f.x - s.x) * Math.sin(s.yaw) + (f.z - s.z) * Math.cos(s.yaw);
+            if (!(d > 1.0 && d < 1.7 && ahead > 1.0 && f.y > CURB && f.y < 0.5)) P_(`graveFlowers not on the plinth in front of sonjaGrave (d ${d.toFixed(2)}, y ${f.y})`); } }
+        // dealerFinish: on the street (asphalt, in a lane) in front of Bilhallen's driveway
+        { const f = landmarks.dealerFinish, d = landmarks.dealerLot;
+          if (f && d && (Math.abs(f.z - d.z) > 3 || offAxis(f.x) > RHW - 1 || Math.abs(f.x - d.x) > 16)) P_('dealerFinish not on the street in front of the driveway'); }
+        let lmN = 0;
+        for (const [n, m] of Object.entries(landmarks)) {
+          if (m.w || m.y !== undefined) continue;
+          lmN++;
+          // free: a 0.35 m circle hits nothing taller than a step
+          Cm.queryBlocks(m.x - 1, m.z - 1, m.x + 1, m.z + 1, tmp);
+          const g0 = baseGround(m.x, m.z);
+          const o = {};
+          for (const b of tmp) if (Cm.topAt(b, m.x, m.z) > g0 + 0.45 && Cm.circleVsBlock(m.x, m.z, 0.35, b, o)) { P_(`landmark ${n} (${f1(m.x)},${f1(m.z)}) blocked by ${desc(b)}`); break; }
+          const g = Cm.groundAt(m.x, m.z, 0.2, 0.6);
+          if (g > CURB + 0.06) P_(`landmark ${n} not at ground level (floor ${g.toFixed(2)} ${Cm.groundInfo.block?.kind})`);
+        }
+        for (const n of BOXES) {
+          const m = landmarks[n]; if (!m) continue;
+          const hb = obbHit(m.x, m.z, m.yaw, m.w, m.l, 0.6);
+          if (hb) P_(`box ${n} overlaps ${desc(hb)}`);
+          const hc = carHit(m.x, m.z, m.yaw, m.w, m.l, cars.find((c) => c.name === 'saab' && n === 'saabSpot'));
+          if (hc && !(n === 'saabSpot' && hc.name === 'saab')) P_(`box ${n} overlaps parked ${hc.type} ${hc.name || ''}`);
+        }
+        // named cars
+        const named = {};
+        for (const c of cars) if (c.name) named[c.name] = c;
+        const want = { saab: 'saab900', patrickCar: null, runeVolvo: 'volvo240', andersAudi: 'audi' };
+        for (const [k, t] of Object.entries(want)) { if (!named[k]) P_(`named car ${k} missing`); else if (t && named[k].type !== t) P_(`named car ${k} is ${named[k].type}`); }
+        if (named.patrickCar && !named.patrickCar.trailer) P_('patrickCar without trailer');
+        if (named.saab && landmarks.saabSpot && Math.hypot(named.saab.x - landmarks.saabSpot.x, named.saab.z - landmarks.saabSpot.z) > 0.3) P_('saab not on saabSpot');
+        // parked cars must not sit in solids either
+        cars.forEach((c, i) => { const hb = obbHit(c.x, c.z, c.yaw, 1.8, 4.5, 0.6, (b) => b.kind === 'glass'); if (hb && !c.indoor) P_(`parked car ${i} ${c.type} ${c.name || ''} (${f1(c.x)},${f1(c.z)}) in ${desc(hb)}`); });
+
+        // ---- collectibles: a free standing point within 1.2 m on ground or a low climbable floor
+        const CLIMB = new Set(['step', 'stand', 'mound', 'bench', 'deck', 'platform', 'sandbox', 'island']);
+        const coll = [...T.collectibleSpots.emblems.map((p) => ['emblem', p]), ...T.collectibleSpots.photos.map((p) => ['photo', p])];
+        if (T.collectibleSpots.emblems.length !== 7 || T.collectibleSpots.photos.length !== 7) P_('need 7 + 7 collectibles');
+        coll.forEach(([k, [x, y, z]], i) => {
+          let ok = false;
+          for (let rr = 0; rr <= 1.2 && !ok; rr += 0.2) for (let a = 0; a < 16 && !ok; a++) {
+            const px = x + Math.cos(a / 16 * 6.283) * rr, pz = z + Math.sin(a / 16 * 6.283) * rr;
+            const fl = Cm.groundAt(px, pz, y, 0);
+            const blk = Cm.groundInfo.block;
+            if (fl > CURB + 0.06 && !(blk && CLIMB.has(blk.kind))) continue;
+            if (y - fl > 1.9 || y - fl < 0.1) continue;
+            Cm.queryBlocks(px - 0.5, pz - 0.5, px + 0.5, pz + 0.5, tmp);
+            const o = {};
+            if (tmp.some((b) => Cm.topAt(b, px, pz) > fl + 0.45 && Cm.circleVsBlock(px, pz, 0.3, b, o))) continue;
+            ok = true;
+          }
+          if (!ok) P_(`${k} ${i} at (${f1(x)},${y.toFixed(2)},${f1(z)}) not reachable`);
+        });
+        // ---- litter
+        const lit = T.litterSpots;
+        if (lit.length < 110) P_(`only ${lit.length} litter spots`);
+        // ---- pedLoops
+        let pedHits = 0;
+        for (const loop of T.pedLoops) {
+          if (loop.pts.length !== 4) P_('pedLoop without 4 points');
+          for (let k = 0; k < 4; k++) {
+            const [ax, az] = loop.pts[k], [bx, bz] = loop.pts[(k + 1) % 4];
+            const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5);
+            for (let q = 0; q <= n; q++) {
+              const x = ax + (bx - ax) * q / n, z = az + (bz - az) * q / n;
+              Cm.queryBlocks(x - 0.5, z - 0.5, x + 0.5, z + 0.5, tmp);
+              const o = {};
+              const hit = tmp.find((b) => Cm.topAt(b, x, z) > CURB + 0.45 && Cm.circleVsBlock(x, z, 0.35, b, o));
+              if (hit) { pedHits++; if (pedHits < 12) P_(`pedLoop ${loop.i},${loop.j} hits ${desc(hit)} at (${f1(x)},${f1(z)})`); }
+            }
+          }
+        }
+        // ---- car sweeps along mission routes (polylines; OBB 1.9 x 4.6, cars step 0.6)
+        const skipCar = (c) => c.name === 'saab' || c.name === 'patrickCar';
+        const sweep = (name, pts, tail = 0) => {
+          let bad = 0;
+          for (let k = 0; k < pts.length - 1; k++) {
+            const [ax, az] = pts[k], [bx, bz] = pts[k + 1], L_ = Math.hypot(bx - ax, bz - az), yaw = Math.atan2(bx - ax, bz - az);
+            for (let t = 0; t <= L_; t += 0.5) {
+              const x = ax + (bx - ax) * t / L_, z = az + (bz - az) * t / L_;
+              const hb = obbHit(x, z, yaw, 1.9, 4.6, 0.6);
+              const hc = hb ? null : carHit(x, z, yaw, 1.9, 4.6, null, skipCar);
+              if (hb || hc) { if (bad++ < 2) P_(`route ${name} blocked at (${f1(x)},${f1(z)}) by ${hb ? desc(hb) : 'parked ' + hc.type + ' ' + (hc.name || '') + ' @' + f1(hc.x) + ',' + f1(hc.z)}`); }
+            }
+          }
+          if (tail) { const [ax, az] = pts[pts.length - 2], [bx, bz] = pts[pts.length - 1], yaw = Math.atan2(bx - ax, bz - az); const hb = obbHit(bx - Math.sin(yaw) * tail / 2, bz - Math.cos(yaw) * tail / 2, yaw, 2.0, tail, 0.6); if (hb) P_(`route ${name} tail blocked by ${desc(hb)}`); }
+          return bad;
+        };
+        const lmv = (n) => [landmarks[n].x, landmarks[n].z];
+        const routes = {
+          saabOut: [lmv('saabSpot'), [6.8, -22.7], [-33, -22.75], [-37, -22.75]],
+          garageIn: [[5.1, -23.5], [5.1, -21.5], lmv('oveGarageSpot')],
+          patrick: [[-37, -22.7], [0, -22.7], [0, 3.8], [-14, 3.8]],
+          hospital: [[118, -151.7], [171.3, -151.7], lmv('hospitalSpot')],
+          hospitalCanopy: [[118, -151.7], [146, -151.7], [146, -163], [143.4, -166.6]],
+          // (round 5) the Akut driveway from the west street, and the same spot from the car park
+          hospitalDrop: [[118, -158.7], [141.6, -158.7], lmv('hospitalDrop')],
+          hospitalDrop2: [[118, -151.7], [142.7, -151.7], lmv('hospitalDrop')],
+          adrianBay: [[-37, -22.75], [lmv('adrianBay')[0], -22.75], lmv('adrianBay')],
+          dealerFinish: [[202.75, 114], lmv('dealerFinish'), [202.75, 46]],
+          dealer: [[202.75, 81], lmv('dealer')],
+          preschool: [[-92, -122.75], [-92, -131]],
+          preschool2: [[-80, -122.75], [-80, -131]],
+          gas: [[-197.25, 0], [-222, 0], [-224, -12], [-246.5, -21.5]],
+          gasNorth: [[-230, -42.75], [-230, -20]],
+        };
+        const rres = {};
+        for (const [n, pts] of Object.entries(routes)) rres[n] = sweep(n, pts, n === 'patrick' ? 9.5 : 0) ? 'BLOCKED' : 'clear';
+        // ---- verge trees near junctions (cars swinging wide / pulling over get trapped)
+        // (round 5) every colliding tree carries its crown for the camera; camBlocks are sane boxes
+        let crowns = 0, trees = 0;
+        for (const b of Cm.blocks) {
+          if (b.kind !== 'tree') continue;
+          trees++;
+          if (!(b.crownR > b.r && b.crownR < 9 && b.crownBottom >= 0 && b.crownBottom < b.crownTop && b.crownTop < 30)) { if (trees - crowns < 4) P_(`tree at (${f1(b.x)},${f1(b.z)}) without a sane crown (${b.crownR}, ${b.crownBottom}, ${b.crownTop})`); continue; }
+          crowns++;
+        }
+        const badCam = T.camBlocks.filter((c) => !(c.x1 > c.x0 && c.z1 > c.z0 && c.top > c.bottom)).length;
+        if (badCam) P_(`${badCam} camBlocks are not boxes`);
+        let vt = 0;
+        for (const b of Cm.blocks) {
+          if (b.kind !== 'tree' || Math.abs(b.x) > HALF + 1 || Math.abs(b.z) > HALF + 1) continue;
+          const ox = offAxis(b.x), oz = offAxis(b.z);
+          if ((ox < 7.5 && oz < 20) || (oz < 7.5 && ox < 20)) { vt++; if (vt < 6) P_(`verge tree near a junction at (${f1(b.x)},${f1(b.z)})`); }
+        }
+        return { problems: probs, nProblems: probs.length, violationSpots: V.length, ok: vOk, kinds, carFreeZones: carFreeZones.length, landmarks: Object.keys(landmarks).length, people: lmN, litter: lit.length, pedHits, routes: rres, parkedCars: cars.length, vergeTreesNearJunctions: vt, trees, treeCrowns: crowns, camBlocks: T.camBlocks.length };
+      });
+      for (const p of res.problems) console.log('[t] PROBLEM', p);
+      delete res.problems;
+      console.log('[t] validate', JSON.stringify(res));
+    },
+  };
+};
