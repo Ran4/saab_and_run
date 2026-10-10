@@ -18,7 +18,8 @@
 
 import * as GFX from '../gfx.js';
 import { lm, rc, landmarks } from '../world/layout.js';
-import { segmentBlocked, queryBlocks, contains, RAMP } from '../world/collision.js';
+import { segmentBlocked, queryBlocks, contains, circleVsBlock, circleVsObb, RAMP } from '../world/collision.js';
+import { STEP } from '../actors/character.js';
 import { kneelPoint } from '../actors/models.js';
 import { audio } from '../audio.js';
 import { hud } from './hud.js';
@@ -747,30 +748,37 @@ export class MissionRunner {
     g.interrupts.hangUp?.();
   }
 
-  // The outro's people stand by Ove, in plain view: whoever is already within 4 m with nothing
-  // between them stays; the others are brought to a free spot in front of him (fanning out to the
-  // sides) on his level - never behind a wall, a fence or a car, never on a ramp.
+  // The outro's people stand by Ove, in plain view (the 'story' test checks each: within 4 m,
+  // nothing taller than 0.6 m between them). Whoever already stands well inside that stays; the
+  // others go to the first good spot of a fixed list (CAST_SPOTS: a fan in front of him, then
+  // round him) - never behind a wall, a fence or a car, never on a ramp, and with a margin
+  // (castSpotOk), so the little shove physics gives someone set down by a wall can't put a house
+  // corner between them. No random spots: the same situation always stages the same scene.
   placeCast(keys) {
     const g = this.g, p = g.player, out = [];
-    // (nothing taller than 0.6 m above the lower of the two spots between them: walls, fences, hedges)
-    const clear = (x, z) => segmentBlocked(p.x, p.z, x, z, Math.min(g.groundAt(p.x, p.z), g.groundAt(x, z)) + 0.6) < 0;
-    const ok = (x, z) => dist(x, z, p.x, p.z) < 4 && clear(x, z) && !onRamp(x, z) && !out.some((q) => dist(q.x, q.z, x, z) < 1.25);
     for (const key of keys) {
       const n = g.npc(key);
       if (n.car) g.unseat(n);
       g.removeCompanion(n);
       if (n.state === 'hidden') { n.state = 'normal'; n.root.visible = true; }
       n.walkTo = null; n.walkPath = null; n.busy = true;
-      if (n.state === 'normal' && dist(n.x, n.z, p.x, p.z) > 1.0 && ok(n.x, n.z) && Math.abs(n.y - p.y) < 0.3) { out.push(n); continue; }
+      n.wishX = n.wishZ = 0; n.vx = n.vz = 0;
+      if (n.state === 'normal' && Math.abs(n.y - p.y) < 0.3 && castSpotOk(g, p, n, n.x, n.z, out, CAST_STRICT)) { out.push(n); continue; }
       let spot = null;
-      for (const da of [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35, 1.9, -1.9, 2.5, -2.5, Math.PI]) {
-        for (const r of [2.3, 2.9, 1.8, 3.5]) {
+      for (const M of [CAST_STRICT, CAST_LOOSE]) {
+        for (const [da, r] of CAST_SPOTS) {
           const a = p.yaw + da, x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r;
-          if (g.spotFree(x, z) && Math.abs(g.groundAt(x, z) - p.y) < 0.2 && ok(x, z)) { spot = { x, z }; break; }
+          if (castSpotOk(g, p, n, x, z, out, M)) { spot = { x, z }; break; }
         }
         if (spot) break;
       }
-      spot ??= g.freeSpot(p.x, p.z, 1.8, 3.2);
+      // (nowhere at all: right beside him, wherever there is floor; in front of him at the last)
+      for (let k = 0; !spot && k < 16; k++) {
+        const a = p.yaw + (k % 2 ? -1 : 1) * Math.ceil(k / 2) * (Math.PI / 8), x = p.x + Math.sin(a) * 1.1, z = p.z + Math.cos(a) * 1.1;
+        if (g.spotFree(x, z, p.y) && Math.abs(g.groundAt(x, z) - p.y) < 0.2 && segmentBlocked(p.x, p.z, x, z, p.y + 0.6) < 0 && !out.some((q) => dist(q.x, q.z, x, z) < 0.9)) spot = { x, z };
+      }
+      if (!spot) console.warn(`placeCast: no spot for ${key} by Ove at ${p.x.toFixed(1)}, ${p.z.toFixed(1)}`);
+      spot ??= { x: p.x + Math.sin(p.yaw) * 1.1, z: p.z + Math.cos(p.yaw) * 1.1 };
       n.teleport(spot.x, spot.z);
       n.state = 'normal';
       out.push(n);
@@ -925,5 +933,41 @@ function onRamp(x, z) {
   for (const b of queryBlocks(x - 0.4, z - 0.4, x + 0.4, z + 0.4, _rq)) if (b.shape === RAMP && contains(b, x, z)) return true;
   return false;
 }
-const _rq = [];
+const _rq = [], _hit = {};
+
+// Where MissionRunner.placeCast tries to put the outro's people: [angle off Ove's facing, distance],
+// in order. First the fan in front of him (out to the sides, then behind), then the gaps between.
+const CAST_SPOTS = [];
+for (const da of [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35, 1.9, -1.9, 2.5, -2.5, Math.PI]) for (const r of [2.3, 2.9, 1.8, 3.4]) CAST_SPOTS.push([da, r]);
+for (const da of [0.22, -0.22, 0.67, -0.67, 1.12, -1.12, 1.6, -1.6, 2.2, -2.2, 2.8, -2.8]) for (const r of [2.3, 1.6, 3.0]) CAST_SPOTS.push([da, r]);
+// How much margin a spot needs: at most `far` m from Ove, `apart` m from the others, the body
+// clear of walls by `body` m more, the sightline clear by `side` m to either side. The loose set
+// is tried only when nothing in the list passes the strict one.
+const CAST_STRICT = { far: 3.4, apart: 1.25, body: 0.15, side: 0.25 };
+const CAST_LOOSE = { far: 3.7, apart: 1.0, body: 0.03, side: 0.1 };
+
+// Can `n` stand at (x, z) for a scene with Ove (p)? On the floor he stands on (ground level: not a
+// roof, not a ramp), 1.2 m to `M.far` from him, clear of the cast placed so far, of cars and of
+// anything taller than a step around the body; and nothing taller than 0.6 m above the lower of
+// the two spots between them (the 'story' test's own check: segmentBlocked), with `M.side` m to
+// spare either side of the line (sampled every 0.1 m; cars count too).
+function castSpotOk(g, p, n, x, z, placed, M) {
+  const d = dist(x, z, p.x, p.z);
+  if (d < 1.2 || d > M.far || placed.some((q) => dist(q.x, q.z, x, z) < M.apart)) return false;
+  const y = g.groundAt(x, z);
+  if (Math.abs(y - p.y) > 0.2 || onRamp(x, z) || !g.spotFree(x, z, y)) return false;
+  const r = (n.r || 0.4) + M.body;
+  for (const b of queryBlocks(x - r, z - r, x + r, z + r, _rq)) if (b.top > y + STEP && circleVsBlock(x, z, r, b, _hit)) return false;
+  const yl = Math.min(g.groundAt(p.x, p.z), y) + 0.6;
+  if (segmentBlocked(p.x, p.z, x, z, yl) >= 0) return false;
+  const s = M.side, steps = Math.max(2, Math.ceil(d / 0.1));
+  const walls = queryBlocks(Math.min(p.x, x) - s, Math.min(p.z, z) - s, Math.max(p.x, x) + s, Math.max(p.z, z) + s, _rq).filter((b) => b.kind !== 'prop' && b.top >= yl);
+  const cars = g.cars.filter((c) => Math.abs(c.x - (p.x + x) / 2) < d / 2 + 6 && Math.abs(c.z - (p.z + z) / 2) < d / 2 + 6);
+  for (let k = 0; k <= steps; k++) {
+    const t = k / steps, sx = p.x + (x - p.x) * t, sz = p.z + (z - p.z) * t;
+    for (const b of walls) if (circleVsBlock(sx, sz, s, b, _hit)) return false;
+    for (const c of cars) if (circleVsObb(sx, sz, s, c.obb, _hit)) return false;
+  }
+  return true;
+}
 

@@ -201,6 +201,17 @@ On foot, backed into a wall with the boom at its shortest, the camera swings to 
 - `complete()`: UPPDRAG KLART over `cam.showcase` (or `def.finale(g, 'klart')`), input frozen;
   14:30; `placeCast` rejects ramps and spots more than 0.2 m off Ove's level; day 3 `outroAt` on the
   walkway, day 4 1.4 m out from the door.
+- `placeCast` is deterministic and keeps a margin (flake fix 2026-10-10: `story`'s day-6 outro check
+  failed ~1 run in 7, `anita … wall=true`: the fan took spots whose sightline only just missed the
+  house corner by Rune's ramp - `segmentBlocked` samples every 0.8 m - and the few cm physics shoves
+  someone set down by a wall put a sample inside the corner; with no spot it fell back on a random,
+  unchecked `freeSpot`). A spot must pass `castSpotOk` (module level): Ove's floor ±0.2 m, no ramp,
+  `spotFree`, the body (`n.r` + `M.body`) clear of anything taller than a step, 1.2 m-`M.far` from
+  Ove, `M.apart` from the others, the test's own `segmentBlocked` line clear and the line clear by
+  `M.side` m to either side (every 0.1 m; cars count). Spots: fixed `CAST_SPOTS` (the old fan, then
+  the angles between) with `CAST_STRICT`, then `CAST_LOOSE`, then 1.1 m round Ove, then 1.1 m in front
+  (`console.warn`). Kept people must pass `CAST_STRICT` too; the cast's velocity is zeroed. Intros
+  (`standBefore`) were never random (fixed list) and are unchanged.
 - Day 7 `finale(g, phase)`: 'klart' / 'end' = `graveShot('wide')` (letterbox off for the end banner),
   'outro' = kneel + `graveShot('stone')` (over the shoulder: SONJA, the flowers, the lantern),
   line 4 = `graveShot('face')`, line 7 = 'stone' again, 'done' = stand up. `dusk(on)` scales
