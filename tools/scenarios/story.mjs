@@ -1,6 +1,6 @@
 // The story (phase 3b): the seven days of DESIGN.md section 5.
 //   story   plays all seven missions with debug warps; must end with '#7 idle' and 'no errors'.
-//           FROM=n starts at day n+1 (?mission=n).
+//           FROM=n starts at day n+1 (?mission=n); TO=n stops after day n.
 //   m1      day 1 with REAL key presses for the hard part: Ove walks up to Patrick's car (W, E),
 //           drives car + trailer past the box (W A D) and backs it into parvanehDrive (S A D, B to
 //           look back) - no warps or velocity pokes while driving; the rest of the day as in 'story'.
@@ -592,7 +592,7 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
       const from = +(process.env.FROM || 0);
       if (from) await fresh(`&mission=${from}`);
       await watchHud();
-      for (let n = from + 1; n <= 7; n++) {
+      for (let n = from + 1; n <= +(process.env.TO || 7); n++) {
         await D[n]();
         await failCheck();
       }

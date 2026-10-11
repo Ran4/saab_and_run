@@ -28,6 +28,7 @@ import { segmentBlocked, queryBlocks, contains, circleVsBlock, circleVsObb, RAMP
 import { STEP } from '../actors/character.js';
 import { kneelPoint } from '../actors/models.js';
 import { audio } from '../audio.js';
+import { voice } from '../voice.js';
 import { hud } from './hud.js';
 import { fx } from './fx.js';
 import { dist, yawTo, angleDiff } from '../util.js';
@@ -81,8 +82,10 @@ const also = (factory, x) => () => {
     this.callAtT = this.callI < calls.length ? (this.callI ? x.callEvery ?? 12 : x.callAt) : null;
   };
   st.update = function (g, m, dt) {
+    // (the clocks run while nobody is talking: a gap is counted from the end of the last line)
+    const hush = voice.quiet();
     if (this.callAtT != null && !g.inDialog && !g.interrupts.call) {
-      this.callAtT -= dt;
+      if (hush) this.callAtT -= dt;
       if (this.callAtT <= 0) {
         const t = this.target?.(g), f = g.focus();
         // (nearly there: the rest can wait - no call card over the scene at the end)
@@ -94,7 +97,7 @@ const also = (factory, x) => () => {
       }
     }
     if (x.lines && this.lineI < x.lines.length && !g.inDialog) {
-      this.lineT -= dt;
+      if (hush) this.lineT -= dt;
       if (this.lineT <= 0) {
         const [who, text, how] = x.lines[this.lineI++];
         if (how === 'radio') g.radio(who, text); else g.shout(who, text);
@@ -836,7 +839,8 @@ export class MissionRunner {
     // A smitare chase from before (reporting still works during a mission) drives off quietly: no
     // SMET! and -8 Ordning over UPPDRAG KLART and the outro.
     g.patrol.dropPursuit?.();
-    hud.clearBubbles?.();
+    // (the bubbles go, but a line being said is said to the end: the outro waits for it below)
+    hud.clearBubbles?.(true);
     // UPPDRAG KLART over a held shot of what was just done (the Saab in its garage, Ove at a door,
     // the grave), not wherever the chase camera happens to look; nobody moves under the banner.
     const sub = g.playerCar || p;
@@ -847,6 +851,8 @@ export class MissionRunner {
     audio.jingle('complete');
     g.addCoins(def.reward);
     await g.wait(2.2);
+    // Nobody is cut off by the outro: it waits for quiet (at most 5 s in all, the banner's included).
+    await voice.waitQuiet(0, 2.8);
     hud.hideBanner();
     g.cam.release();
     if (g.playerCar) g.exitCar(true);

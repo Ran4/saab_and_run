@@ -3749,8 +3749,9 @@ export function animateCharacter(m, st, dt) {
   if (wFlung > 0.001) { flungPose(m, st, Q, t); lerpPose(P, Q, wFlung); }
   if (wDown > 0.001) { downPose(m, st, Q, t); lerpPose(P, Q, wDown); }
   if (m.squash > 0) { const s = Math.sin(Math.min(1, m.squash / 0.6) * PI) * 0.6; P[OFF + 1] -= 0.06 * s; for (const i of [0, 1]) { P[(i ? B.thighL : B.thighR) * 3] -= 0.35 * s; P[(i ? B.shinL : B.shinR) * 3] += 0.7 * s; P[(i ? B.footL : B.footR) * 3] -= 0.35 * s; } }
-  // mouth: barely moves
-  const jawT = st.talk ? 0.02 + 0.055 * Math.abs(Math.sin(t * 13 + Math.sin(t * 4.7) * 2)) * (0.6 + 0.4 * Math.sin(t * 2.3 + m.seed * 9)) : st.yell || st.flung ? 0.16 : 0.004;
+  // mouth: barely moves. With a voice clip playing (voice.js) the jaw follows its loudness and shuts
+  // on m, b and p (st.mouth, 0..1); a murmur still flaps.
+  const jawT = st.talk ? (st.mouth != null ? 0.01 + 0.07 * st.mouth : 0.02 + 0.055 * Math.abs(Math.sin(t * 13 + Math.sin(t * 4.7) * 2)) * (0.6 + 0.4 * Math.sin(t * 2.3 + m.seed * 9))) : st.yell || st.flung ? 0.16 : 0.004;
   // (a jump: clenched while gathering, open on the grunt as he pushes off and on the 'uff' as he
   // lands; running hard: breathing through the mouth)
   const jr = st.jumping ? clamp((st.vy || 0) / Math.max(1, st.jumpV || 4), -1, 1) : -1;

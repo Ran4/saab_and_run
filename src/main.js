@@ -5,6 +5,7 @@
 import { THREE, initGfx, renderer, scene, camera, followSun, tickSky, renderFrame, gfxReady, gfxStats, precompile, uploadGeometry, nextTask } from './gfx.js';
 import { input } from './input.js';
 import { audio } from './audio.js';
+import { voice } from './voice.js';
 import { parkedCars, tickTown, litterSpots, collectibleSpots, mapLabels as townLabels, surfaceAt as townSurfaceAt } from './world/town.js';
 import * as TOWN from './world/town.js';
 import { finalizeProps, tickProps, breakProp, propsNear, props as allProps } from './world/props.js';
@@ -216,6 +217,15 @@ class Game {
     window.__interrupt = this.interrupts;
     this.missions = new MissionRunner(this);
     this.missions.gating = !TEST || params.has('gate');
+    // The voices (voice.js): clips for the lines that have one, turns for everybody.
+    voice.init();
+    voice.inCar = () => !!this.playerCar;
+    voice.held = () => hud.dialogActive;
+    window.__voice = voice;
+    // The title's music: the first key or click there starts the sound (a browser won't before one).
+    const wake = () => { if (!this.started) { audio.init(); audio.music('title'); } };
+    window.addEventListener('pointerdown', wake, { once: true });
+    window.addEventListener('keydown', wake, { once: true });
     this.cam = new CamRig(camera);
     // What dialogue shots must see past (camera.js judges shots by what the lens would see).
     this.cam.world = () => ({ cars: this.cars, people: this.allChars() });
@@ -381,6 +391,7 @@ class Game {
   pause(on) {
     if (TEST || !this.started || this.paused === on) return;
     this.paused = on;
+    voice.pause(on);
     this.pausedAt = performance.now();
     document.getElementById('pause').classList.toggle('show', on);
     if (on) hud.renderLog(this.patrol.log);
@@ -964,18 +975,54 @@ class Game {
   }
   addCoins(n) { this.coins = Math.max(0, this.coins + n); hud.setCoins(this.coins); if (n > 0) hud.bumpCoins(); }
 
-  say(target, text, secs = 2) { hud.say(target, text, secs); }
-  radio(who, text) {
-    const k = who;
-    hud.radio(k, CHARS[k]?.name || who, text);
-    const n = Math.min(8, Math.round(text.split(/\s+/).length * 0.7));
-    for (let i = 0; i < n; i++) setTimeout(() => audio.talk(CHARS[k]?.voice || 300), i * 230);
+  // A speech bubble, and the line said (voice.js: from where they stand; it waits its turn, up to
+  // o.wait s, and the bubble stays up until it has been said). Returns the voice's handle, or null
+  // with the voices off (the caller murmurs, as before). o.voice false: the bubble only (the line is
+  // said elsewhere: a phone call's answer); o.who: the voice, if not the target's own.
+  say(target, text, secs = 2, o = {}) {
+    const it = hud.say(target, text, secs);
+    if (o.voice === false) return null;
+    const ch = target.root ? target : null;
+    const u = voice.play(o.who || voice.voiceFor(target), text, {
+      slot: 'bubble', mode: o.shout ? 'shout' : 'world', at: target, ch, wait: o.wait, tag: o.tag,
+      start: (u) => { it.until = Math.max(it.until, performance.now() + (u.dur + 0.4) * 1000); },
+    });
+    it.u = u;
+    return u;
   }
-  // Someone calls out to Ove: a speech bubble if they are close, else a toast.
+  // A murmur for a line said without the voices (with them, say() has it covered).
+  murmur(pitch = 300) { if (!voice.enabled) audio.talk(pitch); }
+  // A line over the radio / the phone, with the speaker's portrait. With the voices on it waits its
+  // turn (o.wait s, 6; o.must: for ever) and its toast goes up when it is said, for as long as it
+  // takes. Where it comes from: a passenger in Ove's car beside him, a neighbour close by from where
+  // they stand, Ove himself dry, anyone else down the phone line.
+  radio(who, text, o = {}) {
+    const k = who, name = CHARS[k]?.name || who;
+    const n = this.npc(k), f = this.focus();
+    const passenger = n && n.car && n.car === this.playerCar;
+    const near = n && !n.car && n.state === 'normal' && dist(n.x, n.z, f.x, f.z) < 30;
+    const mode = k === 'ove' ? 'dialog' : passenger ? 'car' : near ? 'world' : 'phone';
+    const u = voice.play(k, text, {
+      slot: 'main', mode, at: near ? n : null, ch: n || (k === 'ove' ? this.player : null), wait: o.wait ?? 6, must: o.must, tag: o.tag,
+      start: (u) => { hud.radio(k, name, text, o.cls || 'radio', Math.max(3500, (u.dur + 0.9) * 1000)); u.rec.toastEnd = voice.now() + Math.max(3.5, u.dur + 0.9); },
+    });
+    if (u) return u;
+    hud.radio(k, name, text, o.cls || 'radio');
+    const w = Math.min(8, Math.round(text.split(/\s+/).length * 0.7));
+    for (let i = 0; i < w; i++) setTimeout(() => audio.talk(CHARS[k]?.voice || 300), i * 230);
+    return null;
+  }
+  // Someone calls out to Ove: a speech bubble if they are close, else a toast. Said aloud once:
+  // from where they stand when close, else a shout from their direction.
   shout(who, text) {
     const n = this.npc(who);
-    if (n && !n.car && dist(n.x, n.z, this.focus().x, this.focus().z) < 45) this.say(n, text, 3.2);
-    hud.radio(who, `${CHARS[who]?.name || who} ropar`, text);
+    const close = n && !n.car && dist(n.x, n.z, this.focus().x, this.focus().z) < 45;
+    if (close) this.say(n, text, 3.2, { voice: false });
+    const u = voice.play(who, text, {
+      slot: 'bubble', mode: n && !n.car ? 'shout' : 'phone', at: n && !n.car ? n : null, ch: n, wait: 4, near: 22,
+      start: (u) => { hud.radio(who, `${CHARS[who]?.name || who} ropar`, text, 'radio', Math.max(3500, (u.dur + 0.9) * 1000)); },
+    });
+    if (!u) hud.radio(who, `${CHARS[who]?.name || who} ropar`, text);
   }
 
   setTalker(who) { this.talker = who || null; }
@@ -1386,9 +1433,11 @@ class Game {
     n.yaw = yawTo(this.player.x - n.x, this.player.z - n.z);
     this.player.yaw = yawTo(n.x - this.player.x, n.z - this.player.z);
     const line = pick(this.chatterFor(n.key));
-    this.say(n, line, 2.8);
-    for (let k = 0; k < 3; k++) setTimeout(() => audio.talk(n.def.voice || 300), k * 230);
-    setTimeout(() => { if (!this.playerCar && !this.inDialog) { const r = pick(OVE_REPLY); this.say(this.player, r, 1.6); audio.talk(CHARS.ove.voice); } }, 2000);
+    const u = this.say(n, line, 2.8);
+    const reply = () => { if (!this.playerCar && !this.inDialog) { const r = pick(OVE_REPLY); this.say(this.player, r, 1.6); this.murmur(CHARS.ove.voice); } };
+    // (Ove grunts his answer once they have said their piece; without the voices, after 2 s)
+    if (u) u.ended.then(() => { if (u.state === 'done') setTimeout(reply, 450); });
+    else { for (let k = 0; k < 3; k++) setTimeout(() => audio.talk(n.def.voice || 300), k * 230); setTimeout(reply, 2000); }
     n.chatT = 12 + Math.random() * 8;
   }
 
@@ -1450,7 +1499,7 @@ class Game {
     const d = this.garage, p = this.player, r = this.garageReach();
     if (!r) return;
     const open = !d.isOpen, why = this.garageBlocked(open);
-    if (why) { this.say(p, why, 1.8); audio.talk(CHARS.ove.voice); return; }
+    if (why) { this.say(p, why, 1.8); this.murmur(CHARS.ove.voice); return; }
     // (the handle is in the middle; the open door's edge he takes where he stands)
     this.doorOp = { open, side: r.side, phase: 'reach', t: 0, pt: 0, a: open ? 0 : clamp(r.a, -0.8, 0.8), lock: true, walk: true, wx: 0, wz: 0, at: false, tugs: 0 };
     p.faceWish = false;
@@ -1535,7 +1584,7 @@ class Game {
         if (n >= op.tugs && f >= 0.09) { op.tugs = n + 1; d.bump(0.012); audio.garage('tug', this.doorVol()); }
       }
       if (tt > 3 * 0.34 + 0.15) {
-        if (Math.random() < 0.35) { this.say(p, pick(GARAGE_DOOR.shut), 1.4); audio.talk(CHARS.ove.voice); }
+        if (Math.random() < 0.35) { this.say(p, pick(GARAGE_DOOR.shut), 1.4); this.murmur(CHARS.ove.voice); }
         this.endDoorOp();
       }
     }
@@ -1573,7 +1622,7 @@ class Game {
     if (car === this.playerCar && impact > 3 && this.time > (this._doorLineT || 0)) {
       this._doorLineT = this.time + 10;
       this.say(this.player, pick(GARAGE_DOOR.hit), 1.8);
-      audio.talk(CHARS.ove.voice);
+      this.murmur(CHARS.ove.voice);
     }
   }
 
@@ -1920,7 +1969,10 @@ class Game {
     for (const k in this.npcs) {
       const n = this.npcs[k];
       const near = dist(n.x, n.z, fp.x, fp.z);
-      n.anim.talk = talker === k;
+      // (talking: in the dialogue box, or while their voice says a line; the jaw follows a clip)
+      const vu = voice.talking(k);
+      n.anim.talk = talker === k || !!vu;
+      n.anim.mouth = vu ? vu.mouth() : null;
       const giver = this.missions.offered?.giver === k;
       // Elsewhere today: hidden at home (see npcAway). Nobody vanishes in front of Ove, and nobody
       // who is away comes back into view (a new day hides them at once: placeNpcs(true)). The title
@@ -1938,13 +1990,18 @@ class Game {
         if (near < 7 && !this.playerCar && !running) {
           n.chatT = (n.chatT ?? 1.5 + Math.random() * 4) - dt;
           // One neighbour at a time: nobody talks over anybody else.
-          if (n.chatT <= 0 && this.time > (this.chatGlobalT || 0)) { n.chatT = 16 + Math.random() * 10; this.chatGlobalT = this.time + 4.5; this.say(n, pick(this.chatterFor(k)), 2.8); }
+          // Not within 6 m of the day's giver either (the intro would cut it off), and not over anybody.
+          const gv = this.missions.offered && this.npc(this.missions.offered.giver);
+          const hush = (gv && dist(gv.x, gv.z, p.x, p.z) < 6) || !voice.quiet();
+          if (n.chatT <= 0 && this.time > (this.chatGlobalT || 0) && !hush) { n.chatT = 16 + Math.random() * 10; this.chatGlobalT = this.time + 4.5; const u = this.say(n, pick(this.chatterFor(k)), 2.8); if (u) this.chatGlobalT = Math.max(this.chatGlobalT, this.time + u.dur + 1); }
         } else if (near > 14) n.chatT = undefined;
       }
       n.sync(dt);
     }
     // Ove: notebook, phone, pushing / carrying, footsteps.
-    p.anim.talk = talker === 'ove';
+    const ou = voice.talking('ove');
+    p.anim.talk = talker === 'ove' || !!ou;
+    p.anim.mouth = ou ? ou.mouth() : null;
     p.anim.write = !title && !this.playerCar && !!this.patrol.writing;
     p.anim.phone = !this.playerCar && this.interrupts.onPhone;
     this.poseT -= dt;
@@ -2201,6 +2258,10 @@ class Game {
       hud.drawMinimap(f.x, f.z, this.cam.yaw, f.yaw, this.mapMarkers(false), this.route);
     }
     if (this.bigMap && this.frame % 10 === 0) hud.toggleBigMap(true, this);
+    // (the day's scenes loaded as soon as it is offered: no wait before each line of the intro)
+    const off = this.missions.offered;
+    if (off !== this._prefetched) { this._prefetched = off; if (off) voice.prefetch([...off.intro, ...(off.retryIntro || []), ...off.outro]); }
+    voice.update(this);
     hud.tickBubbles();
     if (this.penaltyT > 0) {
       this.penaltyT -= dt;
@@ -2222,7 +2283,7 @@ class Game {
       this.slideSaidAt = this.time;
       const lines = donut ? SLID.donut : Math.random() < 0.5 && SLID[c.kind] ? SLID[c.kind] : SLID.default;
       this.say(this.player, pick(lines), 2.2);
-      audio.talk(CHARS.ove.voice);
+      this.murmur(CHARS.ove.voice);
     }
   }
 
@@ -2251,8 +2312,31 @@ class Game {
       audio.skid(0);
       audio.horn(false);
     }
-    audio.duckMusic(this.patrol.pursuit || this.interrupts.call ? 0.5 : 1);
+    // The score (audio.music): what is going on decides the cue. The old fixed duck stays for the
+    // generative piano under a chase or a call; a composed cue is mixed for its moment.
+    const ms = this.musicState();
+    audio.music(ms, { day: this.storyDayNow() });
+    audio.duckMusic(audio.musicCue === 'piano' && (this.patrol.pursuit || this.interrupts.call) ? 0.5 : 1);
   }
+  // What the music should be doing (audio.music's states): the day's race, Vita skjortan's Škoda
+  // (day 6's chase, day 7's chaser), the drive to the hospital against the clock, Sonja's grave and
+  // the last outro, a mission, a smitare, an errand or a call, else the patrol's playlist.
+  musicState() {
+    const m = this.missions, st = m.stage, def = m.m?.def;
+    if (m.state === 'idle' || !def) {
+      if (this.patrol.pursuit) return 'pursuit';
+      if (this.interrupts.active || this.interrupts.call) return 'errand';
+      return 'roam';
+    }
+    const last = def.stages && m.stageI >= def.stages.length - 1;
+    if (def.id === 'varkarna' && (m.state === 'outro' || (m.state === 'running' && last))) return 'finale';
+    if (m.state === 'intro' || m.state === 'outro') return 'roam';
+    if (st?.kind === 'race') return 'race';
+    if (st?.kind === 'destroy' || st?.chaser) return 'chase';
+    if (def.id === 'sjukhuset' && st?.kind === 'goto' && st.t != null) return 'hurry';
+    return 'mission';
+  }
+  storyDayNow() { const m = this.missions; return Math.max(1, m.index + (m.gateOpen && m.index < MISSIONS.length ? 1 : 0)); }
 
   // Replace traffic that has been wrecked or wandered off far away.
   recycleTraffic(dt) {

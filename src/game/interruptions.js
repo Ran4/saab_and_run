@@ -23,6 +23,7 @@
 import { CHARS } from '../actors/models.js';
 import { lm } from '../world/layout.js';
 import { audio } from '../audio.js';
+import { voice } from '../voice.js';
 import { hud } from './hud.js';
 import { newCtx, disposeCtx, holdAt, fetch, pickup, dropoff, goto, escort, catchCat } from './stages.js';
 import { ERRANDS as E, ERRAND_BUSY, ANSWER, DONE } from './script.js';
@@ -103,7 +104,8 @@ export const TEMPLATES = [
 ];
 
 const nameOf = (who) => CHARS[who]?.name || who;
-const lineSecs = (s) => 1.3 + s.length * 0.045;
+// How long a line of a call takes: the voice's clip (or its guess), else the old reading time.
+const lineSecs = (who, s) => voice.secs(who, s, 1.3 + s.length * 0.045) + (voice.enabled ? 0.35 : 0);
 
 export class Interruptions {
   constructor(game) {
@@ -160,11 +162,12 @@ export class Interruptions {
     g.patrol.cancelWriting('telefonen ringde');
     const script = [];
     let t = 2.6;
-    script.push([t, () => { audio.ring(false); hud.answerCall(); this.onPhone = true; const a = pick(ANSWER); hud.phone('ove', 'Ove', a); g.say(g.player, a, 1.4); }]);
-    t += 1.2;
-    for (const line of tpl.lines) { script.push([t, () => { hud.phone(tpl.who, nameOf(tpl.who), line); this.murmur(tpl.who, line); }]); t += lineSecs(line); }
-    script.push([t, () => { hud.phone('ove', 'Ove', tpl.ove); g.say(g.player, tpl.ove, 2.2); }]);
-    t += lineSecs(tpl.ove) * 0.8;
+    const a = pick(ANSWER);
+    script.push([t, () => { audio.ring(false); hud.answerCall(); this.onPhone = true; this.phoneLine('ove', a, 1.4); }]);
+    t += Math.max(1.2, voice.enabled ? lineSecs('ove', a) : 0);
+    for (const line of tpl.lines) { script.push([t, () => this.phoneLine(tpl.who, line)]); t += lineSecs(tpl.who, line); }
+    script.push([t, () => this.phoneLine('ove', tpl.ove, 2.2)]);
+    t += lineSecs('ove', tpl.ove) * (voice.enabled ? 1 : 0.8);
     script.push([t, () => { hud.endCall(); this.onPhone = false; this.call = null; this.start(tpl); }]);
     this.call = { tpl, t: 0, script, k: 0 };
     audio.ring(true);
@@ -184,9 +187,25 @@ export class Interruptions {
     const n = Math.min(10, Math.round(text.split(/\s+/).length * 0.8));
     for (let k = 0; k < n; k++) setTimeout(() => audio.talk(CHARS[who]?.voice || 300), k * 230);
   }
+  // One line of a call: its toast, and the voice (the neighbour down the line; Ove's own answer dry,
+  // with a bubble over him: `bubble` s). With the voices on a call's lines are never dropped (they
+  // wait for whoever else is talking) and the call waits for each one (updateCall).
+  phoneLine(who, text, bubble = 0) {
+    const g = this.g, c = this.call;
+    const u = voice.play(who, text, {
+      slot: 'main', mode: who === 'ove' ? 'dialog' : 'phone', must: true, ch: who === 'ove' ? g.player : null,
+      start: (u) => hud.phone(who, nameOf(who), text, Math.max(3500, (u.dur + 0.9) * 1000)),
+    });
+    if (u) { if (c) (c.voice ||= []).push(u); if (bubble) g.say(g.player, text, bubble, { voice: false }); return; }
+    hud.phone(who, nameOf(who), text);
+    if (who === 'ove') { if (bubble) g.say(g.player, text, bubble); } else this.murmur(who, text);
+  }
 
   updateCall(dt) {
     const c = this.call;
+    // (with the voices on: the next step waits while a line of this call is still to be said)
+    const due = c.k < c.script.length && c.t + dt >= c.script[c.k][0];
+    if (due && c.voice?.some((u) => u.state === 'queued' || u.state === 'playing')) return;
     c.t += dt;
     while (this.call === c && c.k < c.script.length && c.t >= c.script[c.k][0]) c.script[c.k++][1]();
   }
@@ -198,10 +217,11 @@ export class Interruptions {
       if (this.call) { g.radio(who, text); resolve(); return; }
       audio.ring(true);
       hud.incomingCall(who, nameOf(who));
+      const back = reply ? (voice.enabled ? lineSecs('ove', reply) : 1.4) : 0;
       const script = [
-        [1.1, () => { audio.ring(false); hud.answerCall(); this.onPhone = true; hud.phone(who, nameOf(who), text); this.murmur(who, text); }],
-        [1.1 + lineSecs(text), () => { if (reply) { hud.phone('ove', 'Ove', reply); g.say(g.player, reply, 1.6); } }],
-        [1.1 + lineSecs(text) + (reply ? 1.4 : 0), () => { hud.endCall(); this.onPhone = false; this.call = null; resolve(); }],
+        [1.1, () => { audio.ring(false); hud.answerCall(); this.onPhone = true; this.phoneLine(who, text); }],
+        [1.1 + lineSecs(who, text), () => { if (reply) this.phoneLine('ove', reply, 1.6); }],
+        [1.1 + lineSecs(who, text) + back, () => { hud.endCall(); this.onPhone = false; this.call = null; resolve(); }],
       ];
       this.call = { tpl: null, t: 0, script, k: 0, radio: true };
     });
@@ -211,15 +231,18 @@ export class Interruptions {
   // so an "INTE NU!" never turns up at the next stage.
   hangUp() {
     if (!this.call?.radio) return;
+    this.silence(this.call);
     audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null;
   }
+  // A call cut off: its lines are not said after all.
+  silence(c) { for (const u of c?.voice || []) u.stop(0.15); }
 
   // ------------------------------------------------------------------------------------------
   // The errand
 
   force(id, opts = {}) {
     if (this.active) this.abort();
-    if (this.call) { audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; }
+    if (this.call) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; }
     const tpl = TEMPLATES.find((t) => t.id === id) || TEMPLATES[0];
     if (opts.quick) { this.g.patrol.cancelWriting('telefonen ringde'); this.lastId = tpl.id; this.start(tpl); }
     else this.ring(tpl.id);
@@ -271,8 +294,12 @@ export class Interruptions {
     g.save();
     audio.jingle('complete');
     hud.showBanner('KLART', `${tpl.title} · +10 Ordning · +${kr} kr`, 'good', 2200, 'Avbrott');
-    setTimeout(() => g.radio(tpl.who, tpl.thanks), 900);
-    setTimeout(() => { const l = pick(DONE); if (!g.playerCar) g.say(g.player, l, 1.6); }, 2600);
+    const done = () => { const l = pick(DONE); if (!g.playerCar) g.say(g.player, l, 1.6); };
+    setTimeout(() => {
+      const u = g.radio(tpl.who, tpl.thanks, { must: true });
+      // (Ove grunts once the thanks have been said; without the voices, 1.7 s after them)
+      if (u) u.ended.then(() => setTimeout(done, 400)); else setTimeout(done, 1700);
+    }, 900);
   }
 
   fail(reason = '') {
@@ -283,7 +310,7 @@ export class Interruptions {
     g.save();
     audio.jingle('fail');
     hud.showBanner('FÖR SENT', reason || tpl.title, 'bad', 2200, 'Avbrott');
-    setTimeout(() => g.radio(tpl.who, tpl.fail), 900);
+    setTimeout(() => g.radio(tpl.who, tpl.fail, { must: true, tag: 'fail' }), 900);
   }
 
   // A story mission starts: drop the errand without blame. A call cut off by it (Ove walked up to the
@@ -292,7 +319,7 @@ export class Interruptions {
   // the radio that it's fine (tpl.busy), after the day's intro. (abort() in free roam - tests, force -
   // drops it without a word.)
   abort() {
-    if (this.call && !this.call.radio) { audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; this.nextT = Math.max(this.nextT, 45); }
+    if (this.call && !this.call.radio) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; this.nextT = Math.max(this.nextT, 45); }
     if (this.active) {
       const tpl = this.active.tpl;
       this.finish();

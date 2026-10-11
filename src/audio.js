@@ -12,6 +12,9 @@ const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const MUSIC_LEVEL = 0.36;
+const VOICE_LEVEL = 0.9;
+// A telephone's gentle saturation (tanh, slightly asymmetric).
+const PHONE_CURVE = (() => { const n = 1024, k = new Float32Array(n); for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; k[i] = Math.tanh(2.2 * (x + 0.04)) / Math.tanh(2.2); } return k; })();
 
 // ---------------------------------------------------------------------------------------------
 // Graph
@@ -27,15 +30,24 @@ function setup(c) {
   s.sfx = c.createGain(); s.sfx.gain.value = 1; s.sfx.connect(s.master);
   s.musicBus = c.createGain(); s.musicBus.gain.value = audio.musicOn ? MUSIC_LEVEL : 0;
   s.duck = c.createGain(); s.duck.gain.value = 1;
-  s.musicBus.connect(s.duck).connect(s.master);
+  // (under speech the music steps back ~8 dB: voiceDuck)
+  s.vduck = c.createGain(); s.vduck.gain.value = 1;
+  s.musicBus.connect(s.vduck).connect(s.duck).connect(s.master);
+  // The generative piano has its own gain: it gives way when a composed cue plays (audio.music).
+  s.piano = c.createGain(); s.piano.gain.value = 1; s.piano.connect(s.musicBus);
   // Reverb: a synthesised stereo room tail (2.6 s, darker as it decays).
   s.verb = c.createConvolver();
   s.verb.buffer = makeImpulse(c, 2.6);
   s.verbOut = c.createGain(); s.verbOut.gain.value = 0.9;
   s.verb.connect(s.verbOut).connect(s.master);
   s.musicVerb = c.createGain(); s.musicVerb.gain.value = 0.55;
-  s.musicBus.connect(s.musicVerb).connect(s.verb);
+  s.vduck.connect(s.musicVerb).connect(s.verb);
   s.sfxVerb = c.createGain(); s.sfxVerb.gain.value = 1; s.sfxVerb.connect(s.verb);
+  // The voices (voice.js): their own bus beside the effects and the music, its own level.
+  s.voiceBus = c.createGain(); s.voiceBus.gain.value = VOICE_LEVEL * audio.voiceLevel;
+  s.voiceBus.connect(s.master);
+  // (and the engine steps back ~4 dB under speech)
+  s.engDuck = c.createGain(); s.engDuck.gain.value = 1; s.engDuck.connect(s.sfx);
   s.noise = makeNoise(c);
   s.crunch = makeCrunch(c);
   s.pianoWave = c.createPeriodicWave(new Float32Array(12), Float32Array.from([0, 1, 0.42, 0.24, 0.17, 0.1, 0.07, 0.05, 0.034, 0.022, 0.014, 0.009]));
@@ -195,7 +207,7 @@ function buildEngine(s) {
   e.ns.connect(e.nbp).connect(e.ng).connect(e.am);
   e.tw.connect(e.twg).connect(e.out);
   e.st.connect(e.stlp).connect(e.stam).connect(s.sfx);
-  e.out.connect(s.sfx);
+  e.out.connect(s.engDuck);
   for (const o of [e.o1, e.o2, e.o3, e.lfo, e.ns, e.tw, e.st]) o.start();
 }
 
@@ -342,6 +354,8 @@ export const audio = {
     ctx = new AC();
     S = setup(ctx);
     if (this.musicOn) startMusic();
+    // (a state set before the first gesture plays now)
+    if (director.raw) { const st = director.raw; director.state = null; director.set(st, {}); }
   },
 
   // Everything stops while the tab is hidden (music, engine, a ringing phone: all of it is scheduled
@@ -363,6 +377,98 @@ export const audio = {
     if (on) startMusic();
   },
   duckMusic(amount) { if (S) S.duck.gain.setTargetAtTime(clamp(amount, 0, 1), ctx.currentTime, 0.3); },
+  // The composed score (assets/music/, made by tools/music/music.mjs): what should play now. State:
+  // 'title', 'roam' (a playlist: a patrol cue, a pause, the generative piano a while, a pause...;
+  // cold on days 1-3, warm from day 4: o.day), 'errand', 'pursuit', 'mission', 'hurry', 'race',
+  // 'chase', 'memory', 'finale', 'none' (MUSIC_STATES). Changes cross-fade over 2.5 s; a cue that
+  // isn't there (no files, still loading, a failed load) leaves the generative piano playing.
+  music(state, o = {}) { director.set(state, o); },
+  get musicState() { return director.state; },
+  get musicCue() { return director.cur?.cue || (S && S.piano.gain.value > 0.5 ? 'piano' : null); },
+
+  // ------------------------------------------------------------------------------------------
+  // Voices (voice.js plays the clips; the chain they go through is here)
+
+  voiceLevel: 1,
+  get ctx() { return ctx; },
+  get duckLevel() { return S ? S.vduck.gain.value : 1; },   // the music under speech (tests)
+  // Tests: the RMS (dBFS) of the music and the voices as they leave their buses (analysers made on
+  // first use; a window of ~0.7 s).
+  levels() {
+    if (!S) return null;
+    if (!S.meters) {
+      S.meters = {};
+      for (const [k, node] of [['music', S.duck], ['voice', S.voiceBus], ['sfx', S.sfx]]) { const a = ctx.createAnalyser(); a.fftSize = 32768; node.connect(a); S.meters[k] = a; }
+    }
+    const out = {};
+    for (const [k, a] of Object.entries(S.meters)) {
+      const d = new Float32Array(a.fftSize); a.getFloatTimeDomainData(d);
+      let e = 0; for (const v of d) e += v * v;
+      out[k] = +(10 * Math.log10(e / d.length + 1e-12)).toFixed(1);
+    }
+    return out;
+  },
+  setVoiceLevel(v) { this.voiceLevel = clamp(v, 0, 1.5); if (S) S.voiceBus.gain.setTargetAtTime(VOICE_LEVEL * this.voiceLevel, ctx.currentTime, 0.05); },
+  // While anybody speaks the music drops ~8 dB and the engine ~4 dB (0.1 s down, 0.6 s back).
+  voiceDuck(on) {
+    if (!S) return;
+    const t = ctx.currentTime;
+    S.vduck.gain.setTargetAtTime(on ? 0.4 : 1, t, on ? 0.035 : 0.2);
+    S.engDuck.gain.setTargetAtTime(on ? 0.63 : 1, t, on ? 0.035 : 0.2);
+  },
+  // The ears: the camera (position, forward, up).
+  setListener(x, y, z, fx, fy, fz, ux, uy, uz) {
+    const L = ctx?.listener;
+    if (!L) return;
+    if (L.positionX) {
+      const t = ctx.currentTime;
+      L.positionX.setValueAtTime(x, t); L.positionY.setValueAtTime(y, t); L.positionZ.setValueAtTime(z, t);
+      L.forwardX.setValueAtTime(fx, t); L.forwardY.setValueAtTime(fy, t); L.forwardZ.setValueAtTime(fz, t);
+      L.upX.setValueAtTime(ux, t); L.upY.setValueAtTime(uy, t); L.upZ.setValueAtTime(uz, t);
+    } else { L.setPosition(x, y, z); L.setOrientation(fx, fy, fz, ux, uy, uz); }
+  },
+  // One line's way to the voice bus, by mode: 'dialog' dry and centred with a touch of the room;
+  // 'phone' a telephone line (300-3400 Hz, a little grit); 'car' a passenger, a little to the
+  // right; 'world' / 'shout' from where the speaker stands (setPos), fading with distance, a shout
+  // louder and with more room; muffle: heard from inside a car. Pitch and tempo are never touched.
+  voiceChain(mode = 'dialog', { muffle = false } = {}) {
+    const c = ctx, nodes = [];
+    const mk = (n) => { nodes.push(n); return n; };
+    const input = mk(c.createGain()), out = mk(c.createGain());
+    let head = input, panner = null, verb = 0.05;
+    if (mode === 'phone') {
+      const hp = mk(c.createBiquadFilter()), lp = mk(c.createBiquadFilter()), sh = mk(c.createWaveShaper()), mg = mk(c.createGain());
+      hp.type = 'highpass'; hp.frequency.value = 300; hp.Q.value = 0.8;
+      lp.type = 'lowpass'; lp.frequency.value = 3400; lp.Q.value = 0.9;
+      sh.curve = PHONE_CURVE;
+      mg.gain.value = 1.25;
+      head.connect(hp).connect(lp).connect(sh).connect(mg);
+      head = mg; verb = 0;
+    } else if (mode === 'car') {
+      const p = mk(c.createStereoPanner());
+      p.pan.value = 0.3;
+      head.connect(p); head = p; verb = 0.02;
+    } else if (mode === 'world' || mode === 'shout') {
+      panner = mk(c.createPanner());
+      Object.assign(panner, { panningModel: 'equalpower', distanceModel: 'inverse', refDistance: 4, rolloffFactor: 1.1, maxDistance: 90 });
+      const g = mk(c.createGain());
+      g.gain.value = mode === 'shout' ? 1.35 : 1;
+      head.connect(panner).connect(g); head = g;
+      verb = mode === 'shout' ? 0.22 : 0.1;
+    }
+    if (muffle) {
+      const lp = mk(c.createBiquadFilter());
+      lp.type = 'lowpass'; lp.frequency.value = 1100; lp.Q.value = 0.5;
+      head.connect(lp); head = lp;
+    }
+    head.connect(out).connect(S.voiceBus);
+    if (verb) { const v = mk(c.createGain()); v.gain.value = verb; out.connect(v).connect(S.sfxVerb); }
+    return {
+      input, out, panner,
+      setPos(x, y, z) { if (panner.positionX) { const t = c.currentTime; panner.positionX.setTargetAtTime(x, t, 0.03); panner.positionY.setTargetAtTime(y, t, 0.03); panner.positionZ.setTargetAtTime(z, t, 0.03); } else panner.setPosition(x, y, z); },
+      dispose() { for (const n of nodes) { try { n.disconnect(); } catch (e) { /* gone */ } } },
+    };
+  },
 
   // on: engine running; revs/load from the car (old car.js: revs = 0.85 * |v| / maxSpeed + 0.2 *
   // throttle, load = throttle); optional speed (m/s, signed) gives proper gearing and tyre noise;
@@ -636,6 +742,25 @@ export const audio = {
     o.start(t); o.stop(t + dur + 0.03);
     // Breath.
     burst(t, dur * 0.9, 0.028, rnd(1300, 2000), 'bandpass', 0.9, { attack: 0.03 });
+  },
+  // A child's giggle (the children's lines have no voice: a murmur and this, voice.js): three or
+  // four quick breathy "hi"s falling in pitch.
+  giggle(pitch = 420) {
+    if (!S) return;
+    const n = 3 + (Math.random() < 0.5 ? 1 : 0);
+    for (let k = 0; k < n; k++) {
+      const t = now(0.02 + k * rnd(0.085, 0.11)), f0 = pitch * (1.18 - k * 0.07) * rnd(0.96, 1.04), dur = rnd(0.06, 0.08);
+      const o = ctx.createOscillator(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(f0 * 0.88, t + dur);
+      bp.type = 'bandpass'; bp.frequency.value = rnd(1800, 2600); bp.Q.value = 1.4;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.05, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(bp).connect(g).connect(S.sfx);
+      o.start(t); o.stop(t + dur + 0.02);
+      burst(t, dur, 0.02, rnd(2500, 3500), 'bandpass', 1.2, { attack: 0.006 });
+    }
   },
   checkpoint() {
     if (!S) return;
@@ -1043,7 +1168,8 @@ function newPhrase(M) {
 function playBar(M, t, beat) {
   const P = M.phrase, name = P.prog[M.bar], [bass, tones, colour] = CHORDS[name];
   const scale = name === 'E' ? SCALE_HARM : SCALE;
-  const bus = S.musicBus;
+  const bus = S.piano;
+  if (S.piano.gain.value < 0.01 && Date.now() - (director.pianoOffAt || 0) > 4000) return;   // (silent: not worth the oscillators)
   const h = () => rnd(-0.012, 0.012);
   const v = P.vel;
   // Strings: always, quieter in sparse phrases, alone in "breath" phrases.
@@ -1079,3 +1205,97 @@ function playBar(M, t, beat) {
     });
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// The composed score (features/implemented/a_fully_voiced_game.md, section 8): cues from
+// assets/music/index.json ({ cue: { f, d, loop: [start, end] | null } }), one playing at a time over
+// the music bus, cross-faded; the generative piano above is the fallback and part of the patrol's
+// playlist. Decoded cues are kept three at a time (a minute of stereo is ~20 MB decoded).
+
+// Which cue a state plays (an array: the first one there; 'piano': the generative one). A day's
+// mission plays 'vardag' unless main.js says more: 'hurry' (day 2, to the hospital against the
+// clock), 'race' (day 5), 'chase' (Vita skjortan's Škoda, days 6 and 7), 'finale' (the grave).
+const MUSIC_STATES = {
+  title: ['tema'], finale: ['tema'], memory: ['piano'], errand: ['vardag'], mission: ['vardag'], pursuit: ['jakt'],
+  hurry: ['jakt'], race: ['racet'], chase: ['vita-skjortan'],
+};
+// (the cues are mastered at -24 LUFS; measured on the music bus they came out ~5 dB under the
+// generative piano the bus level was set for: CUE_GAIN brings them level with it)
+const XFADE = 2.5, KEEP_CUES = 3, CUE_GAIN = 1.7;
+const director = {
+  state: null, cur: null, index: null, bufs: new Map(), pianoOffAt: 0, roam: null, day: 1,
+  async load() {
+    if (this.index) return this.index;
+    this.index = fetch('assets/music/index.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+    return this.index;
+  },
+  buf(cue, meta) {
+    let p = this.bufs.get(cue);
+    if (!p) {
+      p = fetch('assets/music/' + meta.f).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }).then((b) => ctx.decodeAudioData(b));
+      p.catch(() => this.bufs.delete(cue));
+    }
+    this.bufs.delete(cue); this.bufs.set(cue, p);
+    while (this.bufs.size > KEEP_CUES) this.bufs.delete(this.bufs.keys().next().value);
+    return p;
+  },
+  set(state, o) {
+    if (o.day) this.day = o.day;
+    this.raw = state;
+    const key = state === 'roam' ? `roam:${this.day >= 4 ? 'varm' : 'kall'}` : state;
+    if (key === this.state) return;
+    this.state = key;
+    clearTimeout(this.roamT);
+    if (!S) return;
+    if (state === 'roam') { this.roamStep(0); return; }
+    const want = MUSIC_STATES[state] || (state === 'none' ? [] : ['piano']);
+    this.play(want, key);
+  },
+  // The patrol: the cue, 8-15 s of nothing, the piano for 70-120 s, 5-10 s of nothing, again.
+  roamStep(k) {
+    const key = this.state;
+    if (!key?.startsWith('roam')) return;
+    const cue = key === 'roam:varm' ? 'patrull-varm' : 'patrull-kall';
+    if (k % 2 === 0) {
+      this.play([cue, 'piano'], key).then((d) => { if (this.state === key) this.roamT = setTimeout(() => this.roamStep(k + 1), ((d || 90) + rnd(8, 15)) * 1000); });
+    } else {
+      this.play(['piano'], key);
+      this.roamT = setTimeout(() => { this.play([], key); this.roamT = setTimeout(() => this.roamStep(k + 1), rnd(5, 10) * 1000); }, rnd(70, 120) * 1000);
+    }
+  },
+  // Fades out what plays and in the first of `cues` that exists ('piano': the generative one; none:
+  // silence). Resolves with the cue's length (s) or null.
+  async play(cues, key) {
+    const index = await this.load();
+    if (this.state !== key || !S) return null;
+    const t = ctx.currentTime;
+    const old = this.cur;
+    this.cur = null;
+    if (old) { old.g.gain.cancelScheduledValues(t); old.g.gain.setValueAtTime(old.g.gain.value, t); old.g.gain.linearRampToValueAtTime(0, t + XFADE); old.src.stop(t + XFADE + 0.1); }
+    for (const cue of cues) {
+      if (cue === 'piano') { this.piano(true); return null; }
+      const meta = index[cue];
+      if (!meta) continue;
+      let b;
+      try { b = await this.buf(cue, meta); } catch (e) { continue; }
+      if (this.state !== key) return null;
+      const t1 = ctx.currentTime;
+      const src = ctx.createBufferSource(), g = ctx.createGain();
+      src.buffer = b;
+      if (meta.loop) { src.loop = true; src.loopStart = meta.loop[0]; src.loopEnd = meta.loop[1]; }
+      g.gain.setValueAtTime(0, t1); g.gain.linearRampToValueAtTime(CUE_GAIN, t1 + XFADE);
+      src.connect(g).connect(S.musicBus);
+      src.start(t1);
+      this.cur = { cue, src, g };
+      this.piano(false);
+      return meta.loop ? null : b.duration;
+    }
+    this.piano(false);
+    return null;
+  },
+  piano(on) {
+    S.piano.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, XFADE / 3);
+    if (!on) this.pianoOffAt = Date.now();
+    if (on && audio.musicOn) startMusic();
+  },
+};

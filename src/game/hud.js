@@ -7,6 +7,7 @@ import { THREE, camera, scene as worldScene, setQuality, getQuality, qualityInfo
 import * as LAYOUT from '../world/layout.js';
 import { blocks, BOX, CIRCLE, RAMP } from '../world/collision.js';
 import { audio } from '../audio.js';
+import { voice } from '../voice.js';
 
 const { MAP, N, P, HALF, RHW, rc, BOUND } = LAYOUT;
 const $ = (id) => document.getElementById(id);
@@ -189,6 +190,9 @@ export const hud = {
     if (saved && !PARAMS.has('q') && !PARAMS.has('lowgfx') && getQuality() !== saved) setQuality(saved);
     const bind = (id, fn) => $(id)?.addEventListener('click', fn);
     bind('opt-music', () => { audio.setMusic(!audio.musicOn); this._saveSettings(); this.syncMenu(); });
+    // The voices: on (the clips) or off (the old murmur), and their level (voice.js reads both at load).
+    bind('opt-voice', () => { voice.setting = !voice.setting; voice.setEnabled(voice.setting); this._saveSettings(); this.syncMenu(); });
+    bind('opt-voicelvl', () => { const L = [1, 0.7, 0.4], i = L.indexOf(voice.level); voice.setLevel(L[(i + 1) % L.length]); this._saveSettings(); this.syncMenu(); });
     bind('opt-sound', () => { audio.setMuted(!audio.muted); this._saveSettings(); this.syncMenu(); });
     bind('opt-gfx', () => { this._quality = setQuality({ auto: 'high', high: 'low', low: 'auto' }[getQuality()] || 'auto').setting; this._saveSettings(); this.syncMenu(); });
     // Two clicks for anything that throws work away: "Säker? Klicka igen" first (for 3.5 s).
@@ -275,7 +279,7 @@ export const hud = {
     step();
   },
   _saveSettings() {
-    const o = { music: audio.musicOn, sound: !audio.muted };
+    const o = { music: audio.musicOn, sound: !audio.muted, voice: voice.setting, voiceLevel: voice.level };
     if (this._quality) o.quality = this._quality;
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(o)); } catch (e) { /* private mode */ }
   },
@@ -283,6 +287,8 @@ export const hud = {
   syncMenu() {
     const set = (id, on, txt) => { const b = $(id); if (!b) return; b.querySelector('b').textContent = txt; b.classList.toggle('off', !on); };
     set('opt-music', audio.musicOn, audio.musicOn ? 'På' : 'Av');
+    set('opt-voice', voice.setting, voice.setting ? 'På' : 'Av');
+    set('opt-voicelvl', voice.setting, `${Math.round(voice.level * 100)} %`);
     set('opt-sound', !audio.muted, audio.muted ? 'Av' : 'På');
     // Auto shows what it picked: "Auto (Hög)" / "Auto (Låg)" (it may have dropped to low meanwhile).
     const q = getQuality(), tierName = (t) => (t === 'low' ? 'Låg' : 'Hög');
@@ -583,12 +589,13 @@ export const hud = {
       this._flushT = setTimeout(flush, 500);
     }
   },
-  // A radio / phone message with the speaker's portrait.
-  radio(who, name, text, cls = 'radio') {
+  // A radio / phone message with the speaker's portrait (ms: how long it stays: a voiced line's
+  // toast stays while it is said, main.js radio()).
+  radio(who, name, text, cls = 'radio', ms = 0) {
     const img = this.portraits[who] ? `<span class="radio-face"><img src="${this.portraits[who]}" alt=""></span>` : '';
-    return this.toast(`${img}<div><span class="t-who">${esc(name || who)}</span>${text}</div>`, cls);
+    return this.toast(`${img}<div><span class="t-who">${esc(name || who)}</span>${text}</div>`, cls, ms);
   },
-  phone(who, name, text) { return this.radio(who, name, text, 'phone'); },
+  phone(who, name, text, ms = 0) { return this.radio(who, name, text, 'phone', ms); },
 
   // main: headline; sub: line under it; cls: good | bad | mission | count | stamp | chaos | final
   // (empty = guessed from the text, e.g. "ANMÄLD" -> stamp); ms: auto-hide (0 = stay); kicker:
@@ -637,11 +644,18 @@ export const hud = {
 
   // ------------------------------------------------------------------------------------------
   // Dialogue: lines of { who, text }. Resolves when the last line is dismissed.
+  // With the voices on, each line is said (voice.js: a clip, or a murmur that takes as long): the
+  // text is typed out in time with the speech (the clip's per-character times), and the line is done
+  // when the speech is. The first press of the skip key shows the whole text while the voice goes
+  // on; the second goes on to the next line (the voice fades out). The test mode's autoDialog waits
+  // for the end of the clip and 0.4 s.
 
   async runDialog(lines, game) {
     this.dialogActive = true;
     this.dialog.classList.add('show');
+    voice.prefetch(lines.map((l) => [l.who, l.text]));
     for (const line of lines) {
+      if (voice.enabled) { await this._sayLine(line, game); continue; }
       const def = game.charDef(line.who);
       const img = this.dialog.querySelector('img');
       const src = this.portraits[line.who] || '';
@@ -686,17 +700,60 @@ export const hud = {
     this.dialog.classList.remove('show');
     this.dialogActive = false;
   },
+  async _sayLine(line, game) {
+    const def = game.charDef(line.who);
+    const img = this.dialog.querySelector('img');
+    const src = this.portraits[line.who] || '';
+    if (img.getAttribute('src') !== src) img.src = src;
+    img.style.visibility = src ? '' : 'hidden';
+    this.dialog.querySelector('.dlg-name').textContent = def?.name || line.who;
+    const textEl = this.dialog.querySelector('.dlg-text');
+    textEl.textContent = '';
+    game.setTalker(line.who);
+    if (line.on) { try { line.on(game); } catch (e) { console.error(e); } }
+    const text = line.text;
+    const u = voice.play(line.who, text, { slot: 'main', mode: 'dialog', now: true });
+    let shown = 0, full = false, after = 0;
+    await new Promise((resolve) => {
+      const step = (dt) => {
+        const speaking = u && (u.state === 'playing' || u.state === 'queued');
+        if (!full) {
+          // In time with the clip's characters; a murmur (or no voice at all) types at 50 chars/s.
+          const s = u && u.t0 != null ? voice.now() - u.t0 : 0;
+          const t = u?.clip?.t;
+          let n = t ? 0 : Math.floor(s * 50);
+          if (t) while (n < t.length && t[n] <= s * 100) n++;
+          if (!speaking) n = text.length;
+          n = Math.min(text.length, n);
+          if (n > shown) { shown = n; textEl.textContent = text.slice(0, shown); }
+          if (shown >= text.length) full = true;
+        }
+        if (!speaking) { game.setTalker(null); after += dt; }
+        if (game.input.pressed('skip')) {
+          if (!full) { full = true; shown = text.length; textEl.textContent = text; }
+          else { u?.stop(0.08); game.offFrame(step); resolve(); return; }
+        }
+        if (game.autoDialog && !speaking && after >= 0.4) { game.offFrame(step); resolve(); }
+      };
+      game.onFrame(step);
+    });
+    game.setTalker(null);
+  },
 
-  // Speech bubbles over characters in the world.
+  // Speech bubbles over characters in the world. Returns the bubble: main.js hangs the line's voice
+  // on it (item.u), and a bubble stays up while its voice waits its turn or is being said.
   say(target, text, secs = 2) {
     const b = el('div', 'bubble', this.bubbles, text);
-    const item = { b, target, until: performance.now() + secs * 1000 };
+    const item = { b, target, until: performance.now() + secs * 1000, u: null };
     (this._bubbles ||= []).push(item);
+    return item;
   },
-  // A cutscene starts: small talk from a moment ago doesn't hang over it.
-  clearBubbles() {
+  // A cutscene starts: small talk from a moment ago doesn't hang over it (nor its voice, unless
+  // keepVoice: the line being said is said to the end, and what waits is dropped).
+  clearBubbles(keepVoice = false) {
     for (const it of this._bubbles || []) it.b.remove();
     if (this._bubbles) this._bubbles.length = 0;
+    if (keepVoice) voice.unqueue((q) => q.slot === 'bubble'); else voice.stop('bubble');
   },
   tickBubbles() {
     // (called every frame by main.js: also where a held shot without letterbox is noticed)
@@ -708,7 +765,7 @@ export const hud = {
     const W = window.innerWidth, H = window.innerHeight;
     for (let k = list.length - 1; k >= 0; k--) {
       const it = list[k];
-      if (now > it.until) { it.b.remove(); list.splice(k, 1); continue; }
+      if (now > it.until && !(it.u && (it.u.state === 'queued' || it.u.state === 'playing'))) { it.b.remove(); list.splice(k, 1); continue; }
       const t = it.target;
       v.set(t.x, t.y + (t.height || 1.8) + 0.45, t.z);
       v.project(camera);

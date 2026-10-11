@@ -71,6 +71,7 @@ export class Character {
     this.windT = -1; this.windDur = JUMP.wind; this.jumpV = 0; this.jumping = false; this.landT = 9;
     this.anim = {
       speed: 0, air: false, vy: 0, kick: 0, talk: false, seated: false, driving: false, flung: false, down: false,
+      mouth: null,                                     // while a voice clip plays: its loudness, 0..1 (voice.js)
       t: Math.random() * 10, spin: 0, look: 0, wave: false, cheer: false, sprint: false,
       write: false, phone: false, push: false, yell: false, flungT: 0, downLeft: 0,
       carry: false, work: false, workKind: null,   // carrying (the cat) at chest height; hold-E jobs

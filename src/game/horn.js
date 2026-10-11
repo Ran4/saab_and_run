@@ -342,7 +342,8 @@ export class Horn {
   // Say something (a bubble and a murmur or two). target: a character, a car, or a window.
   speak(target, text, secs = 2, pitch = 260) {
     if (!text || this.g.inDialog) return;
-    this.g.say(target, text, secs);
+    // (with the voices on, say() says it - a clip or a murmur - when it is their turn)
+    if (this.g.say(target, text, secs)) return;
     audio.talk(pitch);
     this.after(0.23, () => audio.talk(pitch));
   }
@@ -390,8 +391,7 @@ export class Horn {
     const g = this.g;
     if (g.inDialog || (!force && g.time - this.saidT < 8)) return false;
     this.saidT = g.time;
-    g.say(g.player, pick(list, this.rand), 2.2);
-    audio.talk(CHARS.ove.voice);
+    if (!g.say(g.player, pick(list, this.rand), 2.2)) audio.talk(CHARS.ove.voice);
     this.stats.ove++;
     return true;
   }
@@ -438,7 +438,7 @@ export class Horn {
     const an = g.npcs.anders;
     if (an && an.state === 'normal' && !an.car && dist(an.x, an.z, car.x, car.z) < 70 && !g.inDialog) {
       g.shout('anders', pick(ANDERS_LAW, this.rand));
-      audio.talk(an.def.voice);
+      g.murmur(an.def.voice);
       this.after(2.6, () => this.oveSays(OVE_HONK.law, true));
     } else if (this.window(car, true)) this.after(2.4, () => this.oveSays(OVE_HONK.window, true));
   }

@@ -29,6 +29,7 @@ import { buildCat } from '../actors/models.js';
 import { GeoBuilder, realMesh } from '../gfx.js';
 import { queryBlocks, circleVsBlock, circleVsObb, groundAt, topAt, RAMP, segmentBlocked } from '../world/collision.js';
 import { audio } from '../audio.js';
+import { voice } from '../voice.js';
 import { hud } from './hud.js';
 import { fx as FX } from './fx.js';
 import { COMING, CAT_COMES, CHASER_GAVE_UP } from './script.js';
@@ -140,14 +141,15 @@ export const goto = (o) => ({
       if (this.t <= 0) return { fail: o.failText || 'Tiden tog slut.' };
     }
     // Radio lines and phone calls take turns: a line that falls due during a call waits for it to
-    // end, and nothing starts within a moment of the last thing said.
-    const onCall = !!g.interrupts.call;
+    // end, and nothing starts within a moment of the last thing said. With the voices on, the
+    // clocks only run while nobody is talking: the pause is counted from the end of the last line.
+    const onCall = !!g.interrupts.call, hush = voice.quiet();
     if (this.wasCall && !onCall) this.quietT = 0.8;
     this.wasCall = onCall;
-    this.quietT -= dt;
-    const free = !onCall && this.quietT <= 0 && !g.inDialog;
+    if (hush) this.quietT -= dt;
+    const free = !onCall && this.quietT <= 0 && !g.inDialog && hush;
     if (o.radio && this.radioI < o.radio.length) {
-      this.radioT -= dt;
+      if (hush) this.radioT -= dt;
       if (this.radioT <= 0 && free) {
         g.radio(o.radio[this.radioI][0], o.radio[this.radioI][1]);
         this.radioI++; this.radioT = (o.radioEvery ?? 7) + Math.random() * 2; this.quietT = 2.2;
@@ -258,7 +260,7 @@ export const goto = (o) => ({
       c.ai = new AIDriver(c, { mode: 'traffic', cruise: 11 });
       c.isChaser = false;
       this.chaser = null;
-      if (C.who) g.radio(C.who, C.giveUpLine || CHASER_GAVE_UP[1]);
+      if (C.who) g.radio(C.who, C.giveUpLine || CHASER_GAVE_UP[1], { must: true });
       return null;
     }
     // Stopped: Ove is held up for a moment (and it costs), then the Škoda backs off and comes again.
@@ -467,8 +469,7 @@ export const pickup = (o) => ({
         this.honkT = h.t;
         const e = g.exitSpot(c, -1);
         g.walkNpc(n, [e], { speed: 2.4, stay: true, yaw: yawTo(c.x - e.x, c.z - e.z) });
-        g.say(n, pick(COMING), 1.8);
-        audio.talk(n.def.voice || 300);
+        if (!g.say(n, pick(COMING), 1.8)) audio.talk(n.def.voice || 300);
         g.horn.stats.called++;
         this.called = { t: 0, d };
       }
@@ -1053,7 +1054,8 @@ export const race = (o) => ({
       return;
     }
     if (o.radio && this.radioI < o.radio.length) {
-      this.radioT -= dt;
+      // (the gap between lines counted from the end of the last one)
+      if (voice.quiet()) this.radioT -= dt;
       if (this.radioT <= 0) { g.radio(o.radio[this.radioI][0], o.radio[this.radioI][1]); this.radioI++; this.radioT = 6 + Math.random() * 2; }
     }
     if (this.opp.dead) return 'done';
