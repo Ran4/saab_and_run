@@ -1,6 +1,6 @@
 # Handoff — Saab & Run (En man som heter Ove)
 
-Läge **2026-10-10 ~18:00**. Läs den här filen, sedan `CLAUDE.md` (motorkonventioner, tester),
+Läge **2026-10-11 ~07:00**. Läs den här filen, sedan `CLAUDE.md` (motorkonventioner, tester),
 `DESIGN.md` (designbibeln och alla modulkontrakt) och `notes/*.md` (per område). Historiken
 (fas 0–4 steg för steg) ligger i `handoff/history.md`.
 
@@ -23,7 +23,7 @@ spelmappen, gren `develop`; användarens begäran 2026-10-10).
 | 0–1 | kopia av bigmouth_and_run, realistisk PBR-renderare | ✅ |
 | 2 | värld, bilar, folk, UI + ljud (3–5 gransknings-/fixrundor per område) | ✅ |
 | 3 | spelsystem (patrull, smitare, Ordning, nio avbrott, stages) + sju story-dagar | ✅ |
-| 4 | helhetsgranskning (5 linser) → fixare per ägare | nästan klar — se nedan |
+| 4 | helhetsgranskning (5 linser) → fixare per ägare, två rundor + putsrunda | ✅ |
 
 Spelet är komplett och spelbart: titelskärm, fritt läge, sju dagar, slutet ("OMRÅDET ÄR I
 ORDNING") och fortsatt fritt läge. `story` slutar `#7 idle`, inga fel; `m1` backar släpet med
@@ -44,53 +44,51 @@ genomspelning 6 (`p4_play.json`). Fynd per ägare: `p4_owner_*.json`, `p4_gamepl
 | rendering (auto-kvalitet, batchad värld 1375 → 493 draw calls, billigare pass, svärta, fx) | a34a5fd + krasch-fix d42e414 |
 | **gameplay A** (robusthet, input, save, UI/titel, kvalitetsväljare, `car.dispose`, broadphase, småprat, docs) | e82f4a6 |
 
-## Pågår (session 4cca0e8c, 2026-10-10 ~22:15)
+### Fas 4, runda 2 + 2b (session 4cca0e8c, 2026-10-10/11)
+- Dag 6:s flake fixad (`placeCast` deterministisk, inga slumpplatser) — 6aa7e2e.
+- Runda 2-granskningar: art 7, svenska 8,5, kod 7, prestanda 6,5, ny spelare 7,5 (runda 1:
+  6/8/6/4/6). `reviews/p4r2_<lins>.json`; per ägare `reviews/p4r2_owner_<ägare>.json`.
+- Sju fixare landade via en seriell landningsgrind (tillbakakopiering → story + områdestester i
+  GAME → commit): ui 5911916, cars 6694528, people ee44914, story 8dc53a2, world f0bc717,
+  rendering 4139be5, systems 2fe8e3d, integration b96422f.
+- Putsrunda 2b (fynd från slutverifieringen): titel-spöke över spelet, HUD över svarta kort,
+  mål-raden i letterboxen, erbjudande-toasts under uppdrag, kamera under låga tak, auto-kvalitet
+  som fastnade på Låg, blåare Saab, Bilhallen-skylten — a52538e, 0f6e9f5, cbf6e69; porträtt en
+  per task 996f309.
+- Slutverifiering (`out/final3/`): 27/27 + 4 extra gröna — story ×2 `#7 idle` / inga fel, m1,
+  m5race, m7chase, m4cat, lotwalk, hospdrive, retry, giveup, start, title, titlecam, talk, report,
+  pursuit, interrupt, errands, collect, smalltalk, pausemenu, quality, rautosim, rperf, rload,
+  carcost. Siffror: start 387 draw calls / cpuMs 5,9; första bildrutan 8 ms; redo ~5,9 s;
+  rperf loop 7–9 ms medel.
 
-- ✅ Flake-fixen (dag 6, `placeCast` deterministisk) — 6aa7e2e. Slutverifiering i GAME: allt grönt
-  (story ×2, m1, m5race, m7chase, m4cat, lotwalk, hospdrive, retry, report, pursuit, interrupt,
-  errands, rperf/rload, carcost; `out/final/`).
-- ✅ Runda 2-granskningar: art 7, svenska 8,5, kod 7, prestanda 6,5, ny spelare 7,5 (runda 1: 6/8/6/4/6).
-  `reviews/p4r2_<lins>.json`, per ägare `reviews/p4r2_owner_<ägare>.json` (cars 5, people 3,
-  world 9, rendering 9, ui 4, gameplay_story 14, gameplay_systems 23; 0 blocking, 18 major).
-- ⏳ Workflow `saab-p4r2-fix-land` (run `wf_9dab802f-3d3`): sju fixare parallellt i egna kopior
-  (`cars people world render ui story systems`, disjunkt ägarskap; DESIGN.md landas som patch
-  `reviews/p4r2_design_<namn>.patch` mot `DESIGN.orig.md`), en seriell landningsgrind (kopiera
-  tillbaka → story + områdestester i GAME med `OUT=out/land_<namn>` port 8799 → commit, annars
-  revert + reparatör, max 3 försök), sist en integrationsagent (`OUT=out/final2`, commit).
-  Om sessionen dör: `git log` visar vilka områden som landat; kör resten med samma upplägg.
-- Skript för båda workflows: `~/.claude/projects/-home-ran-src-html-everything-and-run-saab-and-run--en-man-som-heter-ove/4cca0e8c-1d61-4e6b-b00d-2f4634f8b0df/workflows/scripts/`.
-  `browserslot` har **3** platser och `EXCLUSIVE=1` (väntar in alla, för tidsmätningar).
+## Nästa steg (valfritt — spelet är klart)
 
-## Nästa steg
-
-0. **Känd flake:** `story`:s bildkontroll för dag 6:s eftertexter slår ibland fel
-   (`CHECK FAILED day 6 outro: anita … wall=true`) — `placeCast` i missions.js ställer ibland
-   Anita bakom husknuten vid Runes ramp (slumpad plats). 1 av ~7 körningar 10-10. Fixa
-   placeringen (pröva fler platser, kräv fri sikt) så att testet blir stabilt.
-1. **Slutverifiera** i spelmappen: `story` ×2, `m1`, `start`, `title`, `talk`, `errands`,
-   `rperf`/`rload` (render.mjs), `carcost`; titta på titelskärmen och några intron. Commita.
-2. **Fas 4, runda 2:** kör om de fem helhetsgranskarna (art director, svenska/ton, kod,
-   prestanda, ny spelares genomspelning) mot det nya läget — samma upplägg som runda 1 (läsande
-   granskare i `.wt/saab_work/qa`, egen PORT/OUT, svar som JSON med `owner` per fynd), sortera
-   per ägare, kör fixare med disjunkt ägarskap parallellt (gameplay-filerna i följd), verifiera,
-   commita per landning. Kända svagheter att kolla extra:
-   - granar på 2–6 m (våningar) och skogsbältets koner på 13–25 m;
-   - props är största statiska draw call-posten (~100–200 i huvudpasset) — batcha per cell/yta;
-   - Saaben känns inte omedelbart igen som 900 från jaktkameran; Golfen är kantig från sidan;
-   - ansikten i porträtt/närbild är "bra CG", inte foto; håret är skal;
-   - bloom från lägre mip och KTX2-texturer ej gjorda; folk saknar mellan-LOD;
-   - matrisuppdateringar ~0.9 ms (bilar/folk);
-   - granskarnas "minor"-punkter som inte hanns med (se fixrapporterna).
-3. Om allt håller: uppdatera README/DESIGN vid behov och commita.
+1. **Runda 3** av de fem granskarna om användaren vill höja betygen ytterligare (samma workflow
+   som runda 2: `saab-p4r2-verify-review` → `saab-p4r2-fix-land`, skripten i
+   `~/.claude/projects/-home-ran-src-html-everything-and-run-saab-and-run--en-man-som-heter-ove/4cca0e8c-1d61-4e6b-b00d-2f4634f8b0df/workflows/scripts/`).
+2. Kvarvarande svagheter (ingen blockerar):
+   - Golfen bara delvis omformad (taket kvar på 1,48 m); Saabens bakre panel i djup skugga
+     läser mörkt marinblå på tumnagelstorlek;
+   - granarnas övre tredjedel visar fortfarande våningar mot ljuset; kortsprites cullas inte
+     (200 m-cellerna för grova);
+   - folk: långt hårs bakpanel är en skiva, grått hår lite luddigt, hårslingor aliasar på Låg,
+     ansikten enkla i närbild;
+   - fotkameran mot väggar bara delvis fixad;
+   - `m5race`-boten (riktiga tangenter) är tidskänslig — enstaka flake;
+   - laddning: 'Tankar bilarna' är en 0,5 s-task; `holdAutoQuality(2000,'curtain')` inte inkopplad;
+   - medvetet bortvalt: KTX2-texturer (ingen kodare installerad), svetsade vertexar.
+3. Mappen `SUGGESTIONS_DO_NOT_IMPLEMENT_UNTIL_THE_USER_SAYS_SO/` (förslag: röstsatt spel) är
+   inte vår och ska inte röras/committas förrän användaren säger till.
 
 ## Hur vi jobbar (metoden som fungerat)
 
 - **Work-katalog (beständig, överlever omstart):** `/home/ran/src/html/everything_and_run/.wt/saab_work`
-  - privata kopior per område: `world cars people render systems story qa`
+  - privata kopior per område: `world cars people render ui systems story`, granskare `qa_<lins>`
     (`rsync -a --exclude node_modules --exclude assets --exclude out --exclude handoff GAME/ kopia/`
     + symlänkar `node_modules`, `assets`);
-  - `browserslot` — flock-spärr, högst två av våra headless-webbläsare samtidigt (andra
-    Claude-sessioner på maskinen kör egna). ALLA browserkörningar går via den:
+  - `browserslot` — flock-spärr, högst **tre** av våra headless-webbläsare samtidigt (andra
+    Claude-sessioner på maskinen kör egna; `SLOTS=` i skriptet), `EXCLUSIVE=1` väntar in alla
+    platser (för tidsmätningar). ALLA browserkörningar går via den:
     `PORT=88xx ../browserslot node tools/shot.mjs <scenarier>`;
   - `refresh.sh <kopia> <ägda filer…>` — drar in allt utom de ägda filerna från GAME;
   - `extract_handback.py <agent-transkript> <ut.json|ut.md>` — plockar ut en agents slutrapport;
@@ -98,16 +96,18 @@ genomspelning 6 (`p4_play.json`). Fynd per ägare: `p4_owner_*.json`, `p4_gamepl
 - **Agentmönster:** en fixare per område med disjunkt filägarskap i egen kopia, exakt
   tillbakakopieringskommando i prompten, `notes/<område>.md` uppdateras; granskare läser bara
   (egen kopia `qa`, egen PORT, `OUT=out/<namn>`), returnerar JSON med `severity/owner/area/
-  problem/fix`. Orkestreraren sorterar per ägare, startar fixare, verifierar i GAME och
-  commitar efter varje landning.
+  problem/fix`. En sorterare slår ihop fynden per ägare; fixarna kör parallellt och lämnar
+  bara en rapport — en **seriell landningsgrind** (en agent i taget) kopierar tillbaka, kör story +
+  områdets tester i GAME och commitar, eller backar och skickar till en reparatör. DESIGN.md delas:
+  varje kopia har `DESIGN.orig.md`, och grinden applicerar diffen som patch.
 - **Ägare:** world = `src/world/*` (utom town.js/batch.js = rendering); cars = `src/actors/
   car.js carmodels.js trailer.js drivers.js`; people = `src/actors/models.js character.js`;
   rendering = `src/gfx.js src/game/fx.js markers.js src/world/town.js batch.js`; gameplay =
   `src/main.js input.js src/game/patrol.js interruptions.js stages.js camera.js missions.js
-  src/actors/pickups.js peds.js`; ui = `src/game/hud.js style.css index.html src/audio.js`.
-  Gameplay-filerna delas → kör de fixarna i följd.
-- **Portar:** world 8802, cars 8803, people 8804, systems 8806, story 8807, render 8851,
-  granskare 8841–8845, orkestreraren 8798.
+  src/actors/pickups.js peds.js` (runda 2 delad disjunkt: story = missions/stages/camera,
+  systems = resten); ui = `src/game/hud.js style.css index.html src/audio.js tools/scenarios/ui.mjs`.
+- **Portar:** world 8802, cars 8803, people 8804, ui 8805, systems 8806, story 8807, render 8851,
+  granskare 8841–8845, landningsgrind 8799, orkestreraren/slut-QA 8798.
 - **Fallgropar vi gått i:**
   - två fixare som landar nära varandra hann inte testa mot varandras filer → kör alltid
     `story` i GAME efter varje landning (render + story gav en flikkrasch, fixad i d42e414);
@@ -131,5 +131,5 @@ genomspelning 6 (`p4_play.json`). Fynd per ägare: `p4_owner_*.json`, `p4_gamepl
 ## Startprompt för en ny session
 
 > ultracode — Läs `/home/ran/src/html/everything_and_run/saab_and_run__en_man_som_heter_ove/HANDOFF.md`
-> och fortsätt med Saab & Run där förra sessionen slutade (fas 4: slutverifiering, sedan runda 2
-> av helhetsgranskningen och fixar). Svenska i kommunikationen; commita efter varje stor ändring.
+> och fortsätt med Saab & Run där förra sessionen slutade (fas 4 är klar; t.ex. runda 3 av
+> helhetsgranskningen och fixar). Svenska i kommunikationen; commita efter varje stor ändring.

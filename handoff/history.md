@@ -168,3 +168,11 @@ filägargrupp (en i taget eller med disjunkt ägarskap) → slutverifiering (`st
 skärmdumpar). Sist: uppdatera topp-`CLAUDE.md` om ett nytt spel skapas senare (den pekar redan
 på det här).
 
+
+### Fas 4, runda 2 + 2b (2026-10-10/11, session 4cca0e8c)
+Tre workflows: (1) `saab-p4r2-verify-review` — flake-fix → slutverifiering parallellt med fem
+granskare i egna kopior `qa_<lins>` (skeptiker för kodfynd "from reading"; inga behövdes) → en
+sorterare som skrev `p4r2_owner_*.json` och föreslog fixargrupper; (2) `saab-p4r2-fix-land` — sju
+fixare parallellt (disjunkt ägarskap, gameplay delad i story/systems), seriell landningsgrind med
+test + commit per område (alla landade på första försöket), integrationsagent; (3)
+`saab-p4r2b-polish` — tre fixare för fynden i slutverifieringen, samma grind, slut-QA 27/27.
