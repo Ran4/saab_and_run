@@ -37,7 +37,7 @@ vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 |---|---|---|
 | W A S D / pilar | gå | köra, styra (S backar när bilen står still) |
 | Mus | titta | titta |
-| Shift | rask gång | |
+| Shift | spring | |
 | Mellanslag | hoppa (ett litet hopp) | handbroms |
 | E | prata, kliva in, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll, rutan nere, i krypfart) |

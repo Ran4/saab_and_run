@@ -52,7 +52,7 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   Vita skjortan outside Kommunhuset. They turn to Ove, greet him one at a time (CHATTER), E =
   "Småprata med X" (a line and an Ove grunt), name tags within 9 m, teal dots on the minimap. The
   current mission giver stands at the mission's spot with the amber marker and waves.
-- **On foot**: walk 3.2, rask gång (Shift) 5.5, pushing Rune 3.0 (3.6 with Shift), one jump (apex
+- **On foot**: walk 3.2, spring (run, Shift) 5.5, pushing Rune 3.0 (3.6 with Shift), one jump (apex
   0.55 m, no double jump), J/click kicks: a tyre (thunk, the car rocks, an opinion by make: "Bra
   däck." / "Plast och elektronik." / "Sommardäck. I november."), the nearest prop (breaks, Ove pays; one
   per kick), a person (they object; nobody is knocked over by Ove's boot). Footsteps from the walk
@@ -131,7 +131,7 @@ call `disposeCtx` on complete / fail / abort** (or do the same by hand). Each st
 | `pickup` | `{ who, at, needCar, text, carText, hello }` — on foot: walk up, they follow; in a car: stop within 9 m |
 | `dropoff` | `{ who, at, radius = 8, text, bye, needCar, carText }` — `needCar`: they must arrive in Ove's car (walking beside him doesn't count; `carText` says so) |
 | `escort` | `{ who, at \| (none: a sidewalk 45-110 m from `to`), to, push, radius, findText, bringText, hello, min, max }` |
-| `catchCat` | `{ near, timer, text, rMin, rMax, failText }` — `buildCat()` wanders, bolts within 7 m at 4.3 m/s (faster than a walk, slower than rask gång), caught within 1.15 m on foot; then carried (`m.data.cat`) until `disposeCtx` |
+| `catchCat` | `{ near, timer, text, rMin, rMax, failText }` — `buildCat()` wanders, bolts within 7 m at 4.3 m/s (faster than a walk, slower than a run), caught within 1.15 m on foot; then carried (`m.data.cat`) until `disposeCtx` |
 | `parkIn` | `{ box, car, tol = 0.3, either, trailer, reverse, still = 0.8, text }` — all four corners (and the trailer's) inside the box, heading within `tol`, stopped for `still` s; `reverse`: must have entered the box backwards ("Backa in!" otherwise). Draws an amber outline + chevron on the ground (green when right). |
 | `report` | `{ n, near, radius = 70, smitare = false, spawn = true, text }` — force-spawns n violations near `near` and counts every report from the stage's start |
 | `wait` | `{ secs, text }` |

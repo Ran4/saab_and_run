@@ -36,7 +36,7 @@ const SAVE_KEY = 'saab-and-run-v1';
 const params = new URLSearchParams(location.search);
 const TEST = params.has('test');
 
-// On foot (DESIGN 4.4): walk, rask gång, one small jump, kick a tyre.
+// On foot (DESIGN 4.4): walk, run (Shift, "spring"), one small jump, kick a tyre.
 // Pushing Rune's wheelchair: 3.0, or 3.6 with Shift (2.2 made the errand a 50 s crawl).
 // The jump: 3.95 m/s under character.js' JUMP.grav is 0.55 m up and ~0.56 s in the air, after a wind-up.
 const WALK = 3.2, BRISK = 5.5, PUSH = 3.0, PUSH_BRISK = 3.6, JUMP_V = 3.95;

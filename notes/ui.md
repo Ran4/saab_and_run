@@ -344,7 +344,7 @@ New:
   `audio.alarm()` (= `shameBell`: a church bell tolling twice, far off).
 - `audio.step(surface = 'snow')` — one footstep: 'snow'/'grass'/'lawn' crunch, 'asphalt'/'paving'
   (default branch) heel + scrape + grit, 'gravel', 'wood', 'ice'. Call it from the walk cycle
-  (≈ every 0.42 s walking, 0.3 s rask gång).
+  (≈ every 0.42 s walking, 0.3 s running).
 - Music: generative piano + string pad in A minor at 64 bpm: each 4-bar phrase picks one of 8
   progressions (Am–F–C–G, F–C–Dm–Am, Dm–Am–F–E, …), a texture (sparse / broken chords / melody
   developing a kept motif / "breath" = strings only every 5th phrase), humanised timing and

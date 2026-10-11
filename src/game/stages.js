@@ -746,7 +746,7 @@ export const catchCat = (o) => ({
   },
 });
 const dampAngleTo = (a, b, k) => a + angleDiff(a, b) * Math.min(1, k);
-const CAT_RUN = 6.0, CAT_BURST = 7.2;   // m/s (Ove walks 3.2, rask gång 5.5); the burst with him close behind
+const CAT_RUN = 6.0, CAT_BURST = 7.2;   // m/s (Ove walks 3.2, runs 5.5); the burst with him close behind
 const _bl = [], _h = {}, _fr = [];
 
 // Park a car in a landmark box. o: { box (a box landmark with w, l, yaw), car (name of the car it

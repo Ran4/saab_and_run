@@ -68,7 +68,7 @@ After day 7: banner **OMRÅDET ÄR I ORDNING** (Ordning lifted to ≥ 90) over t
 - `holdAt`: `cut: caption` — one press of E: black + caption, the bar fills by itself, back.
 - `catchCat` (rewritten): modes sit | rest | wander | run | come. Starts somewhere open (most of 12
   directions free ≥ 4 m, never on the asphalt). Bolts when Ove strides (Shift, > 4 m/s) within 7 m,
-  walks within 3.2 m or comes by car; runs 3-4.5 s at 6 m/s (7.2 with him within 4.5 m; rask gång is
+  walks within 3.2 m or comes by car; runs 3-4.5 s at 6 m/s (7.2 with him within 4.5 m; the run (Shift) is
   5.5) along the best of 12 headings: free run (0.25 m steps with its own collision test, probes
   ±0.3 m so Ove can follow, props included) + away from Ove − leash (18 m) − passing him within
   2.6 m − ending on a road; then sits (rest). Ove standing still (< 0.5 m/s) 1.2 s within 9 m with a
