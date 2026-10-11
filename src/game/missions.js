@@ -695,7 +695,9 @@ export class MissionRunner {
     // started an errand that the intro then dropped).
     if (g.interrupts) g.interrupts.nextT = Math.max(g.interrupts.nextT ?? 0, 75);
     hud.showBanner(`Dag ${def.day}`, `${DAYS[def.day - 1]}smorgon`, 'mission', 2600, 'Ny dag');
-    setTimeout(() => hud.toast(`<b>${g.charDef(def.giver).name}</b> vill dig något <span class="bang">!</span> Leta efter markeringen.`), 2200);
+    // (only while the day is still on offer: begun within the 2.2 s, it used to queue behind the
+    // intro and slide in over the chase; class 'offer': begin() drops one still waiting)
+    setTimeout(() => { if (this.offered === def) hud.toast(`<b>${g.charDef(def.giver).name}</b> vill dig något <span class="bang">!</span> Leta efter markeringen.`, 'offer'); }, 2200);
     g.save?.();
   }
 
@@ -756,8 +758,10 @@ export class MissionRunner {
     this.state = 'intro';
     hud.hideBanner();
     hud.clearBubbles?.();
-    // (a call cut off by the scene leaves no phone toasts over the letterbox)
+    // (a call cut off by the scene leaves no phone toasts over the letterbox, and nobody is still
+    // "offering" the day once it has begun: toasts on screen or queued behind a scene)
     hud.clearToasts?.('phone');
+    hud.clearToasts?.('offer');
     g.interrupts.abort();
     g.patrol.cancelWriting('');
     // A smitare chase still going drives off quietly (no SMET! over the intro).
@@ -1105,7 +1109,7 @@ export class MissionRunner {
     dusk(false);
     if (def) this.gaveUp.add(def.day);
     if (def?.snow) fx.snowfall(false);
-    if (def) hud.toast(def.waitToast || `<b>${g.charDef(def.giver).name}</b> väntar fortfarande. Kom tillbaka när du vill.`);
+    if (def) hud.toast(def.waitToast || `<b>${g.charDef(def.giver).name}</b> väntar fortfarande. Kom tillbaka när du vill.`, 'offer');
   }
 }
 

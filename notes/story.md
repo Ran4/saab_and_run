@@ -143,7 +143,9 @@ Trollhättan emblem 1986); the new tests.
 - `src/game/interruptions.js`: `hangUp()`.
 - `src/game/hud.js`: `runDialog` calls `line.on(game)` as a line starts; `hud.curtain(on, caption)`
   (+ `#curtain` in the HUD markup).
-- `style.css`: `#curtain` (z-index 1: over the world and its tags, under the HUD cards).
+- `style.css`: `#curtain` (z-index 1: over the world and its tags, under the HUD cards; since phase 4
+  round 2b the HUD cards fade out with it, `#hud.curtain`, and the objective hides under the
+  letterbox; offer toasts are class `offer`, dropped by `begin()`: notes/integration.md).
 - `tools/shot.mjs`: "scenario failed" also prints the first stack lines.
 - `DESIGN.md`: section 5. (Section 4.5's example memory still says "Sonja, 1970" - not mine to
   edit; the game's photos are dated 1984 / 1988 now.)

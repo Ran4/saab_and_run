@@ -272,6 +272,12 @@ body:has(#letterbox.on):has(#dialog.show) #toasts { top: calc(max(9vh / var(--ui
 #hud:has(#dialog.show) #letterbox.on .lb-bot, #hud:has(#dialog.show) #letterbox.on .lb-top { height: max(9vh, calc(var(--ui) * 118px)); }
 #status, #meter, #minimap-wrap, #speedo, #leftcol, #pursuit, #toasts { transition: opacity 0.35s; }
 body:has(#letterbox.on) #status, body:has(#letterbox.on) #meter, body:has(#letterbox.on) #minimap-wrap, body:has(#letterbox.on) #speedo, body:has(#letterbox.on) #pursuit, body:has(#letterbox.on) #leftcol { opacity: 0; }
+/* (round 2b) The objective goes with the letterbox too: its card hung out of the top bar at the
+   grave, the progress bar under it. */
+body:has(#letterbox.on) #objective { opacity: 0; }
+/* A cut to black (hud.curtain sets #hud.curtain): the HUD fades out with the picture - only the
+   curtain's caption, a banner and the dialogue (z 3) stay over the black. */
+#hud.curtain #status, #hud.curtain #meter, #hud.curtain #minimap-wrap, #hud.curtain #speedo, #hud.curtain #pursuit, #hud.curtain #leftcol, #hud.curtain #objective, #hud.curtain #prompt { opacity: 0; transition: opacity 0.6s ease; }
 /* A scene is up (letterbox, curtain or a held shot; hud.js _cineSet): no toasts (new ones wait in
    hud.js's queue) and no report ticket over it. */
 #hud.cine #toasts, #hud.cine #notebook { opacity: 0; }
@@ -291,7 +297,8 @@ body:has(#letterbox.on) .dlg-text { min-height: 0; }
 .dlg-next b { display: inline-block; padding: 3px 6px 2px; margin-right: 5px; border-radius: 3px; background: var(--paper); color: var(--ink); font: 600 13px/1 var(--cond); }
 
 #flash { position: absolute; inset: 0; opacity: 0; }
-/* A cut to black (hud.curtain): over the world and its tags, under the HUD cards and the banner. */
+/* A cut to black (hud.curtain): over the world and its tags; the HUD cards fade out with it (above),
+   the banner and the dialogue stay over it. */
 #curtain { position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; background: #07090b; opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
 #curtain.on { opacity: 1; }
 #curtain .cu-text { font: italic 400 30px/1.3 var(--body); letter-spacing: 0.04em; color: #e6e2d6; opacity: 0; transform: translateY(6px); transition: opacity 0.7s ease 0.35s, transform 0.7s ease 0.35s; }
@@ -369,7 +376,11 @@ body:has(#letterbox.on) .dlg-text { min-height: 0; }
 /* ---------------------------------------------------------------- title & pause */
 #title, #pause { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
 #title { transition: opacity 0.8s; color: var(--ink); }
-#title.gone { opacity: 0; pointer-events: none; }
+/* Spela: the card fades off the scene (0.8 s), then is hidden for good (visibility: its buttons out of
+   the tab order, its blurred shade out of the compositor). In ?test it goes at once (.now): the
+   scenarios' first shots used to catch it half faded over the chase cam. */
+#title.gone { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 0.8s, visibility 0s 0.8s; }
+#title.gone.now { transition: none; }
 .title-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(240, 241, 238, 0.92) 0%, rgba(240, 241, 238, 0.84) 30%, rgba(240, 241, 238, 0.4) 44%, rgba(240, 241, 238, 0.08) 58%, rgba(240, 241, 238, 0) 70%); }
 /* The scene shows through on the right: main.js frames Ove beside his Saab there (its own slow
    camera shot); only the text side is softened. The controls table comes up on request. */
@@ -411,6 +422,9 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
 /* On the title the table waits behind the "Kontroller" button (the pause menu has its own copy). */
 #title .title-controls { background: rgba(244, 242, 236, 0.9); opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity 0.25s, transform 0.25s, visibility 0s 0.25s; }
 #title.ctl .title-controls { opacity: 1; visibility: visible; transform: none; transition: opacity 0.25s, transform 0.25s; }
+/* (Spela with the table open: it fades with the card and is hidden with it too) */
+#title.gone.ctl .title-controls { visibility: hidden; transition: visibility 0s 0.8s; }
+#title.gone.now .title-controls { transition: none; }
 .tc-head { font: 600 12px/1 var(--cond); letter-spacing: 0.24em; text-transform: uppercase; color: #6d727a; margin-bottom: 10px; }
 .controls { width: 100%; border-collapse: collapse; font: 400 13.5px/1.25 var(--body); color: var(--ink); white-space: nowrap; }
 .controls th { text-align: left; font: 600 11px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: #6d727a; padding: 0 0 7px; border-bottom: 1px solid rgba(27, 31, 36, 0.25); }

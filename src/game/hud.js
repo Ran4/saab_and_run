@@ -625,11 +625,13 @@ export const hud = {
 
   letterbox(on) { $('letterbox').classList.toggle('on', !!on); this._cineSet('lb', on); },
   // A cut: the scene fades to black (0.6 s) with an optional caption ("Senare samma dag"), and back.
-  // Under the HUD cards (objective, prompt, banner stay readable), over the world and its tags.
+  // Over the world and its tags; the HUD (clock, kr, objective, meter, minimap, speedometer, prompt)
+  // fades out with the picture (#hud.curtain): only the caption, a banner and the dialogue stay.
   curtain(on, caption = '') {
     const c = $('curtain');
     if (on) c.querySelector('.cu-text').textContent = caption || '';
     c.classList.toggle('on', !!on);
+    root?.classList.toggle('curtain', !!on);
     this._cineSet('cu', on);
   },
 

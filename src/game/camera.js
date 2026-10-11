@@ -2,7 +2,8 @@
 // behind Ove at shoulder height), a chase cam in cars that swings in behind the direction of
 // travel (further back when towing a trailer). The boom is pulled in against anything solid between
 // the pivot and the camera (houses, garages, sheds, fences taller than the camera), snapping in at
-// once and easing back out, so the camera never ends up inside a wall.
+// once and easing back out, so the camera never ends up inside a wall. A car under a low roof (a
+// bus shelter, a carport, a canopy) gets a level boom under it instead of one pulled in to nothing.
 
 import { THREE } from '../gfx.js';
 import { queryBlocks, groundAt, topAt, contains, BOX, CIRCLE } from '../world/collision.js';
@@ -79,6 +80,14 @@ export function boomFree(px, py, pz, cx, cy, cz) {
     }
   }
   return free;
+}
+
+// The lowest overhang (camBlocks: a bus shelter's roof, a carport, a garage roof, a canopy) over
+// (x, z) whose underside is between y0 and y1; Infinity if there is none.
+function roofOver(x, z, y0, y1) {
+  let r = Infinity;
+  for (const b of camBlocks) if (b.bottom > y0 && b.bottom < y1 && b.bottom < r && x > b.x0 - 0.3 && x < b.x1 + 0.3 && z > b.z0 - 0.3 && z < b.z1 + 0.3) r = b.bottom;
+  return r;
 }
 
 const _want = new THREE.Vector3();
@@ -333,12 +342,33 @@ export class CamRig {
       if (this.manualT <= -0.7 && focus.speed > 1 && focus.autoTurn && Math.abs(angleDiff(this.yaw, focus.yaw)) < 1.3) this.yaw = dampAngle(this.yaw, focus.yaw, 0.6, dt);
     }
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
-    const px = focus.x, py = focus.y + pivotH, pz = focus.z;
+    const px = focus.x, pz = focus.z, py0 = focus.y + pivotH;
     const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
     // Desired camera at full boom, then pull in to the free part of the segment.
     const tx = px - fx * cp * dist, tz = pz - fz * cp * dist;
-    const ty = Math.max(groundAt(tx, tz, py + sp * dist, 2) + 0.45, py + sp * dist);
-    const free = boomFree(px, py, pz, tx, ty, tz);
+    let py = py0, ty = Math.max(groundAt(tx, tz, py0 + sp * dist, 2) + 0.45, py0 + sp * dist);
+    let free = boomFree(px, py, pz, tx, ty, tz);
+    // A car under a low roof (a bus shelter, a carport, the Akut canopy) - or so close to one that
+    // the shortest boom would be under it - or the camera still under one: the boom stays under the
+    // roof, level, with headroom, when that leaves it room (rising, it ran into the roof and was
+    // pulled in to nothing: the camera sat right under the roof's edge, the underside filling the
+    // top third of the picture; under a high canopy it rode 0.5 m under it). Walled in all the same
+    // (nose out in a garage) it is pulled in over the roof as before, looking out ahead. Once the
+    // car is out, a boom rising into the roof behind it is pulled in as usual: in front of the
+    // roof, not under it.
+    let roof = false;
+    if (focus.car) {
+      const top = focus.y + focus.car.height, y0 = top + 0.3, y1 = py0 + 2.5;
+      let r = Math.min(roofOver(px, pz, y0, y1), roofOver(px - fx * 1.25, pz - fz * 1.25, y0, y1));
+      if (r === Infinity && !this.snapNext) r = roofOver(this.pos.x, this.pos.z, Math.max(y0, this.pos.y), y1);
+      if (r < Infinity) {
+        const ly = Math.min(py0, Math.max(top + 0.2, r - 0.4)), cap = Math.min(r - 0.4, Math.max(ly, r - 1.6));
+        const lty = Math.max(groundAt(tx, tz, ly + sp * dist, 2) + 0.45, Math.min(cap, ly + sp * dist));
+        const lf = boomFree(px, ly, pz, tx, lty, tz);
+        if (lf * dist > 4.5 && lf >= free - 0.02) { py = ly; ty = lty; free = lf; roof = true; }
+      }
+    }
+    this.roofDrop = this.snapNext ? py0 - py : damp(this.roofDrop || 0, py0 - py, 5, dt);
     const wantBoom = Math.max(0.9, free * dist);
     // On foot, backed into a wall with the boom short (a garage row, a shed, a porch): swing round
     // towards the open side unless the player is steering the camera.
@@ -357,7 +387,8 @@ export class CamRig {
       if (Math.abs(angleDiff(this.yaw, this.swingTo)) < 0.05) this.swingTo = null;
     }
     if (this.snapNext || wantBoom < this.boom) this.boom = wantBoom;
-    else this.boom = damp(this.boom, wantBoom, 1.6, dt);
+    // (under a roof the boom goes back out briskly: it passes under the roof, not lingers there)
+    else this.boom = damp(this.boom, wantBoom, roof ? 5 : 1.6, dt);
     const k = this.boom / dist;
     const want = _want.set(px + (tx - px) * k, py + (ty - py) * k, pz + (tz - pz) * k);
     // Pulled in close (a wall right behind): stay low, just over Ove's shoulder, so the camera
@@ -395,7 +426,7 @@ export class CamRig {
     // 0.45 m to the open side: Ove off-centre, the open space in the picture, not the wall.
     const tight = focus.car ? 0 : clamp((1.4 - this.boom) / 0.4, 0, 1);
     this.lookSide = damp(this.lookSide || 0, tight * 0.45 * (this.openSide || 1), 4, dt);
-    this.look.set(px + fx * la - fz * this.lookSide, py - (focus.car ? 0.25 : 0.12) + ahead * 0.12, pz + fz * la + fx * this.lookSide);
+    this.look.set(px + fx * la - fz * this.lookSide, py0 - this.roofDrop - (focus.car ? 0.25 : 0.12) + ahead * 0.12, pz + fz * la + fx * this.lookSide);
     // Never sit inside another car: ride up over its roof instead.
     for (const c of cars) {
       if (c === focus.car || Math.abs(c.x - this.pos.x) > c.radius + 1 || Math.abs(c.z - this.pos.z) > c.radius + 1) continue;

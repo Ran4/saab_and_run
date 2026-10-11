@@ -399,7 +399,8 @@ class Game {
   start() {
     if (this.started) return;
     this.started = true;
-    document.getElementById('title').classList.add('gone');
+    // The title card fades off the first gameplay frames (0.8 s); ?test has no title: gone at once.
+    document.getElementById('title').classList.add('gone', ...(TEST ? ['now'] : []));
     document.body.classList.add('playing');
     input.playing = true;
     audio.init();
@@ -417,7 +418,7 @@ class Game {
     if (!TEST && this.isNewGame) {
       setTimeout(() => hud.toast('Felparkerade bilar i området. Gå fram och håll <b>F</b> för att anteckna.'), 1500);
       // Whoever is offering the day's mission when the toast shows (not when Spela was clicked).
-      setTimeout(() => { const giver = this.missions.offered?.giver; if (giver && this.missions.state === 'idle') hud.toast(`<b>${CHARS[giver].name}</b> vill dig något <span class="bang">!</span> Gå fram och tryck <b>E</b>.`); }, 7000);
+      setTimeout(() => { const giver = this.missions.offered?.giver; if (giver && this.missions.state === 'idle') hud.toast(`<b>${CHARS[giver].name}</b> vill dig något <span class="bang">!</span> Gå fram och tryck <b>E</b>.`, 'offer'); }, 7000);
     }
   }
 

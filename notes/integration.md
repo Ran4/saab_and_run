@@ -518,3 +518,57 @@ Closed the cross-owner requests above and from the other handbacks:
   request: `state === 'running'` let the day-6 talk be aborted mid-dialogue).
 - CLAUDE.md (round-2 scenarios of every area, the give-up rules), README (hold Q / the pause menu,
   weak GPUs on auto, a test line), DESIGN §9 and notes/ui.md follow.
+
+## Phase 4, round 2b (final verification's player-visible leftovers) — what changed
+
+- **The title "ghost"** (pursuit_0 in out/final and out/final2): not the photo collectible. In ?test
+  `start()` runs the moment the game is ready and the title faded for 0.8 s like after Spela, so a
+  scenario's first shot (pursuit_0: 10 frames after the load) caught the card at ~35 % over the
+  chase cam; the Sonja note in the same shot was the Saab placed on the bus stop's photo. Players
+  saw only the designed 0.8 s fade after Spela / Fortsätt (most of it hidden by the ~0.3-0.5 s the
+  first gameplay frames take here), never on a pickup. Fixed at the root: ?test has no title, so it
+  goes at once (`#title.gone.now`); after the fade the card is `visibility: hidden` (its buttons
+  leave the tab order, the blurred shade the compositor). Check: ui.mjs `titlegone` (?test at the
+  load and after a photo pickup; a real Spela, its fade frame by frame, gone by ~0.9 s, a photo
+  after it; a saved game's Fortsätt with Kontroller open: the table hides with the card) - computed
+  opacity 0, visibility hidden, nothing of `#title` under its heading's spot; shots
+  `titlegone_test/_play/_fortsatt`.
+- **The HUD over the curtain** (Ove luftar elementen, Senare samma dag): `hud.curtain(on)` also sets
+  `#hud.curtain`, which fades the clock/kr strip, the left column, the meter, the pursuit card, the
+  objective, the minimap, the speedometer and the prompt out with the picture (0.6 s). The caption,
+  a banner (the race retry's) and the dialogue stay over the black.
+- **The objective under the letterbox** (BLOMMORNA at the grave): it hides with the letterbox like
+  the rest of the HUD (`body:has(#letterbox.on) #objective`). The kneel's progress bar went with it.
+- **Offer toasts during a day**: the dawn's "X vill dig något ◆ Leta efter markeringen." was a bare
+  2.2 s timer: a day begun within it got the toast queued behind its intro, and it slid in over the
+  day-7 chase. It now fires only while that day is still on offer, and every offer-type toast (it,
+  the new game's 7 s one, the give-up "väntar fortfarande") has class `offer`, which
+  `missions.begin()` clears next to 'phone' (on screen and queued). The patrol card's "X vill dig
+  något" never showed during a day (patrolObjective is null unless idle; 0 of 2723 samples in the
+  watch below, before and after): in pursuit_0 it is free roam with day 1 on offer, as designed.
+- **story's HUD watch** (story.mjs `watchHud`, the whole run, every 0.1 s): no offer toast (shown or
+  queued) or offer text in the objective once a day has begun or a scene is up, no toast over an
+  intro, nothing of the HUD showing over the curtain 0.8 s after it is down, no objective under the
+  letterbox after 0.6 s. Leaks are errors. On the old files (FROM=5) it reports 9: the curtain HUD,
+  the grave and a day-6 objective under the letterbox, and the day-7 offer toast in the intro's
+  queue and over the chase; now 0.
+- **The chase camera under low roofs** (camera.js): a car under a camBlocks overhang whose underside
+  is 0.3 m clear of its roof and below the pivot + 2.5 m (a bus shelter, a carport, a garage, the
+  Akut and entrance canopies) - or within the shortest boom of one, or with the camera itself under
+  one - gets a level boom under the roof: the pivot at most 0.4 m under it (never lower than the car
+  roof + 0.2), the camera at most 0.4 m under it and with up to 1.6 m headroom when there is room
+  (a high canopy). It is used when it gives the boom more than 4.5 m and is at least as free as the
+  usual rising boom (which ran into the roof and was pulled in to 0.9 m, the camera just under the
+  roof's edge: the top third all roof); walled in all the same (nose out in Ove's garage) the old
+  pull-in over the roof stays, looking out of the door. The boom eases back out faster under a
+  roof (5/s, not 1.6/s), so a camera that has to pass under one does not linger there; the look
+  point follows the lowered pivot smoothly (`roofDrop`). Cost: ~0.01 ms a frame (809 camBlocks), one
+  more boomFree only under a roof. Check: gameplay.mjs `camroof` - the Saab under the Solrosvägen
+  shelter both ways and driving out, the Centrum shelter driven into from the street, backed out
+  and backed into, the Akut canopy (standing, driving in), Ove's garage both ways and the road past
+  the shelter (unchanged); per view the share of the picture that is roof, of the top third within
+  4 m of the lens, and the headroom over the camera: under a roof >= 0.9 m headroom and <= 20 % of
+  the top third close roof. Old camera: 6 bad views (headroom 0.11 m under the shelter and backing
+  into the Centrum one, the Akut canopy's edge filling the top); now none.
+- Seen in passing (rendering's): the first gameplay frames after Spela still take ~0.3-0.5 s in
+  headless Chrome here (the title's fade jumps from 0.99 to 0.29 over it, ui.mjs `titlegone`).

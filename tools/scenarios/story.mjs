@@ -550,14 +550,53 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     if (!(await ev(() => __game.missions.stageI >= 2 || __game.missions.state !== 'running'))) throw new Error('trailer parking not accepted');
   }
 
+  // (round 2b) A watch on the HUD for the whole run, every 0.1 s: no "vill dig något" (an offer toast,
+  // on screen or queued behind a scene, or in the objective line) once a day has begun or while a
+  // scene is up; no toast showing over an intro; nothing of the HUD (clock, kr, objective, meter,
+  // minimap, speedometer, left column, pursuit card, prompt) over the curtain once it is down
+  // (0.8 s), and no objective card under the letterbox (0.6 s). Each kind of leak is reported once.
+  const watchHud = () => ev(async () => {
+    const { hud } = await import('./src/game/hud.js');
+    const W = (window.__hudWatch = { leaks: [], n: 0, since: {} }), seen = new Set();
+    const leak = (k, info) => { if (!seen.has(k)) { seen.add(k); W.leaks.push(info); } };
+    const el = (id) => document.getElementById(id);
+    const shown = (id) => { const e = el(id), r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && +getComputedStyle(e).opacity > 0.05; };
+    const offer = (s) => /vill dig något/.test(s);
+    W.t = setInterval(() => {
+      const g = window.__game;
+      if (!g) return;
+      const m = g.missions, st = m.state, day = m.index + 1, cine = el('hud').classList.contains('cine'), now = performance.now();
+      W.n++;
+      const toasts = [...document.querySelectorAll('#toasts > .toast:not(.out)')].map((t) => t.textContent);
+      const queued = (hud._toastQ || []).map((q) => q.t.textContent);
+      if (st !== 'idle') for (const t of [...toasts, ...queued]) if (offer(t)) leak(`toast ${day} ${st}`, `day ${day} ${st}: offer toast "${t.slice(0, 50)}"`);
+      const obj = document.querySelector('#objective.show')?.textContent || '';
+      if ((st !== 'idle' || cine) && offer(obj)) leak(`obj ${day} ${st}`, `day ${day} ${st}${cine ? ' (scene)' : ''}: objective "${obj.slice(0, 70)}"`);
+      if (m.introOn && !cine && toasts.length) leak(`intro ${day}`, `day ${day}: a toast over the intro "${toasts[0].slice(0, 50)}"`);
+      const cu = el('curtain').classList.contains('on'), lb = el('letterbox').classList.contains('on');
+      W.since.cu = cu ? (W.since.cu ?? now) : null;
+      W.since.lb = lb ? (W.since.lb ?? now) : null;
+      if (cu && now - W.since.cu > 800) for (const id of ['status', 'meter', 'minimap-wrap', 'speedo', 'objective', 'leftcol', 'pursuit', 'prompt']) if (shown(id)) leak(`cu ${id} ${day}`, `day ${day} ${st}: #${id} over the curtain`);
+      if (lb && now - W.since.lb > 600 && shown('objective')) leak(`lb ${day} ${st}`, `day ${day} ${st}: the objective under the letterbox`);
+    }, 100);
+  });
+  const hudLeaks = async () => {
+    const r = await ev(() => { const W = window.__hudWatch; if (!W) return null; clearInterval(W.t); return { n: W.n, leaks: W.leaks }; });
+    if (!r) return;
+    await log(`hud watch: ${r.n} samples, ${r.leaks.length} leaks`, JSON.stringify(r.leaks));
+    for (const l of r.leaks) await bad('hud watch:', l);
+  };
+
   const sc = {
     async story() {
       const from = +(process.env.FROM || 0);
       if (from) await fresh(`&mission=${from}`);
+      await watchHud();
       for (let n = from + 1; n <= 7; n++) {
         await D[n]();
         await failCheck();
       }
+      await hudLeaks();
       await log('story finished', await state(), 'kr', await ev(() => __game.coins), 'renderFrame ms', await ev(() => window.__stats().cpuMs));
     },
     async m1() { await D[1](true); },

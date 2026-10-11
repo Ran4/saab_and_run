@@ -230,7 +230,10 @@ Prompt / toasts / banners / misc
 - `hud.showCollect(html, ms)` — note in the left column. Icons: `<span class="emblem-icon">`,
   `<span class="photo-icon">` (old `.rec-icon`/`.mos-icon` still styled); wrap a Sonja memory in
   `<span class="memory">…</span>` to get Ove's handwriting.
-- `hud.flashColor(css, ms = 700)` (fades out over `ms`), `hud.letterbox(on)` (the dialogue box darkens into the bottom bar),
+- `hud.flashColor(css, ms = 700)` (fades out over `ms`), `hud.letterbox(on)` (the dialogue box darkens into the bottom bar;
+  the HUD cards, the objective too since round 2b, fade out), `hud.curtain(on, caption)` (the cut to
+  black; round 2b: sets `#hud.curtain`, the whole HUD fades out with the picture, the caption, a
+  banner and the dialogue stay),
   `hud.say(target, text, secs)` + `hud.tickBubbles()` (speech bubbles).
 - `hud.runDialog(lines, game)` — unchanged contract (`game.charDef`, `setTalker`, `onFrame`,
   `offFrame`, `input.pressed('skip')`, `autoDialog`). The voice is one `audio.talk(voice)` per

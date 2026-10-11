@@ -15,7 +15,8 @@
 // shader compiles in errands), smalltalk (+ day 0, day windows, errands by day), r2checks (clock,
 // kick, trailer, grave flowers, dropped errand, KAOS hold), reloadday (short intro, "Fri patrull"),
 // titlekeys (Enter / Space / pad on the title, Patrick on a continued day 2), titlepose, bouquet
-// (look-dev). Their failed checks count as errors.
+// (look-dev). Their failed checks count as errors. Round 2b: camroof (the chase camera under bus
+// shelters, the Akut canopy, in Ove's garage).
 
 export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, standBy, fresh, fps, PORT, errors = [] }) => {
   // A failed check of the phase-4 round-2 scenarios ends the run with 'N errors' (like the story's).
@@ -1588,6 +1589,137 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       await frames(10);
       const b = await info();
       console.log('[t] carcycle before', JSON.stringify(a), 'after', N, JSON.stringify(b), 'delta geos', b.geos - a.geos, 'textures', b.textures - a.textures, 'programs', b.programs - a.programs);
+    },
+
+    // Phase 4 round 2b: the chase camera under low roofs. The Saab under the bus shelter at
+    // Solrosvägen (where pursuit_0 put it: the camera sat right under the roof's edge, the top third
+    // of the picture all roof), driving out of it, under the Akut canopy and driving in, in Ove's
+    // garage both ways, and on the road past the shelter (unchanged). Per view: roof = share of a
+    // 9 x 7 ray grid over the picture meeting an overhang (camBlocks over 1 m wide) within 14 m, top =
+    // the same over the top third, near = the top third's rays meeting one within 4 m of the lens,
+    // head = headroom (m) under the lowest overhang over the camera (null: none). Under a roof the
+    // camera must keep >= 0.9 m headroom and no roof close over the lens (near <= 0.2; a big canopy
+    // 1.6 m up may show in the top of the picture: it is architecture, not a lid on the lens).
+    async camroof() {
+      const view = (label) => ev(async (label) => {
+        const { camBlocks } = await import('./src/world/town.js');
+        const { THREE, camera } = await import('./src/gfx.js');
+        camera.updateMatrixWorld();
+        const o = camera.position, rc = new THREE.Raycaster(), box = new THREE.Box3(), hit = new THREE.Vector3();
+        const bl = camBlocks.filter((b) => b.x1 - b.x0 > 1 && b.z1 - b.z0 > 1 && b.x1 > o.x - 15 && b.x0 < o.x + 15 && b.z1 > o.z - 15 && b.z0 < o.z + 15);
+        let n = 0, h = 0, nt = 0, ht = 0, hn = 0, head = null;
+        for (let i = 0; i < 9; i++) for (let j = 0; j < 7; j++) {
+          rc.setFromCamera(new THREE.Vector2(-0.9 + i * 0.225, -0.9 + j * 0.3), camera);
+          let d = 99;
+          for (const b of bl) { box.min.set(b.x0, b.bottom, b.z0); box.max.set(b.x1, b.top, b.z1); if (rc.ray.intersectBox(box, hit)) d = Math.min(d, hit.distanceTo(o)); }
+          n++; if (d < 14) h++;
+          if (j >= 5) { nt++; if (d < 14) ht++; if (d < 4) hn++; }
+        }
+        for (const b of bl) if (o.x > b.x0 && o.x < b.x1 && o.z > b.z0 && o.z < b.z1 && b.bottom > o.y - 0.05) head = Math.min(head ?? 99, +(b.bottom - o.y).toFixed(2));
+        const c = __game.playerCar;
+        return { label, roof: +(h / n).toFixed(2), top: +(ht / nt).toFixed(2), near: +(hn / nt).toFixed(2), head, cam: [+o.x.toFixed(1), +o.y.toFixed(1), +o.z.toFixed(1)], boom: +__game.cam.boom.toFixed(2), car: c ? [+c.x.toFixed(1), +c.z.toFixed(1), +c.speed.toFixed(1)] : null };
+      }, label);
+      const judged = (v) => (v.head == null || v.head >= 0.9) && v.near <= 0.2;
+      const check = async (label, under = true) => {
+        const v = await view(label);
+        console.log('[t] camroof', JSON.stringify(v), under ? verdict('camroof ' + label, judged(v)) : '(reported)');
+        return v;
+      };
+      // The shelter: the overhang nearest the busStop landmark; the Saab under its front half,
+      // along it, both ways.
+      const sh = await ev(async () => {
+        const { camBlocks } = await import('./src/world/town.js');
+        const s = window.__lm('busStop');
+        let best = null, bd = 1e9;
+        for (const b of camBlocks) { const w = b.x1 - b.x0, d = b.z1 - b.z0; if (w < 1.5 || d < 1.5 || w > 6 || d > 6) continue; const dd = Math.hypot((b.x0 + b.x1) / 2 - s.x, (b.z0 + b.z1) / 2 - s.z); if (dd < bd) { bd = dd; best = b; } }
+        const along = best.x1 - best.x0 > best.z1 - best.z0;
+        // (the front half: towards the road, away from the back glass)
+        const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+        return { x: (best.x0 + best.x1) / 2 + fx * 0.35, z: (best.z0 + best.z1) / 2 + fz * 0.35, yaw: along ? Math.PI / 2 : 0, fx, fz, b: [best.x0, best.z0, best.x1, best.z1, best.bottom] };
+      });
+      console.log('[t] shelter', JSON.stringify(sh));
+      const put = (x, z, yaw, v = 0) => ev(({ x, z, yaw, v }) => { const g = __game; if (!g.playerCar) g.enterCar(g.named.saab); const c = g.playerCar; c.place(x, z, yaw); c.vx = Math.sin(yaw) * v; c.vz = Math.cos(yaw) * v; g.cam.yaw = yaw; g.cam.pitch = 0.15; g.cam.snapNext = true; }, { x, z, yaw, v });
+      await put(sh.x, sh.z, sh.yaw); await frames(30);
+      await check('shelter'); await shot('camroof_shelter');
+      await put(sh.x, sh.z, sh.yaw + Math.PI); await frames(30);
+      await check('shelter_rev'); await shot('camroof_shelter_rev');
+      // Out of it with the throttle: the camera follows out without rising into the roof's edge.
+      await put(sh.x, sh.z, sh.yaw); await frames(20);
+      let worst = null;
+      await page.keyboard.down('KeyW');
+      const seq = [];
+      for (let k = 0; k < 10; k++) {
+        await sleep(160);
+        const v = await view('exit ' + k), bad = (u) => (judged(u) ? 0 : 1) + u.near;
+        seq.push(`${v.car[0]}:${v.cam[0]}/${v.cam[1]}/${v.near}`);
+        if (!worst || bad(v) > bad(worst)) worst = v;
+        if (k === 3) await shot('camroof_shelter_exit');
+      }
+      await page.keyboard.up('KeyW');
+      console.log('[t] camroof exit (car x: cam x / y / near)', seq.join(' '));
+      console.log('[t] camroof', JSON.stringify(worst), verdict('camroof shelter exit', judged(worst)));
+      // The Centrum stop's shelter, driven into from the street (its open front: nose in under the
+      // roof until the back screen stops the car), backed out, then backed in from the street (the
+      // camera passes the shelter on its way out behind it: at most 3 samples, 0.45 s, under its
+      // roof, and the last four clear).
+      const sc = await ev(async () => {
+        const { camBlocks } = await import('./src/world/town.js');
+        const s = window.__lm('busStopCentrum');
+        let best = null, bd = 1e9;
+        for (const b of camBlocks) { const w = b.x1 - b.x0, d = b.z1 - b.z0; if (w < 1.5 || d < 1.5 || w > 6 || d > 6) continue; const dd = Math.hypot((b.x0 + b.x1) / 2 - s.x, (b.z0 + b.z1) / 2 - s.z); if (dd < bd) { bd = dd; best = b; } }
+        return { x: (best.x0 + best.x1) / 2, z: (best.z0 + best.z1) / 2, yaw: s.yaw + Math.PI };
+      });
+      for (const [key, ms, pre] of [['KeyW', 2200, 'in'], ['KeyS', 1600, ''], ['KeyS', 3000, 'rev']]) {
+        const fx = Math.sin(sc.yaw), fz = Math.cos(sc.yaw);
+        if (pre === 'in') { await put(sc.x - fx * 11, sc.z - fz * 11, sc.yaw, 5); await frames(3); }
+        // (backing in: facing the street, 8 m out)
+        if (pre === 'rev') { await put(sc.x - fx * 8, sc.z - fz * 8, sc.yaw + Math.PI, 0); await frames(10); }
+        const seq = [], vs = [];
+        let w = null;
+        await page.keyboard.down(key);
+        const t0 = Date.now();
+        for (let k = 0; Date.now() - t0 < ms + 1200; k++) {
+          if (Date.now() - t0 > ms) await page.keyboard.up(key);
+          await sleep(150);
+          const v = await view('centrum ' + key + ' ' + k);
+          const into = ((v.car[0] - sc.x) * fx + (v.car[1] - sc.z) * fz).toFixed(1);
+          seq.push(`${into}:${v.cam[1]}/${v.near}${v.head != null ? '/h' + v.head : ''}`);
+          vs.push(judged(v));
+          if (!w || (judged(w) && !judged(v)) || (judged(w) === judged(v) && v.near > w.near)) w = v;
+          if (k === (pre === 'rev' ? 15 : 9)) await shot('camroof_centrum_' + (pre || 'out'));
+        }
+        await page.keyboard.up(key);
+        if (pre === 'rev') await shot('camroof_centrum_rev_end');
+        console.log(`[t] camroof centrum ${pre || 'out'} (car centre past the shelter's middle, m: cam y / near / headroom)`, seq.join(' '));
+        const nBad = vs.filter((j) => !j).length, ok = nBad <= 3 && vs.slice(-4).every(Boolean);
+        console.log('[t] camroof', JSON.stringify(w), `${nBad} of ${vs.length} under a roof`, verdict('camroof centrum ' + (pre || 'out'), ok));
+      }
+      // The Akut canopy (day 7's drop-off): standing under it, then driving in from 16 m out.
+      const ak = await ev(async () => {
+        const { camBlocks } = await import('./src/world/town.js');
+        const h = window.__lm('hospitalDrop') || { x: 137, z: -150, yaw: Math.PI / 2 };
+        const b = camBlocks.find((b) => h.x > b.x0 && h.x < b.x1 && h.z > b.z0 && h.z < b.z1 && b.x1 - b.x0 > 5);
+        return { x: h.x, z: h.z, yaw: h.yaw, b: b ? [b.x0, b.z0, b.x1, b.z1, b.bottom] : null };
+      });
+      console.log('[t] akut', JSON.stringify(ak));
+      await put(ak.x, ak.z, ak.yaw); await frames(30);
+      await check('akut', !!ak.b); await shot('camroof_akut');
+      await put(ak.x - Math.sin(ak.yaw) * 16, ak.z - Math.cos(ak.yaw) * 16, ak.yaw, 7); await frames(4);
+      await page.keyboard.down('KeyW'); await sleep(900); await page.keyboard.up('KeyW');
+      await page.keyboard.down('Space'); await sleep(700); await page.keyboard.up('Space');
+      await frames(10);
+      await check('akut_in', !!ak.b); await shot('camroof_akut_in');
+      // Ove's garage (camtight's two views): reported, not judged (a closed garage, walls all round).
+      for (const [label, turn] of [['garage_out', Math.PI], ['garage_in', 0]]) {
+        await ev((turn) => { const g = __game, b = window.__lm('oveGarageSpot') || window.__lm('saabSpot'); if (!g.playerCar) g.enterCar(g.named.saab); g.playerCar.place(b.x, b.z, b.yaw + turn); g.cam.yaw = b.yaw + turn; g.cam.snapNext = true; }, turn);
+        await frames(25);
+        await check(label, false); await shot('camroof_' + label);
+      }
+      // On the road past the shelter (two lanes out): no roof business at all.
+      await put(sh.x + sh.fx * 6 - Math.sin(sh.yaw) * 12, sh.z + sh.fz * 6 - Math.cos(sh.yaw) * 12, sh.yaw, 9);
+      await frames(4);
+      await page.keyboard.down('KeyW'); await sleep(1200); await page.keyboard.up('KeyW');
+      await check('road', false); await shot('camroof_road');
     },
   };
 };

@@ -495,7 +495,10 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
   game holds a shot (`game.inDialog`: UPPDRAG KLART, the finale), the toast column and the report
   ticket are hidden (`#hud.cine`); toasts on screen when it starts are dropped, new ones queue and
   slide in one by one after it. `hud.clearToasts(cls?)` fades the toasts of a class ('phone', ...)
-  or all, queued ones too (missions.begin() clears 'phone').
+  or all, queued ones too (missions.begin() clears 'phone' and 'offer': "X vill dig något" /
+  "väntar fortfarande", which also fire only while the day is still on offer).
+- Under the curtain (a cut to black) the whole HUD fades out with the picture (round 2b); under the
+  letterbox the objective goes too. The title card is hidden for good once faded (?test: at once).
 - Pause menu **Avbryt dagens uppdrag** (`#opt-abort`, two clicks like Radera sparat spel): shown only
   while `missions.canGiveUp` (running, not in a mid-mission scene); calls `missions.abort()` and unpauses (the way out for a
   gamepad player and for a stuck stage).

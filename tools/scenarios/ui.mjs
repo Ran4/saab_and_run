@@ -323,5 +323,69 @@ export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT
       if (q.right > q.boxRight + 1) bad('Q row overflows the controls box', JSON.stringify(q));
       await shot('ui_title_controls');
     },
+
+    // Phase 4 round 2b: the title card is fully gone in play. It used to fade for 0.8 s after the
+    // start, also in ?test, where a scenario's first shot (pursuit_0, at the bus stop, with one of
+    // Sonja's photographs picked up) caught it half faded over the chase cam. Checked: ?test right
+    // after the load, then with a photo picked up; a real title -> Spela start (gone and hidden by
+    // 1.2 s, a photo picked up; and the fade frame by frame: gone within 1.5 s); a saved game ->
+    // Fortsätt with Kontroller open (the table hidden too), the same. Fully gone = computed opacity
+    // 0, visibility hidden, nothing of #title under the heading's spot. Shots titlegone_*.
+    async titlegone() {
+      const title = () => ev(() => {
+        const t = document.getElementById('title'), s = getComputedStyle(t), r = document.querySelector('#title h1').getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return { op: +(+s.opacity).toFixed(3), vis: s.visibility, cls: t.className, under: !!hit?.closest('#title'), started: __game.started };
+      });
+      const gone = (t) => t.op === 0 && t.vis === 'hidden' && !t.under;
+      const photo = async (name) => {
+        const p = await ev(() => { const g = __game, p = g.photos.find((c) => c.alive !== false && !g.got.photos.has(c.id)) || g.photos[0]; g.player.teleport(p.x, p.z, g.player.yaw); g.cam.snapNext = true; return { id: p.id }; });
+        try { await until(() => document.getElementById('collect').classList.contains('show'), 5000); } catch (e) { bad(`${name}: no collectible note after the pickup`, JSON.stringify(p)); }
+        await frames(4);
+        const t = await title();
+        await shot(name);
+        return t;
+      };
+      // ?test (the harness has just loaded it)
+      const a = await title();
+      const a2 = await photo('titlegone_test');
+      log('test: at load', JSON.stringify(a), 'after a photo', JSON.stringify(a2));
+      if (!gone(a) || !gone(a2)) bad('?test: the title shows', JSON.stringify({ a, a2 }));
+      // a real start: Spela
+      await realGame();   // (clicks Spela, waits 1.2 s)
+      const b = await title();
+      const b2 = await photo('titlegone_play');
+      log('Spela: 1.2 s later', JSON.stringify(b), 'after a photo', JSON.stringify(b2));
+      if (!gone(b) || !gone(b2)) bad('after Spela: the title shows', JSON.stringify({ b, b2 }));
+      // the fade itself, frame by frame (a real start): shown before the click, then 0 and hidden
+      // within 1.5 s (the first gameplay frames after Spela take ~0.5 s here, most of the fade)
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?fresh=1`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 120000, polling: 250 });
+      await sleep(800);
+      const before = await title();
+      await ev(() => { const L = (window.__fade = []), t = document.getElementById('title'), t0 = performance.now(); const tick = () => { const s = getComputedStyle(t); L.push([Math.round(performance.now() - t0), +(+s.opacity).toFixed(2), s.visibility[0]]); if (performance.now() - t0 < 2500) requestAnimationFrame(tick); }; document.getElementById('play').addEventListener('click', () => requestAnimationFrame(tick), { once: true }); });
+      await page.click('#play');
+      await sleep(2700);
+      const fade = await ev(() => window.__fade);
+      const at = fade.find(([, o, v]) => o === 0 && v === 'h');
+      log('Spela: the fade (ms after the click, opacity, visibility)', JSON.stringify(fade.slice(0, 12)), 'gone at', at ? at[0] : null);
+      if (before.op !== 1 || before.vis !== 'visible') bad('the title did not show before Spela', JSON.stringify(before));
+      if (!at || at[0] > 1500) bad('the title is not gone 1.5 s after Spela', JSON.stringify(fade.slice(0, 20)));
+      // a saved game: Fortsätt
+      await ev(() => localStorage.setItem('saab-and-run-v1', JSON.stringify({ v: 1, mission: 2, gate: false, clock: 640, kr: 120, patrol: { ordning: 55, reports: 4, log: [] } })));
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 120000, polling: 250 });
+      const label = await ev(() => document.getElementById('play').textContent);
+      // (with the controls table open: it must go with the card)
+      await page.click('#title-ctl'); await sleep(400);
+      await page.click('#play');
+      await sleep(1200);
+      const c = { ...(await title()), table: await ev(() => getComputedStyle(document.querySelector('#title .title-controls')).visibility) };
+      if (c.table !== 'hidden') bad('after Fortsätt with Kontroller open: the controls table is still visible', c.table);
+      const c2 = await photo('titlegone_fortsatt');
+      log(`"${label}": 1.2 s later`, JSON.stringify(c), 'after a photo', JSON.stringify(c2));
+      if (!gone(c) || !gone(c2)) bad('after Fortsätt: the title shows', JSON.stringify({ c, c2 }));
+      await ev(() => localStorage.removeItem('saab-and-run-v1'));
+    },
   };
 };
