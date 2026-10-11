@@ -1,6 +1,10 @@
 # Gör dessa grejer (flytta filen till features/implemented/ och uppdatera den när du är klar, och
 # flytta den till "färdiga features"-sektionen nedan
 
+features/a_fully_voiced_game.md
+
+# Vänta med dessa tills spelaren säger till
+features/resten_av_replikerna_for_a_fully_voiced_game.md
 
 # Färdiga features
 features/implemented/oves_ganganimation.md
