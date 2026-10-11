@@ -424,6 +424,15 @@ export const GARAGE_DOOR = {
 };
 // Starting to write up a felparkering (on foot).
 export const OVE_START = ['Det står ju på skylten.', 'Idioter.', 'Typiskt.', 'Ingen kan läsa nu för tiden.', 'Hmpf.', 'Jaså. Här ska vi stå, minsann.'];
+// Waking up in his own bed after freezing to death out beyond the forest (game/waking.js,
+// features/avgrunden.md): one of these, never the same twice running.
+export const WAKE = [
+  'Jag var nästan framme hos dig, Sonja. Men någon hade parkerat fel vid pärleporten.',
+  'Sonja skickade hem mig igen. Utan mössa kommer du inte in här, sa hon.',
+  'Bortom skogen tar världen slut. Det borde kommunen ha satt upp en skylt om.',
+  'Inte ens att frysa ihjäl går att göra ordentligt nu för tiden.',
+  'Sonja sa alltid att jag skulle ta halsduken. Fyrtio år, och hon har fortfarande rätt.',
+];
 
 // ---------------------------------------------------------------------------------------------
 // People (main.js; PANIC: peds.js). Children and the neighbours are never knocked over.
@@ -626,6 +635,7 @@ export function allLines() {
   }
   pool('ove', [...ANSWER, ...DONE], 'calls');
   pool('ove', [...OVE_REPLY, ...Object.values(TYRE).flat(), ...Object.values(SLID).flat(), ...Object.values(GARAGE_DOOR).flat(), ...OVE_START], 'reactions');
+  pool('ove', WAKE, 'waking');
   pool('driver', [...FLEE_LINES, ...CAUGHT_LINES], 'patrol');
   for (const l of Object.values(PATROL)) add(l[0], l[1], 'patrol');
   pool('ped', [...OUCH, ...GETUP, ...CARJACK, ...KICKED], 'peds');

@@ -15265,5 +15265,65 @@
   ],
   "verdict": "retake",
   "dur": 2.102
+ },
+ "573a185661c9": {
+  "who": "ove",
+  "text": "Jag var nästan framme hos dig, Sonja. Men någon hade parkerat fel vid pärleporten.",
+  "take": 0,
+  "heard": "Jag var nästan framme hos dig Sonja, men någon hade parkerat fel vid pärleporten.",
+  "wer": 0,
+  "f0": 128.6,
+  "cps": 14.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.863
+ },
+ "4300bde75043": {
+  "who": "ove",
+  "text": "Sonja skickade hem mig igen. Utan mössa kommer du inte in här, sa hon.",
+  "take": 0,
+  "heard": "Sonja skickade hem mig igen. Utan mössa kommer du inte in här, sade hon.",
+  "wer": 0.071,
+  "f0": 120.2,
+  "cps": 13.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.315
+ },
+ "b678c64a36ce": {
+  "who": "ove",
+  "text": "Bortom skogen tar världen slut. Det borde kommunen ha satt upp en skylt om.",
+  "take": 0,
+  "heard": "Bortom skogen tar världen slut. Det borde kommunen ha satt upp en skylt om.",
+  "wer": 0,
+  "f0": 109.7,
+  "cps": 14.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.472
+ },
+ "a31113fb7e29": {
+  "who": "ove",
+  "text": "Inte ens att frysa ihjäl går att göra ordentligt nu för tiden.",
+  "take": 0,
+  "heard": "Inte ens att frysa ihjäl går att göra ordentligt nu för tiden.",
+  "wer": 0,
+  "f0": 95.5,
+  "cps": 17.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.774
+ },
+ "0097f4dd8fd4": {
+  "who": "ove",
+  "text": "Sonja sa alltid att jag skulle ta halsduken. Fyrtio år, och hon har fortfarande rätt.",
+  "take": 0,
+  "heard": "Sonja sa alltid att jag skulle ta halsduken, 40 år, och hon har fortfarande rätt.",
+  "wer": 0,
+  "f0": 99.6,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 6.516
  }
 }
