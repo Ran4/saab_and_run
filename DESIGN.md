@@ -264,9 +264,11 @@ nothing but nature (spruces in stands, boulders, snow). Everyone else still stop
 the walls stood (main.js `keepCarsInside` / `keepPeopleInside`): the traffic, chases, the race,
 pedestrians, neighbours walking with Ove. From `COLD` = BOUND + 30 (square distance) a cold meter
 (HUD, under the Ordning meter: a bar, the cold he feels in °C, a line: Kallt / Ove fryser / Ove
-känner inte tårna / Vänd om, Ove; thawing: Det tinar) rises: 45 s from nothing to dead right at the
-edge, the rate × (1 + d/70)² for d m further out (70 m: 11 s, 140 m: 5 s); inside it thaws in 18 s
-(9 s in a car: the heater). It holds while Ove isn't his own (a scene, a cut, a failed mission).
+känner inte tårna / Vänd om, Ove; thawing: Det tinar) rises: 112.5 s from nothing to dead right at
+the edge, the rate × (1 + d/70)² for d m further out (70 m: 28 s, 140 m: 12.5 s; avgrunden2 made it
+2.5 times slower than the first 45 s); inside it thaws in 24 s (12 s in a car: the heater). At 45 %
+Ove thinks of Sonja (a toast: she would have told him to turn), before half: the way straight back
+costs as much cold as the way out. It holds while Ove isn't his own (a scene, a cut, a failure).
 Shown and heard: frost creeping in from the picture's edges, Ove's breath, hands in his pockets and
 a shiver (`anim.shiver`), chattering teeth, his heart at the end, the wind; out there a blizzard
 (snow on the wind, the haze thicker and whiter, the sky white, the sun dimmed) - the town behind him

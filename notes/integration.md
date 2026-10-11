@@ -765,8 +765,21 @@ cold (game/cold.js) kills him further out, and he wakes up in his bed (game/waki
   `abort()` always did). A day failed by it is retried as any failure (E: from its retry point; a
   `def.retry` day gets into the named car, which is at home by then).
 - Tests (tools/scenarios/cold.mjs): `coldwalk` (W + Shift out the north track: dies at ~430 m after
-  ~15 s in the cold, wakes at the door), `colddrive` (the Saab at ~100 km/h: dies at ~545 m, the Saab
-  back in its bay), `coldback`, `coldrate` (44.4 / 11.2 / 5.0 s at 0 / 70 / 140 m), `coldmission` (day
-  2 under way: failed after waking, E retries), `coldwall` (a car at full throttle, a pedestrian and
-  Anders stop at BOUND, Ove walks on), `coldbed`, `coldbedskip`, `coldsound`, `coldperf`, `coldlook`.
+  ~15 s in the cold, wakes at the door; ~485 m and ~26 s since avgrunden2), `colddrive` (the Saab at
+  ~100 km/h: dies at ~545 m, ~650 m and ~11 s since avgrunden2, the Saab back in its bay), `coldback`,
+  `coldrate` (44.4 / 11.2 / 5.0 s at 0 / 70 / 140 m; 110.9 / 27.9 / 12.4 s since avgrunden2),
+  `coldmission` (day 2 under way: failed after waking, E retries), `coldwall` (a car at full
+  throttle, a pedestrian and Anders stop at BOUND, Ove walks on), `coldbed`, `coldbedskip`, `coldsound`, `coldperf`, `coldlook`.
   story (#7 idle, no errors), m5race (won) and m7chase (5 m in 12 s) unchanged.
+
+## Feature avgrunden2: the cold 2.5 times slower (2026-10-12)
+
+`COLDK` in game/cold.js only (features/implemented/avgrunden2.md): `edgeSecs` 45 -> 112.5 (2.5 times as
+long at every spot: 112.5 / 28 / 12.5 s at 0 / 70 / 140 m), `thaw` / `thawCar` 18 / 9 -> 24 / 12 s,
+`whiteout` COLD + 170 -> COLD + 255 (the blizzard as thick at death as before: Ove gets further out
+now), and the Sonja toast from `warn` 0.45 (was 0.62: a way straight back costs as much cold as the
+way out, so past half it came too late). The effects on v (frost, shiver, pockets, chatter, breath,
+heart, the notes, the music duck) follow by themselves. coldwalk / colddrive record every
+`cold.update` in the page (`c.update` wrapped on the instance) and read the rate off frame by frame;
+the old pace is integrated over the same frames for the before / after (on foot 16.1 -> 25.7 s in
+the cold, the Saab 7.6 -> 10.8 s).

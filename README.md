@@ -120,19 +120,20 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   har träffat Ove, och en del ärenden dyker upp först senare i veckan.
 - **Till fots** går Ove, går raskt och sparkar på däck. Han har åsikter om de flesta bilmärken.
 - **Utanför stan.** Det finns inga osynliga väggar längre. Bortom den yttre ringvägen tar skogen vid,
-  och fyra skogsgator (snöiga gluggar rakt ut genom skogen, en åt varje håll) leder ut på kullarna. Där
-  ute finns bara natur: granar i dungar, stenblock och snö. Och kyla. Trettio meter bortom där väggarna
-  stod börjar **köldmätaren** under Ordning-mätaren att stiga: precis vid kanten tar det 45 sekunder
-  innan Ove fryser ihjäl, och längre ut går det fortare (70 m ut ungefär 11 s, 140 m ut 5 s). Frosten
-  kryper in från bildkanterna, Ove stoppar händerna i fickorna och huttrar, man ser hans andedräkt,
-  tänderna skallrar och vinden tar i. Ute på kullarna yr snön och allt blir vitt. Kommer man in igen
-  tinar han (dubbelt så fort i bil med värmen på). Når mätaren hela vägen stelnar Ove där han står och
-  faller som en planka i snön (i bilen dör motorn): **Ove dog av frost**. Sedan vaknar han med ett
-  ryck i sin egen säng, bredvid Sonjas bäddade sida, säger något (fem repliker, aldrig samma två
-  gånger i rad) och släpps ut på gången utanför dörren. Ett pågående uppdrag har misslyckats (E
-  försöker igen, Q ger upp), ett ärende släpps utan att det kostar något, och en granne som följde
-  med har gått hem. Saaben (eller grannens bil) står hemma igen; en lånad bil får stå kvar där ute.
-  Mellanslag hoppar fram när skylten syns, och över scenen i sängen.
+  och fyra skogsgator (snöiga gluggar rakt ut genom skogen, en åt varje håll) leder ut på kullarna.
+  Där ute finns bara natur: granar i dungar, stenblock och snö. Och kyla. Trettio meter bortom där
+  väggarna stod börjar **köldmätaren** under Ordning-mätaren att stiga: precis vid kanten tar det
+  knappt två minuter (112 s) innan Ove fryser ihjäl, och längre ut går det fortare (70 m ut ungefär 28
+  s, 140 m ut 12 s). Frosten kryper in från bildkanterna, Ove stoppar händerna i fickorna och huttrar,
+  man ser hans andedräkt, tänderna skallrar och vinden tar i. Ute på kullarna yr snön och allt blir
+  vitt. När Ove tänker på Sonja är det dags att vända: vägen tillbaka kostar lika mycket kyla som
+  vägen ut. Kommer man in igen tinar han (dubbelt så fort i bil med värmen på). Når mätaren hela vägen
+  stelnar Ove där han står och faller som en planka i snön (i bilen dör motorn): **Ove dog av frost**.
+  Sedan vaknar han med ett ryck i sin egen säng, bredvid Sonjas bäddade sida, säger något (fem
+  repliker, aldrig samma två gånger i rad) och släpps ut på gången utanför dörren. Ett pågående
+  uppdrag har misslyckats (E försöker igen, Q ger upp), ett ärende släpps utan att det kostar något,
+  och en granne som följde med har gått hem. Saaben (eller grannens bil) står hemma igen; en lånad bil
+  får stå kvar där ute. Mellanslag hoppar fram när skylten syns, och över scenen i sängen.
 - **Kronor och samlarsaker.** Pantburkar (1 kr), belöningar, sju Saab-emblem och sju av Sonjas
   fotografier gömda i stan. Allt Ove har sönder betalar han själv.
 - Spelet sparas automatiskt i webbläsaren (efter varje anmälan, ärende, samlarsak och dag, och var
@@ -220,8 +221,8 @@ PORT=8791 node tools/shot.mjs uipause                      # pausmenyn i 15 fön
 PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
 PORT=8791 node tools/shot.mjs luft luftskip luftcam luftsound   # dag 3:s scen i köket: en bild per ögonblick, att hoppa över den, kameran hos Anita/Rune, ljudnivåerna
 PORT=8791 node tools/shot.mjs voice vcut vpool             # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt (TO=7: alla sju); statisternas röster
-PORT=8791 node tools/shot.mjs coldwalk colddrive coldback  # kylan med riktiga tangenter: ut till fots, med Saaben, och in igen
-PORT=8791 node tools/shot.mjs coldrate coldmission coldwall coldbed coldbedskip   # 45 s vid kanten, ett uppdrag som misslyckas, väggen för alla andra, sängscenen
+PORT=8791 node tools/shot.mjs coldwalk colddrive coldback  # kylan med riktiga tangenter: ut till fots och med Saaben (takten mätt på vägen), och in igen när Ove tänker på Sonja
+PORT=8791 node tools/shot.mjs coldrate coldmission coldwall coldbed coldbedskip   # 112 s vid kanten, ett uppdrag som misslyckas, väggen för alla andra, sängscenen
 PORT=8791 node tools/shot.mjs coldlook coldsound coldperf  # bilder därute, ljuden offline, ritanrop och trianglar (A/B)
 ```
 

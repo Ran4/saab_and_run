@@ -77,7 +77,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   stops there (main.js `keepCarsInside` / `keepPeopleInside`). Outside the grid the ground follows
   the hills' mesh (`layout.terrain.at`, used by `baseGround`); four forest tracks (`layout.TRACKS`)
   lead out; from `COLD` (BOUND + 30, square distance `edgeDist`) game/cold.js's meter rises and
-  kills Ove (45 s at the edge). Nothing may spawn or be placed beyond BOUND.
+  kills Ove (112 s at the edge, features/implemented/avgrunden2.md). Nothing may spawn or be placed
+  beyond BOUND.
 - Everything off the asphalt is at `CURB` (0.15). Solids are footprints with a top height:
   a wall if `top > y + step`, a floor otherwise (characters step 0.45, cars 0.6). Ramps are
   oriented boxes whose top rises along their yaw. Snow banks have no collision.

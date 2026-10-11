@@ -1,9 +1,10 @@
 // The cold beyond the town (features/avgrunden.md). There are no invisible walls any more: Ove can
 // walk or drive out past the forest belt onto the hills, where there is nothing but nature, and it is
 // cold. From COLD (world/layout.js: 30 m beyond where the walls stood, the outer edge of the forest)
-// a cold meter rises: 45 s from nothing to dead right at the edge, quicker further out (the rate goes
-// with the square of the distance beyond it). Back inside it thaws again (twice as fast in a car with
-// the heater on). It shows and sounds: the meter (hud.setCold), frost creeping in from the edges of
+// a cold meter rises: 112 s from nothing to dead right at the edge, quicker further out (the rate goes
+// with the square of the distance beyond it; features/avgrunden2.md made it all 2.5 times slower than
+// the first 45 s, so there is time to turn back). Back inside it thaws again (twice as fast in a car
+// with the heater on). It shows and sounds: the meter (hud.setCold), frost creeping in from the edges of
 // the picture (hud.setFrost), Ove's breath, his shivering (hands in his pockets, chattering teeth),
 // the wind, his heart at the end; and out there a blizzard: snow on the wind, the haze and the sky
 // going white, the sun dimmed (beforeRender / afterRender, around the frame).
@@ -34,10 +35,15 @@ import { wakeScene } from './waking.js';
 
 const TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).has('test');
 // start: where it begins (m, square distance from the town's centre); edgeSecs: from nothing to dead
-// right there; scale: m further out per step of the rate's square (70 m out: 4x, 11 s; 140 m: 9x,
-// 5 s); thaw / thawCar: s from dead cold to warm again, on foot / in a car; whiteout: the distance
-// at which the blizzard is at its worst.
-export const COLDK = { start: COLD, edgeSecs: 45, scale: 70, thaw: 18, thawCar: 9, whiteout: COLD + 170 };
+// right there; scale: m further out per step of the rate's square (70 m out: 4x, 28 s; 140 m: 9x,
+// 12.5 s); thaw / thawCar: s from dead cold to warm again, on foot / in a car (about as long as the
+// quickest way to freeze to death from the edge: brisk walking straight out ~25 s, the Saab flat
+// out ~10 s); whiteout: the distance at which the blizzard is at its worst, a little short of where
+// the Saab flat out dies, so it keeps pace with the meter (on foot he dies in a blizzard of 0.7, as
+// at the first pace).
+// warn: the meter at which Ove thinks of Sonja (the toast): before half, because a way straight back
+// costs as much cold as the way out did.
+export const COLDK = { start: COLD, edgeSecs: 112.5, scale: 70, thaw: 24, thawCar: 12, whiteout: COLD + 255, warn: 0.45 };
 const rate = (d) => (1 / COLDK.edgeSecs) * (1 + (d - COLDK.start) / COLDK.scale) ** 2;
 
 // The line under "Ove dog av frost" (shown, never said; one of these, not the same twice running).
@@ -111,7 +117,7 @@ export class Cold {
         this.toldIn = true;
         if (!TEST) hud.toast('<b>Kallt.</b> Kallare än det borde vara. Och ju längre ut, desto kallare. Vänd om i tid.', 'cold', 6500);
       }
-      if (this.v > 0.62 && out && !this.warned) { this.warned = true; hud.toast('Ove tänker på Sonja. Hon hade sagt åt honom att vända.', 'cold', 5000); }
+      if (this.v > COLDK.warn && out && !this.warned) { this.warned = true; hud.toast('Ove tänker på Sonja. Hon hade sagt åt honom att vända.', 'cold', 5000); }
       if (this.v < 0.2) this.warned = false;
       if (!this.dying) this.frost = sstep(0.04, 1, this.v) * 1.05;
     }

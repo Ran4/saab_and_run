@@ -412,6 +412,6 @@ compiled in the background).
   dome's `uFog` the same and its new `uWhite` (the sky mixed into the haze, the sun clamped to 1.5× the
   haze), `sun.intensity` × (1 - 0.6 zone); everything put back after `renderFrame`, so `dusk()` (day
   7) still reads and restores the real values. `zone` = how far out the camera / Ove is (0 inside
-  BOUND - 26, 1 at COLD + 170).
+  BOUND - 26, 1 at COLD + 255; COLD + 170 until avgrunden2 slowed the meter 2.5 times).
 - 'hillside': the spruce-stand and bare-patch terms × smoothstep(70, 170, gDist).
 - The frost on the picture is HUD (a canvas under a CSS mask, notes/ui.md), not a pass.

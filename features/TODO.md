@@ -17,3 +17,4 @@ features/implemented/resten_av_replikerna_for_a_fully_voiced_game.md
 features/implemented/fixa_hoppet.md
 features/implemented/fixa_outro_anita.md
 features/implemented/avgrunden.md
+features/implemented/avgrunden2.md

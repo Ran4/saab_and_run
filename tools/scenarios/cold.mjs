@@ -2,10 +2,16 @@
 // there, a cold meter, death by frost, waking up at home.
 //   coldlook   screenshots: a forest track from the outer road, the cold's edge, the blizzard deep out,
 //              looking back at the town (no HUD; COLDCAM=1 keeps the game's camera and HUD)
-//   coldwalk   real keys: Ove walks out a forest track into the cold, dies, wakes, stands at his door
-//   colddrive  real keys: the Saab out of town along a track, dies at the wheel, wakes; the Saab is home
-//   coldback   real keys: out into the cold and back in: the meter rises, then thaws to nothing
-//   coldrate   the meter's rate: 45 s from nothing to dead right at the edge, faster further out
+//   coldwalk   real keys: Ove walks out a forest track into the cold, dies, wakes, stands at his door;
+//              the pace measured on the way (s to die at the edge / 70 m / 140 m, the time in the
+//              cold, when each warning came), and the old pace run over the same path (features/
+//              avgrunden2.md: 2.5 times slower)
+//   colddrive  real keys: the Saab out of town along a track, dies at the wheel, wakes; the Saab is
+//              home; the pace measured as in coldwalk
+//   coldback   real keys: out into the cold until Ove thinks of Sonja (the toast), then straight back:
+//              heeding it he makes it in alive, and thaws to nothing (WARN=0.62: the old threshold)
+//   coldrate   the meter's rate standing still: 112.5 s from nothing to dead right at the edge, 28 s
+//              70 m out, 12.5 s 140 m out
 //   coldmission  a day's mission running when he dies: failed, its banner after he wakes, E retries
 //   coldwall   the traffic, the pedestrians and a neighbour still stop where the walls stood
 //   coldsound  the cold's sounds rendered offline (nothing played): levels, no clipping
@@ -67,6 +73,97 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, errors }) => 
   // A spot on a forest track's mouth: the north one (x = -120), just beyond the outer road.
   const TRACK_N = { x: -120, z: -296, yaw: Math.PI };
 
+  // The pace, measured on a real-key ride: every update of the meter is recorded in the page (game
+  // time, dt, d, v; the first time each of the cold's sounds plays; the Sonja toast). Each frame adds
+  // rate(d) x dt, so the rate where Ove was is read off frame by frame, as s from nothing to dead
+  // there: at the edge, 70 m and 140 m out (the numbers of features/avgrunden2.md). The same path is
+  // run through the old pace too (45 s at the edge, the toast at 0.62, the blizzard at its worst at
+  // COLD + 170): the before and after of one ride.
+  const paceStart = () => ev(() => {
+    const g = __game, c = window.__cold, P = Object.getPrototypeOf(c);
+    const R = (window.__coldrec = { f: [], sfx: {}, toast: null, died: null });
+    c.update = function (dt) {
+      P.update.call(this, dt);
+      if (R.died != null) return;
+      R.f.push([g.time, dt, this.d, this.v]);
+      if (this.warned && R.toast == null) R.toast = g.time;
+      if (this.dying) R.died = g.time;
+    };
+    c.sfx = function (k, a) { if (R.died == null && R.sfx[k] == null) R.sfx[k] = g.time; return P.sfx.call(this, k, a); };
+  });
+  const OLD = { edgeSecs: 45, warn: 0.62, whiteout: 170 };
+  const pace = async (label) => {
+    const { R, K, B } = await ev(async () => {
+      const c = window.__cold;
+      delete c.update; delete c.sfx;
+      const { COLDK } = await import('/src/game/cold.js'), { BOUND } = await import('/src/world/layout.js');
+      return { R: window.__coldrec, K: { ...COLDK }, B: BOUND };
+    });
+    const f = R.f, i0 = f.findIndex((e) => e[2] > K.start);
+    if (i0 < 1 || R.died == null) { fail(`${label}: no ride into the cold to measure`); return null; }
+    const sst = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
+    // s from nothing to dead where he was: [m beyond the edge, s], one per frame out there
+    const secs = [];
+    for (let i = i0; i < f.length - 1; i++) { const dv = f[i][3] - f[i - 1][3]; if (dv > 0) secs.push([f[i][2] - K.start, f[i][1] / dv]); }
+    const secsAt = (D) => {
+      if (D <= secs[0][0]) return { s: secs[0][1], at: secs[0][0] };
+      for (let k = 1; k < secs.length; k++) if (secs[k][0] >= D) {
+        const [d0, s0] = secs[k - 1], [d1, s1] = secs[k], u = d1 > d0 ? (D - d0) / (d1 - d0) : 0;
+        return { s: s0 + (s1 - s0) * u, at: D };
+      }
+      return null;
+    };
+    // when each warning first came, for a pace: v(i) the meter, warn the toast, white the blizzard's end
+    const warnings = (vAt, warn, white, until) => {
+      const first = {}, mark = (k, t) => { if (first[k] == null) first[k] = t; };
+      for (let i = i0; i < until; i++) {
+        const v = vAt(i), t = f[i][0], d = f[i][2];
+        if (sst(0.04, 1, v) * 1.05 > 0.15) mark('frost', t);
+        if (sst(0.06, 0.55, v) > 0.35) mark('shiver', t);
+        if (v > warn) mark('toast', t);
+        if (v > 0.72) mark('heart', t);
+        if (v >= 0.75) mark('vänd om', t);
+        if (sst(B - 26, white, d) > 0.5) mark('blizzard', t);
+      }
+      return first;
+    };
+    const iDie = f.length - 1, tIn = f[i0 - 1][0], tDie = R.died;
+    // the old pace over the same path (until its own death)
+    const vOld = [];
+    let vo = 0, iDieOld = null;
+    for (let i = 0; i < f.length; i++) {
+      if (i >= i0 && iDieOld == null) { vo += (1 / OLD.edgeSecs) * (1 + Math.max(0, f[i][2] - K.start) / K.scale) ** 2 * f[i][1]; if (vo >= 1) { vo = 1; iDieOld = i; } }
+      vOld.push(i < i0 ? 0 : vo);
+    }
+    if (iDieOld == null) { fail(`${label}: the old pace would not have killed him on this path`); return null; }
+    const now = warnings((i) => f[i][3], K.warn, K.whiteout, iDie + 1);
+    const old = warnings((i) => vOld[i], OLD.warn, K.start + OLD.whiteout, iDieOld + 1);
+    const tDieOld = f[iDieOld][0];
+    const res = {
+      inCold: +(tDie - tIn).toFixed(1), inColdOld: +(tDieOld - tIn).toFixed(1),
+      beyond: +(f[iDie][2] - K.start).toFixed(0), beyondOld: +(f[iDieOld][2] - K.start).toFixed(0),
+      edge: secsAt(0), at70: secsAt(70), at140: secsAt(140),
+      lead: Object.fromEntries(Object.keys({ ...now, ...old }).map((k) => [k, [now[k] != null ? +(tDie - now[k]).toFixed(1) : null, old[k] != null ? +(tDieOld - old[k]).toFixed(1) : null]])),
+      zoneAtDeath: [+sst(B - 26, K.whiteout, f[iDie][2]).toFixed(2), +sst(B - 26, K.start + OLD.whiteout, f[iDieOld][2]).toFixed(2)],
+      sounds: Object.fromEntries(Object.entries(R.sfx).map(([k, t]) => [k, +(tDie - t).toFixed(1)])),
+      toast: R.toast != null ? +(tDie - R.toast).toFixed(1) : null,
+    };
+    const S = (x) => (x ? `${x.s.toFixed(1)} s${x.at > 0.5 && x.at !== 70 && x.at !== 140 ? ` (at +${x.at.toFixed(1)} m)` : ''}` : '-');
+    console.log(`[t] ${label} pace: ${res.inCold} s in the cold, dead ${res.beyond} m beyond the edge (the old pace on the same path: ${res.inColdOld} s, ${res.beyondOld} m)`);
+    console.log(`[t] ${label} s to die from nothing where he was: edge ${S(res.edge)}, 70 m ${S(res.at70)}, 140 m ${S(res.at140)}`);
+    console.log(`[t] ${label} warnings, s before death [now, old pace]: ${Object.entries(res.lead).map(([k, [a, b]]) => `${k} ${a ?? '-'} / ${b ?? '-'}`).join(', ')}; blizzard at death ${res.zoneAtDeath.join(' / ')}`);
+    console.log(`[t] ${label} sounds first heard, s before death: ${JSON.stringify(res.sounds)}; the toast ${res.toast}`);
+    console.log(`[t] ${label} pacejson`, JSON.stringify(res));
+    check(res.edge && Math.abs(res.edge.s - 112.5) < 4, `${label}: ~112 s to die at the edge (${S(res.edge)})`);
+    check(res.at70 && Math.abs(res.at70.s - 112.5 / 4) < 1, `${label}: ~28 s 70 m out (${S(res.at70)})`);
+    check(res.at140 && Math.abs(res.at140.s - 112.5 / 9) < 0.6, `${label}: ~12.5 s 140 m out (${S(res.at140)})`);
+    check(res.inCold > res.inColdOld * 1.4, `${label}: much longer in the cold than at the old pace (${res.inCold} s, was ${res.inColdOld} s)`);
+    // (the meter's warnings follow it: the toast and the heart came when the meter said)
+    check(res.toast != null && Math.abs(res.toast - res.lead.toast[0]) < 0.1, `${label}: the Sonja toast at ${K.warn} (${res.toast} s before)`);
+    check(res.sounds.heart != null && Math.abs(res.sounds.heart - res.lead.heart[0]) < 0.1, `${label}: the heart from 0.72 (${res.sounds.heart} s before)`);
+    return res;
+  };
+
   return {
     async coldlook() {
       if (process.env.COLDCAM) await ev(() => { window.__coldcam = true; });
@@ -100,9 +197,18 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, errors }) => 
       await ev((t) => { const g = __game; g.player.teleport(t.x, t.z, t.yaw); g.cam.yaw = t.yaw; g.cam.pitch = 0.16; g.cam.snapNext = true; }, TRACK_N);
       await frames(10);
       await shot('coldwalk_0');
-      const r = await ride(['KeyW', 'ShiftLeft'], 120, 'coldwalk');
-      check(r.at && r.at.d > 344 && r.at.d < 460, `coldwalk: died out in the cold (d ${r.at?.d})`);
+      await paceStart();
+      const r = await ride(['KeyW', 'ShiftLeft'], 150, 'coldwalk');
+      const p = await pace('coldwalk');
+      check(r.at && r.at.d > 460 && r.at.d < 540, `coldwalk: died out in the cold (d ${r.at?.d})`);
       check(r.sawShiver > 0.5, `coldwalk: he shivered (${r.sawShiver})`);
+      if (p) {
+        check(p.inCold > 20 && p.inCold < 32, `coldwalk: ~25 s in the cold, brisk walking straight out (${p.inCold} s)`);
+        // (walking on, the warnings come earlier by less than 2.5 times: the meter rises faster the
+        // further out he gets; the toast moved to before half, so it comes twice as early)
+        const later = Object.entries(p.lead).filter(([k, [a, b]]) => !(a >= b * (k === 'toast' ? 1.8 : 1.25)));
+        check(!later.length, `coldwalk: every warning earlier than at the old pace (${Object.entries(p.lead).map(([k, [a, b]]) => `${k} ${a} s, was ${b}`).join('; ')})`);
+      }
       await atDoor('coldwalk', r);
     },
 
@@ -111,37 +217,53 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, errors }) => 
       await ev((t) => { const g = __game, c = g.named.saab; c.place(t.x, t.z + 8, t.yaw); g.enterCar(c); g.cam.yaw = t.yaw; g.cam.snapNext = true; }, TRACK_N);
       await frames(20);
       await shot('colddrive_0');
+      await paceStart();
       const r = await ride(['KeyW'], 90, 'colddrive');
+      const p = await pace('colddrive');
       check(r.at && r.at.car, `colddrive: died at the wheel (${r.at?.car})`);
+      if (p) check(p.inCold > 8 && p.inCold < 15, `colddrive: ~10 s in the cold, flat out (${p.inCold} s)`);
       await atDoor('colddrive', r);
       const saab = await ev(() => { const c = __game.named.saab; return { d: Math.hypot(c.x - c.home.x, c.z - c.home.z), dead: c.dead }; });
       check(saab.d < 1 && !saab.dead, `colddrive: the Saab is back home (${saab.d.toFixed(1)} m)`);
     },
 
     async coldback() {
+      if (process.env.WARN) await ev((w) => import('/src/game/cold.js').then((m) => { m.COLDK.warn = w; }), +process.env.WARN);
+      const K = await ev(() => import('/src/game/cold.js').then((m) => ({ ...m.COLDK })));
       await ev((t) => { const g = __game; g.player.teleport(t.x, -330, t.yaw); g.cam.yaw = t.yaw; g.cam.snapNext = true; }, TRACK_N);
       await frames(10);
-      // out for ~9 s at a brisk pace...
-      await hold(['KeyW', 'ShiftLeft'], 9000);
+      // out at a brisk pace until Ove thinks of Sonja (the toast: she would have told him to turn)...
+      const keys = ['KeyW', 'ShiftLeft'];
+      for (const k of keys) await page.keyboard.down(k);
+      try { await until(() => window.__cold.warned || window.__cold.dying, 120000); } finally { for (const k of keys) await page.keyboard.up(k); }
       const s1 = await state();
       console.log('[t] coldback out', JSON.stringify(s1));
-      check(s1.v > 0.08 && s1.meter, `coldback: the meter rose out there (${s1.v})`);
+      check(s1.dying == null && s1.v > K.warn && s1.meter, `coldback: the meter rose to the toast out there (${s1.v} at ${(s1.d - K.start).toFixed(0)} m)`);
       await shot('coldback_out');
-      // ...then turned round and back in (S walks towards the camera: turn the camera instead)
+      // ...then turned round and straight back in (S walks towards the camera: turn the camera instead)
       await face(0);
-      await hold(['KeyW', 'ShiftLeft'], 12000);
-      const s2 = await state();
-      console.log('[t] coldback in', JSON.stringify(s2));
-      check(s2.d < 344 && s2.v < s1.v, `coldback: back inside and thawing (${s1.v} -> ${s2.v})`);
+      let peak = s1.v, s2 = s1;
+      for (const k of keys) await page.keyboard.down(k);
+      try {
+        const t0 = Date.now();
+        while (Date.now() - t0 < 60000) {
+          await sleep(100);
+          s2 = await state();
+          peak = Math.max(peak, s2.v);
+          if (s2.dying != null || s2.d < K.start - 4) break;
+        }
+      } finally { for (const k of keys) await page.keyboard.up(k); }
+      console.log('[t] coldback in', JSON.stringify(s2), 'peak', peak);
+      check(s2.dying == null && s2.d < K.start && s2.v <= peak, `coldback: heeding the toast, he made it back in alive (the meter peaked at ${peak})`);
       await shot('coldback_in');
-      await sleep(Math.ceil(s2.v * 18 + 2) * 1000);
+      await sleep(Math.ceil(s2.v * K.thaw + 2) * 1000);
       const s3 = await state();
       check(s3.v === 0 && !s3.meter, `coldback: warm again and the meter gone (${s3.v})`);
-      check(s3.dying == null, 'coldback: never died');
+      check(s3.dying == null && (await ev(() => window.__cold.deaths)) === 0, 'coldback: never died');
     },
 
     async coldrate() {
-      // Standing still right at the edge: the meter's rate over 6 s, x 45 = 1; then 70 and 140 m out.
+      // Standing still right at the edge: the meter's rate over 4 s, x 112.5 = 1; then 70 and 140 m out.
       const rateAt = async (d) => {
         await ev((d) => { const g = __game; g.player.teleport(-120, -d, Math.PI); window.__cold.v = 0; }, d);
         await frames(5);
@@ -152,8 +274,8 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, errors }) => 
       };
       const r0 = await rateAt(344.5), r70 = await rateAt(414.5), r140 = await rateAt(484.5);
       console.log('[t] coldrate secs to die', (1 / r0).toFixed(1), (1 / r70).toFixed(1), (1 / r140).toFixed(1));
-      check(Math.abs(1 / r0 - 45) < 2.5, `coldrate: ~45 s at the edge (${(1 / r0).toFixed(1)})`);
-      check(1 / r70 < 14 && 1 / r140 < 7, 'coldrate: faster further out');
+      check(Math.abs(1 / r0 - 112.5) < 4, `coldrate: ~112 s at the edge (${(1 / r0).toFixed(1)})`);
+      check(Math.abs(1 / r70 - 112.5 / 4) < 1 && Math.abs(1 / r140 - 112.5 / 9) < 0.6, `coldrate: faster further out: ~28 s 70 m out, ~12.5 s 140 m out (${(1 / r70).toFixed(1)}, ${(1 / r140).toFixed(1)})`);
       const inside = await rateAt(343);
       check(inside <= 0, 'coldrate: nothing just inside the edge');
       await ev(() => { window.__cold.v = 0; });

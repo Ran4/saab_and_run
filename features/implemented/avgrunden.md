@@ -44,22 +44,27 @@ I spelområdet runtom ska det mest fortsätta som vanligt, men dock inga hus ell
 
 - **Köldmätaren** (`src/game/cold.js`) startar 30 m utanför där väggarna stod (`COLD` = BOUND + 30,
   i kvadratiskt avstånd som stadsplanen, alltså vid skogsbältets yttre kant). Precis vid kanten tar
-  det **45 s** att frysa ihjäl. Längre ut går det fortare, eftersom takten ökar med kvadraten på
-  avståndet: 70 m ut tar det cirka 11 s och 140 m ut 5 s (uppmätt 44,4, 11,2 och 5,0 s). Till fots
-  hinner Ove ungefär 430 m ut, i Saaben i 100 km/h ungefär 545 m. Inne i stan tinar han på 18 s, och
-  i bil med värmen på på 9 s. Mätaren står still medan Ove inte styr själv (scener, svarta bilder, ett
-  misslyckat uppdrag som väntar på E eller Q).
+  det **112 s** att frysa ihjäl (först 45 s, men det gick för fort; se avgrunden2.md, som gjorde allt
+  2,5 gånger långsammare). Längre ut går det fortare, eftersom takten ökar med kvadraten på
+  avståndet: 70 m ut tar det cirka 28 s och 140 m ut 12,5 s (uppmätt 110,9, 27,9 och 12,4 s stående
+  och 112,2, 28,1 och 12,5 s i förbifarten med riktiga tangenttryck). Rask gång rakt ut ger cirka
+  26 s i kylan, och han hinner ungefär 485 m ut. Saaben i full fart ger cirka 11 s och ungefär 650 m.
+  Inne i stan tinar han på 24 s, och i bil med värmen på på 12 s. Mätaren står still medan Ove inte
+  styr själv (scener, svarta bilder, ett misslyckat uppdrag som väntar på E eller Q).
 - **Mätaren** sitter under Ordning-mätaren: "❄ Kyla", kylan han känner (från −8° till −48°), en
   stapel och en rad under den: *Kallt*, *Ove fryser*, *Ove känner inte tårna*, *Vänd om, Ove*, och
   på väg ner *Det tinar*. Över 75 % pulserar den. Första gången man kommer ut kommer en notis (*Kallt.
-  Kallare än det borde vara. Och ju längre ut, desto kallare. Vänd om i tid.*). Vid 62 % står det:
+  Kallare än det borde vara. Och ju längre ut, desto kallare. Vänd om i tid.*). Vid 45 % står det
+  (först vid 62 %, men då var det för sent att vända):
   *Ove tänker på Sonja. Hon hade sagt åt honom att vända.*
 - **Man ser och hör kylan.** Frost kryper in från bildkanterna (isormbunkar som en kall fönsterruta),
   och Ove stoppar händerna i fickorna och huttrar: ryggen kutar, huvudet dras ner och skakningarna
   kommer i stötar. Man ser hans andedräkt, tänderna skallrar, och mot slutet hörs hjärtat slå allt
   långsammare. Vinden ökar. Ute på kullarna blir det snöyra: snön blåser in från tomheten, diset
   tjocknar och vitnar, himlen blir vit och solen bleknar bort. Bakom honom försvinner stan i det vita,
-  och till sist allt annat också. Musiken drar sig undan.
+  och till sist allt annat också. Musiken drar sig undan. Frosten, huttrandet, tandskallret och
+  hjärtat följer mätaren. Snöyran följer avståndet och är som värst 255 m ut (först 170 m, men
+  avgrunden2 flyttade den med mätarens nya takt).
 
 ### Döden
 
@@ -124,11 +129,14 @@ under "Ove dog av frost" och notiserna står bara på skärmen och röstas inte.
 
 ### Tester (`tools/scenarios/cold.mjs`)
 
-- `coldwalk` (W och Shift ut genom norra skogsgatan, riktiga tangenttryck): död efter cirka 15 s i
-  kylan, cirka 430 m ut, vaknar vid dörren varm. `colddrive` (Saaben i full fart): död cirka 545 m
-  ut, med Saaben tillbaka i garaget. `coldback`: ut och in igen, och mätaren tinar till noll.
-  `coldrate`: 44,4, 11,2 och 5,0 s. `coldmission`: dag 2 pågår, misslyckas efter uppvaknandet, och E
-  tar upp den igen. `coldwall`: en bil på full gas, en fotgängare och Anders stannar vid den gamla
+- `coldwalk` (W och Shift ut genom norra skogsgatan, riktiga tangenttryck): död efter cirka 26 s i
+  kylan (först 15 s), cirka 485 m ut, vaknar vid dörren varm. `colddrive` (Saaben i full fart): död
+  efter cirka 11 s i kylan, cirka 650 m ut, med Saaben tillbaka i garaget. Båda mäter takten på vägen
+  ut (avgrunden2): sekunderna till döden vid kanten, 70 och 140 m ut, tiden i kylan, när varje varning
+  kom, och samma väg i den gamla takten. `coldback`: ut tills Ove tänker på Sonja, sedan rakt tillbaka.
+  Han klarar sig och tinar till noll (`WARN=0.62` visar att den gamla gränsen var för sen).
+  `coldrate`: 110,9, 27,9 och 12,4 s (först 44,4, 11,2 och 5,0). `coldmission`: dag 2 pågår,
+  misslyckas efter uppvaknandet, och E tar upp den igen. `coldwall`: en bil på full gas, en fotgängare och Anders stannar vid den gamla
   väggen, men Ove går vidare. `coldbed` (en bild per ögonblick i sovrummet; `WAKECAT=1` med katten,
   `WAKELINE=n`): ingenting kvar efteråt, och på 200 uppvaknanden aldrig samma replik två gånger i rad.
   `coldbedskip`: ute 1,4 s efter mellanslag. `coldsound`: ljuden renderas offline, ingenting spelas
