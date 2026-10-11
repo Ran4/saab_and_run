@@ -36,7 +36,8 @@
  "anders": {
   "Vorsprung durch Technik, Ove!": {
    "retake": 2,
-   "auto": true
+   "auto": true,
+   "note": "tyska: den svenska taligenkänningen kan inte höra den (underkänd tre gånger av det skälet). Lyssna."
   }
  },
  "ped_f_young_1": {
@@ -49,6 +50,34 @@
   "Lugna ner dig!": {
    "retake": 1,
    "auto": true
+  }
+ },
+ "parvaneh": {
+  "OVE! BILEN! NU!": {
+   "retake": 2,
+   "tts": "[shouts] Ove! Bilen! Nu!",
+   "note": "versalerna lästes fel (hördes \"Ove, bilen, moon\" och \"av bilen\"): samma ord utan versaler, ropat",
+   "auto": true
+  },
+  "Kör, Ove! KÖR!": {
+   "retake": 2,
+   "tts": "[shouts] Kör, Ove! Kör!",
+   "note": "versalerna lästes fel (hördes \"Korv och vekorv\"): samma ord utan versaler, ropat",
+   "auto": true
+  },
+  "Aj, Ove!": {
+   "retake": 1,
+   "note": "\"Aj\" hördes inte"
+  }
+ },
+ "ped_f_mid_2": {
+  "Ove!": {
+   "retake": 1,
+   "note": "hördes som \"AW\""
+  },
+  "Galning!": {
+   "retake": 1,
+   "note": "hördes som \"Geining\""
   }
  }
 }

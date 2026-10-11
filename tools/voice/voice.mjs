@@ -9,7 +9,8 @@
 //   node tools/voice/voice.mjs check         no requests: lines without a clip, orphans; exit 1 if
 //                                             anything in scope is missing (a test can run it)
 //   node tools/voice/voice.mjs reprocess     redo trimming, loudness, lip curves from .cache (free)
-//   node tools/voice/voice.mjs qc            listen again to the takes in use (free): qc.json
+//   node tools/voice/voice.mjs qc [--all]    listen to the takes in use that have no verdict (--all:
+//                                             every one again; free): qc.json
 //   node tools/voice/voice.mjs manifest      just rewrite assets/voice/index.json
 //   node tools/voice/voice.mjs cast <who> [--search n] [--design] [--rounds n]
 //        auditions: each Voice Library candidate in cast.json says the role's preview text (and
@@ -455,12 +456,13 @@ async function check() {
 
 // Listen again to the takes in use (no requests): qc.json's verdicts after a change to the check.
 async function requalify() {
-  const lines = (await plan()).filter((l) => l.hash && fs.existsSync(path.join(RAW, l.who, l.hash + '.mp3')));
   const qc = readJson(QCF, {}), tempo = readJson(MANIFEST, {})._tempo || {};
+  // (--all: every take in use; else only those with no verdict for this very take)
+  const lines = (await plan()).filter((l) => l.hash && fs.existsSync(path.join(RAW, l.who, l.hash + '.mp3')) && (flag('--all') || !(qc[l.hash] && qc[l.hash].take === l.take && qc[l.hash].text === l.text)));
   const heard = analyze(lines.map((l) => ({ file: path.join(RAW, l.who, l.hash + '.mp3'), text: l.spoken })));
   for (const [k, l] of lines.entries()) {
     const a = heard[k], v = verdict(l, a, tempo[l.who]);
-    qc[l.hash] = { who: l.who, text: l.text, take: l.take, heard: a.heard, wer: a.wer, f0: a.f0, cps: v.cps, flags: v.flags, verdict: v.verdict };
+    qc[l.hash] = { who: l.who, text: l.text, take: l.take, heard: a.heard, wer: a.wer, f0: a.f0, cps: v.cps, flags: v.flags, verdict: v.verdict, dur: a.dur };
   }
   writeJson(QCF, qc);
   const n = (v) => lines.filter((l) => qc[l.hash].verdict === v).length;
