@@ -4,7 +4,11 @@
 
 import { baseGround } from './layout.js';
 
-export const BOX = 0, CIRCLE = 1, RAMP = 2;
+export const BOX = 0, CIRCLE = 1, RAMP = 2, HILL = 3;
+// HILL: a smooth heightfield floor (a snow hill: world/snowhill.js), `at(x, z)` its top there (-Infinity
+// off it), within a circle of radius r round (x, z). A hill is never a wall: whoever walks or drives
+// onto it, or comes down on it from the air, stands on its surface whatever the step (groundAt), and
+// the wall tests (circleVsBlock, obbVsBlock) never hit it. `top` is its highest point.
 const CELL = 16;
 const grid = new Map();
 export const blocks = [];
@@ -14,7 +18,7 @@ const key = (cx, cz) => (cx + 4096) * 8192 + (cz + 4096);
 
 function bounds(b) {
   if (b.shape === BOX) { b.bx0 = b.minX; b.bx1 = b.maxX; b.bz0 = b.minZ; b.bz1 = b.maxZ; }
-  else if (b.shape === CIRCLE) { b.bx0 = b.x - b.r; b.bx1 = b.x + b.r; b.bz0 = b.z - b.r; b.bz1 = b.z + b.r; }
+  else if (b.shape === CIRCLE || b.shape === HILL) { b.bx0 = b.x - b.r; b.bx1 = b.x + b.r; b.bz0 = b.z - b.r; b.bz1 = b.z + b.r; }
   else {
     const ex = Math.abs(b.fx) * b.hz + Math.abs(b.fz) * b.hx, ez = Math.abs(b.fz) * b.hz + Math.abs(b.fx) * b.hx;
     b.bx0 = b.x - ex; b.bx1 = b.x + ex; b.bz0 = b.z - ez; b.bz1 = b.z + ez;
@@ -43,6 +47,17 @@ export const circle = (x, z, r, top, kind = 'solid', ref = null) => addBlock({ s
 // A ramp rising along yaw: height h0 at the back edge to h1 at the front edge.
 export const ramp = (x, z, yaw, width, length, h0, h1, kind = 'ramp') =>
   addBlock({ shape: RAMP, x, z, fx: Math.sin(yaw), fz: Math.cos(yaw), hx: width / 2, hz: length / 2, h0, h1, top: Math.max(h0, h1), kind });
+// base: the ground it stands on (a point where at() is no higher is off the hill).
+export const hill = (x, z, r, top, at, kind = 'mound', base = 0.15) => addBlock({ shape: HILL, x, z, r, top, at, base, kind });
+// The slope of a hill at (x, z) (d top / dx, d top / dz), over +-e m: into out.gx, out.gz.
+export function hillSlope(b, x, z, out, e = 0.25) {
+  const h = b.at(x, z);
+  const ax = b.at(x + e, z), bx = b.at(x - e, z), az = b.at(x, z + e), bz = b.at(x, z - e);
+  // (at the hill's edge one side is off it: the ground there)
+  const f = (v) => (v > b.base ? v : b.base);
+  out.gx = (f(ax) - f(bx)) / (2 * e); out.gz = (f(az) - f(bz)) / (2 * e);
+  return h;
+}
 
 export function queryBlocks(minX, minZ, maxX, maxZ, out) {
   out.length = 0;
@@ -66,12 +81,14 @@ export function queryBlocks(minX, minZ, maxX, maxZ, out) {
 export function contains(b, x, z) {
   if (b.shape === BOX) return x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ;
   if (b.shape === CIRCLE) return (x - b.x) ** 2 + (z - b.z) ** 2 <= b.r * b.r;
+  if (b.shape === HILL) return (x - b.x) ** 2 + (z - b.z) ** 2 <= b.r * b.r && b.at(x, z) > b.base;
   const dx = x - b.x, dz = z - b.z;
   const lz = dx * b.fx + dz * b.fz, lx = dx * -b.fz + dz * b.fx;
   return Math.abs(lx) <= b.hx && Math.abs(lz) <= b.hz;
 }
 
 export function topAt(b, x, z) {
+  if (b.shape === HILL) return b.at(x, z);
   if (b.shape !== RAMP) return b.top;
   const lz = (x - b.x) * b.fx + (z - b.z) * b.fz;
   const t = Math.max(0, Math.min(1, (lz + b.hz) / (2 * b.hz)));
@@ -91,7 +108,7 @@ export function groundAt(x, z, y, step) {
       if (b.dead || b.noFloor) continue;
       if (!contains(b, x, z)) continue;
       const h = topAt(b, x, z);
-      if (h > g && h <= y + step) { g = h; groundInfo.block = b; }
+      if (h > g && (h <= y + step || b.shape === HILL)) { g = h; groundInfo.block = b; }
     }
   }
   return g;
@@ -101,6 +118,7 @@ export function groundAt(x, z, y, step) {
 // Circle (people, coins) against a block. Fills out.nx/nz (push direction) and out.depth.
 
 export function circleVsBlock(x, z, r, b, out) {
+  if (b.shape === HILL) return false;
   if (b.shape === BOX) {
     const cx = x < b.minX ? b.minX : x > b.maxX ? b.maxX : x;
     const cz = z < b.minZ ? b.minZ : z > b.maxZ ? b.maxZ : z;
@@ -201,6 +219,7 @@ function satBox(o, cx, cz, ex, ez, axes, nAxes, out) {
 }
 
 export function obbVsBlock(o, b, out) {
+  if (b.shape === HILL) return false;
   if (b.shape === CIRCLE) {
     const rx = -o.fz, rz = o.fx;
     const dx = b.x - o.x, dz = b.z - o.z;
@@ -278,8 +297,9 @@ export function segmentBlocked(ax, az, bx, bz, y, ignoreKind = 'prop') {
   for (const b of _segOut) {
     if (b.kind === ignoreKind || b.top < y) continue;
     for (let s = 0; s <= steps; s++) {
-      const t = s / steps;
-      if (contains(b, ax + (bx - ax) * t, az + (bz - az) * t)) return t;
+      const t = s / steps, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+      // (a hill: only where its surface is above the line)
+      if (b.shape === HILL ? b.at(x, z) >= y : contains(b, x, z)) return t;
     }
   }
   return -1;

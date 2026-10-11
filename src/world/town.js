@@ -18,6 +18,7 @@ import { centrumBlock, hospitalBlock, churchBlock, cemeteryBlock, dealerBlock, p
 import { buildStreets, BUS_STOPS } from './streets.js';
 import { buildOutskirts } from './outskirts.js';
 import { finalizeSigns } from './signs.js';
+import { JUMP_HILLS } from './snowhill.js';
 import { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, mapLabels, shared, camBlocks, roadNames, interiors } from './data.js';
 import { surfaceAt } from './surface.js';
 import { fx } from '../game/fx.js';
@@ -214,13 +215,14 @@ export function tickTown(t) {
 }
 
 // Seven Saab emblems and seven of Sonja's photographs, each reachable on foot (ground level, or
-// on a low step / bench / the sledding hill and the stand, which are climbable in 0.4 m steps).
+// on a low step / bench / the stand, which are climbable in 0.4 m steps, or up the hoppbacke).
 function placeCollectibles(c) {
   const at = (type, yaw, lx, lz, y) => { const b = c[type]; const f = new Frame(null, null, b.ox, b.oz, yaw); return [f.wx(lx, lz), y, f.wz(lx, lz)]; };
   const E = collectibleSpots.emblems, Ph = collectibleSpots.photos;
   E.push(at('ove', 0, 5.0, -14.55, CURB + 1.3));            // on Ove's workbench, in the open garage
   E.push(at('dealer', Math.PI / 2, -15, -8.5, CURB + 1.0));   // among the used cars at Bilhallen
-  E.push(at('park', 0, -15, 17, CURB + 3.2 + 0.9));            // top of the sledding hill
+  const jh = JUMP_HILLS[0];                                    // on the table of the hoppbacke
+  E.push([jh.x - jh.fx * 1.5, jh.at(jh.x - jh.fx * 1.5, jh.z - jh.fz * 1.5) + 0.9, jh.z - jh.fz * 1.5]);
   E.push(at('gas', 0, 21, -29.8, CURB + 1.0));                 // behind the car wash
   E.push(at('ove', 0, -28.2, 28.0, CURB + 0.9));               // in the bike shed
   E.push(at('field', Math.PI, 30.4, 2, CURB + 1.2 + 0.9));     // top row of the stand

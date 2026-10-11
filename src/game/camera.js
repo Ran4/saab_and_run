@@ -6,7 +6,7 @@
 // bus shelter, a carport, a canopy) gets a level boom under it instead of one pulled in to nothing.
 
 import { THREE } from '../gfx.js';
-import { queryBlocks, groundAt, topAt, contains, BOX, CIRCLE } from '../world/collision.js';
+import { queryBlocks, groundAt, topAt, contains, BOX, CIRCLE, HILL } from '../world/collision.js';
 import { camBlocks } from '../world/town.js';
 import { clamp, damp, dampAngle, angleDiff } from '../util.js';
 
@@ -17,6 +17,7 @@ const MARGIN = 0.32;    // keep the near plane this far from walls
 function near(b, x, z, m) {
   if (b.shape === BOX) return x >= b.minX - m && x <= b.maxX + m && z >= b.minZ - m && z <= b.maxZ + m;
   if (b.shape === CIRCLE) return (x - b.x) ** 2 + (z - b.z) ** 2 <= (b.r + m) ** 2;
+  if (b.shape === HILL) return true;   // (a snow hill: wherever its surface is above the point, see boomFree)
   const dx = x - b.x, dz = z - b.z;
   const lz = dx * b.fx + dz * b.fz, lx = dx * -b.fz + dz * b.fx;
   return Math.abs(lx) <= b.hx + m && Math.abs(lz) <= b.hz + m;
@@ -332,7 +333,11 @@ export class CamRig {
       dist = 4.4 + car.spec.len * 0.8 + Math.min(3, sp * 0.09);
       if (car.trailer) dist += car.trailer.len + (car.trailer.drawbar || 1);
       lead = Math.min(2.5, sp * 0.1);
-      this.fov = damp(this.fov, 54 + Math.min(10, sp * 0.3), 3, dt);
+      // In the air off the snow hill (feature snöhög) the shot opens up: a little further back and
+      // wider, eased in and out so the landing doesn't snap it.
+      this.airK = damp(this.airK || 0, car.flight && car.flight.t > 0.08 ? 1 : 0, car.flight ? 5 : 1.6, dt);
+      dist += 0.7 * this.airK;
+      this.fov = damp(this.fov, 54 + Math.min(10, sp * 0.3) + 4 * this.airK, 3, dt);
     } else {
       pivotH = Math.min(1.6, (focus.height || 1.75) * 0.9);
       dist = 4.6;
@@ -416,7 +421,9 @@ export class CamRig {
     else {
       const kk = focus.car ? 9 : 12;
       this.pos.x = damp(this.pos.x, want.x, kk, dt);
-      this.pos.y = damp(this.pos.y, want.y, kk * 0.7, dt);
+      // (a car in the air off the snow hill: the camera rises after it slowly, so it climbs in the
+      // picture against the sky; it comes down with it at the usual pace)
+      this.pos.y = damp(this.pos.y, want.y, kk * 0.7 * (focus.car && want.y > this.pos.y ? 1 - 0.6 * (this.airK || 0) : 1), dt);
       this.pos.z = damp(this.pos.z, want.z, kk, dt);
       // Never lag so far behind that a wall slips between us.
       if (free < 1 && boomFree(px, py, pz, this.pos.x, this.pos.y, this.pos.z) < 0.999) this.pos.copy(want);

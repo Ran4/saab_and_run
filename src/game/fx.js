@@ -488,6 +488,19 @@ export const fx = {
   dust(x, z, n = 3, y = 0.3) {
     for (let k = 0; k < n; k++) puff(x + rnd(0.4), y, z + rnd(0.4), [0.9, 0.92, 0.95], { vy: 0.4 + Math.random() * 0.7, vx: rnd(1.2), vz: rnd(1.2), s0: 0.25, s1: 1.3, life: 1.1, a: 0.16, drag: 2.6, grav: 0.5, fadeIn: 5, fadeOut: 1.6, erode: 0.9 });
   },
+  // Fine snow thrown off (feature snöhög: a car leaving or landing on the snow hill, a trailer
+  // bouncing): a spray from (x, y, z) at about (vx, vy, vz), spreading, falling and drifting away.
+  // k scales its size and spread.
+  powder(x, y, z, vx = 0, vy = 1.5, vz = 0, n = 8, k = 1) {
+    // (many small wisps thrown out all round and slowed fast: a few big ones read as cotton balls)
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.283, sp = (0.7 + Math.random() * 1.8) * k;
+      puff(x + rnd(0.25), y + Math.random() * 0.15, z + rnd(0.25), [0.93, 0.95, 0.98], {
+        vx: vx + Math.cos(a) * sp, vy: vy * (0.4 + Math.random() * 0.9), vz: vz + Math.sin(a) * sp, s0: 0.1 * k, s1: (0.4 + Math.random() * 0.55) * k,
+        life: 0.55 + Math.random() * 0.5, a: 0.2, drag: 2.8, grav: 4, fadeIn: 14, fadeOut: 1.1, erode: 0.9,
+      });
+    }
+  },
   // Little glints (pickups): pinpoints of light with a thin four-point star, tinted by the colour,
   // thrown up softly and twinkling as they sink (additive, small: no confetti).
   sparkle(x, y, z, color = 0xffd23f, n = 10) {

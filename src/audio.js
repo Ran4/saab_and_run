@@ -551,9 +551,9 @@ export const audio = {
     // Tyres rolling.
     const v = speed != null ? Math.abs(speed) : sf * TOP_SPEED;
     const roll = clamp(v / 30, 0, 1.3);
-    const snow = surface === 'snow';
+    const snow = surface === 'snow', air = surface === 'air';   // ('air': off the hoppbacke, the tyres are silent)
     ty.roadLp.frequency.setTargetAtTime(220 + v * 28, t, 0.1);
-    ty.roadG.gain.setTargetAtTime(snow ? roll * 0.012 : Math.pow(roll, 1.4) * 0.05, t, 0.1);
+    ty.roadG.gain.setTargetAtTime(air ? 0 : snow ? roll * 0.012 : Math.pow(roll, 1.4) * 0.05, t, 0.1);
     ty.snow.playbackRate.setTargetAtTime(0.5 + roll * 0.7, t, 0.1);
     ty.snowG.gain.setTargetAtTime(snow ? Math.min(1, roll * 1.6) * 0.06 : 0, t, 0.1);
   },
@@ -627,6 +627,53 @@ export const audio = {
     if (i > 0.55) for (let k = 0; k < 8; k++) osc('sine', rnd(3000, 7500), t + rnd(0.05, 0.5), rnd(0.03, 0.1), rnd(0.006, 0.02) * i);
   },
   thud(k = 1) { if (!S) return; const t = now(); osc('sine', 115, t, 0.13, 0.22 * k, { to: 62 }); burst(t, 0.08, 0.12 * k, 320, 'lowpass', 0.7); },
+  // The hoppbacke (feature snöhög, game/hoppbacke.js). k 0..1: how near. Off the snow hill's edge:
+  // the tyres let go of the packed snow (a soft whumpf) and the springs unload (a clack).
+  hoppTakeoff(k = 1) {
+    if (!S) return;
+    const t = now();
+    burst(t, 0.24, 0.6 * k, 900, 'lowpass', 0.7, { buf: S.crunch, rate: 0.6, attack: 0.01, soft: true });
+    burst(t, 0.12, 0.16 * k, 260, 'lowpass', 0.8);
+    osc('sine', 150, t + 0.02, 0.06, 0.06 * k, { to: 110 });
+    burst(t + 0.03, 0.03, 0.05 * k, 2600, 'bandpass', 3);
+  },
+  // The air rushing past while it flies: a band of noise swelling and falling over dur s (the
+  // landing cuts it short).
+  hoppWind(dur, k = 1) {
+    if (!S) return;
+    const t = now(), src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = S.noise; src.loop = true;
+    f.type = 'bandpass'; f.Q.value = 0.7;
+    f.frequency.setValueAtTime(480, t); f.frequency.linearRampToValueAtTime(900, t + dur * 0.5); f.frequency.linearRampToValueAtTime(420, t + dur);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05 * k, t + dur * 0.4); g.gain.linearRampToValueAtTime(0, t + dur + 0.1);
+    src.connect(f).connect(g).connect(S.sfx);
+    src.start(t); src.stop(t + dur + 0.25);
+    this._wind = g;
+  },
+  // Coming down: i = the speed into the snow (m/s). Packed snow taking the car (a deep crunch), the
+  // springs bottoming out (a thunk, more with i); from ~8 m/s a clatter of everything loose in the
+  // car and the exhaust against the body, from ~12 a bang.
+  hoppLand(i, k = 1) {
+    if (!S) return;
+    const t = now(), a = clamp(i / 12, 0.15, 1.2) * k;
+    if (this._wind) { this._wind.gain.cancelScheduledValues(t); this._wind.gain.setTargetAtTime(0, t, 0.05); this._wind = null; }
+    burst(t, 0.35, 0.8 * a, 1100, 'lowpass', 0.6, { buf: S.crunch, rate: 0.55, attack: 0.006, soft: true });
+    burst(t, 0.2, 0.3 * a, 300, 'lowpass', 0.8);
+    osc('sine', 90, t, 0.22, 0.32 * a, { to: 46 });
+    if (i > 8) {
+      for (let n = 0; n < 5; n++) burst(t + 0.04 + n * rnd(0.03, 0.07), rnd(0.03, 0.06), 0.05 * a, rnd(1800, 3400), 'bandpass', 8);
+      osc('sine', rnd(700, 900), t + 0.02, 0.18, 0.02 * a, { to: 600 });
+    }
+    if (i > 12) { burst(t, 0.3, 0.25 * a, 2200, 'bandpass', 1.2); osc('sine', 60, t, 0.35, 0.3 * a, { to: 32 }); }
+  },
+  // A släpkärra bouncing down behind the car: a clank of galvanised steel, then a rattle.
+  trailerClank(i, k = 1) {
+    if (!S) return;
+    const t = now(), a = clamp(i / 8, 0.2, 1) * k * 1.4;
+    osc('sine', 130, t, 0.12, 0.18 * a, { to: 80 });
+    for (const f of [1450, 2350, 3100]) burst(t + rnd(0, 0.02), rnd(0.12, 0.25), 0.05 * a, f * rnd(0.92, 1.08), 'bandpass', 16);
+    for (let n = 0; n < 4; n++) burst(t + 0.05 + n * rnd(0.04, 0.08), 0.03, 0.04 * a, rnd(2000, 4000), 'bandpass', 6);
+  },
   boing() {
     if (!S) return;
     const t = now();

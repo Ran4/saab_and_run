@@ -5,9 +5,14 @@
 // on the rear axle), which is what makes reversing jackknife. The angle to the car is limited
 // (the drawbar hits the bumper). Its box is pushed out of static solids by turning about the hitch,
 // or, when that can't help, by shoving the car. Exposes x, z (box centre), yaw, len, wid.
+// Up and down (feature snöhög): the axle has a vertical speed of its own. It follows the ground,
+// flies off a snow hill's edge as the car does, and lands with a bounce or two (BOUNCE of the speed
+// into the ground comes back while that is over BUMP m/s: game.onTrailerBounce); the box pivots
+// about the tow ball (where the car's pitched body has it) to rest on the axle, no more than PMAX
+// either way (the drawbar against the bumper: past that the car lifts the trailer or drags it down).
 
 import { THREE, GeoBuilder, realMesh, MAT } from '../gfx.js';
-import { queryBlocks, obbVsBlock, obbVsObb, groundAt, topAt, RAMP } from '../world/collision.js';
+import { queryBlocks, obbVsBlock, obbVsObb, groundAt, groundInfo, topAt, hillSlope, RAMP, HILL } from '../world/collision.js';
 import { trackWheels, lightMaterial, randomPlate, claimPlate, releasePlate, allocPlate, freePlate, plateGeometry, CH } from './carmodels.js';
 
 const DRAW = 1.05;     // hitch -> front of the box
@@ -17,6 +22,11 @@ const WR = 0.27, WW = 0.155, WX = 0.83;
 const FLOOR = 0.5, WALL = 0.36;
 const AXLE = DRAW + BOX * 0.5; // hitch -> axle
 const JACK = 1.3;              // max |car yaw - trailer yaw| (rad, ~75°)
+const TG = 15;                 // gravity in the air (car.js HOPP.grav)
+const PMAX = 0.6, BOUNCE = 0.45, BUMP = 2;   // (bounces while the speed into the ground is over BUMP m/s)
+const BALL = 0.47;             // the coupling's height above the ground under the wheels
+const PR = Math.hypot(BALL, AXLE), P0 = Math.atan2(AXLE, BALL);
+const _sl = { gx: 0, gz: 0 };
 
 let model = null;
 // The car shading's road-grime mask (car.js reads the attribute 'cgrime'): the lower box sides, the
@@ -126,6 +136,10 @@ export class Trailer {
     this.yaw = car.yaw;
     this.x = 0; this.z = 0; this.y = car.y;
     this.hx = 0; this.hz = 0;          // hitch (world)
+    this.hy = 0;                       // ... its height (the tow ball)
+    this.ay = car.y; this.avy = 0;     // the ground contact under the axle (height), its vertical speed
+    this.air = false; this.onHill = null; this.bounces = 0;
+    this.pitch = 0;                    // + = the back up
     this.obb = { x: 0, z: 0, fx: 0, fz: 1, hx: HW + 0.05, hz: BOX / 2 };
     this.jackknifed = false;
     this.drift = Math.random() < 0.5 ? -1 : 1;
@@ -149,6 +163,14 @@ export class Trailer {
     this.hx = hx; this.hz = hz;
     this.yaw = this.car.yaw;
     this.updatePose();
+    this.ay = this.y = groundAt(this.x, this.z, this.car.y + 0.3, 0.6);
+    this.avy = 0; this.air = false; this.onHill = null; this.bounces = 0;
+    this.hy = this.ballY(); this.pitch = 0;
+  }
+  // The tow ball's height: the car's body pitched and heaved on its springs (and by the slope).
+  ballY() {
+    const c = this.car, p = (c.groundPitch || 0) + (c._sus?.p || 0), hz = c.model.hitch;
+    return c.y + (c._sus?.h || 0) + BALL * Math.cos(p) - hz * Math.sin(p);
   }
   updatePose() {
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw), d = DRAW + BOX / 2;
@@ -181,8 +203,56 @@ export class Trailer {
       c.w *= 0.5; c.vx *= 0.96; c.vz *= 0.96;
     }
     this.updatePose();
-    this.y = groundAt(this.x, this.z, c.y + 0.3, 0.6);
+    this.stepUpDown(dt, game);
     this.collide(game);
+  }
+
+  stepUpDown(dt, game) {
+    const c = this.car;
+    // (x, z: the box centre, which is over the axle)
+    const ga = groundAt(this.x, this.z, Math.max(this.ay, c.y) + 0.3, 0.6), gb = groundInfo.block, onHill = !!gb && gb.shape === HILL;
+    if (this.air) {
+      this.avy -= TG * dt; this.ay += this.avy * dt;
+      if (this.ay <= ga) {
+        let impact = -this.avy, vyOn = 0;
+        if (onHill) {
+          hillSlope(gb, this.x, this.z, _sl);
+          const L = Math.hypot(1, _sl.gx, _sl.gz);
+          impact = Math.max(0, -(this.avy - _sl.gx * c.vx - _sl.gz * c.vz) / L);
+          vyOn = _sl.gx * c.vx + _sl.gz * c.vz;
+        }
+        this.ay = ga;
+        if (impact > BUMP) game?.onTrailerBounce?.(this, impact);
+        if (impact > BUMP && this.bounces < 3) {
+          this.avy = vyOn + impact * BOUNCE; this.bounces++;
+          this.yaw += (Math.random() - 0.5) * 0.08 * Math.min(1, impact / 6);   // it lands a little askew
+        } else { this.air = false; this.avy = vyOn; this.bounces = 0; }
+      }
+    } else if (onHill || this.onHill) {
+      const pred = this.ay + this.avy * dt - 0.5 * TG * dt * dt;
+      if (ga < pred - 0.004) { this.air = true; this.ay = pred; this.avy -= TG * dt; }
+      else { this.avy = Math.max(-20, Math.min(20, (ga - this.ay) / dt)); this.ay = ga; }
+    } else {
+      // (off a ledge: falls; onto a kerb: up it)
+      if (ga < this.ay - 0.35) { this.air = true; this.avy = 0; } else { this.ay = ga; this.avy = 0; }
+    }
+    this.onHill = onHill && !this.air ? gb : null;
+    // the drawbar: the box hangs on the tow ball
+    const hy = this.hy = this.ballY();
+    let th = Math.acos(Math.max(-1, Math.min(1, (hy - this.ay) / PR))) - P0;
+    if (th < -PMAX) {
+      // the car is above: it lifts the trailer by the drawbar
+      this.ay = hy - PR * Math.cos(-PMAX + P0);
+      if (this.ay > ga + 0.01) { this.air = true; this.avy = Math.max(this.avy, c.vy); }
+      th = -PMAX;
+    } else if (th > PMAX && this.ay > ga + 0.01) {
+      // the car is below: it drags the trailer down after it
+      this.ay = Math.max(ga, hy - PR * Math.cos(PMAX + P0));
+      this.avy = Math.min(this.avy, c.vy);
+      th = Math.acos(Math.max(-1, Math.min(1, (hy - this.ay) / PR))) - P0;
+    }
+    this.pitch = Math.max(-0.8, Math.min(0.8, th));
+    this.y = this.ay;
   }
 
   collide(game) {
@@ -236,9 +306,14 @@ export class Trailer {
     this.updatePose();
   }
 
+  // The model's origin is under the coupling at its ground: hang it on the tow ball, pitched.
+  rootPose(v) {
+    const sp = Math.sin(this.pitch);
+    return v.set(this.hx - BALL * sp * Math.sin(this.yaw), this.hy - BALL * Math.cos(this.pitch), this.hz - BALL * sp * Math.cos(this.yaw));
+  }
   sync(dt, t) {
-    this.root.position.set(this.hx, this.y, this.hz);
-    this.root.rotation.y = this.yaw;
+    this.rootPose(this.root.position);
+    this.root.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
     const a = this.car.lightMat?.userData.ch, b = this.lightMat.userData.ch;
     if (a) { b[CH.tail] = a[CH.tail]; b[CH.indL] = a[CH.indL]; b[CH.indR] = a[CH.indR]; b[CH.brake] = a[CH.brake]; }
     if (!this.body.userData.baseMaterial) this.body.userData.baseMaterial = this.body.material;
@@ -260,7 +335,7 @@ export class Trailer {
   }
 
   writeWheels(sink) {
-    _m4.compose(_v.set(this.hx, this.y, this.hz), _q.setFromEuler(_e.set(0, this.yaw, 0, 'YXZ')), _s.set(1, 1, 1));
+    _m4.compose(this.rootPose(_v), _q.setFromEuler(_e.set(this.pitch, this.yaw, 0, 'YXZ')), _s.set(1, 1, 1));
     for (const sx of [1, -1]) {
       _e.set(sx > 0 ? this.wheelSpin : -this.wheelSpin, sx > 0 ? 0 : Math.PI, 0, 'YXZ');
       _m4b.compose(_v.set(sx * WX, WR, -AXLE), _q.setFromEuler(_e), _s.set(WW, WR, WR));

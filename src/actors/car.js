@@ -3,7 +3,7 @@
 // licence plates, an optional trailer (trailer.js). See notes/cars.md for the API.
 
 import { THREE, realMesh, surfaceMaterial, MAT, camera, scene, renderer as gfxRenderer, composer, LIGHTING } from '../gfx.js';
-import { queryBlocks, obbVsBlock, obbVsObb, groundAt, topAt, RAMP } from '../world/collision.js';
+import { queryBlocks, obbVsBlock, obbVsObb, groundAt, groundInfo, topAt, hillSlope, RAMP, HILL } from '../world/collision.js';
 import { isRoad } from '../world/layout.js';
 import { clamp, damp, pick, angleDiff } from '../util.js';
 import { fx as FX } from '../game/fx.js';
@@ -38,6 +38,18 @@ for (const [k, v] of Object.entries(CAR_ALIASES)) CAR_TYPES[k] = CAR_TYPES[v];
 // tops out at revMax (4.5 m/s, 16 km/h).
 export const PLAYER = { speed: 1.25, accel: 0.88, brake: 1.15, aLat: 9.5 };
 const AI_ACCEL = 1.15; // AI drivers are not shy with the pedal
+// Snow hills (feature snöhög, world/snowhill.js: collision.js HILL floors). On one the car follows the
+// surface and feels its slope (`slope` m/s², gravity along it: a hill slows the climb, a stopped car
+// rolls back unless held), until the surface falls away faster than a thrown stone would (the
+// kicking edge of the hoppbacke, a crest at speed): then it flies (car.flight) under `grav` (gentler
+// than the 22 of a car going off a ledge: the air time is the point) and lands on what is under it.
+// A landing is judged by the speed into the surface (along its normal: the landing face of the hill
+// takes a car coming down the way it slopes), and `carry` of what goes along the slope is kept.
+// The nose follows the flight path (`nose` of its angle), so the car meets the landing face with it.
+// Sideways the tyres hold a slope up to `hold` m/s² of gravity (packed snow): a car standing across a
+// flank stays put, on a steeper one it slips down.
+export const HOPP = { grav: 15, slope: 9.8, carry: 1, nose: 0.85, hold: 3.5 };
+const _sl = { gx: 0, gz: 0 };
 // Winter roads at speed (the player's car, not towing; feature fixa_bilen): from hs0 (32 km/h) to
 // hs1 (79 km/h) the rear lets go before the front. Asked for more than the tyres give, the car turns
 // harder than its path instead of understeering: its yaw reaches `ov` x the grip limit (by drivetrain,
@@ -613,6 +625,9 @@ export class Car {
     this.hp = spec.hp;
     this.dead = false;
     this.air = false;
+    this.hill = null;        // the snow hill (collision HILL) it is driving on, if any
+    this.flight = null;      // a flight off a hill: { t, x0, z0, y0, apex, v0, vy0, hill, dist }
+    this.landed = null;      // the last flight's end: { ...flight, impact, onHill, x, z }
     this.mass = spec.mass;
     this.inertia = (spec.mass * (spec.len * spec.len + spec.wid * spec.wid)) / 12;
     this.ctrl = { throttle: 0, brake: 0, steer: 0, handbrake: false, park: true };
@@ -733,7 +748,7 @@ export class Car {
     this.wake();
     this.x = x; this.z = z; this.yaw = yaw; this.vx = this.vz = this.vy = this.w = 0;
     this.y = groundAt(x, z, 0.2, 0.6);
-    this.air = false;
+    this.air = false; this.flight = null; this.hill = null;
     this.steerAngle = this.steerShow = 0;
     this.drift = this.slip = this.pivot = this.swing = this.flick = 0;
     this.loose = false;
@@ -797,6 +812,13 @@ export class Car {
     this.braking = 0;
     this.reversing = false;
     if (!this.air) {
+      // on a snow hill: gravity along its slope, forwards, and sideways what the tyres don't hold
+      if (this.hill) {
+        hillSlope(this.hill, this.x, this.z, _sl);
+        const L = Math.hypot(1, _sl.gx, _sl.gz), g = HOPP.slope / L, side = g * (_sl.gx * rx + _sl.gz * rz);
+        vf -= g * (_sl.gx * fx + _sl.gz * fz) * dt;
+        vr -= Math.sign(side) * Math.max(0, Math.abs(side) - HOPP.hold) * dt;
+      }
       if (driven && !c.park) {
         const thr = c.throttle, brk = c.brake;
         if (thr > 0) {
@@ -937,19 +959,52 @@ export class Car {
     this.stepEngine(dt, vf, maxSpeed, driven);
 
     const gh = groundAt(this.x, this.z, this.y, 0.6);
+    const gb = groundInfo.block, onHill = !!gb && gb.shape === HILL;
     const sus = this._sus;
     if (this.air) {
-      this.vy -= 22 * dt;
+      const F = this.flight;
+      this.vy -= (F ? HOPP.grav : 22) * dt;
       this.y += this.vy * dt;
+      if (F) { F.t += dt; if (this.y > F.apex) F.apex = this.y; }
       if (this.y <= gh) {
-        const impact = -this.vy;
-        this.y = gh; this.vy = 0; this.air = false;
+        let impact = -this.vy, vyOn = 0;
+        if (onHill) {
+          // into the slope (along its normal); what goes along it carries on
+          hillSlope(gb, this.x, this.z, _sl);
+          const L = Math.hypot(1, _sl.gx, _sl.gz), vn = (this.vy - _sl.gx * this.vx - _sl.gz * this.vz) / L;
+          impact = Math.max(0, -vn);
+          if (vn < 0) { this.vx -= vn * (-_sl.gx / L) * HOPP.carry; this.vz -= vn * (-_sl.gz / L) * HOPP.carry; }
+          vyOn = _sl.gx * this.vx + _sl.gz * this.vz;
+        }
+        this.y = gh; this.vy = vyOn; this.air = false;
         if (impact > 4) {
           this.bump = Math.min(0.35, impact * 0.03);
           sus.hv -= Math.min(2.5, impact * 0.12);
+          if (F) sus.pv += clamp(impact * 0.012, 0, 0.12) * (Math.random() < 0.5 ? 1 : -1);   // (it rocks)
           game?.onCarLanded(this, impact);
           if (impact > 13) this.damage((impact - 13) * 2.5, game);
+        } else if (F && impact > 1.5) sus.hv -= impact * 0.1;
+        if (F) {
+          F.dist = Math.hypot(this.x - F.x0, this.z - F.z0);
+          this.landed = { ...F, impact, onHill, x: this.x, z: this.z };
+          this.flight = null;
+          game?.onCarFlight?.(this, this.landed);
         }
+      }
+    } else if (onHill || this.hill) {
+      // On a hill: follow the snow until it falls away faster than the car would fall (4 mm a step
+      // = 29 m/s² more than gravity: off the kicking edge's rounding from ~6 m/s; the snow is smooth
+      // where cars drive, its lumps are only drawn).
+      const pred = this.y + this.vy * dt - 0.5 * HOPP.grav * dt * dt;
+      if (gh < pred - 0.004) {
+        this.air = true;
+        this.flight = { t: 0, x0: this.x, z0: this.z, y0: this.y, apex: pred, v0: Math.hypot(vf, vr), vy0: this.vy, hill: this.hill || gb, dist: 0 };
+        this.y = pred; this.vy -= HOPP.grav * dt;
+        game?.onCarTakeoff?.(this);
+      } else {
+        const vy = clamp((gh - this.y) / dt, -20, 20);
+        sus.hv -= (vy - this.vy) * 0.035;   // the springs take the changes of slope
+        this.vy = vy; this.y = gh;
       }
     } else if (gh < this.y - 0.35) {
       this.air = true;
@@ -959,6 +1014,7 @@ export class Car {
       this.vy = clamp(dy / dt, -6, 12);
       this.y = gh;
     }
+    this.hill = onHill && !this.air ? gb : null;
     this.stepSuspension(dt);
 
     this.updateObb();
@@ -1128,7 +1184,7 @@ export class Car {
     this.root.position.set(this.x, this.y, this.z);
     this.root.rotation.y = this.yaw;
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
-    if (this.air) this.groundPitch = damp(this.groundPitch, -Math.atan2(this.vy, Math.max(4, Math.abs(this.forwardSpeed))) * 0.6, 6, dt);
+    if (this.air) this.groundPitch = damp(this.groundPitch, -Math.atan2(this.vy, Math.max(4, Math.abs(this.forwardSpeed))) * (this.flight ? HOPP.nose : 0.6), this.flight ? 4 : 6, dt);
     else {
       const wb = s.wb / 2;
       const hF = groundAt(this.x + fx * wb, this.z + fz * wb, this.y + 0.3, 0.6), hR = groundAt(this.x - fx * wb, this.z - fz * wb, this.y + 0.3, 0.6);
@@ -1136,7 +1192,7 @@ export class Car {
     }
     // Out on the hills beyond the town (features/avgrunden.md) the ground slopes sideways as well; in
     // town nothing does, and nothing changes there.
-    const off = Math.abs(this.x) > 320 || Math.abs(this.z) > 320;
+    const off = Math.abs(this.x) > 320 || Math.abs(this.z) > 320 || !!this.hill;
     if (off || this.groundRoll) {
       let roll = 0;
       if (off && !this.air) {

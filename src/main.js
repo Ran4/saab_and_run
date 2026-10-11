@@ -24,6 +24,7 @@ import { CamRig } from './game/camera.js';
 import { Patrol } from './game/patrol.js';
 import { Interruptions } from './game/interruptions.js';
 import { Horn } from './game/horn.js';
+import { Hoppbacke } from './game/hoppbacke.js';
 import { Cold } from './game/cold.js';
 import * as stages from './game/stages.js';
 import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
@@ -217,6 +218,9 @@ class Game {
     // The horn and what the town does about it (game/horn.js, feature tuta_med_bilen).
     this.horn = new Horn(this);
     window.__horn = this.horn;
+    // Flights off the snow hill in the park and what everybody makes of them (game/hoppbacke.js,
+    // feature snöhög; the flying is car.js HOPP).
+    this.hopp = new Hoppbacke(this);
     this.interrupts.auto = !TEST || params.has('calls');
     window.__patrol = this.patrol;
     window.__interrupt = this.interrupts;
@@ -921,9 +925,13 @@ class Game {
     this.missions.onImpact(a, b, impact);
   }
   onCarLanded(car, impact) {
+    if (car.flight) return;   // (off the snow hill: onCarFlight has it)
     if (car === this.playerCar) { audio.thud(); this.cam.shake = Math.min(1, this.cam.shake + impact * 0.03); }
     FX.dust(car.x, car.z, 6);
   }
+  onCarTakeoff(car) { this.hopp.takeoff(car); }
+  onCarFlight(car, f) { this.hopp.land(car, f); }
+  onTrailerBounce(tr, impact) { this.hopp.trailerBounce(tr, impact); }
   onCarDestroyed(car) {
     const f = this.focus();
     if (dist(car.x, car.z, f.x, f.z) < 80) audio.crash(1);
@@ -1153,7 +1161,7 @@ class Game {
       // short retry lines, not the whole scene again - the day's progress itself is not kept)
       const ms = this.missions, cur = ms.current;
       const begun = cur && (ms.state !== 'idle' || ms.gaveUp.has(cur.day)) ? ms.index : null;
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave(), garage: this.garage && !this.garage.isOpen ? 0 : 1 }));
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave(), garage: this.garage && !this.garage.isOpen ? 0 : 1, hopp: Math.round(this.hopp.best * 10) }));
     } catch (e) { /* private mode: progress just won't persist */ }
   }
   // Every field is checked: a hand-edited or half-written save must not kill the story (mission -1
@@ -1174,6 +1182,8 @@ class Game {
           this.patrol.fromSave(s.patrol);
           // (the garage door: 0 = shut; anything else, or none, = open as at the start)
           if (this.garage && s.garage === 0) this.garage.set(false);
+          // (Ove's longest jump off the hoppbacke, in dm)
+          this.hopp.best = int(s.hopp, 0, 2000, 0) / 10;
           const clock = Number(s.clock);
           if (s.clock != null && clock >= 0 && clock < 24 * 60) this.clockMin = clock;
           // Saved between two days: the next one still waits for a little patrolling.
@@ -1331,6 +1341,7 @@ class Game {
     if (this.hooks.length) for (const h of this.hooks.slice()) h(dt);
     this.handleOneShots();
     this.horn.update(dt);
+    this.hopp.update(dt);
     this.acc += dt;
     let n = 0;
     while (this.acc >= STEP && n < MAX_STEPS) { this.fixedStep(STEP); this.acc -= STEP; n++; }
@@ -2344,10 +2355,14 @@ class Game {
   updateAudio() {
     const c = this.playerCar;
     if (c && !c.dead && !this.cold.engineOff) {
-      audio.engine(true, c.revs, c.ctrl.throttle, Math.abs(c.forwardSpeed), c.onSnow ? 'snow' : 'asphalt');
+      // (in the air off the snow hill the wheels spin free: the engine revs up on the throttle, the
+      // tyres are silent)
+      const fl = c.flight ? 1 + 0.45 * c.ctrl.throttle : 1;
+      audio.engine(true, c.revs, c.ctrl.throttle, Math.abs(c.forwardSpeed) * fl, c.flight ? 'air' : c.onSnow ? 'snow' : 'asphalt');
       audio.skid(c.air ? 0 : c.skidAmt, c.onSnow ? 'snow' : 'asphalt');
       audio.horn(this.horn.down, c.kind);
-      if (c.skidAmt > 0.3 && !c.air) {
+      // (no tracks drawn on the snow hill: they lie flat at the ground's height)
+      if (c.skidAmt > 0.3 && !c.air && !c.hill) {
         this.skidT = (this.skidT || 0) - 1;
         if (this.skidT <= 0) {
           this.skidT = 2;

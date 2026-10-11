@@ -11,6 +11,7 @@ import { textFace, picto, decal, addSign, addCard, twigFace } from './signs.js';
 import { violationSpots, keepClear, litterSpots, animated, shared } from './data.js';
 import { addGround } from './surface.js';
 import { mulberry32 } from '../util.js';
+import { jumpHill, domeHill } from './snowhill.js';
 
 const V = (f, lx, lz, ly, kind, where) => violationSpots.push({ x: f.wx(lx, lz), z: f.wz(lx, lz), yaw: f.yaw + ly, kind, where });
 const LIT = (f, lx, lz) => litterSpots.push([f.wx(lx, lz), CURB + 0.05, f.wz(lx, lz)]);
@@ -850,10 +851,10 @@ function playhouse2(f, x, z) {
   win(f, x + 0.5, CURB + 0.6, z - 0.9, 0.5, 0.5, Math.PI, { panes: 1, sill: false });
   f.solid(x, z, 2.2, 1.8, CURB + 1.6, 'shed');
 }
-// A snowy mound (pulkabacke): stepped circle floors + a smooth visual cap.
+// A snowy mound (pulkabacke): a smooth cap, its collider a hill of the same shape (snowhill.js; it
+// was stepped circle floors, which stopped a car dead: feature snöhög).
 export function mound(f, x, z, rad, h) {
-  const steps = Math.max(2, Math.round(h / 0.4));
-  for (let k = 1; k <= steps; k++) f.circ(x, z, rad * (1 - (k - 0.5) / steps) * 0.98, CURB + (h * k) / steps - 0.02, 'mound');
+  domeHill(f.wx(x, z), f.wz(x, z), rad, h);
   const seg = 28, rings = 7, pos = [], idx = [];
   for (let i = 0; i <= rings; i++) {
     const t = i / rings, rr = rad * t, y = CURB - 0.05 + h * (1 - t * t) * (1 - t * 0.15) ** 2 * 1.02 + (i === rings ? 0 : 0.03);
@@ -1226,10 +1227,17 @@ export function parkBlock(bf, r) {
   bf.circ(px, pz, Math.min(rx, rz) + 0.5, 99, 'water');
   bf.mark('park', px - 2, pz + rz + 2.4, Math.PI);
   bf.mark('pond', px, pz + rz + 1.4, Math.PI);
-  // Sledding hill.
-  mound(bf, -15, 17, 9, 3.2);
+  // The sledding hill: a big pile of snow shaped into a hoppbacke (snowhill.js, feature snöhög), its
+  // long axis east-west along the open lawn north of the lime alley (a car can run up to it from the
+  // street or from across the park). Two pulkas left at its foot.
+  jumpHill(bf, -13.5, 18.5, Math.PI / 2);
+  // ... and the kommun's sign at its foot, facing the street
+  bf.post(-29.4, 23.6, -Math.PI / 2, [
+    { f: textFace('Pulkaåkning sker\npå egen risk', 0.62, 0.3, { ppm: 260, scale: 0.7, border: '#1e1e1e' }), w: 0.62, h: 0.3 },
+    { f: textFace('Motortrafik\nförbjuden', 0.62, 0.26, { ppm: 260, scale: 0.7, bg: '#f4f2ea', fg: '#9a1c1c', border: '#9a1c1c' }), w: 0.62, h: 0.26 },
+  ], { top: 1.7 });
   bf.mark('pulkabacke', -15, 6.5, 0);
-  bf.prop('pulka', -12, 11, 0.4); bf.prop('pulka', -19, 9.5, 2.6);
+  bf.prop('pulka', -6, 8.0, 0.4); bf.prop('pulka', -24, 8.6, 2.6);
   // Benches, bins, lamps.
   for (const [x, z, y] of [[-8, 1.6, 0], [8, 1.6, 0], [px - 1, pz + rz + 1.3, Math.PI], [20, -6, -Math.PI / 2]]) bf.prop('bench', x, z, y);
   for (const [x, z] of [[-10, 1.6], [10, 1.6]]) bf.prop('papperskorg', x, z, 0);

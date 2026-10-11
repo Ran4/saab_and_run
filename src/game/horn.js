@@ -225,7 +225,9 @@ export class Horn {
   }
 
   // Someone heard it: their reaction (c.honk, played out by drive()). p: { c, ped, along, lat, d, front }.
-  react(p, car, mayTalk) {
+  // o: someone who saw something else (game/hoppbacke.js: a car flying off the snow hill), with
+  // { kind ('leap' | 'cheer' | 'flinch'), gesture, line, delay } of their own; not counted in stats.
+  react(p, car, mayTalk, o = null) {
     const g = this.g, c = p.c, key = c.key || null;
     // (not whoever is with Ove: they are on their way to his car)
     // (nor someone waiting for his car: stages.js pickup brings them out to it instead)
@@ -234,13 +236,13 @@ export class Horn {
     const free = !c.wheelchair;
     // Patrick leaps out of the way whether or not he is in it.
     const jumpy = key === 'patrick' && p.d < 12;
-    const kind = free && (p.front || jumpy) ? 'leap' : kid ? 'cheer' : 'flinch';
+    const kind = o?.kind ?? (free && (p.front || jumpy) ? 'leap' : kid ? 'cheer' : 'flinch');
     // sideways off the car's line, to the side they are on (never back along it: the camera is there)
     const side = Math.abs(p.lat) > 0.3 ? Math.sign(p.lat) : (this.rand() < 0.5 ? -1 : 1);
     const ex = -Math.cos(car.yaw) * side, ez = Math.sin(car.yaw) * side;
     // (Parvaneh is pregnant: she steps aside, briskly, and lets Ove know)
     const careful = old || key === 'parvaneh';
-    const gesture = key === 'sara' || key === 'nasanin' || kid ? 'cheer'
+    const gesture = o && o.gesture !== undefined ? o.gesture : key === 'sara' || key === 'nasanin' || kid ? 'cheer'
       : key === 'jimmy' || key === 'adrian' ? 'wave'
       : key === 'anders' || key === 'parvaneh' ? 'fist'
       : key ? null : this.chance(old ? 0.75 : p.front ? 0.5 : 0.3) ? 'fist' : null;
@@ -249,7 +251,7 @@ export class Horn {
       kind, t: 0, phase: 0, car, front: p.front, ex, ez,
       // the line they get clear of: the car's centre line at the honk
       ox: car.x, oz: car.z, rx: -Math.cos(car.yaw), rz: Math.sin(car.yaw), clear: car.spec.wid / 2 + 1.4,
-      delay: (kid ? 0.06 : old ? 0.28 : 0.1) + this.rand() * 0.15 + Math.min(0.3, p.d * 0.012),
+      delay: (o?.delay ?? 0) + (kid ? 0.06 : old ? 0.28 : 0.1) + this.rand() * 0.15 + Math.min(0.3, p.d * 0.012),
       speed: careful ? (old ? 2.6 : 3.2) : kid ? 5.0 : teen ? 6.0 : 5.4,
       jumpV: careful ? 0 : kid ? 3.6 : 3.4 + this.rand() * 0.6,
       hop: kind === 'flinch' && !careful && !c.wheelchair && this.chance(0.6) ? 2.1 : kind === 'cheer' ? 2.8 : 0,
@@ -257,8 +259,9 @@ export class Horn {
       stand: kind === 'leap' ? 1.5 + this.rand() * 0.5 : kind === 'cheer' ? 1.9 : 1.3,
       yelp: kind === 'leap' || (kind === 'flinch' && this.chance(0.45)),
       gesture, wave: false,
-      line: talks ? this.lineFor(c, p, car) : null,
+      line: o ? o.line ?? null : talks ? this.lineFor(c, p, car) : null,
     };
+    if (o) return s;
     this.stats[kind === 'leap' ? 'leaps' : kind === 'cheer' ? 'cheers' : 'flinches']++;
     // Rune spoke: Anita, if she is with him, explains.
     if (key === 'rune' && s.line && g.time - this.runeT > 30) {
