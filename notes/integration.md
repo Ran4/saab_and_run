@@ -691,3 +691,19 @@ The horn was a sound (H, while held). Now it is `src/game/horn.js` (`Horn`, `g.h
   pickup at the bus stop, Rune and Anita, a passenger, H, no horn in a scene, the cat after day 4)
   and `hornlook` (a frozen side camera on a honk at someone in front: `WHO=adult|kid|old|patrick|
   parvaneh|anders`).
+
+## Feature fixa_bilen: the tail lets go at speed (2026-10-11) — what changed
+
+roligare_bilkorning's point 1 was written the wrong way round (the cars understeered at speed, they
+did not oversteer); its calmer winter roads are gone and `WINTER` in car.js now makes the player's
+car loose at speed (notes/cars.md, Physics: *Winter roads at speed*). main.js is unchanged: a slide
+the tail starts by itself is an ordinary `car.drift` slide (`car.loose` tells them apart), so the
+spray and Ove's `slideTalk` comment come with it. AI drivers are untouched (no AI car's `drift`
+ever leaves 0 in `speedslide`).
+- Scenarios: `handling` (cars.mjs) is rewritten for the new behaviour (keyboard style: when the tail
+  lets go per type, speed and pedal; taps; a 90° turn; the flick; a catch). New `speedslide`
+  (cars.mjs, real keys, the Saab or `TYPE=`): an evasive swerve at ~95 km/h on the northern ring road
+  (must stay on the road, keep 40 km/h, be straight within 2 s) and a lift-off slide through the
+  junction at (40, -40) from ~60 km/h without the handbrake, held and caught (must slide, must leave
+  down the cross street); pushes 'speedslide: ...' errors; shots `out/speedslide_*.png`. `m5race`
+  takes `RACE_VC` (the corner speeds ×, a hasty driver).

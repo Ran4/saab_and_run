@@ -349,34 +349,64 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, fps, OUT, errors = [
       })()`));
       console.log('[t] physics', JSON.stringify(r));
     },
-    // Steering at speed (feature roligare_bilkorning): per type and speed, a held key (the yaw rate
-    // and sideways g it settles at, how long it takes to get there, the slip angle) and a 0.25 s tap
-    // (the heading it changes, how long the car keeps turning after the key is let go).
+    // Winter roads at speed (feature fixa_bilen): per type and speed, simulated off-screen like physics,
+    // keyboard style (full lock or nothing, W down or up). A held key with W down (`thr`), up (`lift`),
+    // braking at 60 % (`brake`, a pad) and in full (`stamp`, S): when the tail lets go (s until car.drift > 0.5, '-' = never in 2.5 s), the
+    // most slip (°), the heading turned (°), the speed after (km/h). A 0.25 s tap (`tap`: the heading it
+    // changes, the most slip, whether it slid). A 90° turn (`turn90`: the key held with W down until the
+    // car has turned 80°, then let go: the most slip, how far it turned in all, the slip 1.5 s later).
+    // A Scandinavian flick (`flick`: 0.5 s left, then right until it slides or 1 s, W down: s into the
+    // right turn when it slid, the most slip after it). And a player catching it at 100 km/h (`catch`:
+    // the key held until the tail goes, 0.3 s more - the reaction - then counter-steer until straight:
+    // s to straight, the most slip).
     async handling() {
       const r = await ev(new Function(`return (async () => { ${SIM}
         const slipOf = (c) => { const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); return Math.atan2(c.vx * -fz + c.vz * fx, c.vx * fx + c.vz * fz); };
+        const deg = (a) => +(a * 57.3).toFixed(0);
+        const keep = () => ({ throttle: 1, brake: 0 });
         const out = {};
         for (const type of (window.__htypes || ['saab900', 'golf', 'audi', 'volvo240', 'bmw'])) {
           const row = {};
           for (const kmh0 of [60, 100, 125]) {
-            const v0 = kmh0 / 3.6;
-            const keep = (c) => ({ throttle: c.forwardSpeed < v0 ? 0.7 : 0, brake: 0 });
-            const h = mk(type); h.vx = v0;
-            let t63 = null, ws = [], slip = 0;
-            run(h, 2.5, (t) => ({ ...keep(h), steer: 1 }), (t) => { ws.push(Math.abs(h.w)); slip = Math.max(slip, Math.abs(slipOf(h))); });
-            const wSt = ws.slice(-30).reduce((a, b) => a + b, 0) / 30;
-            t63 = ws.findIndex((w) => w > wSt * 0.63) / 60;
+            const v0 = kmh0 / 3.6, cell = {};
+            for (const [name, ped] of [['thr', keep], ['lift', () => ({ throttle: 0, brake: 0 })], ['brake', () => ({ throttle: 0, brake: 0.6 })], ['stamp', () => ({ throttle: 0, brake: 1 })]]) {
+              const h = mk(type); h.vx = v0; const y0 = h.yaw;
+              let at = null, slip = 0;
+              run(h, 2.5, (t) => ({ ...ped(h), steer: 1 }), (t) => { slip = Math.max(slip, Math.abs(slipOf(h))); if (at === null && h.drift > 0.5) at = t; });
+              cell[name] = [at === null ? '-' : +at.toFixed(2), deg(slip), deg(-(h.yaw - y0)), Math.round(h.speed * 3.6)].join('/');
+            }
             const k = mk(type); k.vx = v0; const y0 = k.yaw;
-            let settle = null;
-            run(k, 2, (t) => ({ ...keep(k), steer: t < 0.25 ? 1 : 0 }), (t) => { if (t > 0.25 && settle === null && Math.abs(k.w) < 0.02) settle = t - 0.25; });
-            row[kmh0] = { yaw: +wSt.toFixed(3), g: +(wSt * v0 / 9.81).toFixed(2), t63: +t63.toFixed(2), slipDeg: +(slip * 57.3).toFixed(1), tapDeg: +(-(k.yaw - y0) * 57.3).toFixed(1), settle: settle === null ? '>1.75' : +settle.toFixed(2) };
+            let tslip = 0, tslid = false;
+            run(k, 2, (t) => ({ ...keep(k), steer: t < 0.25 ? 1 : 0 }), () => { tslip = Math.max(tslip, Math.abs(slipOf(k))); tslid ||= k.drift > 0.5; });
+            cell.tap = deg(-(k.yaw - y0)) + '°/' + deg(tslip) + (tslid ? '/slid' : '');
+            const u = mk(type); u.vx = v0; const u0 = u.yaw;
+            let held = true, uslip = 0, uslid = false, tLet = 0;
+            run(u, 4, (t) => { if (held && -(u.yaw - u0) > 80 / 57.3) { held = false; tLet = t; } return { ...keep(u), steer: held ? 1 : 0 }; }, (t) => { uslip = Math.max(uslip, Math.abs(slipOf(u))); uslid ||= u.drift > 0.5; if (!held && t > tLet + 1.5 && cell.turn90 === undefined) cell.turn90 = { maxSlip: deg(uslip), turned: deg(-(u.yaw - u0)), slipAfter: deg(slipOf(u)), slid: uslid, kmh: Math.round(u.speed * 3.6) }; });
+            cell.turn90 ??= { held: 'never turned 80° in 4 s', turned: deg(-(u.yaw - u0)) };
+            const f = mk(type); f.vx = v0;
+            let fAt = null, fSlip = 0;
+            run(f, 2.5, (t) => { if (fAt === null && t > 0.5 && f.drift > 0.5) fAt = t - 0.5; return { ...keep(f), steer: t < 0.5 ? -1 : fAt === null && t < 1.5 ? 1 : 0 }; }, (t) => { if (t > 0.5) fSlip = Math.max(fSlip, -slipOf(f)); });
+            cell.flick = (fAt === null ? '-' : +fAt.toFixed(2)) + '/' + deg(fSlip) + '°';
+            row[kmh0] = cell;
+          }
+          {
+            const c = mk(type); c.vx = 100 / 3.6; const y0 = c.yaw;
+            let tGo = null, tStraight = null, maxS = 0;
+            run(c, 5, (t) => {
+              const sl = slipOf(c);
+              if (tGo === null && c.drift > 0.5) tGo = t;
+              if (tGo !== null && t > tGo + 0.3 && tStraight === null && Math.abs(sl) < 5 / 57.3) tStraight = t - tGo - 0.3;
+              const steer = tGo === null || t < tGo + 0.3 ? 1 : tStraight === null ? Math.sign(sl) : 0;
+              return { ...keep(c), steer };
+            }, () => { maxS = Math.max(maxS, Math.abs(slipOf(c))); });
+            row.catch = { tailGoes: tGo === null ? 'never' : +tGo.toFixed(2), toStraight: tStraight === null ? 'never' : +tStraight.toFixed(2), maxSlip: deg(maxS), turned: deg(-(c.yaw - y0)), kmh: Math.round(c.speed * 3.6) };
           }
           out[type] = row;
         }
         fx.surfaceAt = surf;
         return out;
       })()`));
-      for (const [k, v] of Object.entries(r)) console.log('[t] handling', k, JSON.stringify(v));
+      for (const [k, v] of Object.entries(r)) for (const [s, x] of Object.entries(v)) console.log('[t] handling', k, s, JSON.stringify(x));
     },
     // Slides (feature roligare_bilkorning), simulated off-screen like physics: per type, a handbrake
     // flick at 50 km/h and then full throttle, no steering (how long the slide holds after the
@@ -553,6 +583,109 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, fps, OUT, errors = [
       if (!said2.length) fail('Ove said nothing after the donut');
       await shot('driftshot_5_marks');
       await ev(() => { delete __game.loop; });
+    },
+    // Winter roads at speed with real keys (feature fixa_bilen), the Saab (TYPE= for another).
+    // 1. An evasive swerve at ~95 km/h on the northern ring road (z = -280): A 0.35 s, D 0.5 s, then a
+    //    bot keeps the lane (counter-steering by the heading): the tail wiggles; it must stay on the
+    //    asphalt + sidewalk, above 40 km/h, and be straight (under 5°) within 2 s.
+    // 2. Into the junction at (40, -40) at ~60 km/h without the handbrake (like driftshot's, which uses
+    //    Space): off the throttle, A from x ~ 14 until the tail lets go (car.loose), then W with A / D holding the slip
+    //    at 25-45° until the car travels down the cross street, D to catch it, away. Must slide, must
+    //    leave down the cross street. And no AI car's car.drift ever leaves 0 (AI handling is untouched).
+    async speedslide() {
+      const type = process.env.TYPE || 'saab900';
+      const fail = (m) => { console.log('[t] FAIL', m); errors.push('speedslide: ' + m); };
+      const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+      await ev((type) => {
+        const g = __game;
+        for (const o of [...g.cars]) if (!o.name && (Math.abs(o.z + 280) < 16 || Math.hypot(o.x - 40, o.z + 40) < 90)) g.removeCar(o);
+        return import('./src/actors/car.js').then(({ Car }) => {
+          const c = g.addCar(new Car(type, { color: 0x6e8294 }));
+          c.place(-262, -280 + 2.75, Math.PI / 2);
+          g.enterCar(c);
+          g.cam.yaw = Math.PI / 2; g.cam.snapNext = true;
+          // every frame: the player's slide, and the most any AI car has slid
+          window.__ss = { log: [], ai: 0 };
+          const L = g.loop;
+          g.__ssLoop = L;
+          g.loop = function (t) {
+            L.call(this, t);
+            const p = g.playerCar;
+            // (the slip angle from the velocity: car.slip is only set in a slide)
+            if (p) window.__ss.log.push([performance.now(), p.drift || 0, Math.atan2(p.vx * -Math.cos(p.yaw) + p.vz * Math.sin(p.yaw), p.vx * Math.sin(p.yaw) + p.vz * Math.cos(p.yaw)), p.x, p.z, p.yaw, p.speed, p.loose ? 1 : 0]);
+            for (const o of g.cars) if (o !== p && o.drift) window.__ss.ai = Math.max(window.__ss.ai, o.drift);
+          };
+          window.__said = [];
+          const S = g.say;
+          g.say = function (t, text, secs) { if (t === g.player) window.__said.push(text); return S.call(this, t, text, secs); };
+        });
+      }, type);
+      await frames(20);
+      const st = () => ev(() => { const c = __game.playerCar; return { x: +c.x.toFixed(1), z: +c.z.toFixed(1), kmh: +(c.speed * 3.6).toFixed(0), yaw: +c.yaw.toFixed(3), slip: +((c.slip || 0) * 57.3).toFixed(0), drift: +(c.drift || 0).toFixed(2), loose: !!c.loose }; });
+      const keys = new Set();
+      const setKeys = async (want) => { for (const k of [...keys]) if (!want.includes(k)) { await page.keyboard.up(k); keys.delete(k); } for (const k of want) if (!keys.has(k)) { await page.keyboard.down(k); keys.add(k); } };
+      // keep a lane: heading `yaw0`, `off` m to the right of the lane (A brings it back), up to `kmh`
+      const lane = (s, yaw0, off, kmh) => { const e = (yaw0 - s.yaw) + clampN(off * 0.06, -0.25, 0.25); return [s.kmh < kmh ? 'KeyW' : null, e > 0.03 ? 'KeyA' : e < -0.03 ? 'KeyD' : null].filter(Boolean); };
+      const ring = async (untilX, kmh) => { let s; for (let k = 0; k < 900; k++) { s = await st(); if (s.x > untilX) break; await setKeys(lane(s, Math.PI / 2, s.z - (-280 + 2.75), kmh)); await frames(1); } return s; };
+      const span = async (from, fn) => ev(({ from }) => { const a = window.__ss.log.filter((r) => r[0] >= from); let off = 0, minKmh = 1e9, maxSlip = 0, loose = 0, last = null; for (let i = 1; i < a.length; i++) { const [t, d, sl, x, z, , v, lo] = a[i]; maxSlip = Math.max(maxSlip, Math.abs(sl)); minKmh = Math.min(minKmh, v * 3.6); if (lo) loose += (t - a[i - 1][0]) / 1000; if (Math.abs(sl) > 5 / 57.3) last = t; } return { maxSlip: Math.round(maxSlip * 57.3), minKmh: Math.round(minKmh), looseSec: +loose.toFixed(2), lastSlipAt: last }; }, { from });
+      // 1. the swerve
+      const s0 = await ring(-60, 96);
+      console.log('[t] speedslide swerve from', JSON.stringify(s0));
+      const t1 = await ev(() => performance.now());
+      await setKeys(['KeyW', 'KeyA']); await sleep(350);
+      await setKeys(['KeyW', 'KeyD']); await sleep(500);
+      let worst = 0;
+      const tb = Date.now();
+      await shot('speedslide_1_swerve');
+      while (Date.now() - tb < 2500) { const s = await st(); worst = Math.max(worst, Math.abs(s.z + 280)); await setKeys(lane(s, Math.PI / 2, s.z - (-280 + 2.75), 96)); await frames(1); }
+      const sw = await span(t1);
+      sw.offCentre = +worst.toFixed(1);
+      sw.straightAfter = sw.lastSlipAt === null ? 0 : +((sw.lastSlipAt - t1) / 1000 - 0.85).toFixed(2);
+      delete sw.lastSlipAt;
+      console.log('[t] speedslide swerve', JSON.stringify(sw), JSON.stringify(await st()));
+      if (sw.offCentre > 5.5 + 3.5) fail('the swerve left the road: ' + sw.offCentre + ' m off the centre line');
+      if (sw.minKmh < 40) fail('the swerve slowed to ' + sw.minKmh + ' km/h');
+      if (sw.straightAfter > 2) fail('the swerve was still sliding ' + sw.straightAfter + ' s after the keys');
+      // 2. into the junction at (40, -40): placed on Solrosvägen eastbound (like driftshot), up to ~65 km/h
+      await setKeys([]);
+      await ev(() => { const g = __game, c = g.playerCar; c.place(-60, -40 + 2.75, Math.PI / 2); g.cam.yaw = Math.PI / 2; g.cam.snapNext = true; g.slideSaidAt = -1e9; window.__said.length = 0; });
+      await frames(10);
+      let s;
+      for (let k = 0; k < 900; k++) { s = await st(); if (s.x > 13) break; await setKeys(lane(s, Math.PI / 2, s.z - (-40 + 2.75), 60)); await frames(1); }
+      console.log('[t] speedslide junction entry', JSON.stringify(s));
+      const t2 = await ev(() => performance.now());
+      await setKeys(['KeyA']);
+      let tGo = null;
+      const ta = Date.now();
+      while (Date.now() - ta < 2000) { s = await st(); if (s.drift > 0.5) { tGo = (Date.now() - ta) / 1000; break; } await frames(1); }
+      console.log('[t] speedslide junction: the tail goes', tGo === null ? 'never' : 'after ' + tGo.toFixed(2) + ' s of A', JSON.stringify(s));
+      if (tGo === null) fail('the tail never let go turning into the junction off the throttle');
+      else if (!s.loose) fail('the junction slide was not a loose one (car.loose)');
+      // hold it: W, A into it below 25°, D past 45°, until the path heads down the cross street (-z: yaw - slip ~ pi)
+      let shotTaken = false;
+      for (let k = 0; k < 300; k++) {
+        s = await st(); const sl = s.slip / 57.3;
+        if (!shotTaken && Math.abs(s.slip) > 20) { await page.screenshot({ path: OUT + '/speedslide_2_junction.png' }); shotTaken = true; console.log('[t] speedslide sideways', JSON.stringify(s)); }
+        if (s.yaw - sl > Math.PI - 0.3 || s.drift < 0.05) break;
+        await setKeys(['KeyW', sl < 0.44 ? 'KeyA' : sl > 0.78 ? 'KeyD' : null].filter(Boolean));
+        await frames(1);
+      }
+      for (let k = 0; k < 120; k++) { s = await st(); if (Math.abs(s.slip) < 5) break; await setKeys(['KeyW', s.slip > 0 ? 'KeyD' : 'KeyA']); await frames(1); }
+      console.log('[t] speedslide junction caught', JSON.stringify(s));
+      const tc = Date.now() + 1500;
+      while (Date.now() < tc) { s = await st(); await setKeys(lane(s, Math.PI, (s.x - (40 - 2.75)), 50)); await frames(1); }
+      await setKeys([]);
+      const end = await st(), ju = await span(t2);
+      delete ju.lastSlipAt;
+      console.log('[t] speedslide junction', JSON.stringify(ju), 'end', JSON.stringify(end));
+      await shot('speedslide_3_away');
+      if (!(Math.abs(end.x - 40) < 9 && end.z < -55)) fail('did not leave the junction down the cross street: ' + JSON.stringify(end));
+      await frames(30);
+      const said = await ev(() => window.__said.splice(0));
+      console.log('[t] Ove:', JSON.stringify(said));
+      const ai = await ev(() => { const g = __game; g.loop = g.__ssLoop; return window.__ss.ai; });
+      console.log('[t] speedslide AI cars: the most any slid', ai);
+      if (ai) fail('an AI car slid (car.drift ' + ai + ')');
     },
     // Reversing with a släpkärra: speed cap, straight-line drift, a steering tap, the reversing light.
     async trailer() {

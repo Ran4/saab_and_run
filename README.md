@@ -72,16 +72,23 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   att se att den verkligen är stängd. En stängd port släpper varken in eller ut Saaben, och det står
   i bilen när du kör fram till den. Porten går inte igen om en bil står i vägen. Den står öppen från
   början, och spelet kommer ihåg hur du lämnade den.
-- **Köra på vinterväg.** Det är halt ute: i hög fart ger däcken mindre, mest i de bakhjulsdrivna
-  bilarna (Volvo 240 och 740, BMW:n, skåpbilen, bussen och sopbilen), och en kort tryckning på ratten
-  svänger mjukt. **Sladd:** dra i handbromsen (Mellanslag) med ratten åt något håll, så släpper
-  bakvagnen, och sladden håller i sig när du släpper handbromsen. Ratten bestämmer hur snett bilen
-  står: åt samma håll som svängen blir vinkeln större, åt andra hållet (motstyrning) rätar bilen upp
-  sig. Gasen gör olika i olika bilar. I en bakhjulsdriven (en 240!) håller gasen sladden vid liv, och
-  du får motstyra dig ur den. I en framhjulsdriven (Saaben, Golfen) drar gasen bilen rak, så där
-  släpper du gasen för att sladda längre. Audin ligger mittemellan. Handbroms, gas och fullt
-  rattutslag när bilen nästan står still: bilen snurrar runt på stället (en bakhjulsdriven kring
-  framaxeln, Saaben kring bakaxeln). Ove har en åsikt efteråt.
+- **Köra på vinterväg.** Det är halt ute, och i fart (från ungefär 30 km/h, fullt ut från 80) släpper
+  bakvagnen före fronten. Ratten tar skarpt, och bilen vill gärna svänga runt mer än du bett om.
+  Håller du ratten länge i en sväng kommer bakvagnen ut och bilen sladdar av sig själv. Det går
+  fortare om du släpper gasen i svängen. I de bakhjulsdrivna bilarna (Volvo 240 och 740, BMW:n,
+  skåpbilen, bussen och sopbilen) räcker det att gasa, och gasen håller sedan sladden vid liv. Saaben
+  och Golfen ligger stadigare med gasen i botten och drar sig själva raka när du släpper ratten. Fånga
+  sladden genom att styra åt andra hållet (motstyra). Trampar du på bromsen låser hjulen (bilarna har
+  inget ABS): bilen glider rakt fram i sin bana i stället för att vrida sig, och en sladd rätar upp
+  sig. En sväng åt ena hållet och sedan snabbt åt det andra (en skandinavisk pendelsväng) slänger ut
+  bakvagnen åt andra hållet. **Sladd med handbromsen:** dra i handbromsen (Mellanslag) med ratten åt
+  något håll, så släpper bakvagnen, och sladden håller i sig när du släpper handbromsen. Ratten
+  bestämmer hur snett bilen står: åt samma håll som svängen blir vinkeln större, åt andra hållet
+  (motstyrning) rätar bilen upp sig. Gasen gör olika i olika bilar. I en bakhjulsdriven (en 240!)
+  håller gasen sladden vid liv, och du får motstyra dig ur den. I en framhjulsdriven (Saaben, Golfen)
+  drar gasen bilen rak, så där släpper du gasen för att sladda längre. Audin ligger mittemellan.
+  Handbroms, gas och fullt rattutslag när bilen nästan står still: bilen snurrar runt på stället (en
+  bakhjulsdriven kring framaxeln, Saaben kring bakaxeln). Ove har en åsikt efteråt.
 - **Tutan** (**T** eller **H**, handkontrollens L3 eller RB). Varje bilmärke har sin egen tuta, och
   stan reagerar. Den som står framför bilen får en chock: händerna i luften, ett skrik och ett skutt
   ut ur vägen (en pensionär kliver undan så fort det går, Parvaneh också: hon är gravid). Sedan

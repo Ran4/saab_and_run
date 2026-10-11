@@ -38,11 +38,24 @@ for (const [k, v] of Object.entries(CAR_ALIASES)) CAR_TYPES[k] = CAR_TYPES[v];
 // tops out at revMax (4.5 m/s, 16 km/h).
 export const PLAYER = { speed: 1.25, accel: 0.88, brake: 1.15, aLat: 9.5 };
 const AI_ACCEL = 1.15; // AI drivers are not shy with the pedal
-// Winter roads at speed (the player's car): from hs0 (43 km/h) to hs1 (115 km/h) the tyres give less
-// sideways (`fall`: a rear-driven car with its light tail most), and the wheel and the yaw build up
-// more slowly (`steerIn`, `yawIn` instead of 7 /s) but settle at the old rate when the key is let go:
-// a held key at 100 km/h makes a long curve instead of a twitch, and nothing keeps turning after it.
-export const WINTER = { hs0: 12, hs1: 32, fall: { fwd: 0.18, awd: 0.18, rwd: 0.28 }, steerIn: 4.5, yawIn: { fwd: 4, awd: 4, rwd: 3.2 } };
+// Winter roads at speed (the player's car, not towing; feature fixa_bilen): from hs0 (32 km/h) to
+// hs1 (79 km/h) the rear lets go before the front. Asked for more than the tyres give, the car turns
+// harder than its path instead of understeering: its yaw reaches `ov` x the grip limit (by drivetrain,
+// [on the throttle, off it]: the throttle swings a rear-driven tail out, lifting off lightens a
+// front-driven car's rear; a full brake locks the wheels - no ABS in these cars - and the car slides
+// along its path: `brake` [0] instead, and in a slide it pulls the car straight at [1] per rad of
+// slip, so stamping on the brake always calms it down; `kRamp`: how fast the old understeer gives way
+// with hs), while the tyres hold the path to aLat x `grip` ([at hs0, at hs1], plus `pull` x the
+// throttle x (1 - hs): driven front wheels pull a car along its path at moderate speed), so the tail
+// steps out. Past `enter` rad of slip ([at hs0, at hs1]: not the slip of an ordinary tight corner at
+// 40 km/h; slipping the way the car turns and the driver steers, so a knock never starts one) the
+// slide (SLIDE below) takes over at `take` /s (car.loose), and the car wants to come round until it
+// is caught; in such a slide the tyres give `slideA` m/s² sideways instead of SLIDE.a, so it stays
+// sideways and scrubs speed but follows the road. `lock`: what the player's full lock asks for at
+// speed (x the grip limit; 1.35 below hs0). A steer against the turn of the last ~0.5 s (the
+// Scandinavian flick) adds `flick` to `ov` and takes `flickGrip` of the grip for as long as the key is
+// held (fading in ~0.7 s): the tail swings out the other way.
+export const WINTER = { hs0: 9, hs1: 22, ov: { fwd: [1.2, 1.6], awd: [1.45, 1.55], rwd: [1.8, 1.55] }, grip: [1.12, 0.85], pull: { fwd: 0.4, awd: 0.2, rwd: 0 }, kRamp: 1, slideA: 8.5, brake: [1.05, 1.5], flick: 1, flickGrip: 0.5, enter: [0.24, 0.14], take: 6, lock: 2.1 };
 // The slide (car.drift 0..1). The handbrake (above 2 m/s forwards, not towing) lets the rear go, and
 // the slide holds after it is let go: a sliding tyre gives a steady `a` m/s² sideways (x 0.62 on
 // snow) instead of a grip that grows with the slip, so the slip angle stays where it is unless
@@ -594,6 +607,9 @@ export class Car {
     this.drift = 0;         // the slide (SLIDE): 0 = the tyres grip, 1 = sliding
     this.slip = 0;          // the slip angle in a slide (rad; + = moving to the right of the nose: a slide in a left turn)
     this.pivot = 0;         // a donut (handbrake + throttle + steering at a crawl), 0..1
+    this.swing = 0;         // the yaw rate of the last ~0.5 s on winter roads at speed (WINTER.flick)
+    this.flick = 0;         // a steer against that swing, 0..1 (the Scandinavian flick)
+    this.loose = false;     // the slide was started by the tail at speed, not by the handbrake (WINTER)
     this.hp = spec.hp;
     this.dead = false;
     this.air = false;
@@ -718,7 +734,8 @@ export class Car {
     this.y = groundAt(x, z, 0.2, 0.6);
     this.air = false;
     this.steerAngle = this.steerShow = 0;
-    this.drift = this.slip = this.pivot = 0;
+    this.drift = this.slip = this.pivot = this.swing = this.flick = 0;
+    this.loose = false;
     this.updateObb();
     if (this.trailer) this.trailer.reset();
   }
@@ -810,17 +827,37 @@ export class Car {
       const thr = driven ? c.throttle : 0, drive = s.drive || 'fwd';
       const vr0 = vr;
       const grip = (hb ? 1.6 : s.grip) * gLat;
+      // Grip limit: the tyres give at most aLat sideways (the yaw is held to it below).
+      const aLat = (player ? PLAYER.aLat : 9) * gLat * (s.tall ? 0.8 : 1);
+      // Winter roads at speed (the player): the tail lets go first (WINTER above).
+      const hs = player && driven && !this.trailer ? smooth01((Math.hypot(vf, vr) - WINTER.hs0) / (WINTER.hs1 - WINTER.hs0)) : 0;
+      const wLim = aLat / Math.max(2, Math.abs(vf));
+      // a steer the other way than the last ~0.5 s's turn (the Scandinavian flick): the tail swings,
+      // for as long as the key is held (fading in ~0.7 s)
+      const flick = this.flick = c.steer && hs > 0 ? Math.max(clamp((c.steer * this.swing) / (0.6 * wLim), 0, 1), this.flick - 1.5 * dt) : 0;
       if (Math.abs(vr) > 2.2) this.skidAmt = Math.max(this.skidAmt, Math.min(1, (Math.abs(vr) - 2.2) / 5));
-      vr *= Math.exp(-grip * dt);
+      if (hs > 0) {
+        // the tyres hold the path to aLat x WINTER.grip (x1.12 at the bottom of the range, where the
+        // yaw is held to ~1.05x), more on a front-driven car's throttle (WINTER.pull)
+        const dv = vr * (1 - Math.exp(-grip * dt)), lim = aLat * (WINTER.grip[0] + (WINTER.grip[1] - WINTER.grip[0]) * hs + WINTER.pull[drive] * thr * (1 - hs)) * (1 - WINTER.flickGrip * flick) * dt;
+        vr -= Math.sign(dv) * Math.min(Math.abs(dv), lim);
+      } else vr *= Math.exp(-grip * dt);
       // A donut: handbrake, throttle and steering at a crawl (the burnout above, turned).
       const pivotOn = hb && thr > 0.5 && Math.abs(c.steer) > 0.3 && Math.abs(vf) < SLIDE.pivotV && !this.trailer;
       const P = this.pivot = pivotOn ? Math.min(1, this.pivot + 4 * dt) : Math.max(0, this.pivot - 6 * dt);
       let D = this.drift;
-      if ((hb && vf > 2 && !this.trailer) || P > 0) D = Math.max(P, Math.min(1, D + 8 * dt));
+      if ((hb && vf > 2 && !this.trailer) || P > 0) { D = Math.max(P, Math.min(1, D + 8 * dt)); this.loose = false; }
+      else if (hs > 0 && vf > 0) {
+        // at speed a tail that has stepped out (slipping the way the car turns, and the way the driver
+        // steers: a knock from another car doesn't start one) starts a slide by itself
+        const sl = Math.atan2(vr, vf);
+        if (Math.abs(sl) > WINTER.enter[0] + (WINTER.enter[1] - WINTER.enter[0]) * hs && sl * this.w > 0 && c.steer * sl < 0) { if (!D) this.loose = true; D = Math.min(1, D + WINTER.take * dt); }
+      }
       let slip = 0, wDrift = 0;
       if (D > 0) {
-        // a sliding tyre: a steady force sideways, not a grip that grows with the slip
-        vr += (vr0 - Math.sign(vr0) * Math.min(Math.abs(vr0), SLIDE.a * gLat * dt) - vr) * D;
+        // a sliding tyre: a steady force sideways, not a grip that grows with the slip (in a slide the
+        // tail started by itself at speed nearly the grip's, WINTER.slideA: it follows the road)
+        vr += (vr0 - Math.sign(vr0) * Math.min(Math.abs(vr0), (this.loose ? WINTER.slideA : SLIDE.a) * gLat * dt) - vr) * D;
         const v = Math.hypot(vf, vr), b0 = Math.atan2(vr0, vf0);
         slip = v > 0.5 ? Math.atan2(vr, vf) : 0;
         const ab = Math.abs(slip);
@@ -837,37 +874,39 @@ export class Car {
         else {
           rate = (into > 0 ? into * (ab < SLIDE.hold ? SLIDE.in : SLIDE.past) : into * SLIDE.counter) * spF;
           const push = SLIDE.push[drive];
-          rate += Math.min(ab, SLIDE.pushMax) * (push[1] + (push[0] - push[1]) * thr);
+          rate += Math.min(ab, SLIDE.pushMax) * (push[1] + (push[0] - push[1]) * thr - (driven && vf > 0 ? c.brake * WINTER.brake[1] : 0));
         }
         wDrift = wVel + sg * rate;
         if (v > 3) this.skidAmt = Math.max(this.skidAmt, D * clamp((ab - 0.08) * 2.2, 0, 1) * Math.min(1, v / 8));
       }
       this.drift = D; this.slip = slip;
-      // Winter roads at speed (the player): the tyres give less, the yaw builds up more slowly.
-      const hs = player ? smooth01((Math.abs(vf) - WINTER.hs0) / (WINTER.hs1 - WINTER.hs0)) : 0;
-      const pLat = PLAYER.aLat * (1 - hs * WINTER.fall[drive]);
+      if (!D) this.loose = false;
       let maxSteer = s.steer / (1 + Math.abs(vf) / 15);
       // keyboard steering is all or nothing: for the player, full lock at speed asks for ~1.35x
       // what the tyres give, so an ordinary junction turn understeers a touch instead of squealing
-      if (player && !c.handbrake) maxSteer = Math.min(maxSteer, Math.atan((1.35 * pLat * gLat * s.wb) / Math.max(1, vf * vf)));
+      // (on winter roads at speed more: WINTER.lock, so that the tail can come round)
+      if (player && !c.handbrake) maxSteer = Math.min(maxSteer, Math.atan(((1.35 + (WINTER.lock - 1.35) * hs) * PLAYER.aLat * gLat * s.wb) / Math.max(1, vf * vf)));
       const wantSteer = driven ? c.steer * maxSteer : 0;
-      const steerIn = Math.abs(wantSteer) > Math.abs(this.steerAngle) && wantSteer * this.steerAngle >= 0;
-      this.steerAngle = damp(this.steerAngle, wantSteer, player ? (steerIn ? 7 + (WINTER.steerIn - 7) * hs : 7) : 9, dt);
+      this.steerAngle = damp(this.steerAngle, wantSteer, player ? 7 : 9, dt);
       let targetW = (-vf * Math.tan(this.steerAngle)) / s.wb;
-      // Grip limit: the tyres give at most aLat sideways; asking for more just understeers (and squeals).
-      const aLat = (player ? pLat : 9) * gLat * (s.tall ? 0.8 : 1);
-      const wLim = aLat / Math.max(2, Math.abs(vf));
+      // Asking for more than the grip limit understeers (and squeals); on winter roads at speed the
+      // player's car turns harder than its path instead (WINTER.ov), and the tail steps out.
       if (hb) targetW *= 1.55;
       else if (Math.abs(targetW) > wLim) {
         const over = Math.abs(targetW) / wLim;
-        targetW = Math.sign(targetW) * wLim * Math.min(1.12, 1 + (over - 1) * 0.15);
-        if (Math.abs(vf) > 6) this.skidAmt = Math.max(this.skidAmt, clamp((over - 1.6) * 0.75, 0, 0.8));
+        let cap = 1.12, k = 0.15;
+        if (hs > 0) {
+          const o = WINTER.ov[drive], brk = driven ? c.brake : 0;
+          const ov = (o[1] + (o[0] - o[1]) * thr + WINTER.flick * flick) * (1 - brk) + WINTER.brake[0] * brk;
+          cap += (ov - cap) * hs; k += (1 - k) * Math.min(1, WINTER.kRamp * hs);
+        }
+        targetW = Math.sign(targetW) * wLim * Math.min(cap, 1 + (over - 1) * k);
+        if (Math.abs(vf) > 6) this.skidAmt = Math.max(this.skidAmt, clamp((over - 1.6) * 0.75, 0, 0.8) * (1 - hs));
         // understeer scrubs a little speed
-        vf -= Math.sign(vf) * Math.min(Math.abs(vf), (over - 1) * 1.2 * (1 - D) * dt);
+        vf -= Math.sign(vf) * Math.min(Math.abs(vf), (over - 1) * 1.2 * (1 - D) * (1 - 0.6 * hs) * dt);
       }
       if (hb && Math.abs(vf) > 5) this.skidAmt = Math.max(this.skidAmt, 0.55);
       let wK = hb ? 4 : 7;
-      if (hs > 0 && !hb && Math.abs(targetW) > Math.abs(this.w) && targetW * this.w >= 0) wK += (WINTER.yawIn[drive] - wK) * hs;
       if (D > 0) { targetW += (wDrift - targetW) * D; wK += (SLIDE.wK - wK) * D; }
       if (P > 0) {
         // the donut: the yaw from the steering, the car swinging round one axle (its point at
@@ -879,6 +918,7 @@ export class Car {
         this.skidAmt = Math.max(this.skidAmt, P);
       }
       this.w = damp(this.w, targetW, wK, dt);
+      this.swing = hs > 0 ? damp(this.swing, this.w, 2, dt) : 0;
       // the front wheels in a slide point where the car is going (the counter-steer you see)
       this.steerShow = D > 0 ? this.steerAngle + (clamp(slip * 0.9 + c.steer * 0.15, -0.62, 0.62) - this.steerAngle) * D * (1 - P) : this.steerAngle;
     } else {

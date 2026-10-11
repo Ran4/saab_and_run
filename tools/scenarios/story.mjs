@@ -13,7 +13,8 @@
 //           Škoda must close to < 40 m by itself within 25 s (CHASER_AWAY=1: spawned 70-140 m off,
 //           facing away from Ove - it goes round the block, up to ~470 m: within 35 s).
 //   m5race  day 5's race driven with keys only (W/A/S/D, a lane-following bot that brakes for the
-//           corners); must win. RACE_VMAX=22 caps it at ~80 km/h (a careful driver).
+//           corners); must win. RACE_VMAX=22 caps it at ~80 km/h (a careful driver), RACE_VC=1.6
+//           takes the corners 1.6x faster (a hasty one, who loses even with the old physics).
 //   m4cat   day 4's cat with keys: walk up (it bolts), stride after it with Shift for 6 s (it must
 //           not be caught in the first 5 s), then stand still: it comes to Ove.
 //   Phase 4: every intro / outro / UPPDRAG KLART shot (story, m1..m7) is checked as rendered (cineCheck:
@@ -895,7 +896,8 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
   };
 
   // Day 5's race with keys: a lane-following bot (pure pursuit on the right-hand lane through the
-  // three corners, full throttle on the straights up to RACE_VMAX, braking for each corner).
+  // three corners, full throttle on the straights up to RACE_VMAX, braking for each corner, to
+  // RACE_VC x the careful corner speed).
   sc.m5race = async () => {
     await fresh('&mission=4');
     await startMission();
@@ -917,8 +919,9 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
       if (i < nodes.length - 1) { const r2 = right(b, nodes[i + 1]); pts.push({ x: b.x + (r1.x + r2.x) * LANEW, z: b.z + (r1.z + r2.z) * LANEW, corner: true }); }
       else pts.push({ x: b.x, z: b.z });   // (the finish is in the lane already)
     }
-    // Corner speed: right turns are tight, left ones wider.
-    for (let i = 1; i < pts.length - 1; i++) { const a = pts[i - 1], b = pts[i], c = pts[i + 1]; const cr = (b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x); pts[i].vc = cr > 0 ? 7.5 : 9; }
+    // Corner speed: right turns are tight, left ones wider (RACE_VC=1.6: a hasty driver, x the speed).
+    const VC = +(process.env.RACE_VC || 1);
+    for (let i = 1; i < pts.length - 1; i++) { const a = pts[i - 1], b = pts[i], c = pts[i + 1]; const cr = (b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x); pts[i].vc = (cr > 0 ? 7.5 : 9) * VC; }
     await log('race route', JSON.stringify(pts.map((p) => [Math.round(p.x), Math.round(p.z), p.vc || 0])));
     await until(() => __game.missions.stage?.phase === 'race', 10000);
     const t0 = await ev(() => __game.time);

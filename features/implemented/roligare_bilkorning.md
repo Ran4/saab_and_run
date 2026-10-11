@@ -6,6 +6,9 @@ Bilkörningen är OK men inte grejt.
 
 1. vid högre hastighet överstyr de liite för mycket. Minska det något, och speciellt för bakhjulsdrivna bilar.
    Det är halt ute liksom!
+
+   (Felskrivet: det skulle vara tvärtom. Bilarna understyrde och var för stabila i fart. Rättat i
+   [fixa_bilen.md](fixa_bilen.md).)
 2. Handbromsning är kul, men när man släpper så får bilen fäste direkt igen, går inte riktigt att sladda.
    En 240 man inte kan sladda? kom igen!
 
@@ -15,29 +18,21 @@ Bilarna har fått en drivlina: **bakhjulsdrivna** är Volvo 240 och 740, BMW:n, 
 sopbilen. Audin har **fyrhjulsdrift**. Resten är **framhjulsdrivna**: Saaben, Golfen, Škodan, kombin
 och taxin. Drivlinan avgör hur bilen beter sig i hög fart och vad gasen gör i en sladd.
 
-### 1. Mindre överstyrning i hög fart
+### 1. Mindre överstyrning i hög fart (borttaget, gick åt fel håll)
 
-Bara spelarens bil påverkas. Datorns förare kör precis som förut, så loppet och jakten är som de var.
+Det som gjordes här är borttaget i [fixa_bilen.md](fixa_bilen.md), eftersom önskemålet var
+felskrivet. I hög fart gav däcken upp till 18 % mindre i sidled (28 % i bakhjulsdrivna), och
+ratten tog mjukare: ett kort tryck i 100 km/h vred bilen 3,8° i stället för 6,5°.
 
-- **Det är halt ute.** Från ungefär 45 km/h ger däcken allt mindre i sidled, fullt ut vid 115 km/h:
-  18 % mindre i fram- och fyrhjulsdrivna bilar, 28 % mindre i bakhjulsdrivna.
-- **Ratten tar mjukare.** I hög fart vrids hjulen in och bilen börjar svänga långsammare. Släpper man
-  ratten rätar bilen upp sig lika snabbt som förut, så den fortsätter inte att svänga efteråt.
-- **Mätt** (Saaben förut → nu, bakhjulsdrivna inom parentes):
-
-  | | förut | nu |
-  |---|---|---|
-  | kort tryck på ratten (0,25 s) i 100 km/h | bilen vrids 6,5° | 3,8° (3,2°) |
-  | samma i 125 km/h | 5,2° | 2,8° (2,2°) |
-  | hålla ratten i 100 km/h | 1,02 g | 0,86 g (0,77 g) |
-  | tid till 63 % av svängen i 100 km/h | 0,22 s | 0,35 s (0,40 s) |
-
-  I 60 km/h är det nästan som förut (10,2° mot 10,9°).
+Nu gäller det omvända. I fart släpper bakvagnen före fronten, ratten tar skarpt (8–10° för samma
+tryck) och bilen sladdar av sig själv, mest de bakhjulsdrivna. Konstanten heter fortfarande
+`WINTER`. Datorns förare kör fortfarande precis som förut.
 
 ### 2. Sladd som håller i sig
 
 **Handbromsen** (Mellanslag, handkontrollens A) i över 7 km/h framåt släpper bakvagnen, och sladden
-fortsätter efter att man släppt handbromsen. I en sladd tar däcken en jämn kraft i sidled i stället
+fortsätter efter att man släppt handbromsen. (Sedan `fixa_bilen` kan en sladd i fart också börja av
+sig själv, utan handbroms. Den följer samma regler, men däcken greppar hårdare i sidled.) I en sladd tar däcken en jämn kraft i sidled i stället
 för att gripa tag, så bilen står kvar lika snett tills föraren gör något:
 
 - **Ratten** bestämmer vinkeln. Styr man åt samma håll som svängen ökar vinkeln, men bara upp till
@@ -93,7 +88,8 @@ Kontrolltabellen i spelet och README:n beskriver sladden.
 
   Bilder finns i `out/driftshot_*.png`. Saaben, Golfen, Audin och BMW:n klarar det också.
 
-Dessutom gick dessa igenom utan fel:
+Dessutom gick dessa igenom utan fel (med den här featurens version av punkt 1; efter `fixa_bilen`
+finns nya siffror där):
 - `story`: alla sju dagarna, slutar på `#7 idle` och `no errors`.
 - `m1`: släpkärran backas in med riktiga knapptryck.
 - `m5race`: vunnet på 26,6 s, Anders 58 m efter (förut 26,9 s och 76 m). Med `RACE_VMAX=22` på
