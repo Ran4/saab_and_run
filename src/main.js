@@ -109,6 +109,14 @@ const CHATTER_AFTER = {
   vitskjorta: [6, ['Vi ses, Ove. Vi har tid.', 'Underskriften är på väg. Den är på väg.']],
 };
 const OVE_REPLY = ['Hmpf.', 'Jaha.', 'Mm.', 'Jaså.', 'Nej.', 'Det får vi se.'];
+// What Ove says after a long slide in his car (car.drift, by make, else `default`) or a donut.
+const SLID = {
+  saab900: ['Framhjulsdrift. Saaben vet vart den ska.'],
+  volvo240: ['Volvo. Den kan inte ens köra rakt.'],
+  volvo740: ['Volvo. Den kan inte ens köra rakt.'],
+  default: ['Det där såg ingen.', 'Kommunen har inte sandat här.', 'Det var meningen.'],
+  donut: ['Kollar bara mönsterdjupet.', 'Det där såg ingen.'],
+};
 const OUCH = ['Aj!', 'Är du inte klok?!', 'Min höft!', 'Vad håller du på med?!', 'Jag ringer polisen!', 'Kör som folk!', 'Galning!', 'Hallå där!'];
 const GETUP = ['Jag ska anmäla dig.', 'Pensionärer i bil, alltså.', 'Min rygg...', 'Det här var inte okej.', 'Jag mår bra. Jag mår BRA.'];
 const CARJACK = ['Hallå! Min bil!', 'Den där gubben tog min bil!', 'Polis! Polis!', 'Men snälla! Jag ska till jobbet!'];
@@ -1357,6 +1365,7 @@ class Game {
     tickSky(this.time, camera.position);
     this.updateHud(dt);
     this.updateAudio(dt);
+    this.slideTalk(dt);
     this.recycleTraffic(dt);
     this.saveT = (this.saveT || 0) + dt;
     if (this.saveT > 30) { this.saveT = 0; this.save(); }
@@ -2259,6 +2268,24 @@ class Game {
     }
   }
 
+  // A slide of 1.6 s or more (or 2 s of donut) in the player's car: once it is over, Ove has
+  // something to say about it (at most every 40 s, never in a scene).
+  slideTalk(dt) {
+    const c = this.playerCar;
+    if (!c || c.dead || this.inDialog || this.freezeCar) { this.slideT = this.donutT = 0; return; }
+    if (c.pivot > 0.5) this.donutT = (this.donutT || 0) + dt;
+    else if (c.drift > 0.5 && Math.abs(c.slip) > 0.3 && c.speed > 4) this.slideT = (this.slideT || 0) + dt;
+    else if (c.drift < 0.05 && c.pivot < 0.05 && (this.slideT || this.donutT)) {
+      const donut = this.donutT >= 2, long = donut || this.slideT >= 1.6;
+      this.slideT = this.donutT = 0;
+      if (!long || this.time < (this.slideSaidAt ?? -1e9) + 40) return;
+      this.slideSaidAt = this.time;
+      const lines = donut ? SLID.donut : Math.random() < 0.5 && SLID[c.kind] ? SLID[c.kind] : SLID.default;
+      this.say(this.player, pick(lines), 2.2);
+      audio.talk(CHARS.ove.voice);
+    }
+  }
+
   updateAudio() {
     const c = this.playerCar;
     if (c && !c.dead) {
@@ -2272,6 +2299,11 @@ class Game {
           const fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx_;
           const bz = -c.spec.len / 2 + c.spec.wheelR + 0.4, bx = c.spec.wid / 2 - 0.14;
           for (const s of [-1, 1]) FX.skid(c.x + fx_ * bz + rx * bx * s, c.z + fz * bz + rz * bx * s, c.yaw, undefined, c.onSnow ? 'snow' : undefined);
+          // a real slide or a donut throws up spray (powder off the snow, salty mist off the asphalt)
+          if ((c.drift > 0.5 || c.pivot > 0.5) && c.skidAmt > 0.6 && (this.frame & 2)) {
+            const s = this.frame & 4 ? 1 : -1, wz = -c.spec.len / 2 + c.spec.wheelR + 0.5;
+            FX.dust(c.x + fx_ * wz + rx * bx * s, c.z + fz * wz + rz * bx * s, c.onSnow ? 2 : 1, 0.25);
+          }
         }
       }
     } else {

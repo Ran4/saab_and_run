@@ -615,3 +615,23 @@ Closed the cross-owner requests above and from the other handbacks:
   (shut kept; no field = open), day 3 with the door shut (door first, then the search). Shots
   out/garage_*.png.
 
+
+## Feature roligare_bilkorning: winter roads and slides (2026-10-11) — what changed
+
+The physics is car.js's (notes/cars.md, Physics: *Winter roads at speed*, *Slides*); main.js only
+reads `car.drift`, `car.slip` and `car.pivot`:
+- **Spray**: in `updateAudio`'s skid-mark block, a real slide or a donut (`drift` or `pivot` > 0.5,
+  `skidAmt` > 0.6) throws a puff of `FX.dust` from a rear wheel every 4th frame, alternating sides
+  (2 puffs on snow).
+- **Ove's comment** (`slideTalk`, from `update`): 1.6 s of slide (drift > 0.5, slip > 17°, > 4 m/s)
+  or 2 s of donut in the player's car; once it is over, a bubble from `SLID` (by make half the time:
+  the Saab "Framhjulsdrift. Saaben vet vart den ska.", the Volvos "Volvo. Den kan inte ens köra
+  rakt."; else "Det där såg ingen." / "Kommunen har inte sandat här." / "Det var meningen."; a donut
+  "Kollar bara mönsterdjupet." / "Det där såg ingen."). At most every 40 s, never in a dialogue or
+  with the car frozen. These are new Ove lines for the voicing feature.
+- Nothing else in main.js changed: the scenes still hold the car with brake + handbrake (the
+  handbrake only starts a slide above 2 m/s, so a car held at a stop never slides), and AI drivers
+  never pull the handbrake.
+- Scenarios (cars.mjs): `handling` and `drift` (off-screen numbers per type), `driftshot` (a 240 -
+  `TYPE=` another - through the junction at (40, -40) with real keys, a donut there, Ove's comments;
+  pushes 'driftshot: ...' errors).

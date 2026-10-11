@@ -205,7 +205,7 @@ Göteborg. Hon skrattade åt honom hela vägen."). All reachable without double 
 | WASD / pilar | gå | köra / styra |
 | Mus | titta | titta |
 | Shift | spring | |
-| Space | hoppa | handbroms |
+| Space | hoppa | handbroms (sladd; + gas + ratt: snurra på stället) |
 | E | prata, kliva in, garageporten, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll) |
 | J / klick | sparka (däck) | |

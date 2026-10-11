@@ -38,7 +38,7 @@ vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 | W A S D / pilar | gå | köra, styra (S backar när bilen står still) |
 | Mus | titta | titta |
 | Shift | spring | |
-| Mellanslag | hoppa (ett litet hopp) | handbroms |
+| Mellanslag | hoppa (ett litet hopp) | handbroms: sladden håller i sig när du släpper (se nedan); med gas och ratt snurrar bilen runt på stället |
 | E | prata, kliva in, öppna/stänga garageporten, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll, rutan nere, i krypfart) |
 | J / klick | sparka (på däcket) | |
@@ -66,6 +66,16 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   att se att den verkligen är stängd. En stängd port släpper varken in eller ut Saaben, och det står
   i bilen när du kör fram till den. Porten går inte igen om en bil står i vägen. Den står öppen från
   början, och spelet kommer ihåg hur du lämnade den.
+- **Köra på vinterväg.** Det är halt ute: i hög fart ger däcken mindre, mest i de bakhjulsdrivna
+  bilarna (Volvo 240 och 740, BMW:n, skåpbilen, bussen och sopbilen), och en kort tryckning på ratten
+  svänger mjukt. **Sladd:** dra i handbromsen (Mellanslag) med ratten åt något håll, så släpper
+  bakvagnen, och sladden håller i sig när du släpper handbromsen. Ratten bestämmer hur snett bilen
+  står: åt samma håll som svängen blir vinkeln större, åt andra hållet (motstyrning) rätar bilen upp
+  sig. Gasen gör olika i olika bilar. I en bakhjulsdriven (en 240!) håller gasen sladden vid liv, och
+  du får motstyra dig ur den. I en framhjulsdriven (Saaben, Golfen) drar gasen bilen rak, så där
+  släpper du gasen för att sladda längre. Audin ligger mittemellan. Handbroms, gas och fullt
+  rattutslag när bilen nästan står still: bilen snurrar runt på stället (en bakhjulsdriven kring
+  framaxeln, Saaben kring bakaxeln). Ove har en åsikt efteråt.
 - **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket

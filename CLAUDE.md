@@ -21,8 +21,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   story.mjs `story m1..m7 gate aftermath` plus the no-warp checks `m5race m7chase m4cat lotwalk
   hospdrive retry` and round 2's `giveup outrosmet flowercalls dusk camwall`, ui.mjs `uiportraits
   uitoasts uiabort uifavicon titlegone`, render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
-  (round 2: `wheelfaces trailersleep`), people.mjs (round 2: `pplanim pplcine`), world.mjs (round 2:
-  `wsame wcalls wvram wprops`).
+  (round 2: `wheelfaces trailersleep`; the slides: `handling drift driftshot`), people.mjs (round 2:
+  `pplanim pplcine`), world.mjs (round 2: `wsame wcalls wvram wprops`).
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has

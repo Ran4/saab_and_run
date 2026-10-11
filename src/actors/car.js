@@ -5,7 +5,7 @@
 import { THREE, realMesh, surfaceMaterial, MAT, camera, scene, renderer as gfxRenderer, composer, LIGHTING } from '../gfx.js';
 import { queryBlocks, obbVsBlock, obbVsObb, groundAt, topAt, RAMP } from '../world/collision.js';
 import { isRoad } from '../world/layout.js';
-import { clamp, damp, pick } from '../util.js';
+import { clamp, damp, pick, angleDiff } from '../util.js';
 import { fx as FX } from '../game/fx.js';
 import { carModel, snowCapGeometry, trackWheels, lightMaterial, glowMaterial, randomPlate, claimPlate, releasePlate, allocPlate, freePlate, plateGeometry, setWheelMaterials, CH, carsChanged, addRenderHook, makeWheelPools, MODEL_KEYS } from './carmodels.js';
 import { Trailer } from './trailer.js';
@@ -14,20 +14,21 @@ import { Trailer } from './trailer.js';
 // parked-then-driven cars get; the player's car gets PLAYER.speed x / PLAYER.accel x on top
 // (the Saab: 31 m/s x 1.25 = 139 km/h). bodyH is kept so that wheelR * 0.95 + bodyH = seat
 // height (the formula old main.js uses to seat people); use car.seatLocal() instead.
-const S = (o) => ({ brake: 8.5, grip: 9.2, steer: 0.56, revMax: 4.5, tall: false, ...o });
+// drive: the driven wheels ('fwd', 'rwd', 'awd'), which decide what the throttle does to a slide.
+const S = (o) => ({ brake: 8.5, grip: 9.2, steer: 0.56, revMax: 4.5, tall: false, drive: 'fwd', ...o });
 export const CAR_TYPES = {
   saab900: S({ name: 'Saab 900', model: 'saab900', maxSpeed: 31, accel: 5.2, grip: 9.6, steer: 0.58, mass: 1250, hp: 110, color: 0x1d2c4a }),
-  volvo240: S({ name: 'Volvo 240', model: 'volvo240', maxSpeed: 29, accel: 4.6, grip: 9.0, steer: 0.55, mass: 1330, hp: 125, solid: true }),
-  volvo740: S({ name: 'Volvo 740 kombi', model: 'volvo740', maxSpeed: 30, accel: 4.8, grip: 9.0, steer: 0.54, mass: 1400, hp: 125 }),
-  audi: S({ name: 'Audi A6', model: 'audi', maxSpeed: 35, accel: 6.2, grip: 10.2, steer: 0.55, mass: 1650, hp: 115, color: 0x2a2c30 }),
-  bmw: S({ name: 'BMW 5-serie', model: 'bmw', maxSpeed: 34, accel: 5.8, grip: 9.8, steer: 0.56, mass: 1500, hp: 115 }),
+  volvo240: S({ name: 'Volvo 240', model: 'volvo240', maxSpeed: 29, accel: 4.6, grip: 9.0, steer: 0.55, mass: 1330, hp: 125, solid: true, drive: 'rwd' }),
+  volvo740: S({ name: 'Volvo 740 kombi', model: 'volvo740', maxSpeed: 30, accel: 4.8, grip: 9.0, steer: 0.54, mass: 1400, hp: 125, drive: 'rwd' }),
+  audi: S({ name: 'Audi A6', model: 'audi', maxSpeed: 35, accel: 6.2, grip: 10.2, steer: 0.55, mass: 1650, hp: 115, color: 0x2a2c30, drive: 'awd' }),
+  bmw: S({ name: 'BMW 5-serie', model: 'bmw', maxSpeed: 34, accel: 5.8, grip: 9.8, steer: 0.56, mass: 1500, hp: 115, drive: 'rwd' }),
   skoda: S({ name: 'Škoda Octavia kombi', model: 'skoda', maxSpeed: 32, accel: 5.4, grip: 9.6, steer: 0.56, mass: 1400, hp: 110, color: 0xd2d2d0, solid: true }),
   golf: S({ name: 'Volkswagen Golf', model: 'golf', maxSpeed: 31, accel: 5.4, grip: 10.0, steer: 0.6, mass: 1200, hp: 100 }),
   kombi: S({ name: 'Kombi', model: 'kombi', maxSpeed: 30, accel: 4.9, grip: 9.2, steer: 0.55, mass: 1450, hp: 110 }),
   taxi: S({ name: 'Taxi', model: 'taxi', maxSpeed: 32, accel: 5.2, grip: 9.4, steer: 0.56, mass: 1550, hp: 120, color: 0x18191b }),
-  van: S({ name: 'Skåpbil', model: 'van', maxSpeed: 27, accel: 4.0, brake: 7.5, grip: 8.2, steer: 0.52, mass: 2300, hp: 150, tall: true, color: 0xd0d0cc, solid: true }),
-  bus: S({ name: 'Stadsbuss', model: 'bus', maxSpeed: 20, accel: 2.2, brake: 6.0, grip: 7.6, steer: 0.5, mass: 11000, hp: 400, tall: true, color: 0x861410, solid: true }),
-  garbage: S({ name: 'Sopbil', model: 'garbage', maxSpeed: 19, accel: 2.0, brake: 6.0, grip: 7.4, steer: 0.48, mass: 15000, hp: 400, tall: true, color: 0xd2d2cc, solid: true }),
+  van: S({ name: 'Skåpbil', model: 'van', maxSpeed: 27, accel: 4.0, brake: 7.5, grip: 8.2, steer: 0.52, mass: 2300, hp: 150, tall: true, color: 0xd0d0cc, solid: true, drive: 'rwd' }),
+  bus: S({ name: 'Stadsbuss', model: 'bus', maxSpeed: 20, accel: 2.2, brake: 6.0, grip: 7.6, steer: 0.5, mass: 11000, hp: 400, tall: true, color: 0x861410, solid: true, drive: 'rwd' }),
+  garbage: S({ name: 'Sopbil', model: 'garbage', maxSpeed: 19, accel: 2.0, brake: 6.0, grip: 7.4, steer: 0.48, mass: 15000, hp: 400, tall: true, color: 0xd2d2cc, solid: true, drive: 'rwd' }),
 };
 // Old keys from the cel-shaded game keep working.
 export const CAR_ALIASES = { sedan: 'volvo240', hatch: 'golf', wagon: 'kombi', pickup: 'van', hearse: 'skoda', muscle: 'bmw', icecream: 'van' };
@@ -37,6 +38,28 @@ for (const [k, v] of Object.entries(CAR_ALIASES)) CAR_TYPES[k] = CAR_TYPES[v];
 // tops out at revMax (4.5 m/s, 16 km/h).
 export const PLAYER = { speed: 1.25, accel: 0.88, brake: 1.15, aLat: 9.5 };
 const AI_ACCEL = 1.15; // AI drivers are not shy with the pedal
+// Winter roads at speed (the player's car): from hs0 (43 km/h) to hs1 (115 km/h) the tyres give less
+// sideways (`fall`: a rear-driven car with its light tail most), and the wheel and the yaw build up
+// more slowly (`steerIn`, `yawIn` instead of 7 /s) but settle at the old rate when the key is let go:
+// a held key at 100 km/h makes a long curve instead of a twitch, and nothing keeps turning after it.
+export const WINTER = { hs0: 12, hs1: 32, fall: { fwd: 0.18, awd: 0.18, rwd: 0.28 }, steerIn: 4.5, yawIn: { fwd: 4, awd: 4, rwd: 3.2 } };
+// The slide (car.drift 0..1). The handbrake (above 2 m/s forwards, not towing) lets the rear go, and
+// the slide holds after it is let go: a sliding tyre gives a steady `a` m/s² sideways (x 0.62 on
+// snow) instead of a grip that grows with the slip, so the slip angle stays where it is unless
+// something changes it. The steering does (rad/s of slip angle: into the slide `in` up to `hold`
+// rad, `past` beyond it, the counter-steer `counter`, with the handbrake held `hb`), and the throttle
+// does, by drivetrain (`push`: d|slip|/dt per rad of slip, up to `pushMax` rad, at full throttle /
+// coasting - a rear-driven car's throttle swings the tail further out, a front-driven one's pulls the
+// nose straight; lifting off leaves either sliding). The slide is over when the car is straight again
+// (under `straight` rad), slows to a crawl, or has spun past `spun` rad. `wK`: how fast the yaw follows.
+// Handbrake + throttle + steering below `pivotV` m/s: a donut (`pivot`: the yaw rate at full lock;
+// a rear-driven car swings round its front axle, a front-driven one round its rear, 4x4 its middle).
+export const SLIDE = {
+  a: 5.2, in: 1.15, past: -0.2, hold: 0.95, counter: 1.3, hb: 2.4, wK: 11, straight: 0.07, spun: 2.3,
+  push: { rwd: [0.15, -0.6], fwd: [-1.8, -0.45], awd: [-1.0, -0.55] }, pushMax: 0.8,
+  pivotV: 5, pivot: { rwd: 1.75, fwd: 1.3, awd: 1.2 },
+};
+const smooth01 = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
 // Everyday Swedish car colours (sRGB): silver, white, black, greys, dark blue, wine red, green,
 // beige, a few metallic blues. `solid` types draw from SOLID.
@@ -567,6 +590,10 @@ export class Car {
     this.x = opts.x || 0; this.z = opts.z || 0; this.y = 0.15; this.yaw = opts.yaw || 0;
     this.vx = 0; this.vz = 0; this.vy = 0; this.w = 0;
     this.steerAngle = 0;
+    this.steerShow = 0;     // the front wheels' drawn angle (counter-steer in a slide)
+    this.drift = 0;         // the slide (SLIDE): 0 = the tyres grip, 1 = sliding
+    this.slip = 0;          // the slip angle in a slide (rad; + = moving to the right of the nose: a slide in a left turn)
+    this.pivot = 0;         // a donut (handbrake + throttle + steering at a crawl), 0..1
     this.hp = spec.hp;
     this.dead = false;
     this.air = false;
@@ -690,7 +717,8 @@ export class Car {
     this.x = x; this.z = z; this.yaw = yaw; this.vx = this.vz = this.vy = this.w = 0;
     this.y = groundAt(x, z, 0.2, 0.6);
     this.air = false;
-    this.steerAngle = 0;
+    this.steerAngle = this.steerShow = 0;
+    this.drift = this.slip = this.pivot = 0;
     this.updateObb();
     if (this.trailer) this.trailer.reset();
   }
@@ -776,19 +804,58 @@ export class Car {
         vf -= Math.sign(vf) * Math.min(Math.abs(vf), (this.dead ? 6 : 8) * dt);
       }
       if (!(driven && c.throttle > 0)) vf -= vf * Math.abs(vf) * 0.0004 * dt;           // air
-      // Lateral: the tyres kill sideways velocity; handbrake lets the rear go.
+      // Lateral: the tyres kill sideways velocity; the handbrake lets the rear go, and a slide it
+      // starts holds after it is let go (this.drift, SLIDE above).
       const hb = c.handbrake && driven;
+      const thr = driven ? c.throttle : 0, drive = s.drive || 'fwd';
+      const vr0 = vr;
       const grip = (hb ? 1.6 : s.grip) * gLat;
       if (Math.abs(vr) > 2.2) this.skidAmt = Math.max(this.skidAmt, Math.min(1, (Math.abs(vr) - 2.2) / 5));
       vr *= Math.exp(-grip * dt);
+      // A donut: handbrake, throttle and steering at a crawl (the burnout above, turned).
+      const pivotOn = hb && thr > 0.5 && Math.abs(c.steer) > 0.3 && Math.abs(vf) < SLIDE.pivotV && !this.trailer;
+      const P = this.pivot = pivotOn ? Math.min(1, this.pivot + 4 * dt) : Math.max(0, this.pivot - 6 * dt);
+      let D = this.drift;
+      if ((hb && vf > 2 && !this.trailer) || P > 0) D = Math.max(P, Math.min(1, D + 8 * dt));
+      let slip = 0, wDrift = 0;
+      if (D > 0) {
+        // a sliding tyre: a steady force sideways, not a grip that grows with the slip
+        vr += (vr0 - Math.sign(vr0) * Math.min(Math.abs(vr0), SLIDE.a * gLat * dt) - vr) * D;
+        const v = Math.hypot(vf, vr), b0 = Math.atan2(vr0, vf0);
+        slip = v > 0.5 ? Math.atan2(vr, vf) : 0;
+        const ab = Math.abs(slip);
+        // over when straight again, spun round, slow (the tyres find grip at a crawl) or towing
+        if (!P) D = Math.max(0, D - ((v < 2.5 ? 3 : 0) + (hb ? 0 : (ab < SLIDE.straight ? 5 : 0) + (ab > SLIDE.spun ? 4 : 0) + clamp((5.5 - v) * 0.6, 0, 3) + (this.trailer ? 10 : 0))) * dt);
+        // the yaw that keeps the slip angle where it is (the velocity's own turn this step) ...
+        const wVel = v > 1 ? -angleDiff(b0, slip) / dt : 0;
+        // ... and how the steering and the throttle change it (rate: d|slip|/dt)
+        const sg = ab > 0.03 ? Math.sign(slip) : c.steer ? -Math.sign(c.steer) : Math.sign(this.w) || 1;
+        const into = driven ? -c.steer * sg : 0;
+        const spF = clamp((v - 1) / 4, 0, 1);   // a car at a crawl is not swung round by the wheel
+        let rate;
+        if (hb) rate = (into * SLIDE.hb + 0.2 * ab) * spF;
+        else {
+          rate = (into > 0 ? into * (ab < SLIDE.hold ? SLIDE.in : SLIDE.past) : into * SLIDE.counter) * spF;
+          const push = SLIDE.push[drive];
+          rate += Math.min(ab, SLIDE.pushMax) * (push[1] + (push[0] - push[1]) * thr);
+        }
+        wDrift = wVel + sg * rate;
+        if (v > 3) this.skidAmt = Math.max(this.skidAmt, D * clamp((ab - 0.08) * 2.2, 0, 1) * Math.min(1, v / 8));
+      }
+      this.drift = D; this.slip = slip;
+      // Winter roads at speed (the player): the tyres give less, the yaw builds up more slowly.
+      const hs = player ? smooth01((Math.abs(vf) - WINTER.hs0) / (WINTER.hs1 - WINTER.hs0)) : 0;
+      const pLat = PLAYER.aLat * (1 - hs * WINTER.fall[drive]);
       let maxSteer = s.steer / (1 + Math.abs(vf) / 15);
       // keyboard steering is all or nothing: for the player, full lock at speed asks for ~1.35x
       // what the tyres give, so an ordinary junction turn understeers a touch instead of squealing
-      if (player && !c.handbrake) maxSteer = Math.min(maxSteer, Math.atan((1.35 * PLAYER.aLat * gLat * s.wb) / Math.max(1, vf * vf)));
-      this.steerAngle = damp(this.steerAngle, driven ? c.steer * maxSteer : 0, player ? 7 : 9, dt);
+      if (player && !c.handbrake) maxSteer = Math.min(maxSteer, Math.atan((1.35 * pLat * gLat * s.wb) / Math.max(1, vf * vf)));
+      const wantSteer = driven ? c.steer * maxSteer : 0;
+      const steerIn = Math.abs(wantSteer) > Math.abs(this.steerAngle) && wantSteer * this.steerAngle >= 0;
+      this.steerAngle = damp(this.steerAngle, wantSteer, player ? (steerIn ? 7 + (WINTER.steerIn - 7) * hs : 7) : 9, dt);
       let targetW = (-vf * Math.tan(this.steerAngle)) / s.wb;
       // Grip limit: the tyres give at most aLat sideways; asking for more just understeers (and squeals).
-      const aLat = (player ? PLAYER.aLat : 9) * gLat * (s.tall ? 0.8 : 1);
+      const aLat = (player ? pLat : 9) * gLat * (s.tall ? 0.8 : 1);
       const wLim = aLat / Math.max(2, Math.abs(vf));
       if (hb) targetW *= 1.55;
       else if (Math.abs(targetW) > wLim) {
@@ -796,10 +863,24 @@ export class Car {
         targetW = Math.sign(targetW) * wLim * Math.min(1.12, 1 + (over - 1) * 0.15);
         if (Math.abs(vf) > 6) this.skidAmt = Math.max(this.skidAmt, clamp((over - 1.6) * 0.75, 0, 0.8));
         // understeer scrubs a little speed
-        vf -= Math.sign(vf) * Math.min(Math.abs(vf), (over - 1) * 1.2 * dt);
+        vf -= Math.sign(vf) * Math.min(Math.abs(vf), (over - 1) * 1.2 * (1 - D) * dt);
       }
       if (hb && Math.abs(vf) > 5) this.skidAmt = Math.max(this.skidAmt, 0.55);
-      this.w = damp(this.w, targetW, hb ? 4 : 7, dt);
+      let wK = hb ? 4 : 7;
+      if (hs > 0 && !hb && Math.abs(targetW) > Math.abs(this.w) && targetW * this.w >= 0) wK += (WINTER.yawIn[drive] - wK) * hs;
+      if (D > 0) { targetW += (wDrift - targetW) * D; wK += (SLIDE.wK - wK) * D; }
+      if (P > 0) {
+        // the donut: the yaw from the steering, the car swinging round one axle (its point at
+        // `d` along the car stands still: vr = d * w), creeping forwards on the spinning wheels
+        const piv = SLIDE.pivot[drive], d = drive === 'rwd' ? s.wb / 2 : drive === 'fwd' ? -s.wb / 2 : 0;
+        targetW += (-c.steer * piv - targetW) * P; wK += (5 - wK) * P;
+        vr += (d * this.w - vr) * Math.min(1, P * 12 * dt);
+        vf = damp(vf, 0.6, 3 * P, dt);
+        this.skidAmt = Math.max(this.skidAmt, P);
+      }
+      this.w = damp(this.w, targetW, wK, dt);
+      // the front wheels in a slide point where the car is going (the counter-steer you see)
+      this.steerShow = D > 0 ? this.steerAngle + (clamp(slip * 0.9 + c.steer * 0.15, -0.62, 0.62) - this.steerAngle) * D * (1 - P) : this.steerAngle;
     } else {
       this.w *= Math.exp(-0.6 * dt);
     }
@@ -1021,7 +1102,7 @@ export class Car {
     this.tilt.updateMatrix();
     this._im.multiplyMatrices(this.root.matrix, this.tilt.matrix);
     carsChanged();
-    for (const w of this.wheels) w.steer = w.front ? -this.steerAngle : 0;
+    for (const w of this.wheels) w.steer = w.front ? -this.steerShow : 0;
     this.syncView();
     const t = performance.now() / 1000;
     this.updateLights(t);

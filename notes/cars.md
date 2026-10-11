@@ -30,7 +30,7 @@ body + rear-loader tailgate, 3 axles). Old keys are aliases (same spec object): 
 `hatch→golf`, `wagon→kombi`, `pickup→van`, `hearse→skoda`, `muscle→bmw`, `icecream→van`
 (`CAR_ALIASES`). `car.type` is the key you passed (may be an alias), `car.kind` the real model key.
 
-Spec fields: `name, model, maxSpeed, accel, brake, grip, steer, mass, hp, tall, revMax, solid`,
+Spec fields: `name, model, maxSpeed, accel, brake, grip, steer, mass, hp, tall, revMax, solid, drive`,
 plus filled in from the model: `len, wid, height, wheelR, wb` and the legacy `bodyH, cabinH`
 (`wheelR*0.95 + bodyH` = seat height). Real dimensions (m): Saab 4.70 × 1.69 × 1.42, wb 2.517;
 Golf 4.20 × 1.78 × 1.48; bus 12.0 × 2.55 × 3.12; sopbil 9.1 × 2.5 × 3.42 (`carModel(k)`).
@@ -84,6 +84,8 @@ default by name and state: Ove's `saab` 0.35, `andersAudi` 0.3, `adrianSaab` 0.5
   both. Dead cars: all off.
 - `car.attachTrailer(opts)` → `car.trailer`; `car.detachTrailer()` → the trailer (removed).
 - `car.skidAmt` (0..1) is only > 0 when the tyres actually slide; `car.revs` / `car.gear` for audio.
+- `car.drift` (0..1, the slide), `car.slip` (its slip angle, rad), `car.pivot` (0..1, a donut),
+  `car.steerShow` (the front wheels' drawn angle): see Physics, *Slides*. `place()` resets them.
 - Body attitude: `car.pitch` (+ = nose down), `car.roll`, `car.heave`; `car.groundPitch`; `car.onSnow`.
 - `car.lod` (far version active), `car.body` / `car.bodyLod` (both get `MAT.burnt` when wrecked;
   `repair()` restores), `car.glass`, `car.lights` (lamp mesh; hidden on a far car whose engine is
@@ -186,10 +188,38 @@ Player car gets `PLAYER = { speed ×1.25, accel ×0.88, brake ×1.15, aLat 9.5 m
 out at `revMax` 4.5 m/s (16 km/h) for every type, 2.2 m/s while towing.
 Measured with the Saab (`physics` scenario, simulated off-screen at 60 Hz, unchanged in round 3):
 0–100 km/h 7.6 s (17/33/48/62/74/85/95/103 km/h per second), top 140 km/h, 100→0 in 39 m. Full lock
-at 60 km/h: no squeal, 0.57 rad/s (the player's lock at speed is limited to ~1.35× what the tyres
-give); the squeal threshold is 1.6× the grip limit. Handbrake at 60 km/h still slides (skid 1.0).
-Thrust `accel·(1 − (v/vmax)²)`, engine braking ~1 m/s², air drag when coasting. Off asphalt (snow)
-grip ×0.62, brakes ×0.6, accel ×0.72. AI drivers get accel ×1.15.
+at 60 km/h: no squeal, 0.55 rad/s (0.57 before the winter roads below; the player's lock at speed is
+limited to ~1.35× what the tyres give); the squeal threshold is 1.6× the grip limit. Handbrake at
+60 km/h slides (skid 1.0). Thrust `accel·(1 − (v/vmax)²)`, engine braking ~1 m/s², air drag when
+coasting. Off asphalt (snow) grip ×0.62, brakes ×0.6, accel ×0.72. AI drivers get accel ×1.15.
+
+**Winter roads at speed** (feature roligare_bilkorning, `WINTER` in car.js, the player's car only:
+AI handling is unchanged to the bit). From 43 to 115 km/h (smoothstep) the player's `aLat` falls by
+18 % (front-driven and 4x4) or 28 % (rear-driven), and the steering angle and the yaw build up more
+slowly (`steerIn` 4.5 /s, `yawIn` 4 /s, rear-driven 3.2 /s, instead of 7) while letting go settles at
+the old 7 /s. `handling` scenario, Saab (old → new): a held key at 100 km/h 1.02 g → 0.86 g (rear-driven
+0.77 g), 63 % of the yaw after 0.22 → 0.35 s (0.40), a 0.25 s tap turns the car 6.5° → 3.8° (3.2°);
+at 125 km/h 5.2° → 2.8° (2.2°). 60 km/h is as before (10.2° vs 10.9°).
+
+**Slides** (same feature, `SLIDE`). Spec field `drive`: `'rwd'` volvo240, volvo740, bmw, van, bus,
+garbage; `'awd'` audi; the rest `'fwd'`. `car.drift` (0..1) is the slide: the handbrake raises it
+(above 2 m/s forwards, not towing) and it holds after the handbrake is let go. In a slide a tyre gives
+a steady `SLIDE.a` 5.2 m/s² sideways (×0.62 on snow) instead of the exponential grip, so the slip
+angle (`car.slip`, rad, + = moving to the right of the nose, i.e. a slide in a left turn) stays put
+unless something turns it: the yaw is the velocity's own turn plus a slip-angle rate from the
+steering (into the slide 1.15 rad/s up to 0.95 rad, -0.2 past it; counter-steer 1.3; with the
+handbrake 2.4) and from the throttle by drivetrain (`push`, per rad of slip up to 0.8: rwd +0.15 at
+full throttle / -0.6 coasting, fwd -1.8 / -0.45, awd -1.0 / -0.55). It ends (blending back into the
+grip model) under 4° of slip, below ~5.5 m/s, past 132° (spun) or when towing. Handbrake + throttle
++ steering below 5 m/s is a donut (`car.pivot`): the car swings round its front axle (rwd, 1.75
+rad/s), its rear (fwd, 1.3) or its middle (awd, 1.2). The front wheels are drawn at `car.steerShow`
+(in a slide they point where the car is going: the counter-steer you see). `drift` scenario at
+50 km/h, a 0.4 s handbrake flick (old: grip back 0.1 s after the release, 14° of slip): the slide
+holds 2.2-2.4 s coasting; at full throttle a 240 stays sideways 4 s (and circles) while a Saab
+straightens in 0.85 s; a counter-steering bot holds a 240 at ~34° for 4 s (a U-turn at 44 km/h);
+D + Space, then W + D for 1.2 s: the Saab ends straight after 88°, a 240 is at 57° and wants
+counter-steer (0.85 s to straight, 79° turned, out at 48 km/h). A 0.25 s flick at 100 km/h: 23°,
+no spin. Donuts: a 240 1.04 turns in 4 s, the Saab 0.77.
 
 ## Models (carmodels.js)
 
