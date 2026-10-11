@@ -3370,7 +3370,7 @@ export function buildCharacter(def, opts = {}) {
     def, d, D, lod, root: new THREE.Group(), body: new THREE.Group(), phase: Math.random() * TAU, squash: 0, talkT: 0,
     seed: Math.random(), wheelAng: 0, meshes: [], style: { swing: 1, stride: 1, stoop: 0, lean: 0, sway: 1, bounce: 1, ...(d.style || {}) },
     P: new Float32Array(NCH), Q: new Float32Array(NCH),
-    w: { seat: 0, air: 0, flung: 0, down: 0, kick: 0, write: 0, phone: 0, wave: 0, talk: 0, listen: 0, push: 0, cheer: 0, pockets: 0, carry: 0, work: 0, kneel: 0, fright: 0, fist: 0 }, kneelT: 0,
+    w: { seat: 0, air: 0, flung: 0, down: 0, kick: 0, write: 0, phone: 0, wave: 0, talk: 0, listen: 0, push: 0, cheer: 0, pockets: 0, carry: 0, work: 0, kneel: 0, fright: 0, fist: 0, shiver: 0 }, kneelT: 0,
     handScale: [1, 1], fingScale: [1, 1],
   };
   m.root.add(m.body);
@@ -3718,6 +3718,8 @@ export function animateCharacter(m, st, dt) {
   const upright = !st.seated && !st.down && !st.flung && !wheel;
   const wFright = smoothW(m, 'fright', st.fright && upright ? 1 : 0, st.fright ? 22 : 6, dt);
   const wFist = smoothW(m, 'fist', st.fist && upright ? 1 : 0, 9, dt);
+  // the cold (game/cold.js): st.shiver 0..1, standing, walking or at the wheel
+  const wShiver = smoothW(m, 'shiver', !st.flung && !st.down && !wheel ? clamp(st.shiver || 0, 0, 1) : 0, 2.5, dt);
   m.kneelT = st.kneel ? m.kneelT + dt : 0;
   m.squash = Math.max(0, (m.squash || 0) - dt * 2.5);
 
@@ -3753,6 +3755,7 @@ export function animateCharacter(m, st, dt) {
   // (after the jump's poses: a fright's leap keeps its hands up)
   if (wFright > 0.001) frightPose(m, P, Q, t, wFright);
   if (wFist > 0.001) fistPose(m, P, Q, t, wFist);
+  if (wShiver > 0.001) shiverPose(m, P, t, wShiver);
   if (st.kick > 0) { kickPose(m, st, P, Q); lerpPose(P, Q, 1); }
   if (wFlung > 0.001) { flungPose(m, st, Q, t); lerpPose(P, Q, wFlung); }
   if (wDown > 0.001) { downPose(m, st, Q, t); lerpPose(P, Q, wDown); }
@@ -3766,6 +3769,8 @@ export function animateCharacter(m, st, dt) {
   const jp = m.windK > 0.001 ? 0.055 * m.windK * sstep(JUMP_PUSH, JUMP_PUSH + 0.12, m.windU) : 0;
   P[B.jaw * 3] = st.talk ? jawT : Math.max(jawT * (1 - m.windC), jp, 0.075 * sstep(0.35, 0.75, jr), 0.06 * wLand, (0.025 + 0.02 * Math.sin(t * 9)) * (m.gaitRun || 0) * sstep(0.5, 3, st.speed || 0));
   P[B.jaw * 3 + 1] = 0; P[B.jaw * 3 + 2] = 0;
+  // (teeth chattering in the cold)
+  if (wShiver > 0.25 && !st.talk) P[B.jaw * 3] = Math.max(P[B.jaw * 3], 0.016 * wShiver * (0.5 + 0.5 * Math.sin(t * 46)));
   // look
   P[B.neck * 3 + 1] += (st.look || 0) * (1 - wDown);
   // apply
@@ -4243,6 +4248,19 @@ function listenPose(m, P, t, w) {
   P[B.neck * 3] += w * (0.03 + 0.07 * nod * (0.5 + 0.5 * Math.sin(t * 7.5)));
   P[B.head * 3 + 2] += w * 0.06 * Math.sin(t * 0.3 + s);
   P[B.neck * 3 + 1] += w * 0.04 * Math.sin(t * 0.21 + s * 3);
+}
+
+// Cold (st.shiver, game/cold.js): hunched against it (the back rounded, the head drawn down between
+// the shoulders) and a fine, fast tremble through the trunk and the head, in fits (it comes and goes
+// every second or so). The hands go into the pockets: game/cold.js sets style.pockets meanwhile.
+function shiverPose(m, P, t, w) {
+  const fit = 0.55 + 0.45 * Math.max(0, Math.sin(t * 2.1 + m.seed * 6)) ** 2;
+  const a = (Math.sin(t * 47) * 0.6 + Math.sin(t * 31 + 1.3) * 0.4) * fit * w, b = Math.sin(t * 39 + 0.7) * fit * w;
+  P[B.spine * 3] += 0.07 * w; P[B.chest * 3] += 0.06 * w;
+  P[B.neck * 3] += 0.14 * w; P[B.head * 3] -= 0.06 * w;
+  P[B.chest * 3 + 2] += 0.014 * a; P[B.spine * 3 + 1] += 0.012 * b;
+  P[B.neck * 3 + 2] += 0.012 * b; P[B.head * 3 + 1] += 0.016 * a;
+  for (const k of [B.armR, B.armL]) P[k * 3] += 0.02 * a;
 }
 
 function wavePose(m, P, Q, t) {

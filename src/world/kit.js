@@ -543,6 +543,9 @@ function placeTemplate(G, T, x, y, z, rot, s, sy, tx = 0, tz = 0) {
     g._surface = surf;
     (fine && G.fineG ? G.fineG : G).parts.push(g);
   }
+  // (a builder that is thrown away - G.noCards: a tree kept out of a forest track - places no cards
+  // either: they live in the sign pages, not in G)
+  if (G.noCards) return;
   const c = Math.cos(rot), sn = Math.sin(rot);
   for (const cd of T.cards) {
     if (cd[0] === 'top') { const q = cd[1]; addTopCard({ f: q.f, c: [x + (q.c[0] * c + q.c[2] * sn) * s, y + q.c[1] * sy, z + (-q.c[0] * sn + q.c[2] * c) * s], d: q.d * s, a: q.a + rot }); continue; }

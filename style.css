@@ -136,6 +136,31 @@ body.bigmap-open #tags, body.bigmap-open #bubbles { display: none; }
 .mt-delta.neg { color: #ff8a7a; }
 @keyframes deltaUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-22px); } }
 
+/* The cold meter (hud.setCold, game/cold.js): under the Ordning meter, or under a smitare chase. */
+#cold { position: absolute; top: 88px; right: 18px; width: 300px; padding: 9px 14px 10px; border-left: 3px solid #9ccaf0; display: none; z-index: 2; zoom: var(--ui); transition: opacity 0.35s, top 0.3s; }
+#cold.show { display: block; animation: slideInR 0.35s cubic-bezier(.2, .8, .2, 1); }
+body.pursuit #cold { top: 192px; }
+body.coldhud #toasts { top: 166px; }
+body.pursuit.coldhud #toasts { top: 270px; }
+.co-head { display: flex; align-items: baseline; justify-content: space-between; }
+.co-head .kicker { color: #bcdcf8; }
+.co-head .kicker svg { width: 11px; height: 11px; vertical-align: -1px; margin-right: 6px; }
+.co-val { font: 600 22px/1 var(--cond); color: #e2effb; }
+.co-bar { position: relative; height: 6px; background: rgba(255, 255, 255, 0.16); margin-top: 7px; }
+.co-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #5f97cc, #bcdcf8 65%, #ffffff); transition: width 0.25s linear; }
+.co-sub { margin-top: 6px; font: 600 11px/1.1 var(--cond); letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-dim); }
+.co-sub:empty { display: none; }
+#cold.warm .co-sub { color: #f0c27a; }
+#cold.danger { border-left-color: #fff; box-shadow: 0 0 0 1px rgba(200, 226, 250, 0.55), 0 6px 22px rgba(10, 14, 18, 0.22); }
+#cold.danger .co-head .kicker, #cold.danger .co-val { animation: pulse 0.8s ease-in-out infinite; }
+body:has(#letterbox.on) #cold, #hud.curtain #cold { opacity: 0; }
+
+/* Frost creeping in from the edges of the picture (hud.setFrost: the clear middle shrinks, and at
+   the end a white wash): over the world and its tags, under the HUD's cards and the curtain. */
+#frost { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; --fa: 74%; --fb: 122%; --fw: 0; -webkit-mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, transparent var(--fa), #000 var(--fb)); mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, transparent var(--fa), #000 var(--fb)); }
+#frost canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#frost::after { content: ""; position: absolute; inset: 0; background: rgb(216, 232, 247); opacity: var(--fw); }
+
 #pursuit { position: absolute; top: 88px; right: 18px; width: 300px; padding: 10px 14px 12px; border-left: 3px solid var(--red); display: none; }
 #pursuit.show { display: block; animation: slideInR 0.35s cubic-bezier(.2, .8, .2, 1); }
 @keyframes slideInR { from { opacity: 0; transform: translateX(14px); } }
@@ -195,6 +220,7 @@ body:has(#letterbox.on):has(#dialog.show) #toasts { top: calc(max(9vh / var(--ui
 .toast.radio, .toast.phone { border-left-color: var(--amber); }
 .toast.good { border-left-color: var(--green); }
 .toast.bad, .toast.warn { border-left-color: var(--red); }
+.toast.cold { border-left-color: #9ccaf0; }
 .toast .radio-face { display: block; width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex: none; background: #5d6872; box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.7); }
 .toast .radio-face img { display: block; width: 100%; height: 100%; object-fit: cover; transform: scale(1.6667); transform-origin: 50% 20%; }
 .toast .t-who { display: block; font: 600 11px/1 var(--cond); letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); margin-bottom: 3px; }
@@ -225,6 +251,15 @@ body:has(#letterbox.on):has(#dialog.show) #toasts { top: calc(max(9vh / var(--ui
 #banner.mission .banner-rule { background: var(--amber); }
 #banner.mission .banner-kicker { color: var(--amber); }
 #banner.mission .banner-main { font-size: 54px; }
+/* "Ove dog av frost" (game/cold.js): an icy headline, not shouted - a sentence. */
+/* (over the frost's white: dark ice-blue ink with a white halo, and no dark band) */
+#banner.frost::before { display: none; }
+#banner.frost .banner-main { font-size: 80px; letter-spacing: 0.04em; text-indent: 0.04em; color: #17304a; text-shadow: 0 0 1px rgba(255, 255, 255, 0.9), 0 0 18px rgba(255, 255, 255, 0.95), 0 0 46px rgba(206, 228, 250, 0.9); }
+#banner.frost .banner-rule { background: rgba(23, 48, 74, 0.55); }
+#banner.frost .banner-kicker { color: #2c5174; text-shadow: 0 0 8px rgba(255, 255, 255, 0.9); }
+#banner.frost .banner-sub { color: #213a54; text-shadow: 0 0 10px rgba(255, 255, 255, 0.95), 0 0 2px rgba(255, 255, 255, 0.9); }
+#banner.frost.show .banner-main { animation: frostIn 2.2s ease-out; }
+@keyframes frostIn { from { filter: blur(7px); opacity: 0; } 45% { opacity: 1; } to { filter: blur(0); } }
 #banner.count .banner-main { font-size: 110px; letter-spacing: 0; text-indent: 0; }
 #banner.count .banner-rule { display: none; }
 /* The countdown digit stands on its own, with a soft shadow (a band round one digit read as a smudge). */
@@ -278,6 +313,7 @@ body:has(#letterbox.on) #objective { opacity: 0; }
 /* A cut to black (hud.curtain sets #hud.curtain): the HUD fades out with the picture - only the
    curtain's caption, a banner and the dialogue (z 3) stay over the black. */
 #hud.curtain #status, #hud.curtain #meter, #hud.curtain #minimap-wrap, #hud.curtain #speedo, #hud.curtain #pursuit, #hud.curtain #leftcol, #hud.curtain #objective, #hud.curtain #prompt { opacity: 0; transition: opacity 0.6s ease; }
+#hud.dead #status, #hud.dead #meter, #hud.dead #minimap-wrap, #hud.dead #speedo, #hud.dead #pursuit, #hud.dead #leftcol, #hud.dead #objective, #hud.dead #prompt, #hud.dead #toasts { opacity: 0; transition: opacity 1.2s ease; }
 /* A scene is up (letterbox, curtain or a held shot; hud.js _cineSet): no toasts (new ones wait in
    hud.js's queue) and no report ticket over it. */
 #hud.cine #toasts, #hud.cine #notebook { opacity: 0; }

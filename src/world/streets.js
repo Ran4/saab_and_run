@@ -3,8 +3,8 @@
 // zigzags), bus stops with shelters, street lamps, road signs, plowed snow banks, the
 // street-side violation spots, pedestrian loops and street litter.
 
-import { THREE, mat } from '../gfx.js';
-import { P, N, HALF, RHW, SW, CURB, KR, rc, MAP, landmarks } from './layout.js';
+import { THREE, mat, GeoBuilder } from '../gfx.js';
+import { P, N, HALF, RHW, SW, CURB, KR, rc, MAP, landmarks, TRACKS, onTrack } from './layout.js';
 import { C, R, quads, snowBank, snowPile, streetLamp, signPost, TAU, tree, metalRoof, Frame, hash, flatQuad } from './kit.js';
 import { picto, textFace, decal, addDecal, addSign } from './signs.js';
 import { violationSpots, keepClear, litterSpots, pedLoops, mapLabels, roadNames } from './data.js';
@@ -13,6 +13,8 @@ import { circle } from './collision.js';
 import { mulberry32 } from '../util.js';
 
 const r = mulberry32(4242);
+const SCRAP = new GeoBuilder();   // trees that would stand in a forest track's mouth go here, and away
+SCRAP.noCards = true;
 const PAVED = new Set(['centrum', 'hospital', 'kommun', 'gas', 'dealer']);
 const LAT = 5.85;            // a car parked half up on the kerb: centre this far from the road centre
 const TREE_BLK = new Set(['ove', 'radhus', 'villa', 'apartments', 'preschool', 'church', 'cemetery', 'park', 'field']);
@@ -316,10 +318,16 @@ function dressSide(s, chunk) {
   }
   if (outer) {
     // Beyond the outer walkway: a snowy verge with a ditch line of birches further out.
+    // (none in the mouth of a forest track, layout.TRACKS: a tree there is made into a builder that
+    // is thrown away, so the rest of the street comes out as it was)
     for (let a = s.a0 + 10; a < s.a1 - 10; a += 18 + r() * 14) {
       const [x, z] = pos(s, a + r() * 6, RHW + SW + 4 + r() * 10);
       if (Math.abs(x) > 286 + 30 || Math.abs(z) > 286 + 30) continue;
-      chunk(x, z).S && treeAt(chunk(x, z).S, x, z, r() < 0.6 ? 'birch' : 'spruce');
+      const S0 = chunk(x, z).S;
+      if (!S0) continue;
+      const kind = r() < 0.6 ? 'birch' : 'spruce', gap = onTrack(x, z, 6);
+      tree(gap ? SCRAP : S0, x, z, 0.9 + r() * 0.35, kind, r, !gap);
+      SCRAP.parts.length = 0;
     }
   }
   // Collect blocked along-intervals for lamps and banks.
@@ -328,6 +336,8 @@ function dressSide(s, chunk) {
   const lateral = (x, z) => (s.axis === 'z' ? (z - s.c) * s.dir : (x - s.c) * s.dir);
   for (const k of keepClear) { const l = lateral(k.x, k.z); if (l > 3 && l < 12) blocks.push([project(k.x, k.z) - k.r, project(k.x, k.z) + k.r]); }
   for (const v of violationSpots) { const l = lateral(v.x, v.z); if (l > 3 && l < 9) blocks.push([project(v.x, v.z) - 3.2, project(v.x, v.z) + 3.2]); }
+  // (the plowed bank along the outer road opens where a forest track leaves it)
+  if (outer) for (const t of TRACKS) if ((t.run === 'z') === (s.axis === 'z') && t.s === s.dir) blocks.push([t.c - 5, t.c + 5]);
   const isBlocked = (a, pad = 0) => blocks.some(([b0, b1]) => a > b0 - pad && a < b1 + pad);
   const bankBlocks = blocks.slice();   // banks only break for driveways, crossings, spots (not lamps/trees)
   const isBlockedB = (a, pad = 0) => bankBlocks.some(([b0, b1]) => a > b0 - pad && a < b1 + pad);
@@ -386,7 +396,6 @@ function dressSide(s, chunk) {
   }
 }
 
-function treeAt(S, x, z, kind) { tree(S, x, z, 0.9 + r() * 0.35, kind, r); }
 
 // A block slab (sidewalks + block ground under everything) with rounded corners of radius R: a flat
 // top fan and vertical walls down to y = -1 (hidden under the kerbs).

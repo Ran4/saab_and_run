@@ -288,6 +288,8 @@ uniform vec3 uSunCol;
 uniform vec3 uSky;
 uniform vec2 uRes;
 uniform float uPx;      // radians per pixel (vertical)
+uniform vec2 uWind;     // a blizzard's wind (m/s, xz) and how far it has carried the flakes so far
+uniform vec2 uWindOff;
 varying float vA;
 varying vec3 vCol;
 varying vec2 vQ;
@@ -298,9 +300,11 @@ void main() {
   p.y -= uTime * fall;
   p.x += uTime * 0.35 + sin( uTime * 0.7 + ph ) * 0.4;
   p.z += sin( uTime * 0.5 + seed.x * 30.0 ) * 0.4;
+  p.xz += uWindOff;
   vec3 rel = mod( p - uCam + box * 0.5, box ) - box * 0.5;
   vec3 w = uCam + rel;
   vec3 vel = vec3( 0.35 + cos( uTime * 0.7 + ph ) * 0.28, - fall, cos( uTime * 0.5 + seed.x * 30.0 ) * 0.2 );
+  vel.xz += uWind * ( 0.85 + 0.3 * fract( seed.z * 5.31 ) );
   vec4 mv = viewMatrix * vec4( w, 1.0 );
   vec4 c0 = projectionMatrix * mv;
   vec4 c1 = projectionMatrix * viewMatrix * vec4( w - vel * 0.022, 1.0 );
@@ -403,7 +407,7 @@ export const fx = {
     fg.setAttribute('box', new THREE.InstancedBufferAttribute(boxes, 1));
     fg.instanceCount = NF;
     const fm = new THREE.ShaderMaterial({
-      uniforms: { uTime: U.uTime, uCam: { value: new THREE.Vector3() }, uCount: { value: 0 }, uSunCol: U.uSunCol, uSky: U.uSky, uRes: U.uRes, uPx: { value: 0.0015 } },
+      uniforms: { uTime: U.uTime, uCam: { value: new THREE.Vector3() }, uCount: { value: 0 }, uSunCol: U.uSunCol, uSky: U.uSky, uRes: U.uRes, uPx: { value: 0.0015 }, uWind: { value: new THREE.Vector2() }, uWindOff: { value: new THREE.Vector2() } },
       vertexShader: SNOW_VERT, fragmentShader: SNOW_FRAG, transparent: true, depthWrite: false, premultipliedAlpha: true,
       blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
       side: THREE.DoubleSide,   // the streak quads are built in screen space, either winding
@@ -416,6 +420,7 @@ export const fx = {
     scene.add(snow);
     this.snowAmount = 0;
     this.snowTarget = 0;
+    this.blowAmount = 0; this.blowTarget = 0; this.windX = 0; this.windZ = 0;
   },
 
   // Generic puff (old API). Bright saturated colours become glowing (additive) particles, the rest
@@ -532,6 +537,13 @@ export const fx = {
   snowfall(on, intensity = 0.6) {
     this.snowTarget = on ? Math.max(0, Math.min(1, intensity)) : 0;
   },
+  // Snow blown sideways out in the cold (game/cold.js): amount 0..1 (as many flakes as a snowfall of
+  // that intensity, whichever is more) on a wind of (wx, wz) m/s. now: at once, not eased.
+  blizzard(amount, wx = 0, wz = 0, now = false) {
+    this.blowTarget = Math.max(0, Math.min(1, amount));
+    this.windX = wx; this.windZ = wz;
+    if (now) this.blowAmount = this.blowTarget;
+  },
 
   tick(dt) {
     U.uTime.value += dt;
@@ -548,11 +560,18 @@ export const fx = {
     for (let i = 0; i < SKIDS; i++) if (d[i * 4] > 0) { d[i * 4] = Math.max(0, d[i * 4] - dt * 0.004); dirty = true; }
     if (dirty) skidData.needsUpdate = true;
     this.snowAmount += (this.snowTarget - this.snowAmount) * Math.min(1, dt * 0.5);
-    snow.visible = this.snowAmount > 0.01;
+    this.blowAmount += (this.blowTarget - this.blowAmount) * Math.min(1, dt * 0.8);
+    const amount = Math.max(this.snowAmount, this.blowAmount);
+    snow.visible = amount > 0.01;
     if (snow.visible && cam) {
       const u = snow.material.uniforms;
       u.uCam.value.copy(cam.position);
-      u.uCount.value = this.snowAmount;
+      u.uCount.value = amount;
+      const b = this.blowAmount;
+      u.uWind.value.set(this.windX * b, this.windZ * b);
+      // (carried along by the wind so far: wrapped, the flakes' boxes are 40 and 14 m)
+      u.uWindOff.value.x = (u.uWindOff.value.x + this.windX * b * dt) % 560;
+      u.uWindOff.value.y = (u.uWindOff.value.y + this.windZ * b * dt) % 560;
       u.uPx.value = 2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2) / Math.max(1, U.uRes.value.y);
     }
   },

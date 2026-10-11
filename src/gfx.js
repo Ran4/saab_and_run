@@ -992,12 +992,15 @@ float gDist = length( vViewPosition );
       float cr = gNoise( gPw * 0.9 + 1.0 ) * 0.55 + gNoise( gPw * 2.3 + 4.0 ) * 0.45;
       float crA = 1.0 - smoothstep( 0.5, 1.2, fw * 1.4 );
       float st = gFbm( gPw * 0.011 + 7.0 ) + ( 0.85 - gWN.y ) * 0.1 + ( gNoise( gPw * 0.09 ) - 0.5 ) * 0.12;
-      float forest = smoothstep( 0.47, 0.53, st );   // stands with fairly crisp (frayed) edges: forest or open field
+      // (only from a distance: Ove can walk out there now, features/avgrunden.md, and close by a
+      // painted stand was dark grey ground under his boots; within ~100 m it is plain snow)
+      float farOnly = smoothstep( 70.0, 170.0, gDist );
+      float forest = smoothstep( 0.47, 0.53, st ) * farOnly;   // stands with fairly crisp (frayed) edges: forest or open field
       float trees = forest * mix( 0.85, 0.5 + 0.5 * smoothstep( 0.25, 0.55, cr + forest * 0.15 ), crA );
       vec3 fc = vec3( 0.04, 0.05, 0.04 ) * ( 0.8 + 0.4 * cr );
       vec2 sxz = normalize( uSunW.xz );
       float sunF = dot( gWN.xz, sxz ) / max( length( gWN.xz ), 1e-3 );
-      float bare = ( 1.0 - smoothstep( 0.35, 0.72, gWN.y ) ) * smoothstep( -0.1, 0.6, sunF ) * smoothstep( 0.5, 0.66, gFbm( gPw * 0.035 + 2.0 ) );
+      float bare = ( 1.0 - smoothstep( 0.35, 0.72, gWN.y ) ) * smoothstep( -0.1, 0.6, sunF ) * smoothstep( 0.5, 0.66, gFbm( gPw * 0.035 + 2.0 ) ) * farOnly;
       diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.16, 0.14, 0.1 ), bare * 0.75 );
       diffuseColor.rgb = mix( diffuseColor.rgb, fc, trees * 0.96 );
       roughnessFactor = mix( roughnessFactor, 0.95, max( trees, bare ) );
@@ -1876,9 +1879,9 @@ async function loadSky() {
   }
   const v3 = (v) => `vec3(${v.x.toFixed(5)}, ${v.y.toFixed(5)}, ${v.z.toFixed(5)})`;
   const mat = new THREE.ShaderMaterial({
-    uniforms: { tSky: { value: skyRT.texture }, uRot: { value: rot }, uWarp: { value: warp }, uFog: { value: fog }, uGain: { value: 1.0 } },
+    uniforms: { tSky: { value: skyRT.texture }, uRot: { value: rot }, uWarp: { value: warp }, uFog: { value: fog }, uGain: { value: 1.0 }, uWhite: { value: 0 } },
     vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
-    fragmentShader: `uniform sampler2D tSky; uniform float uRot; uniform float uWarp; uniform vec3 uFog; uniform float uGain; varying vec3 vDir;
+    fragmentShader: `uniform sampler2D tSky; uniform float uRot; uniform float uWarp; uniform vec3 uFog; uniform float uGain; uniform float uWhite; varying vec3 vDir;
       #define PI 3.141592653589793
       void main(){
         vec3 d = normalize( vDir );
@@ -1905,6 +1908,10 @@ async function loadSky() {
         col = mix( col, fogCol * dot( col, vec3( 0.2126, 0.7152, 0.0722 ) ) / max( dot( fogCol, vec3( 0.2126, 0.7152, 0.0722 ) ), 1e-4 ), low * 0.6 );
         float hz = max( 1.0 - exp( - od * 0.35 ), max( 1.0 - smoothstep( radians( 2.5 ), radians( 7.0 ), e2 ), 1.0 - smoothstep( 0.035, 0.1, d.y ) ) );
         col = mix( col, fogCol, hz );
+        // a blizzard (game/cold.js): the sky goes the haze's white, all the way up
+        // (and the sun no more than a pale brightness behind the snow)
+        col = min( col, mix( vec3( 99.0 ), fogCol * 1.5, smoothstep( 0.0, 0.5, uWhite ) ) );
+        col = mix( col, fogCol * 1.04, uWhite * ( 1.0 - 0.15 * smoothstep( 0.0, 1.3, e ) ) );
         // interleaved-gradient-noise dither (structure-free at screen scale)
         float dn = fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) ) - 0.5;
         col *= 1.0 + dn * 0.012;

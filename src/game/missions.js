@@ -929,14 +929,17 @@ export class MissionRunner {
     g.chatGlobalT = Math.max(g.chatGlobalT || 0, g.time + 10);
   }
 
-  fail(reason) {
+  // o.later: the banner (and with it E / Q) waits for showFailed() - Ove froze to death (game/cold.js)
+  // and wakes up in his bed first.
+  fail(reason, o = {}) {
     if (this.state !== 'running') return;
     const g = this.g, def = this.m.def;
     this.state = 'failed';
     this.failedAt = this.stageI;
+    this.failNote = { reason, title: def.title };
+    this.failHeld = !!o.later;
     g.patrol.dropPursuit?.();
-    audio.jingle('fail');
-    hud.showBanner('UPPDRAG MISSLYCKADES', reason, 'bad', 0, def.title);
+    if (!o.later) { audio.jingle('fail'); hud.showBanner('UPPDRAG MISSLYCKADES', reason, 'bad', 0, def.title); }
     // Whoever rode with Ove took a taxi home: nobody is left standing on the street.
     const riders = [...this.m.data.npcs].filter((n) => g.companions.has(n) || (n.car && n.car === g.playerCar));
     this.cleanupMission();
@@ -948,8 +951,16 @@ export class MissionRunner {
 
   // While failed: E tries again (from the start of the day's mission, or from def.retry.from), Q
   // (or the gamepad's B) gives up for now. No time limit: the banner waits for the player.
-  updateFailed(dt) {
+  showFailed() {
     if (this.state !== 'failed') return;
+    this.failHeld = false;
+    this.failT = 0;
+    audio.jingle('fail');
+    hud.showBanner('UPPDRAG MISSLYCKADES', this.failNote?.reason || '', 'bad', 0, this.failNote?.title || '');
+  }
+
+  updateFailed(dt) {
+    if (this.state !== 'failed' || this.failHeld) return;
     this.failT += dt;
     const g = this.g;
     hud.setPrompt(this.failT > 0.8 ? '<b>E</b> Försök igen &nbsp; · &nbsp; <b>Q</b> Ge upp' : '');

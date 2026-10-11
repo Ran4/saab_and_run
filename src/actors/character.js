@@ -65,7 +65,9 @@ export class Character {
     this.vx = 0; this.vz = 0; this.vy = 0;
     this.wheelchair = this.model.kind === 'wheelchair';
     this.r = this.model.radius ?? (def.kind === 'kid' ? 0.26 : 0.34);
-    this.state = 'normal';   // normal | flung | down | seated | hidden
+    this.state = 'normal';   // normal | flung | down | seated | hidden | frozen
+    // frozen (game/cold.js, Ove only): stiff as he stood, no physics, no new pose; `topple` (rad) tips
+    // him over sideways about his feet, like a plank
     this.onGround = true;
     this.timer = 0;
     this.downT = 0; this.flungT = 0;
@@ -84,8 +86,10 @@ export class Character {
       kneel: false, kneelReach: undefined,           // down on one knee (Sonja's grave): see models.js
       jumpWind: 0, jumping: false, landT: 9, jumpV: 0, // a jump's wind-up (0..1), flight, landing (see JUMP)
       fright: false, fist: false,                      // the horn: hands up in fright, a fist shaken at it
+      shiver: 0,                                       // the cold (game/cold.js): 0..1
     };
     this.car = null;
+    this.topple = 0;
     this.spin = 0; this.spinRate = 0;
     this.height = this.model.height;
     this.floats = def.kind === 'wizard' || def.kind === 'ghost';
@@ -123,7 +127,7 @@ export class Character {
   // Knocked over by a car: thrown along (vx, vz), falls over backwards (facing what hit them),
   // turns a little in the air, lands on the back, lies there, gets up.
   fling(vx, vy, vz) {
-    if (this.state === 'seated' || this.state === 'hidden' || this.invulnerable) return false;
+    if (this.state === 'seated' || this.state === 'hidden' || this.state === 'frozen' || this.invulnerable) return false;
     this.state = 'flung';
     this.vx = vx; this.vy = vy; this.vz = vz;
     this.onGround = false;
@@ -136,7 +140,7 @@ export class Character {
   }
 
   step(dt, game) {
-    if (this.state === 'seated' || this.state === 'hidden') { this.windT = -1; return; }
+    if (this.state === 'seated' || this.state === 'hidden' || this.state === 'frozen') { this.windT = -1; return; }
     if (this.state === 'down') {
       this.timer -= dt;
       this.downT += dt;
@@ -252,6 +256,14 @@ export class Character {
 
   sync(dt) {
     const a = this.anim;
+    if (this.state === 'frozen') {
+      // stiff: the last pose stays; only the root moves (the topple)
+      const r = this.root;
+      r.position.set(this.x, this.y, this.z);
+      r.rotation.set(0, this.yaw, this.topple);
+      r._skipFrom = null;
+      return;
+    }
     a.t += dt;
     a.speed = this.state === 'normal' ? Math.hypot(this.vx, this.vz) : 0;
     a.air = !this.onGround && this.state === 'normal';

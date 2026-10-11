@@ -10,7 +10,24 @@ export const SW = 3.5;        // sidewalk width
 export const LANE = 2.75;     // lane centre offset from the road centre line
 export const CURB = 0.15;     // everything off the asphalt sits this high
 export const EDGE = HALF + RHW + SW; // outer edge of the outermost sidewalk
-export const BOUND = HALF + 34;      // invisible wall beyond the trees
+// Where the invisible walls stood until features/avgrunden.md. Ove (on foot or in his car) goes on
+// past it now; everyone else still stops there (main.js keepInside).
+export const BOUND = HALF + 34;
+// The cold (game/cold.js): it begins 30 m beyond that, at the outer edge of the forest belt, and
+// gets worse further out. Distances outside the town are square ones, max(|x|, |z|), like the grid.
+export const COLD = BOUND + 30;
+export const edgeDist = (x, z) => Math.max(Math.abs(x), Math.abs(z));
+// Four forest tracks: a street carried on past the outer road as a snowy gap through the forest
+// belt and out onto the hills, one on each side of the town (run: the axis the track runs along,
+// c: its centre line on the other axis, s: the side of the town it leaves by).
+export const TRACKS = [{ run: 'z', c: -120, s: -1 }, { run: 'z', c: 120, s: 1 }, { run: 'x', c: 120, s: -1 }, { run: 'x', c: -120, s: 1 }];
+export function onTrack(x, z, w = 5.5) {
+  for (const t of TRACKS) {
+    const a = t.run === 'z' ? z : x, o = t.run === 'z' ? x : z;
+    if (a * t.s > HALF + RHW && Math.abs(o - t.c) < w) return true;
+  }
+  return false;
+}
 
 export const rc = (i) => i * P - HALF;
 
@@ -42,8 +59,15 @@ export function isRoad(x, z) {
   }
   return false;
 }
+// The ground outside the town follows the hills (world/outskirts.js sets terrain.at to the height of
+// its own mesh, triangle by triangle, once it is built); the flat snow at CURB reaches 420 m out and
+// the hills only rise out of it beyond ~340 m.
+export const terrain = { at: null, from: 330 };
 export function baseGround(x, z) {
-  return isRoad(x, z) ? 0 : CURB;
+  if (isRoad(x, z)) return 0;
+  const t = terrain.at;
+  if (t && (x > terrain.from || x < -terrain.from || z > terrain.from || z < -terrain.from)) { const h = t(x, z); return h > CURB ? h : CURB; }
+  return CURB;
 }
 
 // Block types (see DESIGN.md section 6). j = 0 is the north edge (-z), i = 0 the west edge (-x).

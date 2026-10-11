@@ -10,6 +10,7 @@ import { parkedCars, tickTown, litterSpots, collectibleSpots, mapLabels as townL
 import * as TOWN from './world/town.js';
 import { finalizeProps, tickProps, breakProp, propsNear, props as allProps } from './world/props.js';
 import { lm, landmarks, routeAim, N, LANE, RHW, SW, nodeX, nodeZ, neighbors, BOUND, isRoad, isCarFree, HALF, P } from './world/layout.js';
+import { tickWild } from './world/outskirts.js';
 import { groundAt, queryBlocks, contains, circleVsObb, circleVsBlock, obbVsBlock } from './world/collision.js';
 import { Car, collideCars, warmCars } from './actors/car.js';
 import { Character } from './actors/character.js';
@@ -23,6 +24,7 @@ import { CamRig } from './game/camera.js';
 import { Patrol } from './game/patrol.js';
 import { Interruptions } from './game/interruptions.js';
 import { Horn } from './game/horn.js';
+import { Cold } from './game/cold.js';
 import * as stages from './game/stages.js';
 import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
@@ -220,6 +222,8 @@ class Game {
     window.__interrupt = this.interrupts;
     this.missions = new MissionRunner(this);
     this.missions.gating = !TEST || params.has('gate');
+    // The cold beyond the town, Ove freezing to death out there and waking up at home (game/cold.js).
+    this.cold = new Cold(this);
     // The voices (voice.js): clips for the lines that have one, turns for everybody.
     voice.init();
     voice.inCar = () => !!this.playerCar;
@@ -1266,7 +1270,10 @@ class Game {
       if (input.pressed('mute')) { audio.setMuted(!audio.muted); hud.syncMenu(); }
       if (performance.now() - (this.pausedAt || 0) > 300 && input.pressed('pause')) this.pause(false);
     }
+    // (the cold's blizzard thickens the haze and dims the sun for the frame only: game/cold.js)
+    this.cold?.beforeRender();
     renderFrame();
+    this.cold?.afterRender();
     input.endFrame();
     this.frame++;
     window.__frame = this.frame;
@@ -1300,6 +1307,7 @@ class Game {
     if (this.acc >= STEP) this.acc = 0;
     followSun(T ? T.x : s.x, T ? T.z : s.z);
     tickSky(this.time, camera.position);
+    tickWild(camera.position.x, camera.position.z, camera.position.y);
     this.syncAll(dt, true);
     FX.tick(dt);
   }
@@ -1334,11 +1342,15 @@ class Game {
       if (ms === 'idle') this.patrol.newStretch();
       this.lastMissionState = ms;
     }
-    this.missions.update(dt);
-    this.missions.updateFailed(dt);
-    this.tickGarage(dt);
-    this.interrupts.update(dt);
-    this.patrol.update(dt);
+    // (while Ove freezes to death and wakes up again, the day, the errands and the patrol hold)
+    this.cold.update(dt);
+    if (!this.cold.busy) {
+      this.missions.update(dt);
+      this.missions.updateFailed(dt);
+      this.tickGarage(dt);
+      this.interrupts.update(dt);
+      this.patrol.update(dt);
+    }
     this.tickPickups(dt);
     const f = this.focus();
     tickProps(dt, f.x, f.z);
@@ -1352,6 +1364,7 @@ class Game {
     if (this.aerial) { camera.position.set(f.x, 420, f.z + 260); camera.lookAt(f.x, 0, f.z); camera.fov = 50; camera.updateProjectionMatrix(); }
     followSun(f.x, f.z);
     tickSky(this.time, camera.position);
+    tickWild(camera.position.x, camera.position.z, camera.position.y);
     this.updateHud(dt);
     this.updateAudio(dt);
     this.slideTalk(dt);
@@ -1646,6 +1659,7 @@ class Game {
     }
     for (let i = 0; i < cars.length; i++) cars[i].step(h, this);
     this.collideAll();
+    this.keepCarsInside();
     // Pedestrians far away walk at 30 Hz too.
     const peds = this.peds;
     for (let i = 0; i < peds.length; i++) {
@@ -1654,8 +1668,32 @@ class Game {
       else { ped.update(h, this); c.step(h, this); }
     }
     this.stepNpcs(h);
+    this.keepPeopleInside();
     if (!this.playerCar) this.player.step(h, this);
     this.carsVsPeople();
+  }
+
+  // Where the invisible walls stood (BOUND) everyone but Ove and his car still stops (features/
+  // avgrunden.md): the traffic, the chases and the race, the pedestrians, the neighbours walking with
+  // him. Like the old walls, a car is pushed back and loses its speed outwards.
+  keepCarsInside() {
+    const pc = this.playerCar;
+    for (const c of this.cars) {
+      if (c === pc || (!c.ai && !c.driver && !c.driverBust)) continue;
+      const r = Math.min(c.radius, 2.6), lim = BOUND - r;
+      if (c.x > lim || c.x < -lim) { const sg = Math.sign(c.x); c.x = sg * lim; if (c.vx * sg > 0) c.vx *= -0.2; }
+      if (c.z > lim || c.z < -lim) { const sg = Math.sign(c.z); c.z = sg * lim; if (c.vz * sg > 0) c.vz *= -0.2; }
+    }
+  }
+  keepPeopleInside() {
+    const keep = (ch) => {
+      if (ch.state === 'seated' || ch.state === 'hidden') return;
+      const lim = BOUND - ch.r;
+      if (ch.x > lim || ch.x < -lim) { const sg = Math.sign(ch.x); ch.x = sg * lim; if (ch.vx * sg > 0) ch.vx = 0; }
+      if (ch.z > lim || ch.z < -lim) { const sg = Math.sign(ch.z); ch.z = sg * lim; if (ch.vz * sg > 0) ch.vz = 0; }
+    };
+    for (const p of this.peds) keep(p.char);
+    for (const k in this.npcs) keep(this.npcs[k]);
   }
 
   fixedStep(h) {
@@ -2305,7 +2343,7 @@ class Game {
 
   updateAudio() {
     const c = this.playerCar;
-    if (c && !c.dead) {
+    if (c && !c.dead && !this.cold.engineOff) {
       audio.engine(true, c.revs, c.ctrl.throttle, Math.abs(c.forwardSpeed), c.onSnow ? 'snow' : 'asphalt');
       audio.skid(c.air ? 0 : c.skidAmt, c.onSnow ? 'snow' : 'asphalt');
       audio.horn(this.horn.down, c.kind);
@@ -2333,7 +2371,8 @@ class Game {
     const ms = this.musicState();
     audio.music(ms, { day: this.storyDayNow() });
     // (a stage's own cutscene with its own sounds - day 3's radiator - wants the music well back)
-    audio.duckMusic(this.missions.stage?.hush ? 0.3 : audio.musicCue === 'piano' && (this.patrol.pursuit || this.interrupts.call) ? 0.5 : 1);
+    // (and out in the cold the music steps back too: game/cold.js musicDuck)
+    audio.duckMusic((this.missions.stage?.hush ? 0.3 : audio.musicCue === 'piano' && (this.patrol.pursuit || this.interrupts.call) ? 0.5 : 1) * this.cold.musicDuck);
   }
   // What the music should be doing (audio.music's states): the day's race, Vita skjortan's Škoda
   // (day 6's chase, day 7's chaser), the drive to the hospital against the clock, Sonja's grave and
@@ -2382,6 +2421,8 @@ class Game {
       // used to stay for good: every "lånad" car added one to the world, and to the physics).
       if (c.wasTraffic && free && !c.driver && !c.passengers.length && this.time - (c.leftAt ?? -1e9) > 30 && dist(c.x, c.z, f.x, f.z) > 120) this.removeCar(c);
     }
+    // A named car Ove left out beyond where the walls stood goes home once nobody sees it.
+    for (const c of this.cars) if (c.name && !c.dead && c !== this.playerCar && (Math.abs(c.x) > BOUND || Math.abs(c.z) > BOUND)) this.rehome(c);
     for (const c of this.rehoming || []) {
       if (c === this.playerCar || c.dead || !c.home) { this.rehoming.delete(c); continue; }
       if (dist(c.x, c.z, f.x, f.z) > 110 && dist(c.home.x, c.home.z, f.x, f.z) > 60) { c.place(c.home.x, c.home.z, c.home.yaw); c.ctrl.park = true; this.rehoming.delete(c); }

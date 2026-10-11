@@ -76,6 +76,7 @@ const ICON = {
   book: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="2.8" width="12" height="14.6" rx="1"/><path d="M7 7h6M7 10h6M7 13h4"/></svg>',
   phone: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>',
   north: '<svg viewBox="0 0 34 46"><path d="M17 3 L27 30 L17 24 L7 30 Z" fill="#1b1f24"/><path d="M17 3 L17 24 L7 30 Z" fill="#5a626a"/><text x="17" y="44" text-anchor="middle" font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="600" font-size="13" fill="#1b1f24">N</text></svg>',
+  flake: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 1.5v17M2.6 5.75l14.8 8.5M2.6 14.25l14.8-8.5M7.6 2.9 10 5.2l2.4-2.3M7.6 17.1 10 14.8l2.4 2.3"/></svg>',
   pencil: '<svg viewBox="0 0 84 14"><path d="M0 7 L7 4.6 L7 9.4 Z" fill="#3b3e44"/><path d="M7 4.6 L19 1.5 L19 12.5 L7 9.4 Z" fill="#dcc29a"/><rect x="19" y="1.5" width="60" height="11" fill="#9a2f22"/><rect x="19" y="1.5" width="60" height="3.2" fill="#b4412f"/><rect x="79" y="1.5" width="5" height="11" fill="#5b2018"/></svg>',
 };
 
@@ -103,6 +104,7 @@ export const hud = {
       </div>
       <div id="meter" class="card"><div class="mt-head"><span class="kicker">Ordning i området</span><span class="mt-val">50</span></div><div class="mt-bar"><div class="mt-fill"></div><div class="mt-ticks"></div></div></div>
       <div id="pursuit" class="card"><div class="pu-head"><span class="kicker">Smitare</span><span class="pu-dist"></span></div><div class="pu-label"></div><div class="pu-bar"><div class="pu-fill"></div></div><div class="pu-sub"><span class="pu-blabel">Ork</span><span class="pu-note"></span></div></div>
+      <div id="cold" class="card"><div class="co-head"><span class="kicker">${ICON.flake}Kyla</span><span class="co-val"></span></div><div class="co-bar"><div class="co-fill"></div><div class="mt-ticks"></div></div><div class="co-sub"></div></div>
       <div id="objective" class="card"><div class="obj-title"></div><div class="obj-text"></div><div class="obj-timer"></div><div class="obj-bar"><div class="obj-bar-fill"></div></div><span class="obj-bar-label"></span></div>
       <div id="minimap-wrap"><canvas id="minimap" width="420" height="420"></canvas><div class="mm-n">N</div></div>
       <div id="speedo"><canvas class="sp-dial"></canvas><div class="sp-name"></div></div>
@@ -123,6 +125,7 @@ export const hud = {
         <div class="nb-reason"></div>
         <div class="nb-pencil">${ICON.pencil}</div>
       </div></div>
+      <div id="frost"></div>
       <div id="curtain"><div class="cu-text"></div></div>
       <div id="letterbox"><div class="lb-top"></div><div class="lb-bot"></div></div>
       <div id="dialog" class="card"><div class="dlg-portrait"><img alt=""></div><div class="dlg-body"><div class="dlg-name"></div><div class="dlg-text"></div></div><div class="dlg-next"><b>E</b>fortsätt</div></div>
@@ -162,6 +165,10 @@ export const hud = {
     this.collectEl = $('collect');
     this.flash = $('flash');
     this.bigmap = $('bigmap');
+    this.coldEl = $('cold');
+    this._co = { fill: this.coldEl.querySelector('.co-fill'), val: this.coldEl.querySelector('.co-val'), sub: this.coldEl.querySelector('.co-sub') };
+    this.frostEl = $('frost');
+    this.frostEl.appendChild(frostCanvas());
     this._tagPool = [];
     this._meter = null;
     this.notebook._init($('notebook'));
@@ -629,6 +636,41 @@ export const hud = {
     clearTimeout(this._collectT);
     this._collectT = setTimeout(() => this.collectEl.classList.remove('show'), ms);
   },
+
+  // ------------------------------------------------------------------------------------------
+  // The cold (game/cold.js, features/avgrunden.md)
+
+  // The cold meter under the Ordning meter: v 0..1 (1: Ove freezes to death); o = { show, temp (the
+  // cold Ove feels, deg C), note (a line under the bar), warm (thawing: going down), danger }. Called
+  // every frame: only touches the DOM when a shown value changes.
+  setCold(v, o = {}) {
+    const e = this.coldEl, n = this._co, c = (this._coC ||= {});
+    const on = !!o.show;
+    if (on !== c.on) { c.on = on; e.classList.toggle('show', on); document.body.classList.toggle('coldhud', on); }
+    if (!on) return;
+    const w = Math.round(clamp(v, 0, 1) * 200) / 2;
+    if (w !== c.w) { c.w = w; n.fill.style.width = `${w}%`; }
+    const t = `−${Math.abs(Math.round(o.temp ?? 0))}°`;
+    if (t !== c.t) { c.t = t; n.val.textContent = t; }
+    const note = o.note || '';
+    if (note !== c.note) { c.note = note; n.sub.textContent = note; }
+    for (const k of ['warm', 'danger']) if (!!o[k] !== !!c[k]) { c[k] = !!o[k]; e.classList.toggle(k, c[k]); }
+  },
+  // Frost on the picture, creeping in from its edges: 0 none, 1 most of it, up to 1.6 all of it
+  // (white). Quantised: the full-screen mask is repainted only when it changes.
+  setFrost(f) {
+    const q = Math.round(clamp(f, 0, 1.6) * 100);
+    if (q === this._frQ) return;
+    this._frQ = q;
+    const s = this.frostEl.style, k = q / 100;
+    s.opacity = k > 0 ? Math.min(1, k * 2.5).toFixed(3) : '0';
+    s.setProperty('--fa', `${Math.max(0, 74 - k * 66).toFixed(1)}%`);
+    s.setProperty('--fb', `${Math.max(12, 122 - k * 78).toFixed(1)}%`);
+    s.setProperty('--fw', Math.max(0, (k - 1.12) * 1.7).toFixed(3));
+  },
+
+  // Ove dead in the snow (game/cold.js): the HUD's chrome fades out as under the curtain.
+  deathHud(on) { root?.classList.toggle('dead', !!on); },
 
   letterbox(on) { $('letterbox').classList.toggle('on', !!on); this._cineSet('lb', on); },
   // A cut: the scene fades to black (0.6 s) with an optional caption ("Senare samma dag"), and back.
@@ -1151,6 +1193,50 @@ const _v = new THREE.Vector3();
 // 80 / 150 characters) is cut with "…".
 const NB_FIT = { plate: [[1, 15]], time: [[1, 15]], place: [[1, 19], [2, 16]], text: [[2, 17], [3, 15]] };
 const NB_RULE = 30; // px between the notebook's ruled lines (one row)
+// Frost on the inside of a cold window, for the edges of the picture (hud.setFrost): ferns of ice that
+// grow in from the edges (a stem, side branches at about 60 degrees and theirs, thinning out), drawn
+// twice (blurred under sharp), over a soft rime that is thickest at the edges. Made once, at load.
+function frostCanvas() {
+  const W = 1280, H = 720, A = document.createElement('canvas');
+  A.width = W; A.height = H;
+  const x = A.getContext('2d');
+  let seed = 90210;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  x.lineCap = 'round';
+  x.strokeStyle = 'rgba(238, 246, 255, 0.6)';
+  const fern = (px, py, a, len, w, depth) => {
+    const n = Math.max(2, Math.floor(len / 10));
+    for (let i = 0; i < n; i++) {
+      a += (r() - 0.5) * 0.22;
+      const qx = px + Math.cos(a) * len / n, qy = py + Math.sin(a) * len / n;
+      x.lineWidth = Math.max(0.6, w * (1 - (i / n) * 0.7));
+      x.beginPath(); x.moveTo(px, py); x.lineTo(qx, qy); x.stroke();
+      if (depth > 0 && r() < 0.75) {
+        const side = r() < 0.5 ? 1 : -1, bl = len * (0.22 + r() * 0.3) * (1 - i / n);
+        fern(qx, qy, a + side * (1.0 + r() * 0.2), bl, w * 0.65, depth - 1);
+        if (r() < 0.45) fern(qx, qy, a - side * (1.0 + r() * 0.2), bl * 0.8, w * 0.65, depth - 1);
+      }
+      px = qx; py = qy;
+    }
+  };
+  for (let k = 0; k < 130; k++) {
+    const e = Math.floor(r() * 4), t = r();
+    const [px, py, a0] = e === 0 ? [t * W, -4, Math.PI / 2] : e === 1 ? [t * W, H + 4, -Math.PI / 2] : e === 2 ? [-4, t * H, 0] : [W + 4, t * H, Math.PI];
+    fern(px, py, a0 + (r() - 0.5) * 1.5, 50 + r() * 230, 1.4 + r() * 1.3, 2);
+  }
+  const C = document.createElement('canvas');
+  C.width = W; C.height = H;
+  const y = C.getContext('2d');
+  const g = y.createRadialGradient(W / 2, H / 2, H * 0.22, W / 2, H / 2, W * 0.62);
+  g.addColorStop(0, 'rgba(226, 238, 250, 0)');
+  g.addColorStop(0.6, 'rgba(226, 238, 250, 0.16)');
+  g.addColorStop(1, 'rgba(236, 244, 252, 0.72)');
+  y.fillStyle = g; y.fillRect(0, 0, W, H);
+  y.filter = 'blur(4px)'; y.drawImage(A, 0, 0); y.filter = 'none';
+  y.drawImage(A, 0, 0);
+  return C;
+}
+
 // Ove writes the time the Swedish way, 06.42 (the digital clock on the HUD keeps its colon).
 function nbTime(t) { return String(t || '').replace(':', '.'); }
 // A hand-drawn tick in the stamp's red (the ✓ glyph isn't in the embedded fonts).

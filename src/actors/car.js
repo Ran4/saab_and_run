@@ -625,6 +625,7 @@ export class Car {
     this.bump = 0;
     this.pitch = 0; this.roll = 0;          // body attitude on the suspension (rad)
     this.groundPitch = 0;                   // the road's slope under the car
+    this.groundRoll = 0;                    // ... and sideways (off the grid only: the hills)
     this.heave = 0;
     this._sus = { p: 0, pv: 0, r: 0, rv: 0, h: 0, hv: 0 };
     this.accelF = 0; this.accelL = 0;       // smoothed longitudinal / lateral acceleration
@@ -1133,10 +1134,22 @@ export class Car {
       const hF = groundAt(this.x + fx * wb, this.z + fz * wb, this.y + 0.3, 0.6), hR = groundAt(this.x - fx * wb, this.z - fz * wb, this.y + 0.3, 0.6);
       this.groundPitch = damp(this.groundPitch, -Math.atan2(hF - hR, wb * 2), 12, dt);
     }
+    // Out on the hills beyond the town (features/avgrunden.md) the ground slopes sideways as well; in
+    // town nothing does, and nothing changes there.
+    const off = Math.abs(this.x) > 320 || Math.abs(this.z) > 320;
+    if (off || this.groundRoll) {
+      let roll = 0;
+      if (off && !this.air) {
+        const hw = s.wid * 0.42, lx = fz * hw, lz = -fx * hw;
+        roll = Math.atan2(groundAt(this.x + lx, this.z + lz, this.y + 0.3, 0.6) - groundAt(this.x - lx, this.z - lz, this.y + 0.3, 0.6), hw * 2);
+      }
+      this.groundRoll = damp(this.groundRoll, roll, 10, dt);
+      if (!off && Math.abs(this.groundRoll) < 1e-4) this.groundRoll = 0;
+    }
     const sus = this._sus;
     this.bump = Math.max(0, this.bump - dt * 1.5);
     this.pitch = sus.p; this.roll = sus.r; this.heave = sus.h;
-    this.tilt.rotation.set(this.groundPitch + sus.p, 0, sus.r);
+    this.tilt.rotation.set(this.groundPitch + sus.p, 0, sus.r + this.groundRoll);
     this.tilt.position.y = sus.h;
     this.root.updateMatrix();
     this.tilt.updateMatrix();
@@ -1225,7 +1238,7 @@ export class Car {
   // the road's slope, steering, rolling; not the body's roll).
   writeWheels(sink) {
     const m = this.model, r = m.wr;
-    _m4.compose(_v.set(this.x, this.y, this.z), _q.setFromEuler(_e.set(this.groundPitch, this.yaw, 0, 'YXZ')), _s.set(1, 1, 1));
+    _m4.compose(_v.set(this.x, this.y, this.z), _q.setFromEuler(_e.set(this.groundPitch, this.yaw, this.groundRoll, 'YXZ')), _s.set(1, 1, 1));
     for (const w of this.wheels) {
       const spin = w.side > 0 ? this.wheelSpin : -this.wheelSpin;
       _e.set(spin, w.steer + (w.side > 0 ? 0 : Math.PI), 0, 'YXZ');
