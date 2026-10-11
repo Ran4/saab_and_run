@@ -248,6 +248,20 @@ Alla körningar var headless, på egna portar (8856, 8858, 8860), och med Chrome
   - **Körningen räknade 1 fel:** en 404 när dag 7 började. Under körningen tog jag bort Parvanehs
     gamla tagning av "OVE! BILEN! NU!" (en dag 7-replik), och sidan hade det gamla manifestet
     laddat.
+  - **Omkörningen mot det slutliga manifestet:** `#7 idle stage 7`, `hud watch: 5127 samples, 0
+    leaks`, ingen 404.
+    - Dag 1–7: 121 repliker begärda och 121 sagda, 119 av dem med klipp och 0 strukna.
+    - **1 avklippt (0,8 %):** Anitas samtal på dag 7, som läggs på när Ove kommer fram.
+    - 0 bubblor avklippta av 16, och 0 gånger två röster samtidigt.
+    - Omstarten: 8 av 8 med klipp, 0 avklippta.
+  - **Men omkörningen gav 2 fel som inte gäller rösterna:** outro-kontrollen på dag 3 och dag 6
+    ("anita … shown=false", alltså att Anitas rot är dold eller att hon inte är i läget `normal`).
+    - Felen kom efter luftningsscenen (commit 1c19bb3, dag 3, en annan session). Dessutom låg andra
+      sessioners ocommittade ändringar i `character.js` och `models.js` i trädet.
+    - De två första röstkörningarna, med samma klipp men före 1c19bb3, var rena.
+    - `story` med rösterna av och `vstory FROM=2 TO=3` med rösterna på går igenom. Det som skiljer
+      `vcut` är läsaren, som trycker Enter efter varje replik och kan hoppa över scenen.
+    - Felet är rapporterat till orkestratorn. Luftningskoden är inte ändrad här.
 - **`vpool`** (nytt): 34 statister, varav 7 barn som mumlar, 25 trafikförare och 3 fönster.
   - Alla tolv poolröster används.
   - Varje person har en röst av sitt kön och sitt åldersband, och samma röst vid varje anrop.
