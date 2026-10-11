@@ -2,7 +2,7 @@
 // car, and wires up the patrol (felparkeringar, smitare, the Ordning meter), the avbrott (the
 // neighbours' calls), the story missions, pickups, the neighbours and the HUD.
 
-import { THREE, initGfx, renderer, scene, camera, followSun, tickSky, renderFrame, gfxReady, gfxStats, precompile, uploadGeometry } from './gfx.js';
+import { THREE, initGfx, renderer, scene, camera, followSun, tickSky, renderFrame, gfxReady, gfxStats, precompile, uploadGeometry, nextTask } from './gfx.js';
 import { input } from './input.js';
 import { audio } from './audio.js';
 import { parkedCars, tickTown, litterSpots, collectibleSpots, mapLabels as townLabels, surfaceAt as townSurfaceAt } from './world/town.js';
@@ -286,7 +286,10 @@ class Game {
     uploadGeometry();
     const pc = precompile();
     const wc = warmCars(renderer, scene, camera).catch((e) => console.warn('warmCars', e));
-    for (const key of Object.keys(HOMES)) hud.portraits[key] = renderPortrait(renderer, this.npcs[key].model);
+    // One portrait per task (~60 ms each): taken in one go they were the longest task of the load
+    // (0.7 s) and starved the compiles above. Every helper here restores its render target before
+    // it yields, so they interleave safely.
+    for (const key of Object.keys(HOMES)) { hud.portraits[key] = renderPortrait(renderer, this.npcs[key].model); await nextTask(); }
     hud.portraits.ove = renderPortrait(renderer, this.player.model);
     this.applySaveToWorld();
     hud.setCoins(this.coins);

@@ -428,7 +428,7 @@ onStopped })` — API unchanged (`rubber` optional everywhere):
   front-side materials, back row DoubleSide - the rows must match), `saab_tail_side`, `saab_lip`,
   `saab_hatch_close`, `saab_ws`, `saab_apillar(_shade)`, `hero_chase` / `hero_chase_sun` (the game's
   chase camera on the hero, away from / into the sun), `saab_lod` / `saab_lod_near`. The look-dev Saab
-  is the world's phase-4 slate blue (0x34506e); the studio row carries grime 0.85 (was random).
+  is the world's round-2b blue metallic (0x2c5596); the studio row carries grime 0.85 (was random).
 - Lamp colours: sample the lit lens cores in `brake` / `hazard`; the lighting terms: add `&dbg=1|2|3|4&tm=none&contrast=0&toe=1&sdesat=1&exposure=1`
   (QUERY for shot.mjs; note the clear coat is added on top of every dbg term).
 
@@ -555,7 +555,7 @@ cars now emit sparsely). **systems** - stages.js's day-7 chaser: spawn it facing
    insert (0x8e9296, 0.427-0.438). The tail lamps already sat in a full-width black band. No
    hockey-stick C-pillar (that is a 9-3 / 9-5 detail). len / wid / height / axles / seat / hitch
    unchanged. Triangles 20,644 -> 21,336 near, 4,326 -> 4,390 LOD; draw calls unchanged (7).
-   The paint colour is the world's (src/world/ove.js, phase 4 round 2: a slate-blue metallic ~0x34506e);
+   The paint colour is the world's (src/world/ove.js, phase 4 round 2: a slate-blue metallic, made bluer in round 2b: 0x2c5596);
    with it the title shot's bonnet reads (76, 93, 115) and the shaded door (21, 30, 50) sRGB (navy:
    (67, 79, 98) / (12, 16, 29)).
 3. **Sleeping cars** (minor) - a car with a trailer never falls asleep (`sleepCheck`: `!this.trailer`;
