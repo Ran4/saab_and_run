@@ -37,16 +37,22 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   one, who loses even with the old physics) and `m7chase` (the day-7 Škoda must close to < 40 m by
   itself; `CHASER_AWAY=1` = spawned facing away). Failed checks are pushed to the run's errors ('N
   errors').
-- **Voices and music** (features/implemented/a_fully_voiced_game.md): every line said out loud is in
+- **Voices and music** (features/implemented/a_fully_voiced_game.md and
+  resten_av_replikerna_for_a_fully_voiced_game.md): every line said out loud is in
   `src/game/script.js` (pure data, `allLines()` = `[who, text, part]`); code never inlines voiced
-  text (toasts, banners, objectives stay in code). After editing a line: `make voice DRY=1`, then
-  `make voice` (only missing or changed clips cost; one clip per line, retakes on a bad take), and
-  `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 16 000 chars and ≲ 25
+  text (toasts, banners, objectives stay in code). Every role has a voice but the children (they
+  murmur). A shared table's line (`ped`, `driver`, `window`, `cast`) is made once per voice its `//
+  @voice` tag names: the neighbours and twelve pool voices (`tools/voice/cast.json` roles with
+  `pool: { sex, age }`; the game picks one by the person's sex, age and seed, `voice.voiceFor`).
+  A new shared table needs its `@voice` tag. After editing a line: `make voice DRY=1`, then
+  `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
+  take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 16 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
-  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (490 lines, 15 116 chars on
-  2026-10-11). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (490 lines, 15 114 chars on
+  2026-10-11; with the pool 1 295 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
-  retry: < 5 % cut off, no two voices at once), `vstory` (story with the voices). Every headless tool
+  retry: < 5 % cut off, no two voices at once; `TO=7` all seven days), `vstory` (story with the
+  voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line). Every headless tool
   starts Chrome with `--mute-audio`: never play sound on the speakers.
 - Test mode is `?test=1` (no title, no pointer lock, dialogue auto-advances, no automatic phone
   calls unless `&calls`, no wait between story days unless `&gate`). `&fresh` ignores the save,

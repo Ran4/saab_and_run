@@ -27,9 +27,10 @@ behöver inget nätverk.
 URL-val: `?fresh` struntar i det sparade spelet, `?mission=N` börjar på dag N+1 (0–6), `?q=auto`,
 `?q=high` eller `?q=low` väljer grafiknivå (`?lowgfx` = låg).
 
-**Röster och musik.** Ove pratar med riktig röst i hela spelet, och dag 1 är röstsatt (Patrick
-och Parvaneh också; barnen mumlar och fnissar). De andra mumlar som förut tills deras repliker är
-inspelade, och textningen syns alltid. Ingen pratar i munnen på någon: repliker väntar på sin tur. Musiken är
+**Röster och musik.** Alla pratar med riktig röst: grannarna med var sin röst, och de som går
+förbi, förarna och den som ropar från ett fönster med en av tolv röster (kvinnor och män i tre
+åldrar; samma person låter alltid likadant). Barnen mumlar och fnissar, och textningen syns
+alltid. Ingen pratar i munnen på någon: repliker väntar på sin tur. Musiken är
 komponerad (tema, patrull, ärenden, jakt, racet, Vita skjortan) med det genererade pianot emellan.
 **Röster** och **Röstvolym** i pausmenyn stänger av rösterna (då blir det mummel) och sänker dem.
 
@@ -198,7 +199,7 @@ PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausm
 PORT=8791 node tools/shot.mjs uipause                      # pausmenyn i 15 fönsterstorlekar: anteckningsboken lika hög som menyn, inget utanför
 PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
 PORT=8791 node tools/shot.mjs luft luftskip luftsound      # dag 3:s scen i köket: en bild per ögonblick, att hoppa över den, ljudnivåerna
-PORT=8791 node tools/shot.mjs voice vcut                   # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt
+PORT=8791 node tools/shot.mjs voice vcut vpool             # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt (TO=7: alla sju); statisternas röster
 ```
 
 I testerna (`?test=1`) är rösterna avstängda, så de går lika fort som förut; `&voice` slår på dem.
@@ -210,7 +211,7 @@ anropar aldrig API:t. Nyckeln ligger i `.env` (`ELEVENLABS_API_KEY`) och använd
 
 ```sh
 make voice DRY=1            # vad som skulle göras och vad det kostar, utan anrop
-make voice                  # gör klippen som saknas (inom omfånget i tools/voice/cast.json)
+make voice                  # gör klippen som saknas (statisternas repliker en gång per poolröst)
 make voice-check            # saknas något? (inga anrop)
 make voice-review           # provlyssningssidan: http://127.0.0.1:8795/ (byt röst, gör om repliker)
 make voice-cast WHO=anita   # provinspelningar av en rolls kandidater (Voice Library)

@@ -4,8 +4,9 @@
 > till och med dag 1, och allt runt omkring är byggt: manuset i `src/game/script.js`, verktyget,
 > provlyssningssidan, turordningen, ljudkedjan, läppsynken och musiken. Vad som faktiskt gjordes,
 > vilka röster som valdes och varför, vad det kostade och vad som avviker från förslaget står i
-> "Det här gjordes" nedan. Resten av replikerna görs i
-> `features/resten_av_replikerna_for_a_fully_voiced_game.md`.
+> "Det här gjordes" nedan. **Resten av replikerna gjordes samma dag** (alla roller utom barnen, och
+> en pool av tolv röster för statisterna): se
+> `features/implemented/resten_av_replikerna_for_a_fully_voiced_game.md`.
 >
 > Efter det avsnittet följer förslaget som det skrevs (före bygget), med korta noteringar
 > **(Blev: …)** där det blev annorlunda.
@@ -284,7 +285,8 @@ Alla körningar var headless, på egen port och med Chrome tystat (`--mute-audio
    - **Musiken:** varje stycke, och om patrullstyckena delar temats melodi.
 2. **Rabatten på `eleven_v4` går ut 12 oktober.** Resten av replikerna, ungefär 10 500 tecken,
    kostar i dag runt 1 500 credits. Till fullpris kan de kosta runt 10 500. Enligt instruktionen
-   gjordes de inte nu.
+   gjordes de inte nu. **(Gjort 2026-10-11 i resten-featuren: 3 643 credits med poolen och
+   provläsningarna.)**
 3. **Barnen:** riktiga inspelningar (väg b), eller mummel och fniss som nu?
 4. **Fler röstplatser** behövs bara om ni vill ha designade röster (en västgötsk Ove, egna röster
    för statisterna). Allt i första versionen klarar sig utan.
