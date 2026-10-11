@@ -1,0 +1,36 @@
+{
+ "ove": {
+  "...": {
+   "tts": "[sighs] ...",
+   "note": "Oves tystnad (dag 4: katten får stanna): en suck."
+  },
+  "Ja, Rune. Saab.": {
+   "retake": 1,
+   "auto": true
+  },
+  "Jaja. Jag hämtar Saaben.": {
+   "retake": 1,
+   "auto": true
+  },
+  "Hmpf. Femtusen hade gått.": {
+   "retake": 1,
+   "auto": true
+  },
+  "Jaja. Jag kommer.": {
+   "retake": 2,
+   "auto": true
+  },
+  "Ingen kan läsa nu för tiden.": {
+   "retake": 1,
+   "auto": true
+  },
+  "Saab-folk. Vi hälsar.": {
+   "retake": 1,
+   "auto": true
+  },
+  "Kiss, kiss... Hmpf.": {
+   "retake": 2,
+   "auto": true
+  }
+ }
+}

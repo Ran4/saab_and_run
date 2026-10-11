@@ -1,0 +1,62 @@
+{
+ "klart": {
+  "f": "klart.mp3",
+  "d": 4.7,
+  "loop": null,
+  "lufs": -24
+ },
+ "tema": {
+  "f": "tema.mp3",
+  "d": 52.64,
+  "loop": null,
+  "lufs": -24
+ },
+ "patrull-kall": {
+  "f": "patrull-kall.mp3",
+  "d": 58.6,
+  "loop": null,
+  "lufs": -24
+ },
+ "patrull-varm": {
+  "f": "patrull-varm.mp3",
+  "d": 59.65,
+  "loop": null,
+  "lufs": -24
+ },
+ "vardag": {
+  "f": "vardag.mp3",
+  "d": 26.999,
+  "loop": [
+   0.5,
+   26.498866
+  ],
+  "lufs": -24
+ },
+ "jakt": {
+  "f": "jakt.mp3",
+  "d": 25.45,
+  "loop": [
+   0.5,
+   24.95
+  ],
+  "lufs": -24
+ },
+ "racet": {
+  "f": "racet.mp3",
+  "d": 23,
+  "loop": [
+   0.5,
+   22.500408
+  ],
+  "lufs": -24
+ },
+ "vita-skjortan": {
+  "f": "vita-skjortan.mp3",
+  "d": 28.496,
+  "loop": [
+   0.5,
+   27.995918
+  ],
+  "lufs": -24
+ }
+}

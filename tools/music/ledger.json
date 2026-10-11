@@ -1,0 +1,116 @@
+{
+ "totalSeconds": 300,
+ "creditsEstimate": 4500,
+ "creditsPerMinute": 900,
+ "maxSeconds": 300,
+ "requests": [
+  {
+   "cue": "klart",
+   "ms": 5000,
+   "model": "music_v2_5",
+   "at": "spike",
+   "ok": true,
+   "songId": "twVU2s6goWY23YkowEIf",
+   "received": 5.042,
+   "note": "made in the spike, adopted as klart"
+  },
+  {
+   "cue": "tema",
+   "ms": 55000,
+   "model": "music_v2_5",
+   "at": "2026-10-11T10:24:43.707Z",
+   "ok": true,
+   "songId": "n7mAaGZSVT2DNRbYuPAz",
+   "received": 55.04,
+   "store_for_inpainting": true,
+   "bytes": 880685,
+   "waited": 8.8
+  },
+  {
+   "cue": "patrull-kall",
+   "ms": 60000,
+   "model": "music_v2_5",
+   "at": "2026-10-11T10:24:56.686Z",
+   "ok": true,
+   "songId": "OREEnXNVnwyCXGAVOAxL",
+   "received": 60.029,
+   "conditioning": {
+    "cue": "tema",
+    "songId": "n7mAaGZSVT2DNRbYuPAz",
+    "range": [
+     0,
+     25000
+    ],
+    "strength": "medium"
+   },
+   "bytes": 960515,
+   "waited": 7.6,
+   "conditioningAccepted": true
+  },
+  {
+   "cue": "patrull-varm",
+   "ms": 60000,
+   "model": "music_v2_5",
+   "at": "2026-10-11T10:25:08.916Z",
+   "ok": true,
+   "songId": "rPyMnM8o4Yv7XeeRFeaZ",
+   "received": 60.029,
+   "conditioning": {
+    "cue": "tema",
+    "songId": "n7mAaGZSVT2DNRbYuPAz",
+    "range": [
+     25000,
+     50000
+    ],
+    "strength": "medium"
+   },
+   "bytes": 960515,
+   "waited": 7.3,
+   "conditioningAccepted": true
+  },
+  {
+   "cue": "vardag",
+   "ms": 30000,
+   "model": "music_v2_5",
+   "at": "2026-10-11T10:25:20.755Z",
+   "ok": true,
+   "songId": "zaLIQ6fjnrJ8qBC5SYGJ",
+   "received": 30.041,
+   "bytes": 480698,
+   "waited": 4.5
+  },
+  {
+   "cue": "jakt",
+   "ms": 30000,
+   "model": "music_v2_5",
+   "at": "2026-10-11T10:25:28.106Z",
+   "ok": true,
+   "songId": "Y1Gek76Z1XxcE3v7NBXr",
+   "received": 30.041,
+   "bytes": 480698,
+   "waited": 5
+  },
+  {
+   "cue": "racet",
+   "ms": 30000,
+   "model": "music_v2_5",
+   "at": "2026-10-11T10:25:35.914Z",
+   "ok": true,
+   "songId": "Dt9gCXRvxEyYsOQQqxQx",
+   "received": 30.041,
+   "bytes": 480698,
+   "waited": 5.3
+  },
+  {
+   "cue": "vita-skjortan",
+   "ms": 30000,
+   "model": "music_v2_5",
+   "at": "2026-10-11T10:25:43.861Z",
+   "ok": true,
+   "songId": "r6o0vXgH6hlQjgYKTPoc",
+   "received": 30.041,
+   "bytes": 480698,
+   "waited": 4.3
+  }
+ ]
+}

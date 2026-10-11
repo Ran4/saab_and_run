@@ -1,0 +1,233 @@
+{
+  "_about": "The score's cues for tools/music/music.mjs (features/a_fully_voiced_game.md, section 8). One take per cue, never more: Eleven Music bills ~900 credits per generated minute and reports no cost, so tools/music/ledger.json records every request and nothing is made past maxSeconds. A cue has either a prompt (with force_instrumental) or a composition plan (chunks; vocals kept out by negative_styles and no lyric lines; seed only with a plan). conditioning: the first chunk is conditioned on a range of another cue's take (by cue name). A loop cue's last chunk returns to the opening; its loop is baked when it is processed (bpm is the hint for finding the beat).",
+  "model": "music_v2_5",
+  "lufs": -24,
+  "truePeak": -1.5,
+  "creditsPerMinute": 900,
+  "maxSeconds": 300,
+  "cues": {
+    "klart": {
+      "about": "Stinger när ett ärende eller uppdrag är klart (från spiken).",
+      "seconds": 5,
+      "loop": false,
+      "model": "music_v2_5",
+      "seed": null,
+      "conditioning": null,
+      "prompt": "A short 5-second warm resolving cadence on felt piano and soft strings, A minor resolving to C major, Nordic winter melancholy, gentle, ends cleanly with a soft piano chord ringing out. Instrumental.",
+      "force_instrumental": true,
+      "note": "Made in the spike (song twVU2s6goWY23YkowEIf); its request did not record force_instrumental."
+    },
+    "tema": {
+      "about": "Huvudtemat: titelskärmen och finalen (dag 7, graven).",
+      "seconds": 55,
+      "loop": false,
+      "model": "music_v2_5",
+      "bpm": 66,
+      "seed": null,
+      "conditioning": null,
+      "store_for_inpainting": true,
+      "prompt": "Instrumental only. The main theme of a quiet Swedish winter story about a grumpy, grieving old man who slowly thaws. A tender, melancholy Nordic melody in A minor on a solo felt piano, close-miked and intimate, slow and slightly rubato, around 66 BPM. It begins with the piano alone, lots of air between the phrases. After about 20 seconds soft muted strings enter beneath it and a cello answers the melody; the music warms and rises gently, restrained, never epic. In the last 15 seconds it thins back to the piano alone and ends cleanly on a soft A minor chord that rings out. Contemporary classical chamber music, warm room sound, great production quality. No vocals, no choir, no drums, no synthesizers.",
+      "force_instrumental": true
+    },
+    "patrull-kall": {
+      "about": "Fri patrull dag 1–3, ett stycke i spellistan: glest och kallt, mycket luft.",
+      "seconds": 60,
+      "loop": false,
+      "model": "music_v2_5",
+      "bpm": 64,
+      "seed": 4101,
+      "conditioning": { "cue": "tema", "start_ms": 0, "end_ms": 25000, "strength": "medium" },
+      "plan": [
+        {
+          "text": "[Intro]\n{solo felt piano, a few sparse notes of a melancholy theme in A minor, long pauses, cold winter air}",
+          "duration_ms": 14000,
+          "positive_styles": ["contemporary classical chamber music", "sparse felt piano", "celesta", "soft muted strings", "A minor, 64 BPM", "cold Nordic winter melancholy, lots of space", "intimate, great production quality"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "spoken word", "drums", "percussion", "synthesizer", "epic"]
+        },
+        {
+          "text": "[Verse]\n{the celesta doubles the piano melody softly an octave above, very quiet sustained strings underneath, still sparse}",
+          "duration_ms": 20000,
+          "positive_styles": ["felt piano", "celesta", "soft sustained strings", "sparse and still"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "drums", "percussion", "epic"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Bridge]\n{the strings swell a little and fall back, the piano wanders alone, slow and searching}",
+          "duration_ms": 14000,
+          "positive_styles": ["felt piano", "soft strings", "restrained", "melancholy"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "drums", "percussion", "epic"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Outro]\n{the piano alone plays the last phrase of the theme and ends cleanly on a soft A minor chord that rings out}",
+          "duration_ms": 12000,
+          "positive_styles": ["solo felt piano", "quiet ending", "gentle"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "drums", "percussion"],
+          "context_adherence": "high"
+        }
+      ]
+    },
+    "patrull-varm": {
+      "about": "Fri patrull dag 4–7, ett stycke i spellistan: varmare, en cellomelodi, Ove tinar.",
+      "seconds": 60,
+      "loop": false,
+      "model": "music_v2_5",
+      "bpm": 68,
+      "seed": 4102,
+      "conditioning": { "cue": "tema", "start_ms": 25000, "end_ms": 50000, "strength": "medium" },
+      "plan": [
+        {
+          "text": "[Intro]\n{felt piano plays a warm, tender theme in A minor, soft strings already underneath, fuller than before}",
+          "duration_ms": 14000,
+          "positive_styles": ["contemporary classical chamber music", "warm felt piano", "lyrical cello melody", "soft strings", "celesta", "A minor moving to C major, 68 BPM", "tender, hopeful Nordic winter, great production quality"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "spoken word", "drums", "percussion", "synthesizer", "epic"]
+        },
+        {
+          "text": "[Verse]\n{a solo cello takes the melody, lyrical and warm, the piano accompanies with gentle broken chords}",
+          "duration_ms": 20000,
+          "positive_styles": ["solo cello melody", "felt piano broken chords", "soft strings", "warm and tender"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "drums", "percussion", "epic"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Chorus]\n{the strings grow fuller and brighter, C major, cello and piano together, still restrained, never epic}",
+          "duration_ms": 16000,
+          "positive_styles": ["warm strings", "cello and piano", "gently uplifting", "restrained"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "drums", "percussion", "epic", "brass"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Outro]\n{thins to the piano and a low cello note, ends cleanly on a warm soft chord that rings out}",
+          "duration_ms": 10000,
+          "positive_styles": ["felt piano", "cello", "quiet ending"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "drums", "percussion"],
+          "context_adherence": "high"
+        }
+      ]
+    },
+    "vardag": {
+      "about": "Ärenden och samtal (loop): lätt och torrt komisk.",
+      "seconds": 30,
+      "loop": true,
+      "model": "music_v2_5",
+      "bpm": 120,
+      "seed": 4201,
+      "conditioning": null,
+      "plan": [
+        {
+          "text": "[Intro]\n{pizzicato strings and soft brushes set a tiptoeing groove, a bassoon plays a dry, grumpy little tune in A minor}",
+          "duration_ms": 8000,
+          "positive_styles": ["light chamber comedy", "pizzicato strings", "clarinet and bassoon", "brushed snare", "felt piano staccato", "A minor, 120 BPM", "dry, wry Nordic humour, great production quality"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "whistling", "cartoon slapstick", "electronic", "heavy drums", "epic"]
+        },
+        {
+          "text": "[Verse]\n{the clarinet answers the bassoon in a wry dialogue, felt piano adds short staccato chords, the pizzicato keeps walking}",
+          "duration_ms": 12000,
+          "positive_styles": ["clarinet", "bassoon", "pizzicato strings", "brushes", "playful but deadpan"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "whistling", "electronic"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Outro]\n{return to the opening bassoon tune over pizzicato and brushes, same tempo, no ending, no slowing down, ready to loop}",
+          "duration_ms": 10000,
+          "positive_styles": ["pizzicato strings", "bassoon", "brushed snare", "steady tempo"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "final chord", "ritardando", "fade out"],
+          "context_adherence": "high"
+        }
+      ]
+    },
+    "jakt": {
+      "about": "Jakt på smitare (loop): återhållsam spänning.",
+      "seconds": 30,
+      "loop": true,
+      "model": "music_v2_5",
+      "bpm": 108,
+      "seed": 4202,
+      "conditioning": null,
+      "plan": [
+        {
+          "text": "[Intro]\n{a walking double bass and brushed drums, a pizzicato string ostinato on two notes in A minor, quiet and alert}",
+          "duration_ms": 8889,
+          "positive_styles": ["restrained suspense", "walking double bass", "brushed drums", "pizzicato string ostinato", "low felt piano", "A minor, 108 BPM", "understated chamber jazz tension, great production quality"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "epic", "heavy drums", "electric guitar", "synthesizer", "brass"]
+        },
+        {
+          "text": "[Build]\n{low felt piano stabs and soft tremolo strings add tension, still quiet and controlled, the bass keeps walking}",
+          "duration_ms": 8889,
+          "positive_styles": ["walking double bass", "tremolo strings", "felt piano stabs", "tense but held back"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "epic", "heavy drums"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Outro]\n{return to the opening walking bass, brushes and pizzicato ostinato, same tempo, no ending, no slowing down, ready to loop}",
+          "duration_ms": 12222,
+          "positive_styles": ["walking double bass", "brushed drums", "pizzicato ostinato", "steady tempo"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "final chord", "ritardando", "fade out"],
+          "context_adherence": "high"
+        }
+      ]
+    },
+    "racet": {
+      "about": "Dag 5, racet Saab mot Audi (loop): svensk 80-talsrock med synt, en blinkning till Saab-åren.",
+      "seconds": 30,
+      "loop": true,
+      "model": "music_v2_5",
+      "bpm": 120,
+      "seed": 4203,
+      "conditioning": null,
+      "plan": [
+        {
+          "text": "[Intro]\n{driving rock drums and a pulsing eighth-note synth bass in A minor, a bright analog synth arpeggio}",
+          "duration_ms": 8000,
+          "positive_styles": ["1980s Scandinavian rock instrumental", "driving rock drums with gated reverb", "analog polysynth arpeggios and pads", "overdriven electric guitar riff", "pulsing synth bass", "A minor, 120 BPM", "energetic and retro, great production quality"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "shouting", "modern EDM", "dubstep", "orchestral"]
+        },
+        {
+          "text": "[Chorus]\n{a catchy electric guitar riff and a bold synth lead melody over the drive, full energy, a fast car on a winter road}",
+          "duration_ms": 12000,
+          "positive_styles": ["electric guitar riff", "synth lead melody", "driving drums", "triumphant 1980s rock"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "shouting"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Outro]\n{return to the opening drums, synth bass and arpeggio, same tempo, no ending, no slowing down, ready to loop}",
+          "duration_ms": 10000,
+          "positive_styles": ["driving rock drums", "synth bass", "synth arpeggio", "steady tempo"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "final chord", "ritardando", "fade out"],
+          "context_adherence": "high"
+        }
+      ]
+    },
+    "vita-skjortan": {
+      "about": "Dag 7, jakten på vita skjortan (loop): allvarligt men inte episkt.",
+      "seconds": 30,
+      "loop": true,
+      "model": "music_v2_5",
+      "bpm": 96,
+      "seed": 4204,
+      "conditioning": null,
+      "plan": [
+        {
+          "text": "[Intro]\n{a driving cello ostinato in eighth notes on A, low strings sustain beneath, a soft timpani roll}",
+          "duration_ms": 10000,
+          "positive_styles": ["dark contemporary chamber orchestra", "driving cello ostinato", "low strings", "timpani", "low felt piano notes", "A minor, 96 BPM", "serious and tense but restrained, great production quality"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "epic trailer", "brass fanfare", "drum kit", "electronic", "synthesizer"]
+        },
+        {
+          "text": "[Build]\n{violas and violins join the ostinato, the timpani marks each bar, darker and urgent but held back, low felt piano octaves}",
+          "duration_ms": 10000,
+          "positive_styles": ["cello ostinato", "string section", "timpani", "urgent but restrained"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "epic trailer", "brass fanfare"],
+          "context_adherence": "high"
+        },
+        {
+          "text": "[Outro]\n{return to the opening cello ostinato and low strings, same tempo, no ending, no slowing down, ready to loop}",
+          "duration_ms": 10000,
+          "positive_styles": ["cello ostinato", "low strings", "soft timpani", "steady tempo"],
+          "negative_styles": ["vocals", "singing", "choir", "humming", "final chord", "ritardando", "fade out"],
+          "context_adherence": "high"
+        }
+      ]
+    }
+  }
+}

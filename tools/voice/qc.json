@@ -1,0 +1,1980 @@
+{
+ "858ad395a829": {
+  "who": "ove",
+  "text": "Det är förbjudet att köra bil inom området.",
+  "take": 0,
+  "heard": "Det är förbjudet att köra bil inom området.",
+  "wer": 0,
+  "f0": 123.2,
+  "cps": 14.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9072077d224c": {
+  "who": "ove",
+  "text": "Tjugo minuter. Jag har tagit tid. Och du har kört över min brevlåda.",
+  "take": 0,
+  "heard": "Tjugo minuter. Jag har tagit tid, och du har kört över min brevlåda.",
+  "wer": 0,
+  "f0": 116.2,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "1b4b426dc147": {
+  "who": "ove",
+  "text": "Vem backar med släp så? Flytta på dig.",
+  "take": 0,
+  "heard": "Vem backar med släp så? Flytta på dig!",
+  "wer": 0,
+  "f0": 147.6,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f8f6432d0426": {
+  "who": "patrick",
+  "text": "Hej! Du måste vara grannen. Patrick. Vi flyttade in i går. Eller, vi håller på.",
+  "take": 0,
+  "heard": "Hej! Du måste vara grannen. Patrik. Vi flyttade in i går. Eller, vi håller på.",
+  "wer": 0,
+  "f0": 215.4,
+  "cps": 12.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9f23ad096f54": {
+  "who": "patrick",
+  "text": "Ja, jo, vi skulle bara backa fram släpet till dörren. Det har tagit... en stund.",
+  "take": 0,
+  "heard": "Ja, vi skulle bara backa fram släpet till dörren. Det har tagit en stund.",
+  "wer": 0.067,
+  "f0": 210.6,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "23c1d656308b": {
+  "who": "patrick",
+  "text": "Har jag? Förlåt! Jag är IT-konsult. Jag är inte så bra på... fysiska saker.",
+  "take": 0,
+  "heard": "Har jag? Förlåt! Jag är i tekonsult. Jag är inte så bra på fysiska saker.",
+  "wer": 0.133,
+  "f0": 183.6,
+  "cps": 10.5,
+  "flags": [],
+  "verdict": "review"
+ },
+ "cc2b239c8270": {
+  "who": "parvaneh",
+  "text": "Patrick, älskling. Låt mannen göra det. Han ser ut som någon som kan backa med släp.",
+  "take": 0,
+  "heard": "Patrick älskling låt mannen göra det. Han ser ut som någon som kan backa med släp.",
+  "wer": 0,
+  "f0": 270.4,
+  "cps": 15.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4b5bef0a2851": {
+  "who": "parvaneh",
+  "text": "Ove! Där är du. Jag har lagat saffransris med kyckling. Det blev för mycket.",
+  "take": 0,
+  "heard": "Ove, där är du! Jag har lagat saffransris med kyckling. Det blev för mycket.",
+  "wer": 0,
+  "f0": 284.1,
+  "cps": 13.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "cffeac06be9b": {
+  "who": "parvaneh",
+  "text": "Vad åt du i går då?",
+  "take": 0,
+  "heard": "Vad åt du igår då?",
+  "wer": 0,
+  "f0": 287.1,
+  "cps": 14.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "107d98c764e1": {
+  "who": "patrick",
+  "text": "Ove! Släpet står fortfarande snett. Jag rörde det inte. Nästan.",
+  "take": 0,
+  "heard": "Ove, släpet står fortfarande snett! Jag rörde det inte...nästan.",
+  "wer": 0,
+  "f0": 239.9,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "afb02ce47f02": {
+  "who": "ove",
+  "text": "Flytta på dig.",
+  "take": 0,
+  "heard": "Flytta på dig!",
+  "wer": 0,
+  "f0": 90.6,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "386e9edfc0cc": {
+  "who": "ove",
+  "text": "Jag har mat.",
+  "take": 0,
+  "heard": "Jag har mat.",
+  "wer": 0,
+  "f0": 130.3,
+  "cps": 9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e900aaa5c2a3": {
+  "who": "ove",
+  "text": "...Mat.",
+  "take": 0,
+  "heard": "Mat",
+  "wer": 0,
+  "f0": 111.7,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9a07f333f1dd": {
+  "who": "parvaneh",
+  "text": "Ta den. Lådan vill jag ha tillbaka. Och tack för släpet.",
+  "take": 0,
+  "heard": "Ta den! Lådan vill jag ha tillbaka. Och tack för släpet!",
+  "wer": 0,
+  "f0": 257.5,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "c326340770f3": {
+  "who": "ove",
+  "text": "Hmpf. Ni är skyldiga mig en brevlåda.",
+  "take": 0,
+  "heard": "Ni är skyldiga mig en brevlåda.",
+  "wer": 0.143,
+  "f0": 124.8,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "b550040a0de8": {
+  "who": "patrick",
+  "text": "Lite till vänster! Eller... höger?",
+  "take": 0,
+  "heard": "Lite till vänster, eller höger?",
+  "wer": 0,
+  "f0": 255.5,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "b7cc594fef49": {
+  "who": "parvaneh",
+  "text": "Patrick, säg inget. Låt honom vara.",
+  "take": 0,
+  "heard": "Patrik, säg inget. Låt honom vara.",
+  "wer": 0,
+  "f0": 252.5,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "2fed4aaf03fa": {
+  "who": "patrick",
+  "text": "Ska jag vinka in dig?",
+  "take": 0,
+  "heard": "Ska jag vinka in dig?",
+  "wer": 0,
+  "f0": 202,
+  "cps": 14.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d0918250548a": {
+  "who": "ove",
+  "text": "NEJ.",
+  "take": 0,
+  "heard": "Nej.",
+  "wer": 0,
+  "f0": 99.1,
+  "cps": 5.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "8db8d03c8a02": {
+  "who": "patrick",
+  "text": "Wow. Det ser ut som i reklamen.",
+  "take": 0,
+  "heard": "Wow! Det ser ut som i reklamen.",
+  "wer": 0,
+  "f0": 200,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "c9b7fb6f48d5": {
+  "who": "ove",
+  "text": "När jag ändå är ute.",
+  "take": 0,
+  "heard": "När jag ändå är ute",
+  "wer": 0,
+  "f0": 129.9,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "44a10739d8fb": {
+  "who": "ove",
+  "text": "På en stege. I snö.",
+  "take": 0,
+  "heard": "På en stege, i snö.",
+  "wer": 0,
+  "f0": 116.6,
+  "cps": 8.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "fbc0a2e53c8b": {
+  "who": "ove",
+  "text": "Inget körkort? Du är ju trettio år!",
+  "take": 0,
+  "heard": "Inget körkort? Du är ju 30 år!",
+  "wer": 0,
+  "f0": 164.5,
+  "cps": 10.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e8a43800bd98": {
+  "who": "ove",
+  "text": "Jag hämtar Saaben. Man kör inte bil inne på området.",
+  "take": 0,
+  "heard": "Jag hämtar Saaben. Man kör inte bil inne på området.",
+  "wer": 0,
+  "f0": 104.4,
+  "cps": 14.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "1cc664935605": {
+  "who": "ove",
+  "text": "Jaja. Gå till parkeringen.",
+  "take": 0,
+  "heard": "Jaja. Gå till parkeringen.",
+  "wer": 0,
+  "f0": 114.9,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "3c0b002d837c": {
+  "who": "ove",
+  "text": "Det kostar tjugofem kronor i timmen att stå här.",
+  "take": 0,
+  "heard": "Det kostar 25 kronor i timmen att stå här.",
+  "wer": 0,
+  "f0": 127,
+  "cps": 16,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "fa5a026b937c": {
+  "who": "ove",
+  "text": "Jag betalar inte för att stå still!",
+  "take": 0,
+  "heard": "Jag betalar inte för att stå still.",
+  "wer": 0,
+  "f0": 150.8,
+  "cps": 15.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "95d19397b5fc": {
+  "who": "ove",
+  "text": "...Vi börjar på måndag. I en riktig bil.",
+  "take": 0,
+  "heard": "Vi börjar på måndag i en riktig bil.",
+  "wer": 0,
+  "f0": 121,
+  "cps": 14,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "89283528c5c5": {
+  "who": "ove",
+  "text": "Jag kör som det står på skyltarna.",
+  "take": 0,
+  "heard": "Jag kör som det står på skyltarna.",
+  "wer": 0,
+  "f0": 134.6,
+  "cps": 16.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "cd95a3e23743": {
+  "who": "ove",
+  "text": "Man blinkar. Alltid.",
+  "take": 0,
+  "heard": "Man blinkar, alltid.",
+  "wer": 0,
+  "f0": 100.9,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9000baf81f7c": {
+  "who": "ove",
+  "text": "Nej.",
+  "take": 0,
+  "heard": "Nej.",
+  "wer": 0,
+  "f0": 93.9,
+  "cps": 5.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "6f0f1a73b0f0": {
+  "who": "ove",
+  "text": "Det är luft i dem. Har ni luftat?",
+  "take": 0,
+  "heard": "Det är luft i dem. Har ni luftat?",
+  "wer": 0,
+  "f0": 127.2,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "ec0dcaee2733": {
+  "who": "ove",
+  "text": "Elementnyckel. Jag har en i garaget. Alla borde ha en.",
+  "take": 0,
+  "heard": "Elementnyckel, jag har en i garaget. Alla borde ha en.",
+  "wer": 0,
+  "f0": 122.5,
+  "cps": 12.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "05f9a98d5e64": {
+  "who": "ove",
+  "text": "Jag hämtar nyckeln.",
+  "take": 0,
+  "heard": "Jag hämtar nyckeln.",
+  "wer": 0,
+  "f0": 115.3,
+  "cps": 14.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "ecba63afbdcd": {
+  "who": "ove",
+  "text": "Två gånger per vinter. Minst. Jag skriver det på en lapp åt er.",
+  "take": 0,
+  "heard": "Två gånger per vinter, minst. Jag skriver det på en lapp åt er.",
+  "wer": 0,
+  "f0": 106.7,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "8611da8641d1": {
+  "who": "ove",
+  "text": "Ja, Rune. Saab.",
+  "take": 0,
+  "heard": "Jag, Rune, Saab.",
+  "wer": 0.333,
+  "f0": 97.1,
+  "cps": 6.6,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "b74d3c10970e": {
+  "who": "ove",
+  "text": "Hmpf. Han har kört Volvo hela livet. Klart han minns en riktig bil.",
+  "take": 0,
+  "heard": "Han har kört Volvo hela livet. Klart han minns en riktig bil.",
+  "wer": 0.077,
+  "f0": 114.2,
+  "cps": 14.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9235d3028fcd": {
+  "who": "ove",
+  "text": "Rune. Naturligtvis.",
+  "take": 0,
+  "heard": "Rune, naturligtvis.",
+  "wer": 0,
+  "f0": 99.1,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "ab38debbe6c9": {
+  "who": "ove",
+  "text": "Anders.",
+  "take": 0,
+  "heard": "Anders.",
+  "wer": 0,
+  "f0": 95.2,
+  "cps": 9.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "794fb7e86fda": {
+  "who": "ove",
+  "text": "Jag tar dem.",
+  "take": 0,
+  "heard": "Jag tar dem.",
+  "wer": 0,
+  "f0": 127.8,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "2e0c357f7897": {
+  "who": "ove",
+  "text": "Det är inte min katt.",
+  "take": 0,
+  "heard": "Det är inte min katt.",
+  "wer": 0,
+  "f0": 119.6,
+  "cps": 11.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "14a377660d8f": {
+  "who": "ove",
+  "text": "Den har säkert loppor.",
+  "take": 0,
+  "heard": "Den har säkert loppor.",
+  "wer": 0,
+  "f0": 128.5,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e51ed5a87ba8": {
+  "who": "ove",
+  "text": "Det förstår jag.",
+  "take": 0,
+  "heard": "Det förstår jag.",
+  "wer": 0,
+  "f0": 104.1,
+  "cps": 14.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "b9b7aba62ae9": {
+  "who": "ove",
+  "text": "Det är fortfarande inte min katt.",
+  "take": 0,
+  "heard": "Det är fortfarande inte min katt.",
+  "wer": 0,
+  "f0": 112,
+  "cps": 13.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "a29676ffd46e": {
+  "who": "ove",
+  "text": "Den ska inte heta något. Den ska inte bo här.",
+  "take": 0,
+  "heard": "Den ska inte heta något. Den ska inte bo här.",
+  "wer": 0,
+  "f0": 131.2,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e446e578c085": {
+  "who": "ove",
+  "text": "...",
+  "take": 0,
+  "heard": "<|nospeech|>",
+  "wer": 1,
+  "f0": 100.4,
+  "cps": 2.6,
+  "flags": [
+   "words",
+   "pace"
+  ],
+  "verdict": "review"
+ },
+ "d38e97cf505f": {
+  "who": "ove",
+  "text": "Den får stanna. Tills vidare.",
+  "take": 0,
+  "heard": "Den får stanna. Tills vidare.",
+  "wer": 0,
+  "f0": 104.1,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "902be29342e6": {
+  "who": "ove",
+  "text": "Jag pratar inte med katter.",
+  "take": 0,
+  "heard": "Jag pratar inte med katter.",
+  "wer": 0,
+  "f0": 120.2,
+  "cps": 14.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4bb8b7c77baf": {
+  "who": "ove",
+  "text": "En Audi.",
+  "take": 0,
+  "heard": "och Audi",
+  "wer": 0.5,
+  "f0": 117.9,
+  "cps": 8,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review"
+ },
+ "bd5c70bfed6d": {
+  "who": "ove",
+  "text": "Plast och elektronik.",
+  "take": 0,
+  "heard": "Plast och elektronik",
+  "wer": 0,
+  "f0": 105.1,
+  "cps": 11.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "83a57afcb3ff": {
+  "who": "ove",
+  "text": "Sätt dig i bilen, Adrian.",
+  "take": 0,
+  "heard": "Sätt dig i bilen, Adrian.",
+  "wer": 0,
+  "f0": 92.7,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "fe77350923bb": {
+  "who": "ove",
+  "text": "Adrian. Den där.",
+  "take": 0,
+  "heard": "Adrian Den där",
+  "wer": 0,
+  "f0": 104.9,
+  "cps": 7.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "be8a19087e28": {
+  "who": "ove",
+  "text": "Den är ordentlig. Kolla rosten under trösklarna. Och pruta.",
+  "take": 0,
+  "heard": "Den är ordentlig. Kolla rosten under trösklarna och pruta.",
+  "wer": 0,
+  "f0": 122.3,
+  "cps": 12.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d45e54e6c890": {
+  "who": "ove",
+  "text": "Hmpf. Jag vet hur en Saab sitter.",
+  "take": 0,
+  "heard": "Jag vet hur en Saab sitter.",
+  "wer": 0.143,
+  "f0": 107.4,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "bc863a9ded1b": {
+  "who": "ove",
+  "text": "Man gasar inte i kurvorna.",
+  "take": 0,
+  "heard": "Man gasar inte i kurvorna.",
+  "wer": 0,
+  "f0": 108.8,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f6d5b6b49091": {
+  "who": "ove",
+  "text": "Det är kopplingen. Den är som den ska.",
+  "take": 0,
+  "heard": "Det är kopplingen. Den är som den ska.",
+  "wer": 0,
+  "f0": 110.3,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "0bb1268981fb": {
+  "who": "ove",
+  "text": "Vad ville han?",
+  "take": 0,
+  "heard": "Vad ville han?",
+  "wer": 0,
+  "f0": 123,
+  "cps": 14.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f4401a05d32b": {
+  "who": "ove",
+  "text": "Vid infarten. Jaså.",
+  "take": 0,
+  "heard": "vid infarten? jaså?",
+  "wer": 0,
+  "f0": 118.6,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4398aec8009e": {
+  "who": "ove",
+  "text": "Jag ska bara prata med honom.",
+  "take": 0,
+  "heard": "Jag ska bara prata med honom.",
+  "wer": 0,
+  "f0": 123.7,
+  "cps": 15.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "5acf578ad335": {
+  "who": "ove",
+  "text": "Inte länge till.",
+  "take": 0,
+  "heard": "Inte länge till.",
+  "wer": 0,
+  "f0": 100,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "0abb8a7f2cbb": {
+  "who": "ove",
+  "text": "De hade glömt en underskrift. Då gäller inte beslutet.",
+  "take": 0,
+  "heard": "De hade glömt en underskrift. Då gäller inte beslutet.",
+  "wer": 0,
+  "f0": 123.6,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "b9cf26651d41": {
+  "who": "ove",
+  "text": "Tills de har lärt sig läsa sina egna blanketter.",
+  "take": 0,
+  "heard": "tills de har lärt sig läsa sina egna blanketter.",
+  "wer": 0,
+  "f0": 127.9,
+  "cps": 17.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9fd07bffbe10": {
+  "who": "ove",
+  "text": "Säg inte det till någon.",
+  "take": 0,
+  "heard": "Säg inte det till någon.",
+  "wer": 0,
+  "f0": 89.6,
+  "cps": 13.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d43dcbadd19e": {
+  "who": "ove",
+  "text": "Det är det som är problemet.",
+  "take": 0,
+  "heard": "Det är det som är problemet.",
+  "wer": 0,
+  "f0": 109.5,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d8918f2c7f42": {
+  "who": "ove",
+  "text": "Det står ju på skylten. Trettio.",
+  "take": 0,
+  "heard": "Det står ju på skylten. 30",
+  "wer": 0,
+  "f0": 148.6,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f4fb15722709": {
+  "who": "ove",
+  "text": "Pärmen.",
+  "take": 0,
+  "heard": "Pärmen",
+  "wer": 0,
+  "f0": 107.5,
+  "cps": 9.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "90ea7fc46906": {
+  "who": "ove",
+  "text": "Beslutet saknar en underskrift. Sidan fyra. Jag läste det genom rutan.",
+  "take": 0,
+  "heard": "Beslutet saknar en underskrift. Sidan 4. Jag läste det genom rutan.",
+  "wer": 0,
+  "f0": 107.9,
+  "cps": 10.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "fbe0252d1926": {
+  "who": "ove",
+  "text": "Det har jag också.",
+  "take": 0,
+  "heard": "Det har jag också.",
+  "wer": 0,
+  "f0": 123.2,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "dc61a44b92df": {
+  "who": "ove",
+  "text": "Vilket vatten?",
+  "take": 0,
+  "heard": "Vilket vatten?",
+  "wer": 0,
+  "f0": 136.9,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "5441a7971445": {
+  "who": "ove",
+  "text": "Jag hämtar Saaben. Gå till parkeringen.",
+  "take": 0,
+  "heard": "Jag hämtar sabeln. Gå till parkeringen.",
+  "wer": 0.167,
+  "f0": 107.3,
+  "cps": 16,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d49751168d4b": {
+  "who": "ove",
+  "text": "Låt honom vänta.",
+  "take": 0,
+  "heard": "låt honom vänta",
+  "wer": 0,
+  "f0": 93.9,
+  "cps": 11.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e921fd7301c3": {
+  "who": "ove",
+  "text": "Jaja. Jag hämtar Saaben.",
+  "take": 0,
+  "heard": "Ja, ja. Jag hämtar Saaben.",
+  "wer": 0.5,
+  "f0": 101.8,
+  "cps": 11.3,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "92942e435575": {
+  "who": "ove",
+  "text": "Hej, Sonja.",
+  "take": 0,
+  "heard": "Hej Sonja!",
+  "wer": 0,
+  "f0": 89.6,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "cdbdfbb1884b": {
+  "who": "ove",
+  "text": "Vilken vecka det har varit. Grannarna, alltså. De kan ingenting.",
+  "take": 0,
+  "heard": "Vilken vecka det har varit. Grannarna alltså. De kan ingenting.",
+  "wer": 0,
+  "f0": 111,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "ae31f8854d3e": {
+  "who": "ove",
+  "text": "Parvaneh fick en pojke. Han skriker som hon. Patrick svimmade.",
+  "take": 0,
+  "heard": "Parvaneh fick en pojke. Han skriker som hon. Patrick svimmade.",
+  "wer": 0,
+  "f0": 98.4,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4b8c1ec7123b": {
+  "who": "ove",
+  "text": "Adrian har köpt en Saab. Rune bor kvar. Katten... katten får stanna. Tills vidare.",
+  "take": 0,
+  "heard": "Adrian har köpt en Saab. Rune bor kvar. Katten får stanna. Tills vidare.",
+  "wer": 0.071,
+  "f0": 103.2,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f5b3377d8442": {
+  "who": "ove",
+  "text": "Jag vet vad du skulle säga. Att jag behöver dem lika mycket som de behöver mig.",
+  "take": 0,
+  "heard": "Jag vet vad du skulle säga. Att jag behöver dem lika mycket som de behöver mig.",
+  "wer": 0,
+  "f0": 95.5,
+  "cps": 14,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "92e19c3542ee": {
+  "who": "ove",
+  "text": "Hmpf.",
+  "take": 0,
+  "heard": "Saudiarabien.",
+  "wer": 1,
+  "f0": 142,
+  "cps": 7.3,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review"
+ },
+ "dfb8bed20f39": {
+  "who": "ove",
+  "text": "Det är i ordning nu, Sonja. Området.",
+  "take": 0,
+  "heard": "Det är i ordning nu, Sonja, området.",
+  "wer": 0,
+  "f0": 112.2,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "52287a44ad26": {
+  "who": "ove",
+  "text": "Jag kommer igen på söndag. Som vanligt.",
+  "take": 0,
+  "heard": "Jag kommer igen på söndag, som vanligt.",
+  "wer": 0,
+  "f0": 145.3,
+  "cps": 14.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "294465e0636d": {
+  "who": "ove",
+  "text": "INTE NU!",
+  "take": 0,
+  "heard": "Inte nu.",
+  "wer": 0,
+  "f0": 166.1,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "890a3564e5b0": {
+  "who": "ove",
+  "text": "...Ja. Men INTE NU!",
+  "take": 0,
+  "heard": "Ja. Men inte nu!",
+  "wer": 0,
+  "f0": 183,
+  "cps": 8.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "654a1621d2f0": {
+  "who": "ove",
+  "text": "INTE NU, ANDERS!",
+  "take": 0,
+  "heard": "Inte nu, Anders!",
+  "wer": 0,
+  "f0": 158.9,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "c0e88f9c49f7": {
+  "who": "ove",
+  "text": "Det är söndag.",
+  "take": 0,
+  "heard": "Det är söndag.",
+  "wer": 0,
+  "f0": 115,
+  "cps": 10.5,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "8e12f1844a28": {
+  "who": "ove",
+  "text": "Hmpf. Grattis.",
+  "take": 0,
+  "heard": "Grattis!",
+  "wer": 0.5,
+  "f0": 113,
+  "cps": 8.9,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review"
+ },
+ "fe676315fe84": {
+  "who": "ove",
+  "text": "Bra. Det är bra, Anita.",
+  "take": 0,
+  "heard": "Bra. Det är bra, Anita.",
+  "wer": 0,
+  "f0": 123.8,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "b1aa79ee98f4": {
+  "who": "ove",
+  "text": "Hmpf. Femtusen hade gått.",
+  "take": 0,
+  "heard": "5 000 hade gått.",
+  "wer": 0.5,
+  "f0": 129.1,
+  "cps": 9.6,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "a0c988add73c": {
+  "who": "patrick",
+  "text": "Jag har köpt en bok om att backa med släp. Den har bilder.",
+  "take": 0,
+  "heard": "Jag har köpt en bok om att backa med släp. Den har bilder...",
+  "wer": 0,
+  "f0": 198.5,
+  "cps": 14.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d4f4668cdd73": {
+  "who": "patrick",
+  "text": "Vänster... nej. Höger. Eller?",
+  "take": 0,
+  "heard": "Vänster? Nej. Höger. Eller?",
+  "wer": 0,
+  "f0": 204.6,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "385bc9b76b66": {
+  "who": "patrick",
+  "text": "Hur svårt kan det vara att backa ett släp?",
+  "take": 0,
+  "heard": "Hur svårt kan det vara att backa ett släp?",
+  "wer": 0,
+  "f0": 188.6,
+  "cps": 16.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "ac9f8da48ee2": {
+  "who": "parvaneh",
+  "text": "Hej! Vi har precis flyttat in.",
+  "take": 0,
+  "heard": "Hej! Vi har precis flyttat in.",
+  "wer": 0,
+  "f0": 309.7,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "24920bab6177": {
+  "who": "parvaneh",
+  "text": "Han har backat i en kvart nu. Minst.",
+  "take": 0,
+  "heard": "Han har backat i en kvart nu, minst.",
+  "wer": 0,
+  "f0": 261.9,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "428b3b380506": {
+  "who": "parvaneh",
+  "text": "Patrick, älskling. Andas.",
+  "take": 0,
+  "heard": "Patrick, älskling, andas!",
+  "wer": 0,
+  "f0": 254.1,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "0311dbb25052": {
+  "who": "ove",
+  "text": "Jaja. Jag kommer.",
+  "take": 0,
+  "heard": "Ja, ja. Jag kommer.",
+  "wer": 0.667,
+  "f0": 118.2,
+  "cps": 9.4,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "18f0fc460fab": {
+  "who": "ove",
+  "text": "Vad har han gjort nu då?",
+  "take": 0,
+  "heard": "Vad har han gjort nu då?",
+  "wer": 0,
+  "f0": 129.1,
+  "cps": 15.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "67f4f68e50e9": {
+  "who": "ove",
+  "text": "Vem glömmer sin telefon på ett torg?",
+  "take": 0,
+  "heard": "Vem glömmer sin telefon på ett torg?",
+  "wer": 0,
+  "f0": 113.2,
+  "cps": 13.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "99f51e718f55": {
+  "who": "ove",
+  "text": "Ingen kan någonting nu för tiden.",
+  "take": 0,
+  "heard": "Ingen kan någonting nu för tiden.",
+  "wer": 0,
+  "f0": 103.6,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "5362be9e10aa": {
+  "who": "ove",
+  "text": "Klart jag har.",
+  "take": 0,
+  "heard": "Klart jag har.",
+  "wer": 0,
+  "f0": 94.5,
+  "cps": 14.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e07250a04697": {
+  "who": "ove",
+  "text": "Jag letar.",
+  "take": 0,
+  "heard": "Jag letar.",
+  "wer": 0,
+  "f0": 110.5,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "b3ff427aca1b": {
+  "who": "ove",
+  "text": "Hmpf. Jag tar min egen snöskyffel.",
+  "take": 0,
+  "heard": "Jag tar min egen snöskyffel.",
+  "wer": 0.167,
+  "f0": 110.2,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f2c26f3f4778": {
+  "who": "ove",
+  "text": "Det går en buss om tjugo minuter.",
+  "take": 0,
+  "heard": "Det går en buss om tjugo minuter.",
+  "wer": 0,
+  "f0": 115.3,
+  "cps": 14.5,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "73693f6dd572": {
+  "who": "ove",
+  "text": "Ja?",
+  "take": 0,
+  "heard": "Ja.",
+  "wer": 0,
+  "f0": 114.9,
+  "cps": 4.4,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review"
+ },
+ "32415f6b9ac9": {
+  "who": "ove",
+  "text": "Vad är det nu då?",
+  "take": 0,
+  "heard": "Vad är det nu då?",
+  "wer": 0,
+  "f0": 139.7,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d57d9ec9246e": {
+  "who": "ove",
+  "text": "Ove.",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 99.6,
+  "cps": 4.8,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review"
+ },
+ "75700b7121fe": {
+  "who": "ove",
+  "text": "Ja, det är Ove.",
+  "take": 0,
+  "heard": "Ja, det är Ove.",
+  "wer": 0,
+  "f0": 134.6,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "6f0dc25e188c": {
+  "who": "ove",
+  "text": "Det var ingenting.",
+  "take": 0,
+  "heard": "Det var ingenting.",
+  "wer": 0,
+  "f0": 93.1,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "1dd75bfd4c2f": {
+  "who": "ove",
+  "text": "Jaja.",
+  "take": 0,
+  "heard": "Ja, ja.",
+  "wer": 0,
+  "f0": 112.6,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e64cc4339f8e": {
+  "who": "ove",
+  "text": "Jaha.",
+  "take": 0,
+  "heard": "Jaha.",
+  "wer": 0,
+  "f0": 126.8,
+  "cps": 6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "6b1c2554369b": {
+  "who": "ove",
+  "text": "Mm.",
+  "take": 0,
+  "heard": "mm.",
+  "wer": 0,
+  "f0": 87,
+  "cps": 3.9,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review"
+ },
+ "0d32e39a838d": {
+  "who": "ove",
+  "text": "Jaså.",
+  "take": 0,
+  "heard": "Jaså?",
+  "wer": 0,
+  "f0": 98.5,
+  "cps": 6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d2e7acf8d806": {
+  "who": "ove",
+  "text": "Det får vi se.",
+  "take": 0,
+  "heard": "Det får vi se...",
+  "wer": 0,
+  "f0": 143.6,
+  "cps": 13,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "6238d3e5947e": {
+  "who": "ove",
+  "text": "Bra däck.",
+  "take": 0,
+  "heard": "Bra däck.",
+  "wer": 0,
+  "f0": 129.8,
+  "cps": 7.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4587e84091ea": {
+  "who": "ove",
+  "text": "Så ska en bil se ut.",
+  "take": 0,
+  "heard": "Så ska en bil se ut!",
+  "wer": 0,
+  "f0": 90,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "de25ebba29e1": {
+  "who": "ove",
+  "text": "Ordentligt.",
+  "take": 0,
+  "heard": "ordentligt.",
+  "wer": 0,
+  "f0": 105.4,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "efe1050be0a5": {
+  "who": "ove",
+  "text": "Runes Volvo. Han kör den inte längre.",
+  "take": 0,
+  "heard": "Runes Volvo, han kör den inte längre",
+  "wer": 0,
+  "f0": 109.6,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4da1d02d88f5": {
+  "who": "ove",
+  "text": "Volvo. Jaja.",
+  "take": 0,
+  "heard": "Volvo. Ja, ja.",
+  "wer": 0,
+  "f0": 103.1,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "85ea6c05de0a": {
+  "who": "ove",
+  "text": "En 240. Den går i alla fall.",
+  "take": 0,
+  "heard": "En 240... Den går i alla fall.",
+  "wer": 0,
+  "f0": 128.7,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "73883f8bfa60": {
+  "who": "ove",
+  "text": "För lite luft. Som vanligt.",
+  "take": 0,
+  "heard": "För lite luft, som vanligt.",
+  "wer": 0,
+  "f0": 94.1,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "75acf4484fa3": {
+  "who": "ove",
+  "text": "Tyskt krafs.",
+  "take": 0,
+  "heard": "Tyskt krafs.",
+  "wer": 0,
+  "f0": 136.4,
+  "cps": 9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "5feb2b6e64cc": {
+  "who": "ove",
+  "text": "Anders har en sån. Det säger väl allt.",
+  "take": 0,
+  "heard": "Anders har en sådan, det säger väl allt!",
+  "wer": 0.125,
+  "f0": 94.4,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "0fadd9561592": {
+  "who": "ove",
+  "text": "BMW. Hmpf.",
+  "take": 0,
+  "heard": "BMW",
+  "wer": 0.5,
+  "f0": 98.5,
+  "cps": 4.1,
+  "flags": [
+   "words",
+   "pace"
+  ],
+  "verdict": "review"
+ },
+ "1b23b2d90dea": {
+  "who": "ove",
+  "text": "Rune köpte en sån. Sen pratade vi inte på flera år.",
+  "take": 0,
+  "heard": "Rune köpte en sådan. Sedan pratade vi inte på flera år.",
+  "wer": 0.182,
+  "f0": 106.8,
+  "cps": 12.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "a951b10150f6": {
+  "who": "ove",
+  "text": "Golf. Det är en sport, inte en bil.",
+  "take": 0,
+  "heard": "Golf, det är en sport, inte en bil.",
+  "wer": 0,
+  "f0": 126.9,
+  "cps": 10.5,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "084ecc4d32dd": {
+  "who": "ove",
+  "text": "Tjeckiskt. Hmpf.",
+  "take": 0,
+  "heard": "Tjeckiskt!",
+  "wer": 0.5,
+  "f0": 129.1,
+  "cps": 10.2,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review"
+ },
+ "4e6eb92cece4": {
+  "who": "ove",
+  "text": "Sånt här kör de på kommunen.",
+  "take": 0,
+  "heard": "Sånt här kör de på kommunen.",
+  "wer": 0,
+  "f0": 90.4,
+  "cps": 14.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "0b45a95aef18": {
+  "who": "ove",
+  "text": "Sommardäck. I november.",
+  "take": 0,
+  "heard": "Sommardäck i november",
+  "wer": 0,
+  "f0": 103.2,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "2647cf941191": {
+  "who": "ove",
+  "text": "Ingen kollar lufttrycket nu för tiden.",
+  "take": 0,
+  "heard": "ingen kollar lufttrycket nu för tiden",
+  "wer": 0,
+  "f0": 103.6,
+  "cps": 15.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "5587f0d6beb2": {
+  "who": "ove",
+  "text": "Framhjulsdrift. Saaben vet vart den ska.",
+  "take": 0,
+  "heard": "Framhjulsdrift. Saaben vet vart den ska.",
+  "wer": 0,
+  "f0": 109.4,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "df9461ae414c": {
+  "who": "ove",
+  "text": "Volvo. Den kan inte ens köra rakt.",
+  "take": 0,
+  "heard": "Volvo. Den kan inte ens köra rakt.",
+  "wer": 0,
+  "f0": 109.8,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "0b5fddb84eb3": {
+  "who": "ove",
+  "text": "Det där såg ingen.",
+  "take": 0,
+  "heard": "Det där såg ingen.",
+  "wer": 0,
+  "f0": 100.1,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "2655af434958": {
+  "who": "ove",
+  "text": "Kommunen har inte sandat här.",
+  "take": 0,
+  "heard": "Kommunen har inte sandat här",
+  "wer": 0,
+  "f0": 145.7,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "27e3724db315": {
+  "who": "ove",
+  "text": "Det var meningen.",
+  "take": 0,
+  "heard": "Det var meningen.",
+  "wer": 0,
+  "f0": 98.8,
+  "cps": 13.5,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "e5e28276da71": {
+  "who": "ove",
+  "text": "Kollar bara mönsterdjupet.",
+  "take": 0,
+  "heard": "Kollar bara mönsterdjupet.",
+  "wer": 0,
+  "f0": 128.3,
+  "cps": 13.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4eb1ba38f856": {
+  "who": "ove",
+  "text": "Saaben står i vägen.",
+  "take": 0,
+  "heard": "Saaben står i vägen",
+  "wer": 0,
+  "f0": 102.8,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "6958207607aa": {
+  "who": "ove",
+  "text": "Det står en bil i vägen.",
+  "take": 0,
+  "heard": "Det står en bil i vägen.",
+  "wer": 0,
+  "f0": 116.2,
+  "cps": 13.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9978daf85cc4": {
+  "who": "ove",
+  "text": "Så.",
+  "take": 0,
+  "heard": "Så.",
+  "wer": 0,
+  "f0": 92.7,
+  "cps": 4.4,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review"
+ },
+ "b7faf9d9f257": {
+  "who": "ove",
+  "text": "Stängt.",
+  "take": 0,
+  "heard": "stängt",
+  "wer": 0,
+  "f0": 92.3,
+  "cps": 7.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "86e23535dac9": {
+  "who": "ove",
+  "text": "Ordning och reda.",
+  "take": 0,
+  "heard": "Ordning och reda",
+  "wer": 0,
+  "f0": 115.7,
+  "cps": 10.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "85784aa97eed": {
+  "who": "ove",
+  "text": "Porten!",
+  "take": 0,
+  "heard": "Porten",
+  "wer": 0,
+  "f0": 96.4,
+  "cps": 7.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "3f3739e96f3e": {
+  "who": "ove",
+  "text": "Min garageport!",
+  "take": 0,
+  "heard": "Min garageport.",
+  "wer": 0,
+  "f0": 165.8,
+  "cps": 10.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f4c43d059938": {
+  "who": "ove",
+  "text": "Den var stängd, Ove.",
+  "take": 0,
+  "heard": "Den var stängd, Ove.",
+  "wer": 0,
+  "f0": 99.6,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "6d7056614215": {
+  "who": "ove",
+  "text": "Det står ju på skylten.",
+  "take": 0,
+  "heard": "Det står ju på skylten.",
+  "wer": 0,
+  "f0": 136.6,
+  "cps": 15.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "de9dafb5b5bc": {
+  "who": "ove",
+  "text": "Idioter.",
+  "take": 0,
+  "heard": "Idioter!",
+  "wer": 0,
+  "f0": 105.6,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4aba33abfa7e": {
+  "who": "ove",
+  "text": "Typiskt.",
+  "take": 0,
+  "heard": "Typiskt!",
+  "wer": 0,
+  "f0": 98.1,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "df9ef5e9c7d3": {
+  "who": "ove",
+  "text": "Ingen kan läsa nu för tiden.",
+  "take": 0,
+  "heard": "Ingen kan läsa nuförtiden.",
+  "wer": 0.5,
+  "f0": 103.8,
+  "cps": 13.2,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "eab794f13e29": {
+  "who": "ove",
+  "text": "Jaså. Här ska vi stå, minsann.",
+  "take": 0,
+  "heard": "Jaså! Här ska vi stå minsann!",
+  "wer": 0,
+  "f0": 92.2,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "600bcb168c1a": {
+  "who": "ove",
+  "text": "Trottoaren. Den finns där av en anledning.",
+  "take": 0,
+  "heard": "Trottoaren, den finns där av en anledning.",
+  "wer": 0,
+  "f0": 116.6,
+  "cps": 12.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "845fb4b8b2c4": {
+  "who": "ove",
+  "text": "Det är en gata. För bilar.",
+  "take": 0,
+  "heard": "det är en gata för bilar",
+  "wer": 0,
+  "f0": 120.1,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "d273a3e2e61b": {
+  "who": "ove",
+  "text": "Gå på trottoaren!",
+  "take": 0,
+  "heard": "Gå på trottoaren.",
+  "wer": 0,
+  "f0": 163.6,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "250a32ab97fd": {
+  "who": "ove",
+  "text": "Blinkers! Har du hört talas om blinkers?",
+  "take": 0,
+  "heard": "Blinkers. Har du hört talas om blinkers?",
+  "wer": 0,
+  "f0": 163.3,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "1eaf5a88203b": {
+  "who": "ove",
+  "text": "Körkort på internet, va?",
+  "take": 0,
+  "heard": "Körkort på internet va?",
+  "wer": 0,
+  "f0": 131.9,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "35eb77b653e1": {
+  "who": "ove",
+  "text": "Gasen sitter till höger.",
+  "take": 0,
+  "heard": "Gasen sitter till höger.",
+  "wer": 0,
+  "f0": 114.2,
+  "cps": 13.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "84813c925cc0": {
+  "who": "ove",
+  "text": "Volvoförare.",
+  "take": 0,
+  "heard": "Volvoförare",
+  "wer": 0,
+  "f0": 104.2,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "42a205de9e2e": {
+  "who": "ove",
+  "text": "Kommunen. Typiskt.",
+  "take": 0,
+  "heard": "Kommunen. Typiskt.",
+  "wer": 0,
+  "f0": 104,
+  "cps": 8.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "c828af6a51ce": {
+  "who": "ove",
+  "text": "Saab-folk. Vi hälsar.",
+  "take": 0,
+  "heard": "Saabfolk, vi hälsar",
+  "wer": 0.5,
+  "f0": 128.6,
+  "cps": 9.6,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "bc4f4ee82b7f": {
+  "who": "ove",
+  "text": "Tutan fungerar.",
+  "take": 0,
+  "heard": "Tutan fungerar.",
+  "wer": 0,
+  "f0": 148.7,
+  "cps": 11.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "2bc14d278003": {
+  "who": "ove",
+  "text": "Kontrollerar tutan.",
+  "take": 0,
+  "heard": "kontrollerar tutan.",
+  "wer": 0,
+  "f0": 133.3,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "da7402163784": {
+  "who": "ove",
+  "text": "Själv då.",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 119.2,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "185f81cc3ae9": {
+  "who": "ove",
+  "text": "Lär dig köra.",
+  "take": 0,
+  "heard": "Lär dig köra",
+  "wer": 0,
+  "f0": 138.2,
+  "cps": 9.2,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "4db1dd9da524": {
+  "who": "ove",
+  "text": "Tutan är ingen leksak.",
+  "take": 0,
+  "heard": "Tutan är ingen leksak",
+  "wer": 0,
+  "f0": 114.6,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "66640368eb83": {
+  "who": "ove",
+  "text": "Det var fara.",
+  "take": 0,
+  "heard": "Det var fara.",
+  "wer": 0,
+  "f0": 92.3,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "2d85016fb9a5": {
+  "who": "ove",
+  "text": "Det var för att avvärja fara.",
+  "take": 0,
+  "heard": "Det var för att avvärja fara",
+  "wer": 0,
+  "f0": 102.2,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "3d335fa69e83": {
+  "who": "ove",
+  "text": "Förlåt, katten.",
+  "take": 0,
+  "heard": "Förlåt, katten",
+  "wer": 0,
+  "f0": 106.4,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "dc302dea5a77": {
+  "who": "ove",
+  "text": "Stanna!",
+  "take": 0,
+  "heard": "Stanna!",
+  "wer": 0,
+  "f0": 139.2,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "9bcd9cb5a041": {
+  "who": "ove",
+  "text": "Stanna, sa jag!",
+  "take": 0,
+  "heard": "Stanna, sa jag.",
+  "wer": 0,
+  "f0": 137.9,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "2693c831281e": {
+  "who": "ove",
+  "text": "Ingen hemma. Typiskt.",
+  "take": 0,
+  "heard": "Ingen hemma. Typiskt!",
+  "wer": 0,
+  "f0": 90.8,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "fae7100e4d85": {
+  "who": "ove",
+  "text": "Kiss, kiss... Hmpf.",
+  "take": 0,
+  "heard": "Kiss kiss.",
+  "wer": 0.333,
+  "f0": 143.5,
+  "cps": 9,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "cfcf2526f012": {
+  "who": "ove",
+  "text": "Ja, Rune. Saab.",
+  "take": 1,
+  "heard": "Ja, Rune. Saab.",
+  "wer": 0,
+  "f0": 94.3,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "034afd91f667": {
+  "who": "ove",
+  "text": "Jaja. Jag hämtar Saaben.",
+  "take": 1,
+  "heard": "Jaja, jag hämtar Saaben.",
+  "wer": 0,
+  "f0": 104.3,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "ce3cf85bd1f6": {
+  "who": "ove",
+  "text": "Hmpf. Femtusen hade gått.",
+  "take": 1,
+  "heard": "Femtusen hade gått.",
+  "wer": 0.25,
+  "f0": 122.6,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "f006ba5a19b5": {
+  "who": "ove",
+  "text": "Jaja. Jag kommer.",
+  "take": 1,
+  "heard": "\"'Ja, ja. Jag kommer.'\"",
+  "wer": 0.667,
+  "f0": 114.2,
+  "cps": 9,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "72086b19033e": {
+  "who": "ove",
+  "text": "Ingen kan läsa nu för tiden.",
+  "take": 1,
+  "heard": "Ingen kan läsa nu för tiden.",
+  "wer": 0,
+  "f0": 109.8,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "019368746d0d": {
+  "who": "ove",
+  "text": "Saab-folk. Vi hälsar.",
+  "take": 1,
+  "heard": "Saab-folk, vi hälsar!",
+  "wer": 0,
+  "f0": 123.4,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "048009e02004": {
+  "who": "ove",
+  "text": "Kiss, kiss... Hmpf.",
+  "take": 1,
+  "heard": "Kiss kiss.",
+  "wer": 0.333,
+  "f0": 136.2,
+  "cps": 8.6,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ },
+ "f7782ca5e0e7": {
+  "who": "ove",
+  "text": "Jaja. Jag kommer.",
+  "take": 2,
+  "heard": "Ja, ja. Jag kommer.",
+  "wer": 0,
+  "f0": 120.3,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok"
+ },
+ "c51966556bac": {
+  "who": "ove",
+  "text": "Kiss, kiss... Hmpf.",
+  "take": 2,
+  "heard": "Kiss kiss.",
+  "wer": 0.333,
+  "f0": 134.3,
+  "cps": 9.3,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake"
+ }
+}

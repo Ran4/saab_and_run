@@ -1,0 +1,311 @@
+{
+  "_about": "Rollbesättningen för tools/voice/voice.mjs (features/implemented/a_fully_voiced_game.md, 4.2). voice_id: rösten som säger rollens repliker (null = mummel). Rösterna kommer från Voice Library (svenska röster; de läggs till på kontot när de används och tar ingen egen röstplats). candidates: röster att provlyssna (make voice-cast WHO=x, provlyssningssidan). design: bara en beskrivning av rollen; Voice Design används inte (en designad röst kräver en ledig röstplats, och kontot har 10 av 10). Att byta röst gör om rollens klipp.",
+  "model": "eleven_v4",
+  "language": "sv",
+  "designModel": "eleven_ttv_v3",
+  "creditsPerChar": 1,
+  "settings": {
+    "stability": 0.5,
+    "similarity_boost": 0.75
+  },
+  "lufs": -20,
+  "scope": {
+    "who": [
+      "ove"
+    ],
+    "parts": [
+      "day1",
+      "chatterFirst"
+    ]
+  },
+  "roles": {
+    "ove": {
+      "voice_id": "nEJYXtiAMFuP7hh9yoi4",
+      "name": "Brage - Nordic Storyteller",
+      "source": "library",
+      "design": "A Swedish man in his late 50s from Västergötland in western Sweden, speaking Swedish with a light västgötska accent. Low, slightly gravelly voice; terse and clipped, dry and unimpressed, very little melody, as if every word costs money. Natural, close conversational recording.",
+      "library": {
+        "gender": "male",
+        "age": [
+          "middle_aged",
+          "old"
+        ]
+      },
+      "candidates": [
+        {
+          "voice_id": "nEJYXtiAMFuP7hh9yoi4",
+          "owner": "faacc517dbdd346e5253112e13a4eb4d5fb77a30a710a9544acc4e90ebe2e384",
+          "name": "Brage - Nordic Storyteller",
+          "lang": "sv",
+          "accent": "norrland",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Deep Nordic male bass-baritone; dark, earthy and resonant, with a mature, slightly weathered folk character. Solemn, steady and story-driven delivery, intimate restrained emotion and authentic."
+        },
+        {
+          "voice_id": "Z2ic84BAXoRvhU0mvJIa",
+          "owner": "49152542be9bda20e1ec86c2f78fbe292cf3842ae0ac5c7db0d2b313437f3744",
+          "name": "JJ PVC (ensakidag-baserat)",
+          "lang": "sv",
+          "accent": "scanian",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Native Swedish, Skånska (southern Sweden, Helsingborg region). Male, 45–60. Very good quality. Persona: thoughtful senior advisor. Emotion: calm, confident, reflective. Warm, mid-to-low register with "
+        },
+        {
+          "voice_id": "Vo4adEN1y46b0ufuysRe",
+          "owner": "4787abc1fbda0249eb75f8067dc1060da00539aacd766edfa9b93311841badb7",
+          "name": "Ola Paulakoski - Informative and Natural",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Middle aged Swedish voice with Värmland accent."
+        },
+        {
+          "voice_id": "Cu8zBLZATMEvxva2xzc3",
+          "owner": "cc49b043c2026f65d8e91f6d381e799c8b4798f4254147178db630bcfd167912",
+          "name": "Robert - Mature, Calm",
+          "lang": "sv",
+          "accent": "scanian",
+          "age": "old",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Mature, Calm, Trustful voice."
+        },
+        {
+          "voice_id": "1uZ0SLDbZd88cfCPzFQo",
+          "owner": "62a172f17a5645418cab4217f84e0efaa6bf24f7d484901d167e290ca49744db",
+          "name": "Mathias - Strong and Charismatic",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 180,
+          "about": "strong, charismatic, and energetic male voice."
+        },
+        {
+          "voice_id": "wVebHqxy2EFBILywVrdC",
+          "owner": "04353e9aec2715b0fb17a04b56318a3d57e6f427fcb6a4d69c0ac9aa767d1c25",
+          "name": "Andreas - Deep, Manly & Dramatic",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Deep manly, calm and articulate voice from a professional actor. Multilingual. Perfect for narrative, storytelling, commercials, social media information and more. Works excellent for swedish, english"
+        }
+      ],
+      "previewText": "Det är förbjudet att köra bil inom området. Tjugo minuter. Jag har tagit tid. Och du har kört över min brevlåda. Jag har mat. ...Mat. Hmpf. Ni är skyldiga mig en brevlåda. NEJ. Vem backar med släp så? Flytta på dig."
+    },
+    "patrick": {
+      "voice_id": "ISDDl0xPNLMD73L5PQj4",
+      "name": "Filip - Energetic and expressive",
+      "source": "library",
+      "design": "A Swedish man in his mid-30s from Stockholm, speaking Swedish with a soft Stockholm accent. Gentle, nervous and over-polite, a mid-to-high voice that hurries, trails off and interrupts itself, an IT consultant out of his depth. Natural, close conversational recording.",
+      "library": {
+        "gender": "male",
+        "age": [
+          "young",
+          "middle_aged"
+        ]
+      },
+      "candidates": [
+        {
+          "voice_id": "GTaiOJIilTdNU9B8S57K",
+          "owner": "f5d07398382f0b1c49d83c5765f915292c67d9844d36cd9a54872586afd0715e",
+          "name": "Tobias",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": " High-pitched male voice with an authentic Småland accent, delivering fast-paced, energetic, and natural speech."
+        },
+        {
+          "voice_id": "ISDDl0xPNLMD73L5PQj4",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Filip - Energetic and expressive",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A lively, animated voice of a young Swedish male with a bright tone, dynamic pitch range, and an engaging, rhythmic cadence."
+        },
+        {
+          "voice_id": "zA8eaG1JhG82rhuCip6v",
+          "owner": "0d9cdb52e4caa5da8982884c5118f0b3df792554ccca6bedfa79fa2167b27ad9",
+          "name": "Andreas - Natural",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Natural Swedish voice with a warm, clear tone and relaxed delivery. Perfect for social media, commercials, ads, podcasts, and voiceover work. A true all-round voice that sounds authentic and present -"
+        }
+      ],
+      "previewText": "Hej! Du måste vara grannen. Patrick. Vi flyttade in i går. Eller, vi håller på. Har jag? Förlåt! Jag är IT-konsult. Jag är inte så bra på... fysiska saker. Lite till vänster! Eller... höger? Ska jag vinka in dig?"
+    },
+    "parvaneh": {
+      "voice_id": "8Ebkg5uUcbSbeqGucAoR",
+      "name": "Setareh - Expressive Tehrani Creator",
+      "source": "library",
+      "design": "A woman in her early 30s, born in Iran and living in Sweden for many years, speaking fluent Swedish with a light, warm Persian accent. Quick, warm and decisive, teasing, laughs easily, pregnant and not to be argued with. Natural, close conversational recording.",
+      "library": {
+        "gender": "female",
+        "age": [
+          "young",
+          "middle_aged"
+        ]
+      },
+      "candidates": [
+        {
+          "voice_id": "8Ebkg5uUcbSbeqGucAoR",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Setareh - Expressive Tehrani Creator",
+          "lang": "fa",
+          "accent": "standard",
+          "age": "",
+          "gender": "female",
+          "notice_days": 365,
+          "about": "Setareh matches the same brisk, curious energy in a light bright Tehrani voice, but pushes the expressiveness further, wearing emotion more visibly in her upbeat phrasing. A strong option for reaction"
+        },
+        {
+          "voice_id": "N7wuKHXQQ5fKd75noieq",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Niloofar - Curious Tehrani Creator",
+          "lang": "fa",
+          "accent": "standard",
+          "age": "",
+          "gender": "female",
+          "notice_days": 365,
+          "about": "Niloofar sounds like she's always halfway through asking a question, curiosity built into the very expressive, upbeat phrasing. Light and bright in Tehran standard Persian, brisk enough to keep social"
+        },
+        {
+          "voice_id": "NZiuR1C6kVMSWHG27sIM",
+          "owner": "9d3ab8f41f3f8f94beef1d947c1475d0663c3248527b3fc34109911f932eb118",
+          "name": "Noushin - Cheeky, Smooth and Personable",
+          "lang": "en",
+          "accent": "turkish",
+          "age": "young",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "A warm, lyrical female voice with a Persian (Farsi) accent, carrying a gentle rhythm and a touch of elegance. Though classified under a nearby regional accent, it features unique Persian intonations —"
+        },
+        {
+          "voice_id": "ZSHzpa6aUvhjzShiBmYw",
+          "owner": "3d1fa6a5595e0a31fff8d7c1a2f2794b91ca87ddd200066dfbdfcef662a65a1b",
+          "name": "Sanna Hartfield - Sassy and Natural",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Middle aged Professional, Swedish & sassy female voice. Perfect for Ads, TV, radio, social & audio books. Let's go Scandi..."
+        }
+      ],
+      "previewText": "Patrick, älskling. Låt mannen göra det. Han ser ut som någon som kan backa med släp. Ove! Där är du. Jag har lagat saffransris med kyckling. Det blev för mycket. Vad åt du i går då? Ta den. Lådan vill jag ha tillbaka."
+    },
+    "sara": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "mumble": true,
+      "note": "Barn. Voice Design vägrar barnröster (HTTP 403 blocked_generation, provat 2026-10-11), Voice Library tar inte barnröster, och kontot har 10 av 10 egna röster. Mummel + fniss (4.4 c).",
+      "design": "A Swedish girl, 7 years old, speaking standard Swedish: bright, quick and curious, a child's high clear voice, bossy with her little sister. Natural, close conversational recording.",
+      "previewText": "Hej! Vi har flyttat hit! Pappa kan inte backa. Vem är du? Ove! Kom och bygg snögubbe! Varför är du alltid så arg? Mamma säger att du är snäll inuti."
+    },
+    "nasanin": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "mumble": true,
+      "note": "Barn, tre år, enstaka ord. Samma skäl som Sara: mummel + fniss.",
+      "design": "A Swedish toddler girl, 3 years old: single excited words, a tiny high voice, giggly. Natural, close conversational recording."
+    },
+    "anita": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "design": "A Swedish woman in her mid-70s from northern Sweden, speaking Swedish with a mild norrländska accent. Soft and warm, a little tremble, apologetic and kind. Natural, close conversational recording.",
+      "library": {
+        "gender": "female",
+        "age": [
+          "old",
+          "middle_aged"
+        ],
+        "accent": "norrland"
+      }
+    },
+    "rune": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "design": "A Swedish man in his mid-70s from Gothenburg, speaking Swedish with a göteborgska accent. Weak, hoarse and slow, mostly single words, a once-strong voice. Natural, close conversational recording.",
+      "library": {
+        "gender": "male",
+        "age": [
+          "old"
+        ],
+        "accent": "gothenburg"
+      },
+      "previewText": "...Saab. Hm. ...Ove. Volvo. Jag har kört Volvo i hela mitt liv. ...Saab. Hm. Det var länge sedan nu. ...Ove? Ja. Volvo."
+    },
+    "jimmy": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "design": "A Swedish man, 25, from Skåne, speaking Swedish with a skånska accent. Happy, round and relaxed, a light friendly voice, always hungry. Natural, close conversational recording.",
+      "library": {
+        "gender": "male",
+        "age": [
+          "young"
+        ],
+        "accent": "scanian"
+      }
+    },
+    "adrian": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "design": "A Swedish young man, 19, from Stockholm, speaking Swedish with a young Stockholm accent. A little unsure and mumbly, eager when it comes to cars. Natural, close conversational recording.",
+      "library": {
+        "gender": "male",
+        "age": [
+          "young"
+        ],
+        "accent": "stockholm"
+      }
+    },
+    "anders": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "design": "A Swedish man in his mid-40s from Östermalm in Stockholm, speaking Swedish with a posh Stockholm accent. Polished and smug, a salesman's friendliness. Natural, close conversational recording.",
+      "library": {
+        "gender": "male",
+        "age": [
+          "middle_aged"
+        ],
+        "accent": "stockholm"
+      }
+    },
+    "vitskjorta": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "design": "A Swedish municipal official in his late 40s, speaking flat, correct standard Swedish. Polite, cold and bureaucratic. Natural, close conversational recording.",
+      "library": {
+        "gender": "male",
+        "age": [
+          "middle_aged"
+        ],
+        "accent": "standard"
+      }
+    }
+  }
+}
