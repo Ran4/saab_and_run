@@ -16,6 +16,7 @@
 //   patrol.addOrdning(d)                 change the meter (clamped 0-100)
 //   patrol.cancelWriting(reason)         stop an unfinished report (an incoming call does this)
 //   patrol.ordning, .reports, .log, .active (violation cars), .pursuit, .writing, .smitareChance
+// What is said (Ove's OVE_START, the smitare's FLEE_LINES / CAUGHT_LINES, PATROL) is in script.js.
 
 import { Car } from '../actors/car.js';
 import { AIDriver } from '../actors/drivers.js';
@@ -26,6 +27,7 @@ import { circleVsObb } from '../world/collision.js';
 import { THREE, camera } from '../gfx.js';
 import { audio } from '../audio.js';
 import { hud } from './hud.js';
+import { OVE_START, FLEE_LINES, CAUGHT_LINES, PATROL } from './script.js';
 import { clamp, dist, pick } from '../util.js';
 
 // [tag text (also the pause log's short form), notebook sentence]. The one source for both: hud.js
@@ -64,9 +66,6 @@ const DRAIN = 0.014, DRAIN_FAR = 150, DRAIN_FAR_W = 0.25, DRAIN_ERRAND = 0.4;
 const EVENT_HOLD = 12;
 const WRITE_SECS = 1.8;
 const TARGET = 6, FEW = 3;
-const OVE_START = ['Det står ju på skylten.', 'Idioter.', 'Typiskt.', 'Ingen kan läsa nu för tiden.', 'Hmpf.', 'Jaså. Här ska vi stå, minsann.'];
-const FLEE_LINES = ['Hej då, gubbe!', 'Skriv vad du vill!', 'Ha det, farbror!', 'Jag ska bara...!'];
-const CAUGHT_LINES = ['Okej, okej! Jag flyttar den!', 'Förlåt! Jag skulle bara handla!', 'Det var bara fem minuter!', 'Snälla, inte en lapp till...'];
 
 function roadInfo(x, z) {
   const i = clamp(Math.round((x + HALF) / P), 0, N), j = clamp(Math.round((z + HALF) / P), 0, N);
@@ -387,7 +386,7 @@ export class Patrol {
     audio.stamp();
     audio.jingle('complete');
     this.credit(c, true);
-    setTimeout(() => { if (!g.playerCar && g.player.state === 'normal') g.say(g.player, 'Det står ju på skylten.', 2); }, 1400);
+    setTimeout(() => { if (!g.playerCar && g.player.state === 'normal') g.say(g.player, PATROL.caught[1], 2); }, 1400);
   }
 
   // A story mission begins in the middle of a chase: the smitare simply drives off, no SMET!, no
@@ -451,14 +450,14 @@ export class Patrol {
       // (A broke Ove's "−1 kr" isn't worth a mention.)
       hud.showBanner('KAOS I OMRÅDET', `Anders kallar till extra föreningsmöte${lost >= 5 ? ` · −${lost} kr` : ''}`, 'chaos', 3200);
       audio.alarm();
-      setTimeout(() => g.radio('anders', 'Extra föreningsmöte i kväll, Ove. Klockan sju. Ordningen i området är under all kritik.'), 1800);
+      setTimeout(() => g.radio(...PATROL.kaos), 1800);
       g.save();
     } else if ((this.atTop || this.ordning >= 100) && !this.redaGiven) {
       this.redaGiven = true;
       g.addCoins(100);
       hud.showBanner('ORDNING OCH REDA', 'Området är som det ska · +100 kr', 'good', 3000);
       audio.jingle('complete');
-      setTimeout(() => g.radio('anita', 'Det är så lugnt i området i dag, Ove. Rune sover som en stock.'), 2200);
+      setTimeout(() => g.radio(...PATROL.reda), 2200);
       g.save();
     }
     // Keep up to 6 open violations, a new one now and then, out of sight.
@@ -482,7 +481,7 @@ export class Patrol {
       this.addOrdning(-1 * dt);
       if (g.time - this.carFreeShoutT > 60) {
         this.carFreeShoutT = g.time;
-        g.shout('anders', 'Ove! Det är förbjudet att köra bil inom området!');
+        g.shout(...PATROL.carFree);
       }
     }
   }

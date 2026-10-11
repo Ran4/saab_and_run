@@ -1,15 +1,15 @@
 // Pedestrians stroll the sidewalk loops around blocks at a November pace, sometimes cross the
 // street, step smartly out of the way of speeding cars, and say what they think when they don't
-// make it.
+// make it. (What they say is in game/script.js: PANIC here, OUCH and the others in main.js.)
 
 import { Character } from './character.js';
 import { randomPed } from './models.js';
 import { pedLoops } from '../world/town.js';
 import { N } from '../world/layout.js';
+import { PANIC } from '../game/script.js';
 import { mulberry32, pick, yawTo } from '../util.js';
 
 const r = mulberry32(99);
-export const PANIC = ['Oj!', 'Se upp!', 'Hallå!', 'Sakta ner!', 'Men herregud!', 'Kör som folk!'];
 
 export class Ped {
   constructor(scene, loop) {

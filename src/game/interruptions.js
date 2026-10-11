@@ -17,12 +17,15 @@
 //   TEMPLATES                            the nine errands (id, who, title, lines, stages ...; `after`:
 //                                        only once that many story days are done; `busy`: what they
 //                                        say when a story day takes Ove off their errand)
+// Everything said (an errand's who, lines, ove, thanks, fail, busy and its stages' hello / bye;
+// ANSWER, DONE) is in script.js ERRANDS, by the same id.
 
 import { CHARS } from '../actors/models.js';
 import { lm } from '../world/layout.js';
 import { audio } from '../audio.js';
 import { hud } from './hud.js';
 import { newCtx, disposeCtx, holdAt, fetch, pickup, dropoff, goto, escort, catchCat } from './stages.js';
+import { ERRANDS as E, ERRAND_BUSY, ANSWER, DONE } from './script.js';
 import { pick, dist } from '../util.js';
 
 // Three spots on the path in front of Rune and Anita's door, from the door out to the walkway.
@@ -40,102 +43,64 @@ export const TEMPLATES = [
   {
     // Only after day 3: until then Ove's elementnyckel is in Rune's Volvo ("Tom krok."), and day 3 is
     // the day he gets it back.
-    id: 'element', who: 'anita', title: 'Elementet klickar', patience: 90, after: 3,
-    lines: ['Ove? Det är Anita. Förlåt att jag stör.', 'Det klickar i elementet hos oss igen. Rune blir så orolig av det.'],
-    ove: 'Jaja. Jag kommer.',
+    id: 'element', ...E.element, title: 'Elementet klickar', patience: 90, after: 3,
     stages: () => [holdAt({ at: 'runeHouse', secs: 3, label: 'Lufta elementet', text: 'Lufta elementet hos Anita och Rune', work: 'wall' })],
-    thanks: 'Tack, Ove. Du är snäll, vad du än säger.', fail: 'Det gör inget, Ove. Vi tar på oss en tröja till.',
-    busy: 'Jaså, du är upptagen. Vi tar på oss en tröja till så länge.',
   },
   {
     // The new neighbours phone Ove once they have met him (after day 1). ("Patrick... ja. Du vet." fits
     // every day: before day 2 and with his arm in plaster after it.)
-    id: 'forskolan', who: 'parvaneh', title: 'Hämta Nasanin', needs: ['nasanin'], patience: 150, after: 1,
-    lines: ['Ove! Hej! Det är Parvaneh.', 'Kan du hämta Nasanin på förskolan? Jag hinner inte, och Patrick... ja. Du vet.'],
-    ove: 'Vad har han gjort nu då?',
+    id: 'forskolan', ...E.forskolan, title: 'Hämta Nasanin', needs: ['nasanin'], patience: 150, after: 1,
     stages: () => [
-      pickup({ who: 'nasanin', at: 'preschool', text: 'Hämta Nasanin på förskolan', hello: 'Ove! Ove! Ove!' }),
-      dropoff({ who: 'nasanin', at: 'parvanehHouse', radius: 6, text: 'Lämna Nasanin hemma hos Parvaneh', bye: 'Hej då, Ove!' }),
+      pickup({ who: 'nasanin', at: 'preschool', text: 'Hämta Nasanin på förskolan', hello: E.forskolan.hello[1] }),
+      dropoff({ who: 'nasanin', at: 'parvanehHouse', radius: 6, text: 'Lämna Nasanin hemma hos Parvaneh', bye: E.forskolan.bye[1] }),
     ],
-    thanks: 'Tack, Ove! Du är bäst. Säg inte det till Patrick.', fail: 'Jag hämtade henne själv. Det gick bra. Typ.',
-    busy: 'Du är upptagen? Okej, jag ringer Jimmy.',
   },
   {
-    id: 'mobilen', who: 'jimmy', title: 'Jimmys mobil', patience: 140,
-    lines: ['Tjena Ove! Det är Jimmy. Jag ringer från Adrians telefon.', 'Jag har glömt min mobil på torget i centrum. Kan du kolla? Snälla?'],
-    ove: 'Vem glömmer sin telefon på ett torg?',
+    id: 'mobilen', ...E.mobilen, title: 'Jimmys mobil', patience: 140,
     stages: () => [
       fetch({ at: 'centrum', item: 'phone', label: 'Jimmys mobil', text: 'Hitta Jimmys mobil på torget i centrum', rMin: 2, rMax: 7, got: 'Jimmys mobil. Skärmen är sprucken. Typiskt.' }),
       goto({ who: 'jimmy', radius: 2.6, text: 'Lämna mobilen till Jimmy' }),
     ],
-    thanks: 'Ove, du är kung! Jag bjuder på en macka!', fail: 'Ingen fara, Ove. Jag köper en ny. Eller lånar.',
-    busy: 'Lugnt, Ove. Jag hämtar den själv sen.',
   },
   {
-    id: 'punktering', who: 'adrian', title: 'Punktering', patience: 100,
-    lines: ['Eh, Ove? Det är Adrian.', 'Jag har fått punktering på cykeln vid cykelförrådet. Jag vet inte hur man... lagar sånt.'],
-    ove: 'Ingen kan någonting nu för tiden.',
+    id: 'punktering', ...E.punktering, title: 'Punktering', patience: 100,
     stages: () => [holdAt({ at: 'bikeShed', secs: 4, label: 'Laga punkteringen', text: 'Laga Adrians punktering vid cykelförrådet', work: 'low' })],
-    thanks: 'Tack, Ove! Du borde ha en egen kanal.', fail: 'Okej... jag går väl då.',
-    busy: 'Okej... jag leder cykeln då.',
   },
   {
     // (after day 1: before it Patrick hasn't met Ove, let alone heard about his spare keys)
-    id: 'nyckeln', who: 'patrick', title: 'Utelåst', needs: ['parvaneh'], patience: 110, after: 1,
-    lines: ['Hej Ove, det är Patrick. Jag har låst mig ute.', 'Parvaneh sa att du har en reservnyckel. Hon sa att du har reservnycklar till... allt.'],
-    ove: 'Klart jag har.',
+    id: 'nyckeln', ...E.nyckeln, title: 'Utelåst', needs: ['parvaneh'], patience: 110, after: 1,
     stages: () => [
       fetch({ at: 'oveHouse', item: 'key', label: 'reservnyckeln', text: 'Hämta reservnyckeln hemma hos dig', rMin: 0.3, rMax: 1.0 }),
       holdAt({ at: 'parvanehHouse', secs: 1.5, label: 'Lås upp', text: 'Lås upp hos Parvaneh och Patrick', work: 'wall' }),
     ],
-    thanks: 'Tack, Ove! Jag ska aldrig mer... ja. Tack.', fail: 'Det är lugnt, Ove. Jag klättrade in genom fönstret.',
-    busy: 'Okej! Jag... väntar här. Det är inte så kallt.',
   },
   {
-    id: 'rune', who: 'anita', title: 'Rune har rullat iväg', needs: ['rune'], patience: 130,
-    lines: ['Ove... det är Anita. Rune är borta.', 'Han rullade iväg medan jag hängde tvätt. Han kan inte ha kommit långt.'],
-    ove: 'Jag letar.',
-    stages: () => [escort({ who: 'rune', to: 'runeHouse', push: true, max: 80, findText: 'Hitta Rune. Han kan inte ha kommit långt.', bringText: 'Rulla hem Rune till Anita', hello: '...Ove?' })],
-    thanks: 'Tack, Ove. Jag vet inte vad vi skulle göra utan dig.', fail: 'Grannarna hittade honom vid busshållplatsen. Han frös.',
-    busy: 'Jaså. Jag letar själv då. Han kan inte ha kommit långt.',
+    id: 'rune', ...E.rune, title: 'Rune har rullat iväg', needs: ['rune'], patience: 130,
+    stages: () => [escort({ who: 'rune', to: 'runeHouse', push: true, max: 80, findText: 'Hitta Rune. Han kan inte ha kommit långt.', bringText: 'Rulla hem Rune till Anita', hello: E.rune.hello[1] })],
   },
   {
-    id: 'skotta', who: 'anita', title: 'Snöskottning', needs: ['rune'], patience: 100,
-    lines: ['Ove, det är Anita igen. Förlåt.', 'Det har drivit igen framför dörren. Rune kommer inte ut med rullstolen.'],
-    ove: 'Hmpf. Jag tar min egen snöskyffel.',
+    id: 'skotta', ...E.skotta, title: 'Snöskottning', needs: ['rune'], patience: 100,
     stages: () => [holdAt({ spots: snowSpots('runeHouse'), secs: 1.6, label: 'Skotta', text: 'Skotta framför Anitas och Runes dörr', mounds: true, work: 'shovel' })],
-    thanks: 'Nu kommer han ut igen. Tack, Ove.', fail: 'Vi tar det i morgon, Ove.',
-    busy: 'Det ordnar sig, Ove. Vi tar det i morgon.',
   },
   {
     // Only once the cat lives at Ove's (day 4: "Den får stanna. Tills vidare."), and it is his cat
     // that has run off; his "Det är inte min katt." is denial now.
-    id: 'katten', who: 'sara', title: 'Katten har rymt', needs: ['sara'], patience: 120, after: 4,
-    lines: ['Ove! Det är Sara. Din katt har rymt!', 'Han sprang mot cykelförrådet! Du MÅSTE hitta honom!'],
-    ove: 'Det är inte min katt.',
+    id: 'katten', ...E.katten, title: 'Katten har rymt', needs: ['sara'], patience: 120, after: 4,
     stages: () => [
       catchCat({ near: 'bikeShed', text: 'Fånga katten vid cykelförrådet' }),
       goto({ who: 'sara', radius: 2.4, text: 'Bär katten till Sara', onFoot: true }),
     ],
-    thanks: 'Du hittade honom! Ove, du är världens bästa!', fail: 'Han hittade hem själv till slut. Men han var jättekall.',
-    busy: 'Okej. Jag letar själv!',
   },
   {
-    id: 'skjuts', who: 'jimmy', title: 'Skjuts till jobbet', patience: 150,
-    lines: ['Ove! Jimmy här. Bussen har gått.', 'Kan du skjutsa mig till centrum? Jag står vid busshållplatsen.'],
-    ove: 'Det går en buss om tjugo minuter.',
+    id: 'skjuts', ...E.skjuts, title: 'Skjuts till jobbet', patience: 150,
     stages: () => [
       // He waits at the bus stop (the bus has gone), out of sight of the Saab, and he rides: a
       // walk to centrum with Ove doesn't count.
-      pickup({ who: 'jimmy', at: 'busStop', needCar: true, text: 'Hämta Jimmy med bil vid busshållplatsen', carText: 'Jimmy väntar vid busshållplatsen. Ta bilen.', hello: 'Tjena! Vilken service!' }),
-      dropoff({ who: 'jimmy', at: 'centrum', radius: 14, needCar: true, carText: 'Jimmy ska åka bil, inte gå.', text: 'Skjutsa Jimmy till centrum', bye: 'Tack, Ove! Du är en klippa!' }),
+      pickup({ who: 'jimmy', at: 'busStop', needCar: true, text: 'Hämta Jimmy med bil vid busshållplatsen', carText: 'Jimmy väntar vid busshållplatsen. Ta bilen.', hello: E.skjuts.hello[1] }),
+      dropoff({ who: 'jimmy', at: 'centrum', radius: 14, needCar: true, carText: 'Jimmy ska åka bil, inte gå.', text: 'Skjutsa Jimmy till centrum', bye: E.skjuts.bye[1] }),
     ],
-    thanks: 'Jag kom i tid! För första gången!', fail: 'Jag tog bussen till slut. Den var full.',
-    busy: 'Lugnt. Jag tar nästa buss.',
   },
 ];
-const ANSWER = ['Ja?', 'Vad är det nu då?', 'Ove.', 'Ja, det är Ove.'];
-const DONE = ['Hmpf.', 'Det var ingenting.', 'Ingen kan någonting nu för tiden.', 'Jaja.'];
 
 const nameOf = (who) => CHARS[who]?.name || who;
 const lineSecs = (s) => 1.3 + s.length * 0.045;
@@ -332,7 +297,7 @@ export class Interruptions {
       const tpl = this.active.tpl;
       this.finish();
       this.nextT = 45;
-      if (this.g.missions.state !== 'idle') this.dropNote = { who: tpl.who, text: tpl.busy || 'Jaså, du är upptagen. Det ordnar sig.', t: 0 };
+      if (this.g.missions.state !== 'idle') this.dropNote = { who: tpl.who, text: tpl.busy || ERRAND_BUSY, t: 0 };
     }
   }
 

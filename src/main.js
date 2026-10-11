@@ -27,6 +27,10 @@ import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/m
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
 import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
 import { HANDLE as DOOR_HANDLE } from './world/garagedoor.js';
+import {
+  CHATTER, CHATTER_FIRST, CHATTER_AFTER, CHATTER_FALLBACK, whenOk, OVE_REPLY, SLID, TYRE, GARAGE_DOOR,
+  OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID,
+} from './game/script.js';
 
 const STEP = 1 / 60;
 // At most two fixed steps per frame: a slow frame is caught up once, never with a burst of four that
@@ -64,81 +68,8 @@ const HOMES = {
   vitskjorta: ['kommun', 1.5, 0],
 };
 
-// When a line may be said, by where the story is (m = the MissionRunner: m.index days done, m.gateOpen
-// = the next day has dawned). storyDay: the day it is - the evening after day n is still day n.
-const storyDay = (m) => Math.max(1, m.index + (m.gateOpen && m.index < MISSIONS.length ? 1 : 0));
-const met = (m) => m.index >= 1;                         // the new neighbours know Ove (day 1's scene)
-const eveningOfDay1 = (m) => m.index === 1 && !m.gateOpen;  // Patrick still climbs ladders
-const onDay = (d) => (m) => storyDay(m) === d;
-// Base lines: a string, or [line, when(m)]. Nothing here thanks Ove for something that hasn't happened
-// yet, mentions the cat before day 4 or says good morning at half past two (the day runs 10:30-14:30).
-const CHATTER = {
-  parvaneh: [['Hej Ove! Vill du ha lite saffransris? Jag har gjort för mycket.', met], 'Ove, du ser nästan glad ut i dag.', ['Patrick har klättrat upp på en stege igen. Titta inte.', eveningOfDay1], ['Flickorna vill att du kommer på middag. Jag med.', met]],
-  patrick: ['Hej Ove! Jag skulle bara... nej, det var inget.', ['Släpet står helt rakt. Jag har tagit en bild på det.', eveningOfDay1], ['Jag är IT-konsult. Jag kan starta om saker. Det är ungefär allt.', met], 'Har du en insexnyckel? Jag ska bara montera en garderob. Tror jag.'],
-  sara: ['Ove! Kom och bygg snögubbe!', 'Varför är du alltid så arg?', 'Mamma säger att du är snäll inuti.', 'Pappa kan inte bygga snögubbar. De ramlar.'],
-  nasanin: ['Ove! Ove! Ove!', 'Snögubbe!', 'Snö!', 'Ove, titta!'],
-  jimmy: ['Tjena Ove! Har du ätit?', 'Ove! Mannen själv!', 'Jag kör nyttigt nu. Typ.', 'Fint väder, va?'],
-  adrian: ['Ove, vad tycker du om Audi?', 'Jag ska köpa bil snart. Vad köper man?', 'Kan du lära mig byta däck någon gång?'],
-  anita: ['Hej, Ove.', 'Rune sov dåligt i natt.', 'Klä dig varmt, Ove. Det är kallt i dag.', 'Han frågar efter dig ibland. På sitt sätt.'],
-  rune: ['...', 'Hm.', '...Ove.', 'Volvo.'],
-  anders: ['Ove! Har du sett min nya Audi?', 'Föreningen har nya regler, Ove. Jag mejlar.', 'Morsning, Ove. Fint väder för en promenad.', 'Vi borde ha en bom vid infarten, tycker du inte?'],
-  vitskjorta: ['Vi har papper på allt.', 'Det här är en kommunal angelägenhet.', 'Ha en bra dag. Tills vidare.'],
-};
-// Before day 1's scene the family that moved in yesterday hasn't met Ove: no line names him or knows
-// him (no dinner, no saffransris, no "IT-konsult" right before Patrick introduces himself); Patrick
-// is still backing the trailer ("en kvart. Minst." sets up Ove's "Tjugo minuter. Jag har tagit tid.").
-const CHATTER_FIRST = {
-  patrick: ['Jag har köpt en bok om att backa med släp. Den har bilder.', 'Vänster... nej. Höger. Eller?', 'Hur svårt kan det vara att backa ett släp?'],
-  parvaneh: ['Hej! Vi har precis flyttat in.', 'Han har backat i en kvart nu. Minst.', 'Patrick, älskling. Andas.'],
-  sara: ['Hej! Vi har flyttat hit!', 'Pappa kan inte backa.', 'Vem är du?'],
-  nasanin: ['Hej!', 'Snö!', 'Släpet!'],
-};
-// Later in the week some of them have news: [missions done, lines, replace]. From then on those lines
-// come 60 % of the time (with `replace`: always, the base lines are retired - Adrian has his Saab).
-// Lines may carry a `when` too, as above.
-const CHATTER_AFTER = {
-  patrick: [2, ['Armen kliar under gipset. Hela tiden.', 'Parvaneh säger att jag inte får gå upp på stegar mer. Någonsin.', 'Tack för att du körde Parvaneh. Jag var... upptagen.']],
-  parvaneh: [2, ['Första körlektionen på måndag, Ove! Jag har redan köpt en övningskörningsskylt.', 'Patrick försöker knyta skorna med en hand. Det är bättre än tv.', 'Tack för hjälpen med släpet. Igen.']],
-  // ("i går" = day 3, Anita's radiators: said on day 4 only, not on the evening of day 3 or on day 5)
-  anita: [3, ['Det är så varmt hos oss nu, Ove.', 'Rune sa ”Saab” igen i morse. Bara så där.', ['Tack för i går, Ove.', onDay(4)]]],
-  sara: [4, ['Katten tycker om dig.', 'Får jag klappa katten?']],
-  nasanin: [4, ['Katten!', 'Kissen!']],
-  rune: [3, ['...Saab.']],
-  jimmy: [4, ['Hur mår katten? Har den fått ett namn än?', 'Jag köpte kattmat. Jag köpte för mycket kattmat.']],
-  adrian: [5, ['Saaben startade på första försöket i morse!', 'Jag har kollat trösklarna. Två gånger.', 'Jag bytte däck själv i går! Nästan.'], true],
-  anders: [5, ['Audin var på service. Det var inget fel på den. Alls.', 'Två Saabar i föreningen nu. Fantastiskt.']],
-  vitskjorta: [6, ['Vi ses, Ove. Vi har tid.', 'Underskriften är på väg. Den är på väg.']],
-};
-const OVE_REPLY = ['Hmpf.', 'Jaha.', 'Mm.', 'Jaså.', 'Nej.', 'Det får vi se.'];
-// What Ove says after a long slide in his car (car.drift, by make, else `default`) or a donut.
-const SLID = {
-  saab900: ['Framhjulsdrift. Saaben vet vart den ska.'],
-  volvo240: ['Volvo. Den kan inte ens köra rakt.'],
-  volvo740: ['Volvo. Den kan inte ens köra rakt.'],
-  default: ['Det där såg ingen.', 'Kommunen har inte sandat här.', 'Det var meningen.'],
-  donut: ['Kollar bara mönsterdjupet.', 'Det där såg ingen.'],
-};
-const OUCH = ['Aj!', 'Är du inte klok?!', 'Min höft!', 'Vad håller du på med?!', 'Jag ringer polisen!', 'Kör som folk!', 'Galning!', 'Hallå där!'];
-const GETUP = ['Jag ska anmäla dig.', 'Pensionärer i bil, alltså.', 'Min rygg...', 'Det här var inte okej.', 'Jag mår bra. Jag mår BRA.'];
-const CARJACK = ['Hallå! Min bil!', 'Den där gubben tog min bil!', 'Polis! Polis!', 'Men snälla! Jag ska till jobbet!'];
-const KICKED = ['Hallå!', 'Vad gör du?', 'Akta dig!', 'Ove!'];
-// Shoved aside by Ove's car (children and the neighbours are never knocked over).
-const SHOVED = ['Akta!', 'Hallå!', 'Ove! Titta dig för!', 'Är du inte klok, Ove?!', 'Kör som folk, Ove!'];
-const SHOVED_KID = ['Aj!', 'Akta!', 'Ove!', 'Hallå!'];
-// What Ove thinks of a car, by make (TYRE[c.kind]; Rune's own Volvo by its name). One opinion per make:
-// there is no Japanese car in the area, and "Typiskt" is used enough elsewhere.
-const TYRE = {
-  saab900: ['Bra däck.', 'Så ska en bil se ut.', 'Ordentligt.'],
-  runeVolvo: ['Runes Volvo. Han kör den inte längre.', 'Volvo. Jaja.'],
-  volvo240: ['Volvo. Jaja.', 'En 240. Den går i alla fall.'],
-  volvo740: ['Volvo. Jaja.', 'För lite luft. Som vanligt.'],
-  audi: ['Plast och elektronik.', 'Tyskt krafs.', 'Anders har en sån. Det säger väl allt.'],
-  bmw: ['Plast och elektronik.', 'BMW. Hmpf.', 'Rune köpte en sån. Sen pratade vi inte på flera år.'],
-  golf: ['Tyskt krafs.', 'Golf. Det är en sport, inte en bil.'],
-  skoda: ['Tjeckiskt. Hmpf.', 'Sånt här kör de på kommunen.'],
-  bus: ['Hmpf.'],
-  default: ['Hmpf.', 'Sommardäck. I november.', 'För lite luft. Som vanligt.', 'Ingen kollar lufttrycket nu för tiden.'],
-};
+// Everything said out loud (the neighbours' small talk, Ove's reactions, people knocked over, kicked
+// or shoved ...) is in game/script.js. The notes below are only read.
 // Saab emblems: Ove's notes. Sonja's photographs: short memories (warm, a little sad, never more).
 const EMBLEM_NOTES = [
   'Riktig plåt. Inte som nu för tiden.',
@@ -1442,9 +1373,9 @@ class Game {
     const list = later && m.index >= later[0] && (later[2] || Math.random() < 0.6) ? later[1] : CHATTER[key];
     const out = (this._chatter ||= []);
     out.length = 0;
-    for (const l of list || []) if (typeof l === 'string') out.push(l); else if (l[1](m)) out.push(l[0]);
-    if (!out.length && list !== CHATTER[key]) for (const l of CHATTER[key] || []) if (typeof l === 'string' || l[1](m)) out.push(typeof l === 'string' ? l : l[0]);
-    if (!out.length) out.push('Hej, Ove.');
+    for (const l of list || []) if (typeof l === 'string') out.push(l); else if (whenOk(l[1], m)) out.push(l[0]);
+    if (!out.length && list !== CHATTER[key]) for (const l of CHATTER[key] || []) if (typeof l === 'string' || whenOk(l[1], m)) out.push(typeof l === 'string' ? l : l[0]);
+    if (!out.length) out.push(CHATTER_FALLBACK);
     return out;
   }
 
@@ -1533,13 +1464,13 @@ class Game {
     let band = d.band(0.45, 0.12);
     for (const c of this.cars) {
       if (Math.abs(c.x - d.x) > 9 || Math.abs(c.z - d.z) > 9) continue;
-      if (obbVsBlock(c.obb, band, h)) return c === this.named.saab ? 'Saaben står i vägen.' : 'Det står en bil i vägen.';
+      if (obbVsBlock(c.obb, band, h)) return c === this.named.saab ? GARAGE_DOOR.saabInWay : GARAGE_DOOR.carInWay;
     }
     if (open) return null;
     band = d.band(0.2, 0.2);
     for (const ch of this.allChars(this._doorChs ||= [])) {
       if (ch === this.player || ch.state === 'hidden' || ch.state === 'seated' || Math.abs(ch.x - d.x) > 4 || Math.abs(ch.z - d.z) > 4) continue;
-      if (circleVsBlock(ch.x, ch.z, ch.r, band, h)) return 'Flytta på dig.';
+      if (circleVsBlock(ch.x, ch.z, ch.r, band, h)) return GARAGE_DOOR.inDoorway;
     }
     return null;
   }
@@ -1604,7 +1535,7 @@ class Game {
         if (n >= op.tugs && f >= 0.09) { op.tugs = n + 1; d.bump(0.012); audio.garage('tug', this.doorVol()); }
       }
       if (tt > 3 * 0.34 + 0.15) {
-        if (Math.random() < 0.35) { this.say(p, pick(['Så.', 'Stängt.', 'Ordning och reda.']), 1.4); audio.talk(CHARS.ove.voice); }
+        if (Math.random() < 0.35) { this.say(p, pick(GARAGE_DOOR.shut), 1.4); audio.talk(CHARS.ove.voice); }
         this.endDoorOp();
       }
     }
@@ -1641,7 +1572,7 @@ class Game {
     audio.garage('shut', this.doorVol() * Math.min(1, 0.3 + impact / 12));
     if (car === this.playerCar && impact > 3 && this.time > (this._doorLineT || 0)) {
       this._doorLineT = this.time + 10;
-      this.say(this.player, pick(['Porten!', 'Min garageport!', 'Den var stängd, Ove.']), 1.8);
+      this.say(this.player, pick(GARAGE_DOOR.hit), 1.8);
       audio.talk(CHARS.ove.voice);
     }
   }
@@ -1844,7 +1775,7 @@ class Game {
     }
     for (const k in this.npcs) {
       const n = this.npcs[k];
-      if (n.state === 'normal' && !n.car && dist(n.x, n.z, kx, kz) < 1.2) this.say(n, pick(['Ove!', 'Vad håller du på med?', 'Aj, Ove!']), 1.5);
+      if (n.state === 'normal' && !n.car && dist(n.x, n.z, kx, kz) < 1.2) this.say(n, pick(KICKED_NEIGHBOUR), 1.5);
     }
   }
   kickTyre(c, fx, fz) {

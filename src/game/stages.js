@@ -16,7 +16,9 @@
 // `g` is the Game (main.js), `m` the context shared by a mission's or errand's stages:
 //   { def, cars: [], items: [], data: {} } — cars are removed at the end, items are cleanup
 //   functions, data is free for stages (data.carrying, data.cat, data.npcs ...). See newCtx /
-//   disposeCtx. Text is Swedish (player-facing).
+//   disposeCtx. Text is Swedish (player-facing). What a stage says by itself (COMING, CAT_COMES,
+//   CHASER_GAVE_UP) is in script.js; the lines a stage is given (hello, bye, radio, calls, lines,
+//   goLine ...) come from script.js through missions.js and interruptions.js.
 
 import { THREE } from '../gfx.js';
 import { lm, landmarks, nodeX, nodeZ, nodeId, nearestNode, neighbors, findPath, LANE, NN, isRoad } from '../world/layout.js';
@@ -29,6 +31,7 @@ import { queryBlocks, circleVsBlock, circleVsObb, groundAt, topAt, RAMP, segment
 import { audio } from '../audio.js';
 import { hud } from './hud.js';
 import { fx as FX } from './fx.js';
+import { COMING, CAT_COMES, CHASER_GAVE_UP } from './script.js';
 import { dist, yawTo, pick, angleDiff, clamp } from '../util.js';
 
 // A place: a landmark name, a { x, z, yaw } object, or a function (g) => place.
@@ -255,7 +258,7 @@ export const goto = (o) => ({
       c.ai = new AIDriver(c, { mode: 'traffic', cruise: 11 });
       c.isChaser = false;
       this.chaser = null;
-      if (C.who) g.radio(C.who, C.giveUpLine || 'Jag skickar ett brev, Ove! Rekommenderat!');
+      if (C.who) g.radio(C.who, C.giveUpLine || CHASER_GAVE_UP[1]);
       return null;
     }
     // Stopped: Ove is held up for a moment (and it costs), then the Škoda backs off and comes again.
@@ -424,8 +427,7 @@ export const fetch = (o) => ({
 // walk ((g) => [points]: they walk to `at` by way of these instead of being put there; if a
 // mission already sent them, they carry on), speed (their walking speed) }.
 // On foot: walk up to them and they follow Ove. In a car: stop within ~9 m and they get in, or stop
-// within 25 m and honk (game/horn.js): they come out to the car ("Jag kommer!").
-const COMING = ['Jag kommer!', 'Ja, ja, jag kommer!', 'En sekund bara!'];
+// within 25 m and honk (game/horn.js): they come out to the car (script.js COMING: "Jag kommer!").
 export const pickup = (o) => ({
   kind: 'pickup',
   get text() { return o.text || `Hämta ${this.name || o.who}`; },
@@ -696,7 +698,7 @@ export const catchCat = (o) => ({
       else if (this.stillT > 1.2 && d < 9 && segmentBlocked(c.x, c.z, pl.x, pl.z, c.y + 0.45) < 0) {
         // Curious: it comes to the man who stands still.
         this.setMode('come');
-        if (!this.comes++) { audio.catMeow(); g.say(pl, 'Kiss, kiss... Hmpf.', 2.2); }
+        if (!this.comes++) { audio.catMeow(); g.say(pl, CAT_COMES[1], 2.2); }
       }
     } else if (this.mode === 'run') {
       if (this.modeT > this.runFor) this.setMode('rest');

@@ -20,7 +20,7 @@ const server = http.createServer((req, res) => {
   res.end(fs.readFileSync(p));
 });
 await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
-const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--enable-gpu', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', `--window-size=${W},${H}`] });
+const browser = await puppeteer.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', '--enable-gpu', '--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--mute-audio', `--window-size=${W},${H}`] });
 const page = await browser.newPage();
 await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
 page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning' || m.text().startsWith('[t]')) console.log(`[${m.type()}]`, m.text().slice(0, 400)); });

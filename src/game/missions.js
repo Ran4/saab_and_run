@@ -18,7 +18,9 @@
 // prop for the outro: the Saab for sale), outroLook (g) => a point to frame when nobody but Ove
 // speaks, snow (light snowfall from the start until after the outro), bustFails (a chaser that
 // catches Ove fails the mission instead of just holding him up) }.
-// Player-facing text is Swedish; speaker keys are CHARS keys ('ove' is the player).
+// Player-facing text is Swedish; speaker keys are CHARS keys ('ove' is the player). Everything said
+// out loud (intro, retryIntro, outro and every stage's lines, calls, hello, bye ...) is in script.js
+// STORY, by mission id (D1 .. D7 below); only text that is read stays here.
 
 import * as GFX from '../gfx.js';
 import { lm, rc, landmarks } from '../world/layout.js';
@@ -34,6 +36,13 @@ import {
   newCtx, disposeCtx, getInCar, goto, holdAt, fetch, pickup, dropoff, catchCat, parkIn, report,
   race, destroy, grab, talk, cut, at, lmOr,
 } from './stages.js';
+import { STORY } from './script.js';
+
+// The days' lines (script.js).
+const D1 = STORY.slapet, D2 = STORY.sjukhuset, D3 = STORY.elementet, D4 = STORY.katten, D5 = STORY.saab, D6 = STORY.vitskjortan, D7 = STORY.varkarna;
+// A scene's lines with camera beats: { line index: (g) => {...} } (a third element: it runs as that
+// line starts).
+const cue = (lines, beats) => lines.map((l, i) => (beats[i] ? [l[0], l[1], beats[i]] : l));
 
 export const DAYS = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag'];
 // Between two days: the next one dawns after this many more reports (but not before minSecs), or
@@ -307,16 +316,8 @@ export const MISSIONS = [
   {
     id: 'slapet', day: 1, name: 'Släpkärran', title: 'Dag 1 – Släpkärran', giver: 'patrick', at: 'parvanehHouse', extra: ['parvaneh'], reward: 100,
     tagline: 'Nya grannar. Ett släp. Ingen kan backa.',
-    intro: [
-      ['patrick', 'Hej! Du måste vara grannen. Patrick. Vi flyttade in i går. Eller, vi håller på.'],
-      ['ove', 'Det är förbjudet att köra bil inom området.'],
-      ['patrick', 'Ja, jo, vi skulle bara backa fram släpet till dörren. Det har tagit... en stund.'],
-      ['ove', 'Tjugo minuter. Jag har tagit tid. Och du har kört över min brevlåda.'],
-      ['patrick', 'Har jag? Förlåt! Jag är IT-konsult. Jag är inte så bra på... fysiska saker.'],
-      ['parvaneh', 'Patrick, älskling. Låt mannen göra det. Han ser ut som någon som kan backa med släp.'],
-      ['ove', 'Vem backar med släp så? Flytta på dig.'],
-    ],
-    retryIntro: [['patrick', 'Ove! Släpet står fortfarande snett. Jag rörde det inte. Nästan.'], ['ove', 'Flytta på dig.']],
+    intro: D1.intro,
+    retryIntro: D1.retryIntro,
     // (the trailer stays backed in when the Saab is what went wrong)
     retryAt: [3],
     stages: [
@@ -327,10 +328,10 @@ export const MISSIONS = [
         hint: 'Backa med släp: vrid ratten <b>åt andra hållet</b> än dit du vill att släpet ska. Små rattrörelser, rätta ofta. Titta bakåt med <b>B</b>.',
       }), {
         first: 9, every: 14,
-        lines: [['patrick', 'Lite till vänster! Eller... höger?'], ['parvaneh', 'Patrick, säg inget. Låt honom vara.'], ['patrick', 'Ska jag vinka in dig?'], ['ove', 'NEJ.', 'radio'], ['patrick', 'Wow. Det ser ut som i reklamen.']],
+        lines: D1.backing,
       }),
       also(() => report({ n: 3, near: 'guestParking', radius: 45, smitare: false, text: 'Anteckna tre felparkerade bilar vid parkeringen' }), {
-        say: 'När jag ändå är ute.',
+        say: D1.whileOut[1],
         toast: 'Gå fram till en felparkerad bil och håll <b>F</b> för att anteckna den i blocket.',
       }),
       // (the Saab back at the garages if Ove left it somewhere far off in free roam and it can't be
@@ -340,14 +341,7 @@ export const MISSIONS = [
     ],
     // In front of his garage door, facing the lot (he has just put the Saab away).
     outroAt: () => { const o = lm('oveGarage'); return { x: o.x, z: o.z - 0.5, yaw: o.yaw + Math.PI }; },
-    outro: [
-      ['parvaneh', 'Ove! Där är du. Jag har lagat saffransris med kyckling. Det blev för mycket.'],
-      ['ove', 'Jag har mat.'],
-      ['parvaneh', 'Vad åt du i går då?'],
-      ['ove', '...Mat.'],
-      ['parvaneh', 'Ta den. Lådan vill jag ha tillbaka. Och tack för släpet.'],
-      ['ove', 'Hmpf. Ni är skyldiga mig en brevlåda.'],
-    ],
+    outro: D1.outro,
   },
   // ---------------------------------------------------------------------------------------------
   {
@@ -355,134 +349,84 @@ export const MISSIONS = [
     // The girls are at Jimmy's (Parvaneh says so, and Jimmy phones about them on the way).
     elsewhere: { sara: ['jimmyHouse', -1.7, 1.5], nasanin: ['jimmyHouse', -0.8, 2.3] },
     tagline: 'Patrick, en stege och en adventsstjärna.',
-    intro: [
-      ['parvaneh', 'Ove! Patrick har ramlat ner från stegen. Han skulle sätta upp en adventsstjärna.'],
-      ['ove', 'På en stege. I snö.'],
-      ['parvaneh', 'Ambulansen tog honom. Jag måste dit, och jag... jag har inget körkort.'],
-      ['ove', 'Inget körkort? Du är ju trettio år!'],
-      ['parvaneh', 'Ove. Snälla. Flickorna är hos Jimmy. Jag går till parkeringen.'],
-      ['ove', 'Jag hämtar Saaben. Man kör inte bil inne på området.'],
-    ],
-    retryIntro: [['parvaneh', 'Ove, snälla. Sjukhuset. Nu.'], ['ove', 'Jaja. Gå till parkeringen.']],
+    intro: D2.intro,
+    retryIntro: D2.retryIntro,
     waitToast: '<b>Parvaneh</b> väntar fortfarande. Hon har inget körkort, Ove.',
     stages: [
       also(() => getInCar({ car: 'saab', text: 'Hämta Saaben' }), walkToLot(2.0)),
-      () => pickup({ who: 'parvaneh', at: LOT_PICKUP, walk: toLot, speed: 2.0, needCar: true, text: 'Hämta Parvaneh på parkeringen', carText: 'Parvaneh går mot parkeringen. Ta Saaben.', hello: 'Kör, Ove!' }),
+      () => pickup({ who: 'parvaneh', at: LOT_PICKUP, walk: toLot, speed: 2.0, needCar: true, text: 'Hämta Parvaneh på parkeringen', carText: 'Parvaneh går mot parkeringen. Ta Saaben.', hello: D2.hello[1] }),
       () => goto({
         to: HOSP_DROP, via: HOSP_VIA, radius: 9, timer: 95, inCar: true, with: ['parvaneh'], text: 'Kör Parvaneh till sjukhuset', failText: 'Det tog för lång tid. Parvaneh tog en taxi.',
         radioFirst: 3, radioEvery: 6,
-        radio: [['parvaneh', 'Ove, du kör som en pensionär!'], ['ove', 'Jag kör som det står på skyltarna.'], ['parvaneh', 'Varför blinkar du? Det är ingen där!'], ['ove', 'Man blinkar. Alltid.'], ['parvaneh', 'En stjärna, Ove. Han skulle sätta upp EN stjärna.']],
-        callFirst: 12, calls: [['jimmy', 'Ove! Flickorna undrar om de får äta glass till lunch. De säger att du sa ja.', 'Nej.']],
+        radio: D2.drive,
+        callFirst: 12, calls: D2.calls,
       }),
-      () => dropoff({ who: 'parvaneh', at: HOSP_DROP, radius: 9, walk: toAkut, text: 'Släpp av Parvaneh vid akuten', bye: 'Tack, Ove! Parkera, jag kommer ut sen!' }),
+      () => dropoff({ who: 'parvaneh', at: HOSP_DROP, radius: 9, walk: toAkut, text: 'Släpp av Parvaneh vid akuten', bye: D2.bye[1] }),
       () => parkIn({ box: 'hospitalSpot', either: true, tol: 0.35, text: 'Ställ Saaben på sjukhusets parkering' }),
     ],
-    outro: [
-      ['parvaneh', 'Han har brutit armen. Han är hög på morfin och skrattar åt allting. Han hälsar.'],
-      ['ove', 'Det kostar tjugofem kronor i timmen att stå här.'],
-      ['parvaneh', 'Ove. Min man har brutit armen.'],
-      ['ove', 'Jag betalar inte för att stå still!'],
-      ['parvaneh', 'Du är helt omöjlig. Du får lära mig köra. Det har jag bestämt nu.'],
-      ['ove', '...Vi börjar på måndag. I en riktig bil.'],
-    ],
+    outro: D2.outro,
   },
   // ---------------------------------------------------------------------------------------------
   {
     id: 'elementet', day: 3, name: 'Elementet', title: 'Dag 3 – Elementet', giver: 'anita', at: 'runeHouse', reward: 150,
     tagline: 'Det klickar i elementen hos Anita och Rune.',
-    intro: [
-      ['anita', 'Ove, förlåt att jag stör. Elementen är kalla igen, och det klickar i dem.'],
-      ['ove', 'Det är luft i dem. Har ni luftat?'],
-      ['anita', 'Rune gjorde alltid det. Förut. Nu vet jag inte ens var nyckeln ligger.'],
-      ['ove', 'Elementnyckel. Jag har en i garaget. Alla borde ha en.'],
-      ['rune', '...'],
-      ['anita', 'Han tycker om när du kommer, Ove. Även om han inte säger det.'],
-    ],
-    retryIntro: [['anita', 'Ove... det klickar fortfarande i elementen.'], ['ove', 'Jag hämtar nyckeln.']],
+    intro: D3.intro,
+    retryIntro: D3.retryIntro,
     stages: [
       // The key isn't on its hook: Rune borrowed it in 1998, and it is still in his Volvo. (Ove
       // opens his garage door first if he has shut it.)
       also(() => holdAt({ at: 'oveGarage', secs: 1.4, radius: 2.2, label: 'Leta efter elementnyckeln', text: 'Hämta elementnyckeln i garaget', work: 'wall', ready: garageShut }), {
-        done: (g) => { hud.toast('Tom krok. Rune lånade elementnyckeln 1998. Den ligger säkert kvar i hans Volvo.', '', 7000); g.say(g.player, 'Rune. Naturligtvis.', 2.2); },
+        done: (g) => { hud.toast('Tom krok. Rune lånade elementnyckeln 1998. Den ligger säkert kvar i hans Volvo.', '', 7000); g.say(g.player, D3.noKey[1], 2.2); },
       }),
       // Not in the Volvo either: a note in the glove box sends Ove across the area to Anders.
       also(() => holdAt({ at: RUNE_VOLVO, secs: 1.3, radius: 2.0, label: 'Leta i Runes Volvo', text: 'Hämta elementnyckeln i Runes Volvo', work: 'bend' }), {
-        done: (g) => { hud.toast('Ingen nyckel. En lapp i handskfacket: »Elementnyckeln utlånad till Anders, 2015. /R«', '', 7000); g.say(g.player, 'Anders.', 1.8); },
+        done: (g) => { hud.toast('Ingen nyckel. En lapp i handskfacket: »Elementnyckeln utlånad till Anders, 2015. /R«', '', 7000); g.say(g.player, D3.glovebox[1], 1.8); },
       }),
       also(() => fetch({ at: AT_ANDERS, exact: true, item: 'wrench', label: 'elementnyckeln', text: 'Hämta elementnyckeln hos Anders', got: 'Elementnyckeln. Mässing. Ove har haft den sedan 1991. Rune sedan 1998. Anders sedan 2015.' }), {
-        done: (g) => { const n = g.npc('anders'); if (n && n.state === 'normal' && dist(n.x, n.z, g.player.x, g.player.z) < 9) g.say(n, 'Elementnyckeln? Jaså, den. Den låg i Audin. Varsågod.', 3); },
+        done: (g) => { const n = g.npc('anders'); if (n && n.state === 'normal' && dist(n.x, n.z, g.player.x, g.player.z) < 9) g.say(n, D3.andersKey[1], 3); },
       }),
       also(() => report({ n: 2, near: 'garbageRoom', radius: 40, smitare: false, text: 'Två bilar står framför soprummet. Anteckna dem' }), {
-        call: ['anita', 'Ove? Förlåt igen. Sopbilen kommer inte fram, det står två bilar framför soprummet.', 'Jag tar dem.'],
+        call: D3.call,
       }),
       () => holdAt({ at: 'runeHouse', secs: 2.6, label: 'Gå in och lufta elementen', text: 'Lufta elementen hos Anita och Rune', work: 'wall', cut: 'Ove går in och luftar elementen. Ett i taget.' }),
     ],
     // Out on the walkway in front of their door, facing it (not on Rune's ramp: its railings
     // filled the shot and the camera ended up filming the ground).
     outroAt: () => { const o = lm('runeHouse'), f = Math.sin(o.yaw), h = Math.cos(o.yaw); return { x: o.x + f * 2.3, z: o.z + h * 2.3, yaw: o.yaw + Math.PI }; },
-    outro: [
-      ['anita', 'Det är varmt i huset igen. Tack, Ove.'],
-      ['ove', 'Två gånger per vinter. Minst. Jag skriver det på en lapp åt er.'],
-      ['rune', '...Saab.'],
-      ['ove', 'Ja, Rune. Saab.'],
-      ['anita', 'Han kom ihåg dig. Han kom faktiskt ihåg dig.'],
-      ['ove', 'Hmpf. Han har kört Volvo hela livet. Klart han minns en riktig bil.'],
-    ],
+    outro: D3.outro,
   },
   // ---------------------------------------------------------------------------------------------
   {
     id: 'katten', day: 4, name: 'Katten', title: 'Dag 4 – Katten', giver: 'jimmy', at: 'jimmyHouse', reward: 150,
     tagline: 'En katt i snön. Ingens katt.',
-    intro: [
-      ['jimmy', 'Tjena Ove! Det sitter en katt i snön vid cykelförrådet. Den har suttit där hela natten.'],
-      ['ove', 'Det är inte min katt.'],
-      ['jimmy', 'Den är ingens katt. Det är ju det som är grejen.'],
-      ['ove', 'Den har säkert loppor.'],
-      ['jimmy', 'Jag skulle ta den själv, men den springer ifrån mig. Alla katter springer ifrån mig. Och duvor.'],
-      ['ove', 'Det förstår jag.'],
-    ],
-    retryIntro: [['jimmy', 'Katten är tillbaka vid cykelförrådet, Ove!'], ['ove', 'Det är fortfarande inte min katt.']],
+    intro: D4.intro,
+    retryIntro: D4.retryIntro,
     stages: [
       also(() => catchCat({ near: 'bikeShed', rMin: 2, rMax: 5, sit: true, timer: 110, text: 'Fånga katten vid cykelförrådet', failText: 'Katten sprang till skogs.' }), {
         first: 6, every: 10,
-        lines: [['jimmy', 'Spring efter den, Ove!'], ['jimmy', 'Nej, vänta! Stå still! Prata snällt med den!'], ['ove', 'Jag pratar inte med katter.', 'radio']],
+        lines: D4.catching,
       }),
       () => goto({ to: 'oveHouse', radius: 2.6, onFoot: true, text: 'Bär hem katten, in i värmen' }),
     ],
     // Just outside his own door, facing out (the cat is already in the hall).
     outroAt: () => { const o = lm('oveHouse'), f = Math.sin(o.yaw), h = Math.cos(o.yaw); return { x: o.x + f * 1.4, z: o.z + h * 1.4, yaw: o.yaw }; },
-    outro: [
-      ['jimmy', 'Du tog den! Vad ska den heta?'],
-      ['ove', 'Den ska inte heta något. Den ska inte bo här.'],
-      ['jimmy', 'Den sitter ju redan i din hall, Ove.'],
-      ['ove', '...'],
-      ['ove', 'Den får stanna. Tills vidare.'],
-      ['jimmy', 'Tills vidare. Klart. Jag köper kattmat!'],
-    ],
+    outro: D4.outro,
   },
   // ---------------------------------------------------------------------------------------------
   {
     id: 'saab', day: 5, name: 'Saab, inte Audi', title: 'Dag 5 – Saab, inte Audi', giver: 'adrian', at: 'adrianSpot', extra: ['anders'], reward: 200,
     tagline: 'Adrian ska köpa bil. Anders har åsikter.',
-    intro: [
-      ['adrian', 'Ove! Jag har sparat ihop till en bil. Jag ska köpa en Audi!'],
-      ['ove', 'En Audi.'],
-      ['anders', 'Klokt val, Adrian. Tysk ingenjörskonst. Jag kör själv en A6, som bekant.'],
-      ['ove', 'Plast och elektronik.'],
-      ['anders', 'Säger mannen i en bil från förra årtusendet. Vi kan ju se vem som är först till bilhallen?'],
-      ['ove', 'Sätt dig i bilen, Adrian.'],
-      ['adrian', 'Vänta, vad? Nu? Okej! Okej!'],
-    ],
-    retryIntro: [['anders', 'En gång till, Ove? Jag har all tid i världen. Och en A6.'], ['ove', 'Sätt dig i bilen, Adrian.']],
+    intro: D5.intro,
+    retryIntro: D5.retryIntro,
     // A lost race starts again on the grid, Adrian still aboard.
     retry: { from: 2, car: 'saab', with: ['adrian'] },
     stages: [
       () => getInCar({ car: 'saab', text: 'Hämta Saaben' }),
-      () => pickup({ who: 'adrian', at: 'adrianSpot', needCar: true, text: 'Hämta Adrian på parkeringen', carText: 'Adrian väntar på parkeringen. Ta Saaben.', hello: 'Det här är det bästa som har hänt mig!' }),
+      () => pickup({ who: 'adrian', at: 'adrianSpot', needCar: true, text: 'Hämta Adrian på parkeringen', carText: 'Adrian väntar på parkeringen. Ta Saaben.', hello: D5.hello[1] }),
       () => race({
         who: 'anders', car: 'andersAudi', start: { x: -12, z: rc(3), yaw: Math.PI / 2 }, checkpoints: [[5, 3], [5, 5], [6, 5]], after: [[6, 4]],
         finish: DEALER_FINISH, finishR: 12, cruise: 19, aggressive: false, text: 'Hinn först till bilhallen!', failText: 'Anders kom först. Han kommer att prata om det i flera år.',
-        radio: [['adrian', 'Gasa, Ove! GASA!'], ['ove', 'Man gasar inte i kurvorna.'], ['anders', 'Vorsprung durch Technik, Ove!'], ['adrian', 'Är det normalt att det luktar så här?'], ['ove', 'Det är kopplingen. Den är som den ska.']],
+        radio: D5.race,
       }),
     ],
     // On Bilhallen's forecourt, the Saab for sale a few metres off.
@@ -493,31 +437,18 @@ export const MISSIONS = [
       car.locked = true;
       return { look: { x: car.x, y: car.y, z: car.z, height: 1.1 }, dispose: () => g.removeCar(car) };
     },
-    outro: [
-      ['adrian', 'Vi vann! Mot en Audi! I en bil som är äldre än jag!'],
-      ['anders', 'Jag lät dig vinna, Ove. Av respekt för de äldre.'],
-      ['ove', 'Adrian. Den där.', (g) => { const p = g.missions.outroProps; if (p?.look) g.cam.frame(p.look, g.player); }],
-      ['adrian', 'En Saab? Den är ju... faktiskt rätt snygg.'],
-      ['ove', 'Den är ordentlig. Kolla rosten under trösklarna. Och pruta.'],
-      ['adrian', 'Jag köper den! Ove, du får provsitta när du vill.', (g) => g.cam.frame(g.npc('adrian'), g.player)],
-      ['ove', 'Hmpf. Jag vet hur en Saab sitter.'],
-    ],
+    // (Ove's "Den där." frames the Saab for sale; Adrian buying it, Adrian and Ove again)
+    outro: cue(D5.outro, {
+      2: (g) => { const p = g.missions.outroProps; if (p?.look) g.cam.frame(p.look, g.player); },
+      5: (g) => g.cam.frame(g.npc('adrian'), g.player),
+    }),
   },
   // ---------------------------------------------------------------------------------------------
   {
     id: 'vitskjortan', day: 6, name: 'Vita skjortan', title: 'Dag 6 – Vita skjortan', giver: 'anita', at: 'runeHouse', away: ['vitskjorta'], reward: 250,
     tagline: 'Kommunen har kommit för Rune.',
-    intro: [
-      ['anita', 'Ove... mannen från kommunen var här igen. Han i den vita skjortan.'],
-      ['ove', 'Vad ville han?'],
-      ['anita', 'De vill flytta Rune till ett boende. De säger att jag inte orkar ta hand om honom längre.'],
-      ['rune', '...'],
-      ['anita', 'Han tog med sig alla papper. Hela utredningen om Rune. Han sitter i sin vita bil vid infarten och skriver.'],
-      ['ove', 'Vid infarten. Jaså.'],
-      ['anita', 'Ove, du ska väl inte göra något dumt?'],
-      ['ove', 'Jag ska bara prata med honom.'],
-    ],
-    retryIntro: [['anita', 'Ove... pappren. Han har dem fortfarande.'], ['ove', 'Inte länge till.']],
+    intro: D6.intro,
+    retryIntro: D6.retryIntro,
     // This morning the Saab stands along the aisle, facing the lot entrance (Ove turned it last
     // night: he knew), not nose to the garage door with a three-point turn to make first.
     setup: (g) => {
@@ -531,51 +462,25 @@ export const MISSIONS = [
       // the garage (5 of 5 key-driven starts used to fail).
       also(() => destroy({
         who: 'vitskjorta', type: 'skoda', carName: 'vitskjortaSkoda', cruise: 19, timer: 160, ram: 3.5, ramMax: 30, drain: 8,
-        at: SKODA_DAY6, wait: 35, wake: 30, goLine: 'Nej, nej, nej. Inte nu, Ove.', escape: 250, grace: 20, seenAt: 60, rubber: [1, 0.85],
+        at: SKODA_DAY6, wait: 35, wake: 30, goLine: D6.getaway[1], escape: 250, grace: 20, seenAt: 60, rubber: [1, 0.85],
         waitText: 'Vita skjortan står vid infarten. Kör dit', text: 'Stoppa den vita Škodan: knuffa den och håll dig tätt bakom', failText: 'Han kom undan med pappren.', stopBanner: 'TAGEN!', stopSub: 'Vita skjortan kör in till vägkanten', tag: 'Vita skjortan',
       }), {
-        call: ['anita', 'Ove... var försiktig. Han är bara en tjänsteman.', 'Det är det som är problemet.'], callAt: 8,
+        call: D6.call, callAt: 8,
         first: 14, every: 13,
-        lines: [['vitskjorta', 'Det här kommer att få konsekvenser, Ove!', 'radio'], ['ove', 'Det står ju på skylten. Trettio.', 'radio'], ['vitskjorta', 'Det här blir en tjänsteanteckning, Ove! I tre exemplar!', 'radio']],
+        lines: D6.chase,
       }),
-      () => talk({
-        who: 'vitskjorta', from: 'wreck', text: 'Prata med Vita skjortan',
-        lines: [
-          ['vitskjorta', 'Det här är en kommunal angelägenhet. Ni har ingen som helst rätt att...'],
-          ['ove', 'Pärmen.'],
-          ['vitskjorta', 'Den innehåller sekretessbelagda handlingar. Beslutet är fattat på goda grunder.'],
-          ['ove', 'Beslutet saknar en underskrift. Sidan fyra. Jag läste det genom rutan.'],
-          ['vitskjorta', '...Det här är inte över, Ove. Vi har papper på allt.'],
-          ['ove', 'Det har jag också.'],
-        ],
-      }),
+      () => talk({ who: 'vitskjorta', from: 'wreck', text: 'Prata med Vita skjortan', lines: D6.talk }),
       () => grab({ item: 'papers', label: 'Runes papper', text: 'Ta pärmen med Runes papper', side: -1, got: 'Runes papper. Sidan fyra, ingen underskrift. Ove hade rätt. Som vanligt.' }),
       () => goto({ to: 'runeHouse', radius: 3.5, text: 'Lämna pappren till Anita' }),
     ],
-    outro: [
-      ['anita', 'Ove? Är det där... Runes papper?'],
-      ['ove', 'De hade glömt en underskrift. Då gäller inte beslutet.'],
-      ['anita', 'Så han får bo kvar?'],
-      ['ove', 'Tills de har lärt sig läsa sina egna blanketter.'],
-      ['rune', '...Ove.'],
-      ['anita', 'Du är en god människa, Ove.'],
-      ['ove', 'Säg inte det till någon.'],
-    ],
+    outro: D6.outro,
   },
   // ---------------------------------------------------------------------------------------------
   {
     id: 'varkarna', day: 7, name: 'Värkarna', title: 'Dag 7 – Värkarna', giver: 'patrick', at: 'parvanehHouse', extra: ['parvaneh'], away: ['vitskjorta'], reward: 500, snow: true,
     tagline: 'Vattnet har gått. Alla ringer.',
-    intro: [
-      ['patrick', 'Ove! OVE! Det är Parvaneh! Vattnet har gått!'],
-      ['ove', 'Vilket vatten?'],
-      ['patrick', 'Barnet, Ove! Barnet kommer! Och jag kan inte köra med gipset!'],
-      ['parvaneh', 'OVE! BILEN! NU!'],
-      ['ove', 'Jag hämtar Saaben. Gå till parkeringen.'],
-      ['patrick', 'Och Ove... den vita Škodan har stått vid infarten hela morgonen. Han väntar på dig.'],
-      ['ove', 'Låt honom vänta.'],
-    ],
-    retryIntro: [['patrick', 'Ove! Barnet!'], ['ove', 'Jaja. Jag hämtar Saaben.']],
+    intro: D7.intro,
+    retryIntro: D7.retryIntro,
     waitToast: '<b>Patrick</b> står kvar vid dörren. Barnet väntar inte, Ove.',
     // The Škoda waits by the entrance from the start of the day, engine running.
     setup: (g, m) => {
@@ -587,26 +492,20 @@ export const MISSIONS = [
     },
     stages: [
       also(() => getInCar({ car: 'saab', text: 'Hämta Saaben' }), walkToLot(1.7)),
-      () => pickup({ who: 'parvaneh', at: LOT_PICKUP, walk: toLot, speed: 1.7, needCar: true, text: 'Hämta Parvaneh på parkeringen', carText: 'Parvaneh går mot parkeringen. Ta Saaben!', hello: 'Kör, Ove! KÖR!' }),
+      () => pickup({ who: 'parvaneh', at: LOT_PICKUP, walk: toLot, speed: 1.7, needCar: true, text: 'Hämta Parvaneh på parkeringen', carText: 'Parvaneh går mot parkeringen. Ta Saaben!', hello: D7.hello[1] }),
       () => goto({
         to: HOSP_DROP, via: HOSP_VIA, radius: 9, timer: 120, inCar: true, with: ['parvaneh'], text: 'Kör Parvaneh till sjukhuset! Skaka av dig Škodan', failText: 'För sent. Barnet föddes i Saaben. Ove kommer aldrig att prata om det.',
         chaser: {
           type: 'skoda', who: 'vitskjorta', cruise: 24, stun: 2.5, kr: 20, car: (g, m) => m.data.skoda, at: SKODA_WAIT, wait: 2.5, wake: 14,
-          goLine: 'Ove! Stanna! Jag har en blankett som ni ska skriva under!',
-          bannerText: 'Vita skjortan vill ha en underskrift', stopText: 'Vita skjortan håller upp ett papper mot rutan...', lines: ['Ove! Bara en underskrift!', 'Stanna! Det här är en kommunal fråga!', 'Vi har papper på det här också!'],
+          goLine: D7.chaserGo[1],
+          bannerText: 'Vita skjortan vill ha en underskrift', stopText: 'Vita skjortan håller upp ett papper mot rutan...', lines: D7.chaserStop.map((l) => l[1]),
         },
         callFirst: 4, callEvery: 8,
-        calls: [
-          ['anita', 'Ove, elementet klickar igen...', 'INTE NU!'],
-          ['sara', 'Ove! Får katten sova i min säng?', '...Ja. Men INTE NU!'],
-          ['jimmy', 'Ove! Katten har ätit upp min macka!', 'INTE NU!'],
-          ['adrian', 'Ove, Saaben låter konstigt när jag svänger vänster...', 'INTE NU!'],
-          ['anders', 'Ove, styrelsen undrar om du kan titta på bommen vid...', 'INTE NU, ANDERS!'],
-        ],
+        calls: D7.calls,
         radioFirst: 7, radioEvery: 7,
-        radio: [['parvaneh', 'Andas, Ove! Nej, vänta, det är jag som ska andas!'], ['parvaneh', 'Varför kör han efter oss?!'], ['parvaneh', 'Om du blinkar en gång till föder jag i din Saab!']],
+        radio: D7.drive,
       }),
-      () => dropoff({ who: 'parvaneh', at: HOSP_DROP, radius: 9, walk: toAkut, text: 'Lämna Parvaneh vid akuten', bye: 'Gå nu, Ove. Det är söndag. Hälsa Sonja från mig.', byeSecs: 3.2 }),
+      () => dropoff({ who: 'parvaneh', at: HOSP_DROP, radius: 9, walk: toAkut, text: 'Lämna Parvaneh vid akuten', bye: D7.bye[1], byeSecs: 3.2 }),
       // Ove waits at the hospital all day; in the afternoon he goes to Sonja, as every Sunday.
       () => cut({
         delay: 3.4, secs: 2.4, caption: 'Senare samma dag', clock: [15, 40], away: ['parvaneh'],
@@ -621,12 +520,9 @@ export const MISSIONS = [
       // On the way to the cemetery Patrick phones from the maternity ward, and then the others call
       // again - the morning's "INTE NU!" calls, answered this time (none once he is nearly there).
       also(() => fetch({ at: 'flowerShop', item: 'flowers', label: 'blommorna', text: 'Köp blommor vid kyrkogården', rMin: 0.8, rMax: 2.2, got: 'Rosa. Hon tyckte alltid om rosa.' }), {
-        say: 'Det är söndag.',
-        call: ['patrick', 'Ove! Det blev en pojke! Tre kilo fyrahundra! Han skriker precis som Parvaneh. Jag svimmade bara lite!', 'Hmpf. Grattis.'], callAt: 3.5,
-        calls: [
-          ['anita', 'Ove? Rune sa ditt namn i dag. Två gånger. Jag ville bara att du skulle veta det.', 'Bra. Det är bra, Anita.'],
-          ['adrian', 'Ove! Jag kollade under trösklarna. Ingen rost! Och jag prutade fyratusen!', 'Hmpf. Femtusen hade gått.'],
-        ],
+        say: D7.sunday[1],
+        call: D7.call, callAt: 3.5,
+        calls: D7.callsBack,
         callEvery: 6, quietR: 45,
       }),
       () => layFlowers(),
@@ -639,16 +535,8 @@ export const MISSIONS = [
       else if (phase === 'end') { hud.letterbox(false); graveShot(g, 'wide'); }
       else if (phase === 'done') g.player.anim.kneel = false;
     },
-    outro: [
-      ['ove', 'Hej, Sonja.'],
-      ['ove', 'Vilken vecka det har varit. Grannarna, alltså. De kan ingenting.'],
-      ['ove', 'Parvaneh fick en pojke. Han skriker som hon. Patrick svimmade.'],
-      ['ove', 'Adrian har köpt en Saab. Rune bor kvar. Katten... katten får stanna. Tills vidare.', (g) => graveShot(g, 'face')],
-      ['ove', 'Jag vet vad du skulle säga. Att jag behöver dem lika mycket som de behöver mig.'],
-      ['ove', 'Hmpf.'],
-      ['ove', 'Det är i ordning nu, Sonja. Området.', (g) => graveShot(g, 'stone')],
-      ['ove', 'Jag kommer igen på söndag. Som vanligt.'],
-    ],
+    // (his face as he gets to the cat; the stone again at "i ordning")
+    outro: cue(D7.outro, { 3: (g) => graveShot(g, 'face'), 6: (g) => graveShot(g, 'stone') }),
   },
 ];
 

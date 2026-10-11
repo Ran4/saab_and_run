@@ -29,92 +29,14 @@ import { hud } from './hud.js';
 import { CHARS } from '../actors/models.js';
 import { queryBlocks, BOX } from '../world/collision.js';
 import { isCarFree } from '../world/layout.js';
+import {
+  HONK_SCARED, HONK_SIDEWALK, HONK_CARFREE, HONK_OLD, HONK_TEEN, HONK_KID, HONK_HEARD, HONK_BACK, SAAB_GREET, HONK_SMITARE,
+  HONK_WINDOW, ANDERS_LAW, HONK_NEIGHBOUR, RUNE_HORN, ANITA_RUNE, HONK_PASSENGER, HONK_PASSENGER_ANY, OVE_HONK, whenOk,
+} from './script.js';
 import { clamp, dist, pick, yawTo, dampAngle } from '../util.js';
 
-// ---------------------------------------------------------------------------------------------
-// Lines (voiced: every one a fixed string). Neighbours' lists take [line, when(m)] like main.js'
-// CHATTER (m: the MissionRunner, m.index = days done).
-
-// Someone who leapt out of the car's way, turned round to face it.
-const HONK_SCARED = ['Jösses!', 'Men herregud!', 'Jag går ju här!', 'Jag fick nästan hjärtstopp!', 'Vad tutar du för?!', 'Hallå, jag har också rätt att vara här!'];
-// ...when the car is the one off the street: on a pavement, a path or a lawn (or in the car-free area)
-const HONK_SIDEWALK = ['Det här är en trottoar!', 'Kör på gatan!'];
-const HONK_CARFREE = ['Det är bilfritt här!'];
-// An old one (Ove is 59: a youngster to them).
-const HONK_OLD = ['Ungdomen nu för tiden!', 'Jag har gått här sedan 1962!', 'Mitt hjärta!', 'Jag är inte döv!'];
-const HONK_TEEN = ['Okej, boomer.', 'Lugna dig, gubbe!', 'Chilla!'];
-// Children love a horn.
-const HONK_KID = ['Igen!', 'Tuta igen!', 'Tut tut!', 'Häftigt!'];
-// Anyone else who heard it close by.
-const HONK_HEARD = ['Lugna ner dig!', 'Det är en bostadsgata!', 'Ja, ja, vi hör dig!', 'Vad är det som brinner?'];
-// A driver honking back (the bubble is on their car): by make, else `default` (+ `ahead` for the one
-// in front going Ove's way); `blocked`: one that sat honking behind Ove and got honked at for it.
-const HONK_BACK = {
-  default: ['Lugna dig, farbror!', 'Själv då!', 'Vad är problemet?', 'Pensionärer!'],
-  ahead: ['Kör om då!'],
-  blocked: ['Flytta på dig då!', 'Det är du som står i vägen!'],
-  bus: ['Bussen har företräde!', 'Jag har en tidtabell!'],
-  taxi: ['Jag har en körning!'],
-  garbage: ['Vi jobbar här!'],
-};
-// Another Saab's driver, greeting.
-const SAAB_GREET = ['Tjena, Saab!'];
-// A smitare honked at in the chase.
-const HONK_SMITARE = ['Sluta tuta!', 'Jag hör dig, jag hör dig!', 'Lägg av med tutan!'];
-// From a window (a long honk among houses, or too much honking).
-const HONK_WINDOW = ['Tyst därute!', 'Folk sover!', 'Vi har ett spädbarn här!', 'Lägg av med tutandet!'];
-// Anders, on needless honking (trafikförordningen: the horn is for averting danger).
-const ANDERS_LAW = ['Ove! Ljudsignal får bara användas för att avvärja fara!', 'Onödig tutning, Ove! Det tar jag upp på årsmötet!'];
-const met = (m) => m.index >= 1;
-const after = (n) => (m) => m.index >= n;
-const HONK_NEIGHBOUR = {
-  // (before day 1's scene the family hasn't met Ove; after day 7 Parvaneh has had her boy)
-  parvaneh: [['Ove! Jag är gravid, inte döv!', (m) => met(m) && m.index < 7], ['Ove! Pojken sover!', after(7)], ['Hallå! Vi har precis flyttat in!', (m) => !met(m)]],
-  patrick: ['Oj! Förlåt! Står jag i vägen?', 'Jag flyttar på mig! Jag flyttar på mig!', ['Akta armen, Ove!', after(2)]],
-  sara: [['Tuta igen, Ove!', met], 'Igen! Igen!'],
-  nasanin: ['Tut tut!', 'Igen!'],
-  jimmy: ['Tjena Ove! Tut tut!', 'Ove! Mannen! Tutar på mig!'],
-  adrian: ['Fet tuta, Ove!', 'Är det originaltutan?', ['Min Saab har exakt samma tuta!', after(5)]],
-  anita: ['Ove, Rune sover.', 'Inte så högt, Ove.'],
-  anders: ['Ove! Det är en bostadsgata!', 'Jag tar upp det på årsmötet, Ove!'],
-  vitskjorta: ['Det där noteras.', 'Vi har en blankett för sådant.'],
-};
-// Rune knows a car by its horn (the one Ove honks with); Anita, beside him, explains.
-const RUNE_HORN = { saab900: '...Saab.', volvo240: '...Volvo.', volvo740: '...Volvo.', bmw: '...BMW.', default: '...Hm.' };
-const ANITA_RUNE = 'Han känner igen tutan, Ove.';
-// Ove's passengers (Rune: RUNE_HORN).
-const HONK_PASSENGER = {
-  parvaneh: ['Ove! Inte i mitt öra!', 'Måste du, Ove?'],
-  patrick: ['Oj! Jag hoppade till.'],
-  sara: ['Igen!'],
-  nasanin: ['Tut tut!'],
-  anita: ['Ove, Rune blir rädd.'],
-  jimmy: ['Tuta igen, Ove!'],
-  adrian: ['Får jag också tuta?'],
-  anders: ['Onödig tutning, Ove.'],
-  vitskjorta: ['Det där noteras.'],
-};
-// What Ove thinks (by what he honked at; `back`: a driver honked back; `law`, `window`: answering
-// a complaint about needless honking).
-const OVE_HONK = {
-  walker: ['Trottoaren. Den finns där av en anledning.', 'Det är en gata. För bilar.', 'Gå på trottoaren!'],
-  car: ['Blinkers! Har du hört talas om blinkers?', 'Körkort på internet, va?', 'Gasen sitter till höger.'],
-  audi: ['Tyskt krafs.'],
-  golf: ['Tyskt krafs.'],
-  bmw: ['BMW. Hmpf.'],
-  volvo240: ['Volvoförare.'],
-  volvo740: ['Volvoförare.'],
-  skoda: ['Kommunen. Typiskt.'],
-  saab: ['Saab-folk. Vi hälsar.'],
-  none: ['Tutan fungerar.', 'Kontrollerar tutan.'],
-  back: ['Själv då.', 'Lär dig köra.'],
-  kids: ['Tutan är ingen leksak.'],
-  law: ['Det var fara.'],
-  window: ['Det var för att avvärja fara.'],
-  cat: ['Förlåt, katten.'],
-  smitare: ['Stanna!', 'Stanna, sa jag!'],
-  empty: ['Ingen hemma. Typiskt.'],
-};
+// The lines (script.js): HONK_* by who heard it, the neighbours' HONK_NEIGHBOUR (WHEN lines, like
+// main.js' CHATTER), RUNE_HORN, ANITA_RUNE, HONK_PASSENGER, OVE_HONK.
 
 // How likely a driver is to honk back, by make.
 const TEMPER = { bmw: 0.9, audi: 0.85, taxi: 0.8, golf: 0.6, skoda: 0.5, kombi: 0.5, volvo240: 0.35, volvo740: 0.45, van: 0.6, bus: 0.75, garbage: 0.6 };
@@ -131,7 +53,7 @@ const isTeen = (c) => !isKid(c) && (c.def.age ?? 30) < 19;
 const isOld = (c) => (c.def.age ?? 30) >= 65;
 function pickWhen(list, m, r) {
   const out = [];
-  for (const l of list || []) if (typeof l === 'string') out.push(l); else if (l[1](m)) out.push(l[0]);
+  for (const l of list || []) if (typeof l === 'string') out.push(l); else if (whenOk(l[1], m)) out.push(l[0]);
   return out.length ? pick(out, r) : null;
 }
 
@@ -495,7 +417,7 @@ export class Horn {
     const ps = car.passengers.filter((p) => p.key);
     if (!ps.length || !this.chance(0.7)) return false;
     const p = pick(ps, this.rand);
-    const line = p.key === 'rune' ? RUNE_HORN[car.kind] || RUNE_HORN.default : pick(HONK_PASSENGER[p.key] || ['Ove!'], this.rand);
+    const line = p.key === 'rune' ? RUNE_HORN[car.kind] || RUNE_HORN.default : pick(HONK_PASSENGER[p.key] || HONK_PASSENGER_ANY, this.rand);
     this.passT = g.time;
     this.stats.passengers++;
     // (a bubble over the car, a little above Ove's)
@@ -600,6 +522,6 @@ export class Horn {
     audio.honk(v, beat * 0.45, kind, beat);
     this.duetT = g.time;
     this.stats.duets++;
-    this.after(beat * 2 + 0.7, () => this.oveSays(['Hmpf.'], true));
+    this.after(beat * 2 + 0.7, () => this.oveSays(OVE_HONK.duet, true));
   }
 }
