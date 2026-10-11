@@ -17,7 +17,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   errands collect patrol freeroam stages` and phase 4's `gperf carcycle gamepad corruptsave tabhide
   titlecheck quality recycle smalltalk tagmerge companion p4ui titlecam` and round 2's `dilation errandprog
   r2checks reloadday titlekeys collcull titlepose bouquet` and round 2b's `camroof` (the chase cam
-  under low roofs) and `garage` (Ove's garage door, E from both sides) (notes/integration.md),
+  under low roofs) and `garage` (Ove's garage door, E from both sides) and `horn` (the horn with real
+  T presses: 19 checks; `hornlook` = close-ups, `WHO=adult|kid|old|patrick`) (notes/integration.md),
   story.mjs `story m1..m7 gate aftermath` plus the no-warp checks `m5race m7chase m4cat lotwalk
   hospdrive retry` and round 2's `giveup outrosmet flowercalls dusk camwall`, ui.mjs `uiportraits
   uitoasts uiabort uifavicon titlegone`, render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
@@ -92,6 +93,11 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   caption)` is the cut to black (time skips, the race grid, "Ove går in och luftar elementen").
   `game.storyWorld()` applies what the story changed (Patrick's cast after day 2, the cat by Ove's
   door after day 4, Adrian's Saab in the lot after day 5) at load and after each day.
+- **Horn** (`game.horn`, horn.js): T / H (pad L3 / RB) in a car. People in front leap aside (`anim.fright`,
+  then `anim.fist` / `cheer`), neighbours answer in character, drivers honk back with their make's
+  horn (audio.js `HORNS`), smitare are spooked or pressed, needless honking costs Ordning. People's
+  reactions run through `horn.drive(ch, dt, ped)` (called first by `Ped.update` and `stepNpcs`);
+  `horn.last` is the latest honk (a pickup comes out to the car); `horn.rand` / `horn.stats` for tests.
 - Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`, `garage`
   0 = Ove's garage door shut), every field sanitised on load. Settings separately in
   `saab-and-run-settings` (`music`, `sound`, `quality`).

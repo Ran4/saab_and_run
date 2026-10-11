@@ -45,8 +45,8 @@ function viewFrustum() {
 //   speed, air, vy, kick (1 -> 0), talk, wave, cheer, sprint, look (neck yaw), spin (air spin),
 //   write (notebook + pencil), phone (phone at the ear), push (hands on a wheelchair/trolley),
 //   yell, seated + driving (set from the car seat), flung / flungT, down / downLeft, carry, work +
-//   workKind, listen, kneel (+ kneelReach), and a jump's jumpWind / jumping / landT / jumpV (set
-//   here: see JUMP and jump()).
+//   workKind, listen, kneel (+ kneelReach), fright / fist (the horn, game/horn.js), and a jump's
+//   jumpWind / jumping / landT / jumpV (set here: see JUMP and jump()).
 export class Character {
   constructor(def, opts = {}) {
     this.def = def;
@@ -77,6 +77,7 @@ export class Character {
       listen: false,                                 // listening to someone talking: small nods
       kneel: false, kneelReach: undefined,           // down on one knee (Sonja's grave): see models.js
       jumpWind: 0, jumping: false, landT: 9, jumpV: 0, // a jump's wind-up (0..1), flight, landing (see JUMP)
+      fright: false, fist: false,                      // the horn: hands up in fright, a fist shaken at it
     };
     this.car = null;
     this.spin = 0; this.spinRate = 0;

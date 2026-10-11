@@ -21,6 +21,7 @@ import { hud, renderPortrait } from './game/hud.js';
 import { CamRig } from './game/camera.js';
 import { Patrol } from './game/patrol.js';
 import { Interruptions } from './game/interruptions.js';
+import { Horn } from './game/horn.js';
 import * as stages from './game/stages.js';
 import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
@@ -276,6 +277,9 @@ class Game {
     this.arrow = new GuideArrow(scene);
     this.patrol = new Patrol(this);
     this.interrupts = new Interruptions(this);
+    // The horn and what the town does about it (game/horn.js, feature tuta_med_bilen).
+    this.horn = new Horn(this);
+    window.__horn = this.horn;
     this.interrupts.auto = !TEST || params.has('calls');
     window.__patrol = this.patrol;
     window.__interrupt = this.interrupts;
@@ -675,6 +679,8 @@ class Game {
     this.playerCar = car;
     car.ctrl.park = false;
     audio.door();
+    // The first time behind a wheel (each session): the horn, and that it is more than a sound.
+    if (!TEST && !this.toldHorn) { this.toldHorn = true; setTimeout(() => { if (this.playerCar && !this.inDialog) hud.toast('<b>T</b> tutar. Folk märker det.'); }, 2600); }
     // Whoever is with Ove gets in too.
     for (const [ch] of this.companions) if (!ch.car && dist(ch.x, ch.z, car.x, car.z) < 10) this.boardCompanion(ch, car);
   }
@@ -1016,7 +1022,7 @@ class Game {
   onHonk(car) {
     const f = this.focus();
     const d = dist(car.x, car.z, f.x, f.z);
-    if (d < 45) audio.honk(clamp(1.2 - d / 45, 0.2, 1), 0.3);
+    if (d < 45) audio.honk(clamp(1.2 - d / 45, 0.2, 1), 0.3, car.kind);
   }
 
   collectCan() {
@@ -1334,6 +1340,7 @@ class Game {
     this.tickClock(dt);
     if (this.hooks.length) for (const h of this.hooks.slice()) h(dt);
     this.handleOneShots();
+    this.horn.update(dt);
     this.acc += dt;
     let n = 0;
     while (this.acc >= STEP && n < MAX_STEPS) { this.fixedStep(STEP); this.acc -= STEP; n++; }
@@ -1720,6 +1727,8 @@ class Game {
       const n = this.npcs[k];
       if (n.state === 'seated') continue;
       n.wishX = n.wishZ = 0;
+      // Honked at (game/horn.js): the fright and its aftermath steer them for a moment.
+      if (n.honk && this.horn.drive(n, h)) { n.step(h, this); continue; }
       const comp = this.companions.get(n);
       if (comp && comp.push && !this.playerCar && p.state === 'normal') {
         // Ove pushes the wheelchair: Rune rolls 0.78 m in front of him.
@@ -1989,10 +1998,10 @@ class Game {
       const away = this.npcAway(k) && (title || near > 25 || this.missions.state !== 'idle' || n.state === 'hidden');
       if (away && n.state === 'normal' && !n.car && !this.companions.has(n)) { n.state = 'hidden'; n.root.visible = false; }
       else if (!away && n.state === 'hidden') { n.state = 'normal'; n.root.visible = true; }
-      n.anim.wave = !title && giver && near < 9 && !this.inDialog && n.state === 'normal';
+      n.anim.wave = (!title && giver && near < 9 && !this.inDialog && n.state === 'normal') || !!n.honk?.wave;
       const comp = this.companions.get(n);
       n.anim.push = false;
-      if (!title && n.state === 'normal' && !comp && !n.walkTo && !this.inDialog) {
+      if (!title && n.state === 'normal' && !comp && !n.walkTo && !this.inDialog && !n.honk) {
         if (near < 9 && !this.playerCar) n.yaw = dampAngle(n.yaw, yawTo(p.x - n.x, p.z - n.z), 3, dt);
         else if (n.homeYaw !== undefined && n.speed < 0.3) n.yaw = dampAngle(n.yaw, n.homeYaw, 1.5, dt);
         if (near < 7 && !this.playerCar && !running) {
@@ -2291,7 +2300,7 @@ class Game {
     if (c && !c.dead) {
       audio.engine(true, c.revs, c.ctrl.throttle, Math.abs(c.forwardSpeed), c.onSnow ? 'snow' : 'asphalt');
       audio.skid(c.air ? 0 : c.skidAmt, c.onSnow ? 'snow' : 'asphalt');
-      audio.horn(input.down('horn'));
+      audio.horn(this.horn.down, c.kind);
       if (c.skidAmt > 0.3 && !c.air) {
         this.skidT = (this.skidT || 0) - 1;
         if (this.skidT <= 0) {

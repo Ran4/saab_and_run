@@ -352,7 +352,10 @@ onStopped })` — API unchanged (`rubber` optional everywhere):
   than the grip plan (× 1.3 into a right turn sent the chaser through the corner). Races and the
   story's chaser use it.
 - Traffic keeps about a second + 4 m to the car ahead, honks at a player in the way, indicates
-  ~30 m before turns. Typical traffic speed 30–50 km/h.
+  ~30 m before turns. Typical traffic speed 30–50 km/h. Honked at from behind by Ove (feature
+  tuta_med_bilen, game/horn.js sets `ai.hurryT = 3`): a traffic car's cruise is × 1.35 for those
+  seconds (turns, gaps and the rest of the plan as before; other modes ignore it). Every make honks
+  with its own horn (audio.js `HORNS`, by `car.kind`).
 - **Off the asphalt** (round 3, all moving modes): a car that has left the street (a smitare starting
   in a bay or half on the pavement - after 0.15 s - others after 0.4 s) aims at the nearest street's
   right-hand lane 6 m on, heading the way its path goes, at ≤ 5–6 m/s (`laneAim`, exported), instead

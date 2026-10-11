@@ -42,7 +42,7 @@ vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 | E | prata, kliva in, öppna/stänga garageporten, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll, rutan nere, i krypfart) |
 | J / klick | sparka (på däcket) | |
-| H | | tuta |
+| T / H | | tuta (folk märker det, se nedan) |
 | B | | titta bakåt (bra när man backar med släp) |
 | M | stor karta | stor karta |
 | N | ljud av/på | ljud av/på |
@@ -51,7 +51,7 @@ vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 | Q | ge upp efter ett misslyckat uppdrag; håll Q för att avbryta ett pågående | ge upp efter ett misslyckat uppdrag; håll Q för att avbryta ett pågående |
 
 En handkontroll fungerar också (A hoppa/handbroms, B anteckna, X sparka, Y interagera, avtryckarna
-gasar och bromsar, Start paus, B ger upp efter ett misslyckat uppdrag). En handkontroll utan analoga
+gasar och bromsar, L3 eller RB tutar, Start paus, B ger upp efter ett misslyckat uppdrag). En handkontroll utan analoga
 avtryckare kör med vänster spak: framåt gasar, bakåt bromsar. Pausmenyn har också **Avbryt dagens
 uppdrag**. Spelet pausar när fliken döljs eller fönstret tappar fokus. Hinner datorn inte med 30
 bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte kortare för det.
@@ -76,6 +76,19 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   släpper du gasen för att sladda längre. Audin ligger mittemellan. Handbroms, gas och fullt
   rattutslag när bilen nästan står still: bilen snurrar runt på stället (en bakhjulsdriven kring
   framaxeln, Saaben kring bakaxeln). Ove har en åsikt efteråt.
+- **Tutan** (**T** eller **H**, handkontrollens L3 eller RB). Varje bilmärke har sin egen tuta, och
+  stan reagerar. Den som står framför bilen får en chock: händerna i luften, ett skrik och ett skutt
+  ut ur vägen (en pensionär kliver undan så fort det går, Parvaneh också: hon är gravid). Sedan
+  vänder de sig om och säger vad de tycker, en del med knytnäven i luften. Barnen hoppar också, men
+  de vill att du tutar igen. Grannarna svarar som de är: Patrick hoppar undan fast han inte står i
+  vägen, Jimmy och Adrian vinkar, Anders citerar reglerna, och Rune, som nästan aldrig säger något,
+  känner igen bilen på tutan ("...Saab."). Bilisterna tutar tillbaka med sina egna tutor och har en
+  åsikt, bilen framför gasar på lite, och en annan Saab hälsar med två tut. En smitare som sitter
+  kvar i sin felparkerade bil blir skrämd och drar, och en smitare du jagar blir nervös och ger upp
+  fortare. Den du ska hämta med bil kommer ut när du tutar. Katten vid Oves dörr skuttar högt, och
+  Ove ber den om ursäkt. Tutar du i onödan (ingen framför bilen, ingen bil framför) blir det
+  **Onödig tutning**: −2 Ordning, och Anders eller någon i ett fönster säger ifrån. Och prova att
+  tuta *shave and a haircut*.
 - **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket
@@ -137,6 +150,7 @@ src/actors/pickups.js      pantburkar, emblem, fotografier, saker att hämta
 src/game/patrol.js         felparkeringar, anteckningsblocket, smitare, Ordning-mätaren
 src/game/interruptions.js  avbrotten: samtalen och ärendena
 src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, anteckna, hämta, skjutsa, jaga...)
+src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
 src/game/missions.js       de sju dagarna och uppdragskörningen
 src/game/hud.js            HUD, karta, dialog, porträtt, anteckningsbok
 src/game/camera.js, fx.js, markers.js   kameran, partiklar, markeringar
@@ -160,6 +174,7 @@ FROM=4 PORT=8791 node tools/shot.mjs story  # berättelsen från dag 5
 PORT=8791 node tools/shot.mjs titlecheck quality tabhide gamepad corruptsave   # titel, grafikval, paus, handkontroll, sparfiler
 PORT=8791 node tools/shot.mjs titlekeys reloadday r2checks smalltalk dilation    # titeln med tangenter, omladdning, klockan, småprat, tid under 30 fps
 PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausmenyns Avbryt dagens uppdrag, notiser under scener
+PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
 ```
 
 ## Tillgångar och tack

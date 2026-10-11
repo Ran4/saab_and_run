@@ -1859,5 +1859,294 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       const st3 = await ev(() => ({ stage: __game.missions.stageI, p: __game.garage.p }));
       ok('day 3: the search after the door', st3.stage >= 1 && st3.p === 1, st3);
     },
+
+    // Look-dev for the horn's reactions: a frozen side camera on the street at z = -40, a sequence of
+    // shots after a honk at someone in front of the Saab (WHO=adult|kid|old|patrick|parvaneh|anders).
+    async hornlook() {
+      const who = process.env.WHO || 'adult';
+      await ev((who) => {
+        const g = __game;
+        __horn.rand = () => 0;
+        for (const c of g.cars.slice()) if (c.traffic && Math.abs(c.x + 60) < 80 && Math.abs(c.z + 40) < 40) g.removeCar(c);
+        if (!g.playerCar) g.enterCar(g.named.saab);
+        const car = g.playerCar;
+        car.place(-95, -37.25, Math.PI / 2);
+        let c;
+        if (['adult', 'kid', 'old'].includes(who)) {
+          const ped = g.peds.find((p) => { const a = p.char.def.age; return who === 'kid' ? a < 13 && a > 5 : who === 'old' ? a >= 65 : a >= 25 && a < 60; });
+          ped.idleT = 30; c = ped.char;
+        } else { c = g.npc(who); c.busy = true; }
+        c.teleport(car.x + car.spec.len / 2 + 6, car.z + 0.35, -Math.PI / 2);
+        window.__lc = c;
+        g.hideNearCamera = function () {};
+        g.cam.update = function () {};
+        const cam = g.cam.cam;
+        // ahead of them on the side they leap to, the Saab behind them
+        cam.position.set(c.x + 6.5, 1.5, c.z + 4.2); cam.lookAt(c.x - 2.4, 0.85, c.z + 0.6); cam.fov = 44; cam.updateProjectionMatrix();
+        document.getElementById('hud').style.display = 'none';
+      }, who);
+      await frames(30);
+      await shot(`hornlook_${who}_0`);
+      await tap('KeyT');
+      for (const [i, ms] of [[1, 260], [2, 150], [3, 200], [4, 400], [5, 900]]) { await sleep(ms); await shot(`hornlook_${who}_${i}`); }
+    },
+
+    // Feature tuta_med_bilen: the horn (T, real key presses) and what the town does about it. Every
+    // chance comes true (__horn.rand = 0: the first line of each list).
+    async horn() {
+      const ok = (label, cond, info) => console.log('[t] horn', label, verdict('horn ' + label, !!cond), info === undefined ? '' : JSON.stringify(info));
+      const stats = () => ev(() => ({ ...__horn.stats }));
+      const said = () => ev(() => window.__bub.slice());
+      const hook = () => ev(() => {
+        const g = __game;
+        __horn.rand = () => 0;
+        g.patrol.pause(true);   // (no drain: the Ordning check below is exact)
+        window.__bub = []; window.__toasts = [];
+        // every bubble and toast that shows up, and the person being watched (window.__pt)
+        g.onFrame(() => {
+          for (const b of document.querySelectorAll('.bubble')) if (!b._seen) { b._seen = true; window.__bub.push(b.textContent); }
+          for (const t of document.querySelectorAll('.toast')) if (!t._seen) { t._seen = true; window.__toasts.push(t.textContent); }
+          const T = window.__pt;
+          if (T) {
+            const c = T.c;
+            T.maxY = Math.max(T.maxY, c.y - T.y0); T.maxLat = Math.max(T.maxLat, Math.abs(c.z - T.z0));
+            T.fright ||= c.anim.fright; T.cheer ||= c.anim.cheer; T.fist ||= c.anim.fist; T.wave ||= c.anim.wave;
+            if (c.state !== 'normal') T.bad = c.state;
+          }
+        });
+      });
+      // The Saab stopped in the right-hand lane of the straight street at z = -40 (as in `shove`),
+      // heading +x; no traffic, felparkeringar or pedestrians on the stretch.
+      const road = () => ev(() => {
+        const g = __game;
+        for (const c of g.cars.slice()) if ((c.traffic || c.violation) && Math.abs(c.x + 60) < 80 && Math.abs(c.z + 40) < 40) { if (c.violation) g.patrol.remove(c); else g.removeCar(c); }
+        if (!g.playerCar) g.enterCar(g.named.saab);
+        const car = g.playerCar;
+        car.place(-95, -37.25, Math.PI / 2);
+        g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.1; g.cam.snapNext = true;
+        const far = g.peds.filter((q) => Math.hypot(q.char.x + 60, q.char.z + 40) > 150);
+        for (const p of g.peds) if (Math.hypot(p.char.x + 70, p.char.z + 40) < 45) { const q = far[(Math.random() * far.length) | 0]; p.char.teleport(q.char.x + 1, q.char.z + 1); p.loop = q.loop; p.k = q.k; p.target = q.target; }
+      });
+      // A pedestrian (adult | kid | old) standing in the lane `ahead` m in front of the bumper.
+      const pedAhead = (want, ahead = 8) => ev(({ want, ahead }) => {
+        const g = __game, car = g.playerCar;
+        const ped = g.peds.find((p) => { const a = p.char.def.age; return p.char.state === 'normal' && !p.char.honk && !p.used && (want === 'kid' ? a < 13 : want === 'old' ? a >= 65 : a >= 19 && a < 65); });
+        if (!ped) return null;
+        ped.used = true;
+        const c = ped.char, x = car.x + car.spec.len / 2 + ahead, z = car.z + 0.3;
+        c.teleport(x, z, -Math.PI / 2);
+        ped.idleT = 30;
+        window.__pt = { c, y0: c.y, z0: car.z, maxY: 0, maxLat: 0, fright: false, cheer: false, fist: false, bad: null };
+        return { age: c.def.age };
+      }, { want, ahead });
+      const pt = () => ev(() => { const T = window.__pt; return { maxY: +T.maxY.toFixed(2), maxLat: +T.maxLat.toFixed(2), fright: T.fright, cheer: T.cheer, fist: T.fist, wave: T.wave, bad: T.bad, honk: !!T.c.honk }; });
+      // A traffic car (type) `along` m ahead of the Saab, the same way (or oncoming).
+      const traffic = (type, along, same = true) => ev(async ({ type, along, same }) => {
+        const g = __game, { Car } = await import('./src/actors/car.js'), { AIDriver } = await import('./src/actors/drivers.js'), { randomPed } = await import('./src/actors/models.js');
+        if (window.__tc && g.cars.includes(window.__tc)) g.removeCar(window.__tc);
+        const car = new Car(type), pc = g.playerCar;
+        car.place(pc.x + along, same ? pc.z : pc.z - 5.5, same ? Math.PI / 2 : -Math.PI / 2);
+        car.traffic = true;
+        g.addBust(randomPed(Math.random), car);
+        car.ai = new AIDriver(car, { mode: 'traffic', cruise: 7 });
+        g.addCar(car);
+        window.__tc = car;
+      }, { type, along, same });
+      await hook();
+
+      // 1. Someone in the road ahead: hands up, a leap out of the lane, a fist and a word.
+      await road();
+      await pedAhead('adult', 8);
+      await frames(20);
+      await shot('horn_0_before');
+      let s0 = await stats();
+      await tap('KeyT');
+      await sleep(380); await shot('horn_1_leap');
+      await sleep(1500); await shot('horn_2_fist');
+      let p = await pt(), s = await stats(), b = await said();
+      ok('an adult in front leaps out of the way', s.leaps > s0.leaps && p.maxY > 0.3 && p.maxLat > 2.2 && p.fright && !p.bad, p);
+      ok('...and says so', b.includes('Jösses!') && p.fist, b);
+      await sleep(800);
+      // 2. A child in front: leaps too, and cheers ("Igen!").
+      await road();
+      await pedAhead('kid', 7);
+      await frames(10);
+      await ev(() => { window.__bub.length = 0; });
+      await tap('KeyT');
+      await sleep(1600); await shot('horn_3_kid');
+      p = await pt(); b = await said();
+      ok('a child in front leaps and cheers', p.maxY > 0.25 && p.maxLat > 2.2 && p.cheer && b.includes('Igen!'), { ...p, b });
+      await sleep(900);
+      // 3. An old one: no leap, a hurried step aside, and an opinion.
+      await road();
+      if (await pedAhead('old', 7)) {
+        await frames(10);
+        await ev(() => { window.__bub.length = 0; });
+        await tap('KeyT');
+        await sleep(2400);
+        p = await pt(); b = await said();
+        ok('an old one steps aside, no leap', p.maxY < 0.15 && p.maxLat > 2.2 && b.includes('Ungdomen nu för tiden!'), { ...p, b });
+      } else console.log('[t] horn no old pedestrian free');
+      await sleep(600);
+      // 4. A BMW ahead: it honks back, speeds up, its driver has a word; Ove has his.
+      await road();
+      await traffic('bmw', 16);
+      await frames(6);
+      await ev(() => { window.__bub.length = 0; __horn.saidT = -1e9; });
+      s0 = await stats();
+      await tap('KeyT');
+      await sleep(250);
+      const hurry = await ev(() => +window.__tc.ai.hurryT.toFixed(2));
+      await sleep(1300);
+      s = await stats(); b = await said();
+      ok('a BMW ahead honks back and speeds up', s.honkBacks > s0.honkBacks && s.hurries > s0.hurries && hurry > 0 && b.includes('Lugna dig, farbror!'), { hurry, b });
+      ok('Ove on the BMW', b.includes('BMW. Hmpf.'), b);
+      await shot('horn_4_bmw');
+      // 5. Another Saab: two toots between Saab people.
+      await road();
+      await traffic('saab900', 16, false);
+      await frames(6);
+      await ev(() => { window.__bub.length = 0; });
+      s0 = await stats();
+      await tap('KeyT');
+      await sleep(2000);
+      s = await stats(); b = await said();
+      ok('another Saab greets', s.greets > s0.greets && b.includes('Saab-folk. Vi hälsar.') && b.includes('Tjena, Saab!'), b);
+      await shot('horn_5_saab');
+      await ev(() => { if (window.__tc) __game.removeCar(window.__tc); window.__tc = null; });
+      // 6. A smitare in its felparkerad car: spooked, off it goes; honked at in the chase, it loses
+      // motstånd (5 a toot).
+      const sm = await ev(() => {
+        const g = __game, car = g.playerCar;
+        // a street spot a smitare can flee from (not in Ove's own area), free
+        const spot = g.patrol.spots.find((s) => s.onStreet && s.where !== 'ove' && g.patrol.spotFree(s, 0) && Math.hypot(s.x - car.x, s.z - car.z) > 60);
+        if (!spot) return null;
+        const [c] = g.patrol.forceSpawn(1, { x: spot.x, z: spot.z }, { smitare: true, radius: 6 }) || [];
+        if (!c || !c.violation.smitare) return null;
+        window.__sm = c;
+        const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), sp = g.freeSpot(c.x - fx * 11, c.z - fz * 11, 0, 4);
+        car.place(sp.x, sp.z, Math.atan2(c.x - sp.x, c.z - sp.z));
+        g.cam.yaw = car.yaw; g.cam.snapNext = true;
+        return { kind: c.violation.kind, d: +Math.hypot(c.x - sp.x, c.z - sp.z).toFixed(1) };
+      });
+      if (sm) {
+        await frames(10);
+        s0 = await stats();
+        await tap('KeyT');
+        await frames(4);
+        const P0 = await ev(() => ({ on: __game.patrol.pursuit?.car === window.__sm, mot: __game.patrol.pursuit?.mot }));
+        ok('a smitare is spooked into fleeing', P0.on && (await stats()).spooked > s0.spooked && P0.mot === 100, { ...sm, ...P0 });
+        await sleep(1000);
+        const m0 = await ev(() => __game.patrol.pursuit?.mot ?? null);
+        await tap('KeyT');
+        const m1 = await ev(() => __game.patrol.pursuit?.mot ?? null);
+        ok('...and loses motstånd to the horn in the chase', m0 != null && m1 != null && m0 - m1 >= 5, { m0, m1 });
+        await ev(() => { const g = __game; g.patrol.dropPursuit(); g.patrol.remove(window.__sm); });
+      } else console.log('[t] horn no smitare spot');
+      // 7. Needless honking: six toots at nobody - "Onödig tutning", −2 Ordning, and an answer.
+      await road();
+      await sleep(300);
+      await ev(() => { const h = __horn; h.annoy = 0; h.complainT = -1e9; h.saidT = -1e9; window.__bub.length = 0; window.__toasts.length = 0; window.__o0 = __game.patrol.ordning; });
+      s0 = await stats();
+      for (let k = 0; k < 6; k++) { await tap('KeyT'); await sleep(260); }
+      await sleep(3200);
+      s = await stats(); b = await said();
+      const toasts = await ev(() => window.__toasts.slice()), dO = await ev(() => +(__game.patrol.ordning - window.__o0).toFixed(2));
+      ok('needless honking costs Ordning', s.complaints === s0.complaints + 1 && dO <= -1.8 && dO > -2.6 && toasts.some((t) => /Onödig tutning/.test(t)), { dO, toasts });
+      ok('...somebody complains, Ove answers', (b.some((t) => /Ljudsignal får bara/.test(t)) && b.includes('Det var fara.')) || (b.includes('Tyst därute!') && b.includes('Det var för att avvärja fara.')), b);
+      // 8. Shave-and-a-haircut: answered with two toots, and no complaint for it.
+      await ev(() => { const h = __horn; h.annoy = 0; h.complainT = -1e9; h.duetT = -1e9; });
+      s0 = await stats();
+      for (const gap of [420, 210, 210, 420, 0]) { await page.keyboard.down('KeyT'); await sleep(70); await page.keyboard.up('KeyT'); if (gap) await sleep(gap - 70); }
+      await sleep(1800);
+      s = await stats();
+      ok('shave-and-a-haircut is answered', s.duets === s0.duets + 1 && s.complaints === s0.complaints, s);
+      // 9. A pickup (Jimmy's errand: at the bus stop): a honk from the street 15-22 m off, and he
+      // comes out to the car and gets in.
+      const pk = await ev(async () => {
+        const g = __game, S = __stages, n = g.npcs.jimmy, { laneAim } = await import('./src/actors/drivers.js');
+        const st = S.pickup({ who: 'jimmy', at: 'busStop', needCar: true }), m = S.newCtx({});
+        st.init(g, m);
+        // the right-hand lane of the street by the stop, 21 m along it
+        const a = laneAim(n.x, n.z, 1, 0, 21), b = laneAim(n.x, n.z, 1, 0, 22);
+        const car = g.playerCar;
+        car.place(a.x, a.z, Math.atan2(b.x - a.x, b.z - a.z));
+        g.cam.yaw = Math.atan2(n.x - a.x, n.z - a.z); g.cam.snapNext = true;
+        const sp = a;
+        window.__pk = { st, m, n, done: false };
+        g.onFrame(() => { const P = window.__pk; if (P && !P.done && st.update(g, m) === 'done') P.done = true; });
+        return { d: +Math.hypot(n.x - sp.x, n.z - sp.z).toFixed(1) };
+      });
+      await frames(10);
+      await ev(() => { window.__bub.length = 0; });
+      s0 = await stats();
+      await tap('KeyT');
+      await sleep(1200); await shot('horn_6_pickup');
+      try { await until(() => window.__pk.done, 15000); } catch (e) { /* checked below */ }
+      s = await stats(); b = await said();
+      const pkEnd = await ev(() => { const P = window.__pk, n = P.n, c = __game.playerCar; return { done: P.done, d: +Math.hypot(n.x - c.x, n.z - c.z).toFixed(1), walk: !!n.walkTo, seated: n.state === 'seated', sub: P.st.sub }; });
+      ok('a pickup comes out to the car on a honk', s.called === s0.called + 1 && b.some((t) => /[Jj]ag kommer!|En sekund bara!/.test(t)) && pkEnd.done, { ...pk, ...pkEnd, b });
+      await ev(() => { const g = __game, n = g.npcs.jimmy; g.releaseNpc(n); g.sendHome(n); window.__pk = null; });
+      // 10. Rune knows the Saab by its horn; Anita explains.
+      await ev(() => {
+        const g = __game, r = g.npcs.rune, car = g.playerCar;
+        const sp = g.freeSpot(r.x + 9, r.z, 0, 4);
+        car.place(sp.x, sp.z, Math.atan2(sp.x - r.x, sp.z - r.z));
+        g.cam.yaw = Math.atan2(r.x - sp.x, r.z - sp.z); g.cam.snapNext = true;
+        __horn.runeT = -1e9;
+        window.__bub.length = 0;
+      });
+      await frames(10);
+      await tap('KeyT');
+      await sleep(1300); await shot('horn_7_rune');
+      await sleep(2000);
+      b = await said();
+      ok('Rune: "...Saab."; Anita explains', b.includes('...Saab.') && b.includes('Han känner igen tutan, Ove.'), b);
+      // 11. Parvaneh in the passenger seat has an opinion.
+      await ev(() => { const g = __game, n = g.npcs.parvaneh; g.boardCompanion(n, g.playerCar); __horn.passT = -1e9; window.__bub.length = 0; });
+      await frames(4);
+      await tap('KeyT');
+      await sleep(1100);
+      b = await said();
+      ok('a passenger has an opinion', b.includes('Ove! Inte i mitt öra!'), b);
+      await ev(() => { const g = __game, n = g.npcs.parvaneh; g.releaseNpc(n); g.sendHome(n); });
+      // 12. H honks too; nothing in a scene.
+      s0 = await stats();
+      await tap('KeyH');
+      s = await stats();
+      ok('H honks too', s.presses === s0.presses + 1);
+      await ev(() => { __game.inDialog = true; });
+      await page.keyboard.down('KeyT'); await frames(4);
+      const inScene = await ev(() => ({ down: __horn.down, presses: __horn.stats.presses }));
+      await page.keyboard.up('KeyT');
+      await ev(() => { __game.inDialog = false; });
+      ok('no horn in a scene', !inScene.down && inScene.presses === s.presses, inScene);
+      // 13. The cat by Ove's door (after day 4): it jumps, and Ove apologises to it.
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?test=1&fresh=1&mission=4`, { waitUntil: 'load' });
+      await until(() => window.__ready === true, 120000);
+      await frames(10);
+      await hook();
+      const cat = await ev(() => {
+        const g = __game, c = g.homeCat;
+        if (!c) return null;
+        if (!g.playerCar) g.enterCar(g.named.saab);
+        const p = c.root.position, h = window.__lm('oveHouse'), fx = Math.sin(h.yaw), fz = Math.cos(h.yaw);
+        const sp = g.freeSpot(p.x + fx * 10, p.z + fz * 10, 0, 4);
+        g.playerCar.place(sp.x, sp.z, Math.atan2(p.x - sp.x, p.z - sp.z));
+        g.cam.yaw = g.playerCar.yaw; g.cam.snapNext = true;
+        window.__ct = { y0: p.y, maxY: 0 };
+        g.onFrame(() => { window.__ct.maxY = Math.max(window.__ct.maxY, c.root.position.y - window.__ct.y0); });
+        return { d: +Math.hypot(p.x - sp.x, p.z - sp.z).toFixed(1) };
+      });
+      if (cat) {
+        await frames(20);
+        await tap('KeyT');
+        await sleep(200); await shot('horn_8_cat');
+        await sleep(1500);
+        const ct = await ev(() => ({ maxY: +window.__ct.maxY.toFixed(2), cats: __horn.stats.cats }));
+        b = await said();
+        ok('the cat jumps; Ove apologises to it', ct.cats === 1 && ct.maxY > 0.2 && b.includes('Förlåt, katten.'), { ...cat, ...ct, b });
+      } else ok('the cat is home after day 4', false);
+    },
   };
 };

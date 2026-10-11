@@ -423,13 +423,16 @@ export const fetch = (o) => ({
 // Pick someone up. o: { who, at (where they wait; omitted = where they are), needCar, text, hello,
 // walk ((g) => [points]: they walk to `at` by way of these instead of being put there; if a
 // mission already sent them, they carry on), speed (their walking speed) }.
-// On foot: walk up to them and they follow Ove. In a car: stop within ~9 m and they get in.
+// On foot: walk up to them and they follow Ove. In a car: stop within ~9 m and they get in, or stop
+// within 25 m and honk (game/horn.js): they come out to the car ("Jag kommer!").
+const COMING = ['Jag kommer!', 'Ja, ja, jag kommer!', 'En sekund bara!'];
 export const pickup = (o) => ({
   kind: 'pickup',
   get text() { return o.text || `Hämta ${this.name || o.who}`; },
   init(g, m) {
     const n = (this.npc = g.npc(o.who));
     this.name = n.def.name;
+    this.honkT = g.time;
     m.data.npcs.add(n);
     g.removeCompanion(n);
     if (n.car) g.unseat(n);
@@ -448,13 +451,35 @@ export const pickup = (o) => ({
   },
   target() { const n = this.npc; return n.car ? { x: n.car.x, z: n.car.z, r: 3 } : { x: n.x, z: n.z, r: 3 }; },
   tags() { const n = this.npc; return n.car ? [] : [{ x: n.x, y: n.y + n.height + 0.35, z: n.z, text: this.name, cls: 'errand' }]; },
-  update(g) {
+  update(g, m, dt = 1 / 60) {
     const n = this.npc;
     this.sub = null;
     if (g.isWithOve(n)) return 'done';
     const c = g.playerCar;
     if (c) {
-      if (dist(c.x, c.z, n.x, n.z) < 10) {
+      const d = dist(c.x, c.z, n.x, n.z), h = g.horn?.last;
+      // Waiting for Ove's car (the horn leaves them be, see horn.react): a honk from it, stopped
+      // within 25 m, brings them out to its passenger side.
+      n.pickupT = g.time + 0.5;
+      if (h && h.car === c && h.t > this.honkT && d >= 10 && d < 25 && c.speed < 4 && !n.walkTo && n.state === 'normal') {
+        this.honkT = h.t;
+        const e = g.exitSpot(c, -1);
+        g.walkNpc(n, [e], { speed: 2.4, stay: true, yaw: yawTo(c.x - e.x, c.z - e.z) });
+        g.say(n, pick(COMING), 1.8);
+        audio.talk(n.def.voice || 300);
+        g.horn.stats.called++;
+        this.called = { t: 0, d };
+      }
+      // (called out: they get in a little further off, and a walk that stalls against a hedge for
+      // 2 s gets them in from up to 22 m - the walk is a straight line)
+      let reach = 10;
+      if (this.called && n.walkTo) {
+        const k = this.called;
+        k.t += dt;
+        if (k.t > 2) { reach = k.d - d < 0.5 ? 22 : 13; if (k.d - d >= 0.5) { k.t = 0; k.d = d; } }
+        else reach = 13;
+      }
+      if (d < reach) {
         if (c.speed > 3) { this.sub = `Stanna så kan ${this.name} kliva in.`; return; }
         if (g.boardCompanion(n, c)) { if (o.hello) g.say(n, o.hello, 2); return 'done'; }
         this.sub = 'Det finns ingen plats i bilen.';

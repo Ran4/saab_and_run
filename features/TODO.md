@@ -6,3 +6,4 @@
 features/implemented/oves_ganganimation.md
 features/implemented/oppna_garaget.md
 features/implemented/roligare_bilkorning.md
+features/implemented/tuta_med_bilen.md

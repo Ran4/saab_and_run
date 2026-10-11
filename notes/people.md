@@ -241,6 +241,8 @@ measurements), **`headP`** (head parameters), `d` (normalised def), `squash`, `p
 | `flung` + `flungT` | knocked over backwards, limbs loose |
 | `down` + `downLeft` | lying on the back; in the last 1.3 s gets up: sit up → one knee → stand |
 | `look`, `spin`, `yell` | neck yaw / old air spin / jaw open |
+| **`fright`** (feature tuta_med_bilen) | the horn: both hands thrown up in front of the face (wrists ~0.13 m above the shoulder joints, 0.2 m out in front, a little inside the shoulders), palms out, fingers open, elbows out and down, a fast tremble; the trunk leans back 0.1 rad, the head 0.12. Blends in fast (rate 22), out slowly (6). Applied **after** the jump's poses (the horn's sideways leap keeps the hands up) and skipped in a wheelchair, seated, down or flung. An arm in a cast stays in its sling |
+| **`fist`** (feature tuta_med_bilen) | a fist shaken at a car: the right fist (the left one with a cast on the right) raised in front of the shoulder, ~0.27 m above the joint, knuckles out, shaking at 15 rad/s; a small lean in. Also after the jump's poses |
 
 `style.pockets`: hands in the coat's side pockets (hand slides in out of sight) or, under short
 jackets/bombers, the jeans' front pockets with the thumbs out; hands come out for any other pose.

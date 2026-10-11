@@ -18,7 +18,7 @@ const KEYS = {
   report: ['KeyF'],
   sprint: ['ShiftLeft', 'ShiftRight'],
   handbrake: ['Space'],
-  horn: ['KeyH'],
+  horn: ['KeyT', 'KeyH'],
   pause: ['Escape', 'KeyP'],
   map: ['KeyM', 'Tab'],
   camReset: ['KeyC'],
@@ -31,9 +31,9 @@ const KEYS = {
   begin: ['Enter', 'NumpadEnter', 'Space', 'KeyE'],
 };
 // Standard gamepad layout: A jump / handbrake, B report (hold) and give up (after a failed mission),
-// X kick, Y interact, LB or L3 brisk walk (L3 is the horn in a car), R3 look back, Back map, Start
-// pause; on the title A, Y or Start begin.
-const PAD = { jump: [0], handbrake: [0], report: [1], giveUp: [1], sprint: [4, 10], attack: [2], interact: [3], horn: [10], pause: [9], map: [8], skip: [0, 3], lookBack: [11], begin: [0, 3, 9] };
+// X kick, Y interact, LB or L3 brisk walk (L3 is the horn in a car, as is RB), R3 look back, Back
+// map, Start pause; on the title A, Y or Start begin.
+const PAD = { jump: [0], handbrake: [0], report: [1], giveUp: [1], sprint: [4, 10], attack: [2], interact: [3], horn: [10, 5], pause: [9], map: [8], skip: [0, 3], lookBack: [11], begin: [0, 3, 9] };
 const finite = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const dz = (a) => { a = finite(a); return Math.abs(a) < 0.15 ? 0 : a < -1 ? -1 : a > 1 ? 1 : a; };
 

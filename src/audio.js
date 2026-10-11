@@ -1,5 +1,5 @@
 // Everything you hear is synthesised, no samples: a Saab four-cylinder with fake gear changes,
-// tyre hiss and snow crunch, a dual-tone horn, an old Swedish landline ring, a carpenter's pencil
+// tyre hiss and snow crunch, a dual-tone horn per make, an old Swedish landline ring, a carpenter's pencil
 // on paper, a rubber stamp, a doorbell, a cat, footsteps in snow - and a sparse, melancholic
 // piano-and-strings score in A minor (generative, so it never loops the same bars).
 //
@@ -644,10 +644,12 @@ export const audio = {
   },
   // Clock tick / countdown: a dry wood-block click.
   tick() { if (!S) return; const t = now(); burst(t, 0.025, 1.1, 2600, 'bandpass', 6); osc('sine', 1900, t, 0.03, 0.26, { attack: 0.002 }); osc('sine', 1900 * 2.7, t, 0.012, 0.05, { attack: 0.001 }); },
-  // The Saab's dual-tone horn while held.
-  horn(on) {
+  // The horn of the player's car while held (kind: the car's model, see HORNS: the Saab's dual tone,
+  // a borrowed Golf peeps). A new kind while held starts that car's horn.
+  horn(on, kind = 'saab900') {
     if (!S) return;
-    if (on && !S.hornNodes) S.hornNodes = hornVoice(ctx.currentTime, 0.1);
+    if (on && S.hornNodes && S.hornKind !== kind) this.horn(false);
+    if (on && !S.hornNodes) { S.hornNodes = hornVoice(ctx.currentTime, 0.1, kind); S.hornKind = kind; }
     else if (!on && S.hornNodes) {
       const h = S.hornNodes; S.hornNodes = null;
       const t = ctx.currentTime;
@@ -656,12 +658,28 @@ export const audio = {
       for (const o of h.oscs) o.stop(t + 0.2);
     }
   },
-  // A short honk from another car (vol 0..1, e.g. by distance).
-  honk(vol = 1, dur = 0.3) {
-    if (!S) return;
-    const t = ctx.currentTime, h = hornVoice(t, 0.07 * clamp(vol, 0, 1));
+  // A short honk from another car (vol 0..1, e.g. by distance; kind: its model, see HORNS; delay: s
+  // from now, for a double toot).
+  honk(vol = 1, dur = 0.3, kind = 'default', delay = 0) {
+    if (!S || !(vol > 0.01)) return;
+    const t = ctx.currentTime + delay, h = hornVoice(t, 0.07 * clamp(vol, 0, 1), kind);
     h.g.gain.setTargetAtTime(0, t + dur, 0.025);
     for (const o of h.oscs) o.stop(t + dur + 0.2);
+  },
+  // Someone the horn made jump: a sharp intake of breath and a short rising 'ah!' (pitch: the CHARS
+  // voice, ~150 for a man to ~600 for a child; k: loudness by distance).
+  yelp(pitch = 300, k = 1) {
+    if (!S || !(k > 0.03)) return;
+    const t = now(), f0 = clamp(pitch * 0.72, 105, 430) * rnd(0.93, 1.08), dur = rnd(0.17, 0.24), j = rnd(0.94, 1.08);
+    burst(t, 0.08, 0.03 * k, 1900, 'bandpass', 0.9, { attack: 0.01 });
+    vocal(t + 0.05, dur, [f0 * 1.05, f0 * rnd(1.4, 1.6), f0 * 1.12], [820 * j, 1250 * j, 2650], [600 * j, 1750 * j, 2600], 0.1 * k, { at: 0.35, open: 0.09, creak: 18, press: 0.9 });
+  },
+  // A cat that got a fright: a hiss through the teeth with a little spit at the start.
+  hiss(k = 1) {
+    if (!S || !(k > 0.03)) return;
+    const t = now();
+    burst(t, 0.03, 0.12 * k, 2600, 'bandpass', 2);
+    burst(t + 0.02, 0.55, 0.15 * k, 4600, 'bandpass', 0.9, { attack: 0.05, soft: true });
   },
   // Short piano motifs (they ring in the same room as the score).
   jingle(kind) {
@@ -854,21 +872,42 @@ function vocal(t, dur, f, v0, v1, peak, { at = 0.3, open = 0.1, creak = 40, pres
   for (const n of [o, jn, lfo]) n.stop(t + dur + 0.05);
 }
 
-function hornVoice(t, vol) {
+// Every make has its own horn (feature tuta_med_bilen): two sawtooth tones (f, Hz) through a brassy
+// shaper and a band (bp, Hz; q). Ove's Saab keeps its 405/498 Hz; the Volvos are a tired lower
+// 'mööp', the Golf a high single peep (its two tones beat), the German cars a crisp major third, the
+// Škoda a sour semitone, the bus and the sopbil an air horn (low, a slow rise: rise s).
+export const HORNS = {
+  saab900: { f: [405, 498], bp: 2100 },
+  volvo240: { f: [352, 440], bp: 1600, q: 1.1 },
+  volvo740: { f: [370, 466], bp: 1750 },
+  golf: { f: [523, 529], bp: 2600, q: 1.2 },
+  audi: { f: [440, 554], bp: 2400 },
+  bmw: { f: [415, 523], bp: 2300 },
+  skoda: { f: [466, 494], bp: 2200 },
+  kombi: { f: [392, 494], bp: 2000 },
+  taxi: { f: [440, 523], bp: 2200 },
+  van: { f: [349, 415], bp: 1700 },
+  bus: { f: [185, 233], bp: 900, q: 0.7, lp: 2600, rise: 0.09 },
+  garbage: { f: [147, 185], bp: 800, q: 0.7, lp: 2200, rise: 0.1 },
+  default: { f: [405, 498], bp: 2100 },
+};
+
+function hornVoice(t, vol, kind = 'default') {
+  const H = HORNS[kind] || HORNS.default;
   const g = ctx.createGain(), sh = ctx.createWaveShaper(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
   const curve = new Float32Array(512);
   for (let i = 0; i < 512; i++) { const x = (i / 511) * 2 - 1; curve[i] = Math.tanh(x * 3); }
   sh.curve = curve;
-  bp.type = 'bandpass'; bp.frequency.value = 2100; bp.Q.value = 0.8;
-  lp.type = 'lowpass'; lp.frequency.value = 4800;
+  bp.type = 'bandpass'; bp.frequency.value = H.bp; bp.Q.value = H.q ?? 0.8;
+  lp.type = 'lowpass'; lp.frequency.value = H.lp ?? 4800;
   g.gain.setValueAtTime(0, t);
   g.gain.linearRampToValueAtTime(vol, t + 0.02);
   const oscs = [];
-  for (const f of [405, 498]) {
+  for (const f of H.f) {
     const o = ctx.createOscillator(), og = ctx.createGain();
     o.type = 'sawtooth';
     o.frequency.setValueAtTime(f * 0.96, t);
-    o.frequency.exponentialRampToValueAtTime(f, t + 0.035);
+    o.frequency.exponentialRampToValueAtTime(f, t + (H.rise ?? 0.035));
     og.gain.value = 0.5;
     o.connect(og).connect(sh);
     o.start(t);

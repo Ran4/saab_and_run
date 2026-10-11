@@ -106,7 +106,7 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
 | `g.dialog(lines)`, `g.cinematic(a, b)`, `g.endCinematic()`, `g.onFrame(fn)`, `g.offFrame(fn)`, `g.wait(s)` | unchanged |
 | `g.addCoins(n)` (n may be negative, never below 0), `g.coins` | kronor |
 | `g.setClock(h, m)`, `g.clockText()` | the in-game clock |
-| `g.patrol`, `g.interrupts`, `g.missions`, `g.stages` | |
+| `g.patrol`, `g.interrupts`, `g.missions`, `g.stages`, `g.horn` | `g.horn.last` = { t, x, z, car }: the latest honk (see *Feature tuta_med_bilen*) |
 | `g.freezeCar`, `g.inDialog`, `g.autoDialog`, `g.unlock(what)`, `g.save()` | |
 
 While `missions.state !== 'idle'` main.js sets `patrol.suspended` (no new random violations, no
@@ -635,3 +635,59 @@ reads `car.drift`, `car.slip` and `car.pivot`:
 - Scenarios (cars.mjs): `handling` and `drift` (off-screen numbers per type), `driftshot` (a 240 -
   `TYPE=` another - through the junction at (40, -40) with real keys, a donut there, Ove's comments;
   pushes 'driftshot: ...' errors).
+
+## Feature tuta_med_bilen: the horn (2026-10-11) — what changed
+
+The horn was a sound (H, while held). Now it is `src/game/horn.js` (`Horn`, `g.horn`, `window.__horn`):
+- **Input**: `horn` is T or H (input.js), a pad's L3 or RB. `g.horn.update(dt)` runs every frame in
+  `update`, right after `handleOneShots` (before the fixed steps): it is on while Ove is in a car that
+  isn't wrecked and no scene plays (`inDialog`). `updateAudio` plays `audio.horn(g.horn.down,
+  car.kind)`: every make has its own horn (audio.js `HORNS`), also the AI's `onHonk`.
+- **A press** looks round (`blast`): people (pedestrians and neighbours: not Ove, nobody seated,
+  hidden, walking with Ove or waiting for his car in a pickup) in a cone from the front bumper
+  (16-34 m by speed, half-width car + 1 m widening 6 %) or within 15 m; then the cars within 45 m.
+  While it is held it looks round again every 0.7 s (people only, one new bubble at most); after 1.6 s
+  the reach grows (cone × 1.25, 24 m all round).
+- **People** (`react` -> `ch.honk`, played out by `horn.drive(ch, dt, ped)`, which `Ped.update` and
+  `stepNpcs` call first: true while it steers them): after a reaction time (0.06-0.6 s) a yelp
+  (`audio.yelp`), `anim.fright` and either a leap (`ch.jump(3.4-4.0)` with 5-6 m/s sideways off the
+  car's line, to the side they are on, until 1.4 m clear of the car's flank; old people and Parvaneh
+  hurry aside at 2.6-3.2 m/s without leaping), a flinch (a 2.1 m/s hop, hands up for 0.45 s) or a
+  child's hop. Then they stand facing the car for 1.3-2 s with a line (`speak`: bubble + murmur) and a
+  gesture: `anim.fist`, `anim.cheer` (children), a wave (Jimmy, Adrian: `ch.honk.wave`, which
+  `syncAll` ORs into `anim.wave`). A pedestrian who leapt goes back to the pavement (`Ped.rehome`); a
+  neighbour shuffles home as before. `syncAll` doesn't turn a neighbour to his home yaw meanwhile.
+  At most 3 bubbles per press; a person can react again 1.5 s after the last reaction ended.
+- **Cars** (`carReact`, traffic with an AI only, once per 2.5 s each): ahead in either lane (34 m),
+  within 14 m, or `ai.byPlayerT` (it sat honking behind Ove). Saab to Saab: two toots and "Tjena,
+  Saab!" / Ove's "Saab-folk. Vi hälsar.". Ahead the same way: `ai.hurryT = 3` (drivers.js: traffic
+  cruise × 1.35). Honk back by `TEMPER[kind]` (always when blocked: a 0.9 s lean on it).
+- **Patrol**: a smitare still sitting in its violation within 25 m (or ahead) is spooked:
+  `patrol.startPursuit` (not while `patrol.suspended`). In a pursuit within 30 m: −5 motstånd a press
+  (at most every 0.8 s; not the press that spooked it), −3/s held after 0.4 s, and the flee AI's
+  `wobble` at 0.14 for 1.1 s.
+- **Ordning**: `annoy` +1 per press with nothing warranted (no one in front, no car ahead, not
+  blocked, no smitare), +0.55/s held after 0.8 s, −0.25/s. At 5 (a press is judged 0.6 s later, so
+  the rhythm's fifth tap is spared): `complain` (at most every 30 s): −2 Ordning, toast "Onödig
+  tutning · −2 Ordning", Anders `shout`s the law if he is within 70 m, else a window (`nearHouse`: the
+  nearest box collider over 4.5 m tall within 32 m, a bubble 3.6 m up its wall); Ove answers. A 2.2 s
+  honk shouts from a window by itself (every 25 s).
+- **Ove** (`oveSays`, at most every 8 s unless forced) after a press, by what he honked at; passengers
+  in his car (`passengers`, every 10 s) say theirs over the car first, then Ove 2.4 s later.
+- **Pickup** (stages.js): while it waits for Ove's car it keeps `n.pickupT` fresh (horn.js leaves them
+  be); a honk from that car stopped (< 4 m/s) 10-25 m off walks them to `g.exitSpot(car, -1)`
+  ("Jag kommer!"), and they get in from 13 m (from 22 m if the walk stalls for 2 s).
+- **The cat** by Ove's door: a 0.34 m hop and a turn of ±2.4 rad over 0.42 s (its root, `tickCat`),
+  `sit(false)`, `audio.hiss`; Ove: "Förlåt, katten." (every 40 s).
+- **Shave-and-a-haircut** (`rhythm`, at a release): the last five presses short (< 0.4 s) over
+  0.8-3.2 s, the middle two gaps < 0.8 × the outer ones, not part of longer drumming: the nearest
+  traffic car (90 m) toots twice, two and three beats after the fifth tap; `annoy` −5.
+- Delayed reactions go through `horn.after(t, fn)` (game time: frozen behind the pause menu).
+  `horn.rand` is every chance (scenarios set it to 0: all come true, the first line of each list);
+  `horn.stats` counts everything. The first time behind a wheel each session (not `?test`) a toast:
+  "T tutar. Folk märker det."
+- Scenarios (gameplay.mjs): `horn` (19 checks with real key presses: an adult, a child and an old
+  person in front, a BMW, a Saab, a smitare spooked and pressed, needless honking, the rhythm, a
+  pickup at the bus stop, Rune and Anita, a passenger, H, no horn in a scene, the cat after day 4)
+  and `hornlook` (a frozen side camera on a honk at someone in front: `WHO=adult|kid|old|patrick|
+  parvaneh|anders`).

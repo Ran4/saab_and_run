@@ -328,8 +328,15 @@ New:
   (old car.js formula). `audio.gear` = current fake gear (read-only).
 - `audio.skid(amount, surface?)` — 'asphalt' (default) a quiet wobbling squeal, **'snow' a
   granular snow crunch**.
-- `audio.horn(on)` — dual-tone (405/498 Hz) brassy horn. `audio.honk(vol = 1, dur = 0.3)` — short
-  honk for other cars (scale `vol` by distance).
+- `audio.horn(on, kind = 'saab900')` — the player's car's horn while held: two sawtooth tones through
+  a brassy shaper and a band, **per make** (feature tuta_med_bilen, exported `HORNS` by `car.kind`:
+  the Saab 405/498 Hz, Volvo 240 352/440 'mööp', Golf 523/529 peep, Audi 440/554, BMW 415/523, Škoda
+  466/494 sour, bus 185/233 and sopbil 147/185 air horns with a slow rise; unknown kinds get the
+  Saab's). `audio.honk(vol = 1, dur = 0.3, kind = 'default', delay = 0)` — a short honk from another
+  car (scale `vol` by distance; `delay` s for a double toot).
+- `audio.yelp(pitch, k)` (feature tuta_med_bilen) — a fright: a sharp intake of breath and a short
+  rising 'ah!' through `vocal` (pitch: the CHARS voice; k: loudness by distance). `audio.hiss(k)` — a
+  cat's hiss (a spit click and 0.55 s of bandpassed noise).
 - `audio.suspend(on)` (phase 4) — suspends / resumes the whole AudioContext (main.js: a hidden
   tab); `audio.ringing` (the bell is going) and `audio.state` (the context's state) for tests. main.js
   stops the bell in the pause menu and rings again after it while the call is unanswered.

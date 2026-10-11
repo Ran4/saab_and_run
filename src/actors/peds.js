@@ -76,6 +76,8 @@ export class Ped {
   update(dt, game) {
     const c = this.char;
     if (c.state !== 'normal') { c.wishX = c.wishZ = 0; return; }
+    // honked at (game/horn.js): the fright, a leap out of the way, a word about it
+    if (c.honk && game.horn?.drive(c, dt, this)) return;
     if (this.idleT > 0) { this.idleT -= dt; c.wishX = c.wishZ = 0; return; }
     // Step quickly aside from a fast car heading at us (no cartoon leaps).
     if (this.panicT <= 0) {

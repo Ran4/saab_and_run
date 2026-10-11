@@ -209,7 +209,7 @@ Göteborg. Hon skrattade åt honom hela vägen."). All reachable without double 
 | E | prata, kliva in, garageporten, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll) |
 | J / klick | sparka (däck) | |
-| H | | tuta |
+| T / H (pad L3 / RB) | | tuta (4.7) |
 | B | | titta bakåt |
 | M / N / R | karta / ljud / tillbaka till vägen | |
 | Esc / P (gamepad Start) | paus och fortsätt (pausmenyn släpper musen) | |
@@ -223,6 +223,37 @@ and the meter never run ahead of the cars and people they time.
 Gamepad: the first connected pad with the standard mapping (else a non-standard one once a button
 on it has been pressed), missing axes and buttons read 0; the triggers are the pedals, and a pad whose triggers have never moved drives with the left
 stick (forward gas, back brake).
+
+### 4.7 The horn (`src/game/horn.js`, feature tuta_med_bilen)
+T or H (a pad's L3 or RB), in whatever car Ove drives; every make has its own horn (`audio.HORNS`:
+the Saab's 405/498 Hz, a Golf's peep, the bus's air horn). It changes the world, not only the sound:
+- **People in front of the car** (a cone from the bumper, 16-34 m by speed, 25 % further on a long
+  honk) get a fright: hands thrown up (`anim.fright`), a yelp (`audio.yelp`), and a leap sideways off
+  the car's line (old people and Parvaneh, who is pregnant, hurry aside without leaping); then they
+  turn to face the car with a line, some shaking a fist (`anim.fist`). Children leap too and cheer
+  ("Igen!"). Pedestrians go back to their pavement afterwards (`Ped.rehome`).
+- **People close by** (15 m, 24 m on a long honk) flinch, look round and have an opinion. The
+  neighbours answer in character: Patrick leaps out of the way even when he isn't in it, the girls
+  cheer, Jimmy and Adrian wave, Anders and Parvaneh shake a fist, and Rune knows the car by its horn
+  ("...Saab.", "...Volvo.", "...BMW."), which Anita explains. Nobody walking with Ove reacts, nor
+  someone a pickup has waiting for his car: a honk from it, stopped within 25 m, brings them out to
+  it ("Jag kommer!").
+- **Drivers** honk back with their own horn (by temperament: BMW 90 %, Volvo 240 35 %) and a word
+  over their car; the one ahead going the same way speeds up (`AIDriver.hurryT`: cruise × 1.35 for
+  3 s); one that sat honking behind Ove leans on its horn ("Flytta på dig då!"). Another Saab, when
+  Ove drives one, greets with two toots ("Saab-folk. Vi hälsar.").
+- **Smitare**: one still in its felparkerad car is spooked and flees (the chase starts; not while a
+  story day runs); one being chased swerves for a moment and loses 5 motstånd a toot (3/s held).
+- **Ove** has opinions (at most every 8 s), by what he honked at; his passengers have theirs.
+- **Needless honking** (nobody in front, no car ahead, no smitare; holding it counts too) adds up:
+  past 5 it is "Onödig tutning" (−2 Ordning, at most every 30 s) and Anders shouts the law from his
+  house, or someone from a window ("Tyst därute!"); Ove: "Det var fara." A long honk (2.2 s) among
+  houses gets a window shout by itself.
+- **Shave-and-a-haircut** (five short taps, the middle two gaps quicker) is answered by the nearest
+  driver's two toots, and costs nothing. **The cat** by Ove's door (after day 4) jumps and hisses;
+  Ove apologises to it.
+None of it while a scene plays (`inDialog`). Reactions are timed in game time (nothing happens behind
+the pause menu).
 
 ## 5. Story — seven days (`src/game/missions.js`)
 
@@ -457,6 +488,10 @@ Added in phase 2 (details and the bone order in `notes/people.md`):
   low and stretching up high; `st.tug` 0..1 pulls back on it.
 - `st.cheer` ("yes!"), `st.talk`, blinking (automatic at lod 0), finger/thumb bones and hand shapes
   (grip, fist, pen, phone, board, carry).
+- `st.fright` — both hands thrown up in front of the face, palms out, a tremble, the trunk and head
+  pulled back (fast on, slow off; it holds through a jump's poses: the horn's leap). `st.fist` — a
+  fist raised in front of the shoulder, shaken (the left one for a cast on the right). An arm in a
+  cast keeps its sling. The horn (`src/game/horn.js`) sets and clears both, with `st.yell`.
 - `buildCharacter(def, { lod, headLod, faceTex })`: the cast is lod 0 with a per-character baked
   face texture; pedestrians lod 1; busts lod 2 body + lod 1 head.
 - Seating: a seated character's root goes at `car.seatLocal(side)` + (0, 0.12 − legLen, 0.12)
@@ -502,7 +537,9 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
   phone), `audio.pen(on)` (pencil scratching), `audio.stamp()`, `audio.doorbell()`,
   `audio.catMeow()`, `audio.alarm()` (= old `shameBell`), engine re-voiced as a Saab four,
   melancholic synthesized piano/strings music instead of the walking bass; `audio.suspend(on)` (the
-  whole context, for a hidden tab), `audio.ringing` / `audio.state` (tests).
+  whole context, for a hidden tab), `audio.ringing` / `audio.state` (tests). The horn (feature
+  tuta_med_bilen): `audio.horn(on, kind)` and `audio.honk(vol, dur, kind, delay)` take the car's model
+  (`HORNS`: a horn per make), `audio.yelp(pitch, k)` (a fright's gasp and 'ah!'), `audio.hiss(k)`.
 - Title (phase 4): the scene is the picture: Ove beside his Saab, rolled out of its bay in front of
   his garage, in the right half; the left holds the title card with **Spela** (or, with a save,
   **Fortsätt** + "Dag N · Veckodag" and a small two-click **Nytt spel**) and a **Kontroller** button

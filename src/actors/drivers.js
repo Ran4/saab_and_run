@@ -146,6 +146,7 @@ export class AIDriver {
     this.blockedT = 0;
     this.ignoreT = 0;
     this.honkT = 0;
+    this.hurryT = 0;    // honked at by Ove from behind (game/horn.js): traffic speeds up for a moment
     this.target = opts.target || null;   // for chase / flee: () => {x,z,vx,vz}
     this.replanT = 0;
     this.aggressive = !!opts.aggressive;
@@ -326,6 +327,7 @@ export class AIDriver {
     // taken faster than the grip plan (x 1.3 into a right turn sent the chaser through the corner)
     const rb = this.rubber ? this.rubber() : 1;
     let aimX, aimZ, targetSpeed = this.cruise * rb;
+    if (this.hurryT > 0) { this.hurryT -= dt; if (this.mode === 'traffic') targetSpeed *= 1.35; }
     // how hard it corners and plans to brake (m/s²); the physics gives AI cars ~9 m/s² of grip, so
     // a smitare at 7 still has a margin and doesn't wreck itself on every corner
     const aLat = flee || this.aggressive ? 7.0 : 5.2;

@@ -3370,7 +3370,7 @@ export function buildCharacter(def, opts = {}) {
     def, d, D, lod, root: new THREE.Group(), body: new THREE.Group(), phase: Math.random() * TAU, squash: 0, talkT: 0,
     seed: Math.random(), wheelAng: 0, meshes: [], style: { swing: 1, stride: 1, stoop: 0, lean: 0, sway: 1, bounce: 1, ...(d.style || {}) },
     P: new Float32Array(NCH), Q: new Float32Array(NCH),
-    w: { seat: 0, air: 0, flung: 0, down: 0, kick: 0, write: 0, phone: 0, wave: 0, talk: 0, listen: 0, push: 0, cheer: 0, pockets: 0, carry: 0, work: 0, kneel: 0 }, kneelT: 0,
+    w: { seat: 0, air: 0, flung: 0, down: 0, kick: 0, write: 0, phone: 0, wave: 0, talk: 0, listen: 0, push: 0, cheer: 0, pockets: 0, carry: 0, work: 0, kneel: 0, fright: 0, fist: 0 }, kneelT: 0,
     handScale: [1, 1], fingScale: [1, 1],
   };
   m.root.add(m.body);
@@ -3712,6 +3712,10 @@ export function animateCharacter(m, st, dt) {
   const wCarry = smoothW(m, 'carry', st.carry ? 1 : 0, 6, dt);
   const wWork = smoothW(m, 'work', st.work && !st.seated ? 1 : 0, 5, dt);
   const wKneel = smoothW(m, 'kneel', st.kneel && !st.seated && !st.down && !st.flung ? 1 : 0, 4.5, dt);
+  // a fright (the horn): both hands thrown up at once, let down slowly; a fist shaken at a car
+  const upright = !st.seated && !st.down && !st.flung && !wheel;
+  const wFright = smoothW(m, 'fright', st.fright && upright ? 1 : 0, st.fright ? 22 : 6, dt);
+  const wFist = smoothW(m, 'fist', st.fist && upright ? 1 : 0, 9, dt);
   m.kneelT = st.kneel ? m.kneelT + dt : 0;
   m.squash = Math.max(0, (m.squash || 0) - dt * 2.5);
 
@@ -3738,6 +3742,9 @@ export function animateCharacter(m, st, dt) {
     else { airPose(m, st, P, Q); lerpPose(P, Q, wAir * 0.8, 0, OFF); }
   }
   if (wLand > 0.001 && !st.seated) jumpLand(m, P, wLand, sstep(0.5, 3, st.speed || 0), sty.old || 0);
+  // (after the jump's poses: a fright's leap keeps its hands up)
+  if (wFright > 0.001) frightPose(m, P, Q, t, wFright);
+  if (wFist > 0.001) fistPose(m, P, Q, t, wFist);
   if (st.kick > 0) { kickPose(m, st, P, Q); lerpPose(P, Q, 1); }
   if (wFlung > 0.001) { flungPose(m, st, Q, t); lerpPose(P, Q, wFlung); }
   if (wDown > 0.001) { downPose(m, st, Q, t); lerpPose(P, Q, wDown); }
@@ -3755,7 +3762,7 @@ export function animateCharacter(m, st, dt) {
   const bones = m.bones;
   for (let b = 0; b < NB; b++) bones[b].rotation.set(P[b * 3], P[b * 3 + 1], P[b * 3 + 2]);
   // hands that went into pockets come back out for anything else
-  const busy = Math.min(1, Math.max(wPhone, wWrite, wPush, wCheer, wWave, wTalk, wSeat, wFlung, wDown, wAir, wCarry, wWork, wKneel));
+  const busy = Math.min(1, Math.max(wPhone, wWrite, wPush, wCheer, wWave, wTalk, wSeat, wFlung, wDown, wAir, wCarry, wWork, wKneel, wFright, wFist));
   for (const i of [0, 1]) {
     m.hands[i].scale.setScalar(lerp(m.handScale[i], 1, busy));
     m.fings[i].scale.setScalar(lerp(m.fingScale[i], 1, busy));
@@ -4245,6 +4252,39 @@ function cheerPose(m, P, Q, t) {
   armIK(m, Q, 0, _T.x, _T.y, _T.z, -0.25, -1, -0.5);
   aimHand(m, P, Q, 0, 0.25, 1, 0.45, 0.9, -0.15, 0.25);
   handShape(Q, 0, 'fist');
+}
+
+// A fright (the horn, feature tuta_med_bilen): both hands thrown up in front of the face, palms out
+// and fingers spread, the elbows out and down, a tremble; the trunk and head pulled back. An arm in a
+// cast stays in its sling. Applied over everything up to the jump's poses (a leap keeps it).
+function frightPose(m, P, Q, t, w) {
+  const D = m.D, k = D.k || 1;
+  const fz = D.frontZ ? D.frontZ(D.chestY) : 0.14;
+  const castI = m.d.cast ? (m.d.cast === 'L' ? 1 : 0) : -1;
+  for (const i of [0, 1]) {
+    if (i === castI) continue;
+    const side = i ? 1 : -1, tr = 0.008 * Math.sin(t * 31 + i * 2) * k;
+    armIK(m, Q, i, side * (D.S * 0.62 + 0.03 * k), D.shJ - D.chestY + 0.13 * k + tr, fz + 0.2 * k, side, -0.75, -0.15);
+    aimHand(m, P, Q, i, side * 0.3, 1, 0.12, 0, 0.1, 1);
+    handShape(Q, i, 'open');
+    lerpBones(P, Q, w, i ? ARM_L : ARM_R);
+  }
+  P[B.spine * 3] -= 0.1 * w;
+  P[B.neck * 3] -= 0.12 * w;
+}
+
+// A fist shaken at a car (the horn): the right fist (the left one for a cast on the right) raised in
+// front of the shoulder, knuckles out, shaking.
+function fistPose(m, P, Q, t, w) {
+  const D = m.D, k = D.k || 1;
+  const fz = D.frontZ ? D.frontZ(D.chestY) : 0.14;
+  const i = m.d.cast && m.d.cast !== 'L' ? 1 : 0, side = i ? 1 : -1;
+  const sh = 0.035 * k * Math.sin(t * 15);
+  armIK(m, Q, i, side * (D.S + 0.04 * k), D.shJ - D.chestY + 0.27 * k + sh, fz + 0.17 * k, side * 0.8, -0.7, -0.2);
+  aimHand(m, P, Q, i, side * 0.1, 1, 0.25, -side * 0.3, 0, -1);
+  handShape(Q, i, 'fist');
+  lerpBones(P, Q, w, i ? ARM_L : ARM_R);
+  P[B.spine * 3] += 0.04 * w;
 }
 
 // Where a carried thing sits (world space) for a model in the carry pose: on top of the right forearm,
