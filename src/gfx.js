@@ -101,9 +101,10 @@ export const LIGHTING = {
 //  low:  no AO and no bloom (a shadow-only pre-pass), no MSAA but FXAA, 1024 shadow maps with 4-tap
 //        PCF, and 'lean' on the CPU: the far cascade every 4th frame with only the static world in
 //        it, prop cells beyond 120 m skipped (see farCastersOff / leanProps).
-// 'auto' (the default outside tests) picks low on integrated and weak GPUs (classifyGpu) and drops
-// to low when frames stay over 20 ms in the first seconds; on the high tier it first steps 4x MSAA
-// down to 2x (laptop GPUs start there); 'auto' and 'low' also scale the render resolution (0.6-1.0
+// 'auto' (the default outside tests) picks low on integrated and weak GPUs (classifyGpu); on the
+// high tier it steps 4x MSAA down to 2x (laptop GPUs start there), then the render scale, and drops
+// to low only when frames stay slow for 8-10 s after that (and goes back up when they are fast
+// again: autoQuality below); 'auto' and 'low' also scale the render resolution (0.6-1.0
 // of the pixel ratio, which is capped at 1 device pixel per CSS pixel; `&pr=1.5` raises the cap) with
 // the frame time. 'high' is always full resolution, 4x. Tests (?test) default to 'high' without the
 // dynamic scale (deterministic shots); `&q=auto|high|low`, `?lowgfx` (= low), `&dynscale` override.
@@ -1446,7 +1447,9 @@ export function initGfx(container) {
   initPrepass();
   applyQuality();
   onResize();
-  window.addEventListener('resize', onResize);
+  window.addEventListener('resize', () => { onResize(); holdAutoQuality(1000, 'resize'); });
+  // a hidden tab draws nothing; the first frames after it comes back are not the steady cost
+  document.addEventListener('visibilitychange', () => { AQ.last = 0; if (!document.hidden) holdAutoQuality(2000, 'tab'); });
 }
 
 // Which GPU: integrated ones (and software renderers) and weak entry-level 'discrete' ones (GeForce
@@ -1549,7 +1552,8 @@ function applyQuality() {
   if (!(QUALITY.dyn && QUALITY.setting !== 'high')) QUALITY.scale = 1;
   QUALITY.scale = Math.max(Q.scaleMin, QUALITY.scale);
   if (Math.abs(renderer.getPixelRatio() - basePixelRatio() * QUALITY.scale) > 1e-3) onResize();
-  AQ.skip = 30;
+  AQ.trial = null;
+  aqClear(30);
 }
 // The scene target's samples: the tier's, or 2 when 'auto' has cut 4x MSAA (no shader recompiles).
 function applyMsaa() {
@@ -1566,66 +1570,173 @@ export function setQuality(level) {
   return qualityInfo();
 }
 
-// Automatic quality, fed with the frame interval once per renderFrame. Windows of ~0.7 s:
-//  - 'auto' on the high tier: if the frames of the first ~3 s of rendering (4 windows after the
-//    first-frame hitches) average over 20 ms, or the render scale is at its minimum and frames stay
-//    over 24 ms, drop to the low tier (once; reason 'slow'). Before the render scale, 4x MSAA steps
-//    down to 2x (and back up last).
-//  - 'auto'/'low': render scale 0.6/0.7..1.0 in steps of 0.1. Down when a window averages over
-//    18.5 ms (under ~54 fps); if a step down did not make frames >= 5 % faster the game is CPU-bound,
-//    so the step is undone and held for 20 s. Up (a probe) after 5 windows at full rate; a probe that
-//    makes frames slow again is undone and held off for 10 s, doubling each time.
-const AQ = { n: 0, sum: 0, skip: 45, wins: [], trial: null, good: 0, slow: 0, cpuHold: 0, upHold: 0, backoff: 10000, decided: false, last: 0 };
-function autoQuality(now, sim = false) {
-  if (AQ.sim && !sim) return;   // a test drives it (gfxDebug.aqStep)
+// Automatic quality ('auto'; the dynamic render scale also runs on 'low'), fed once per rendered
+// frame (at the end of renderFrame) with the frame's interval and its cost: the CPU work of the frame
+// (from its rAF timestamp, or from the end of the previous frame if that ran over, to the end of its
+// draw calls: the game's update and the render) and the GPU time of its passes
+// (EXT_disjoint_timer_query_webgl2, a few frames late). A window's figure is the 75th percentile of
+// max(CPU, GPU) per frame, but never more than the mean frame interval (the real frame rate) - so a
+// machine busy with something else (slow rAF, cheap frames) does not count as slow. Without a GPU
+// timer (Firefox, Safari) the figure is the mean interval, with the old thresholds.
+//  - Frames around known hitches are not counted: the first 3 s, 1 s after a frame interval over
+//    100 ms, a shader compile or a camera cut (> 8 m or > 30 deg in a frame), 0.2 s after a texture
+//    or geometry upload (cars' plates while driving: ~1 a second), 1 s after a resize, 2 s after the
+//    tab is shown again, and holdAutoQuality(ms) (curtains, mission starts, teleports).
+//  - Steps (~0.75 s windows): on 'auto' at the high tier 4x -> 2x MSAA first, then the render scale
+//    0.1 at a time down to 0.7 (low: 0.6). Down when a window is over 15.5 ms (intervals: 18.5); a
+//    step that did not make frames >= 5 % faster is undone and held 20 s, doubling (CPU-bound). Up
+//    (a probe) after 5 windows under 11.5 ms (intervals: 17.4), the scale first and 4x last; a probe
+//    that makes frames slow is undone and held off for 10 s, doubling.
+//  - Tier (only 'auto'): high -> low once the steps are spent (MSAA cut and the scale at its floor,
+//    or a step found CPU-bound) and the figure over the last 8-10 s at those settings is over 18.5 ms
+//    (under ~54 fps).
+//    low -> high again (only after such a drop, never on a GPU that starts low) after 30 s at full
+//    scale with high's predicted cost (low's CPU x 1.3, GPU x 1.6) <= 15 ms (without a GPU timer:
+//    only when the drop was CPU-bound, judged by the CPU time at the full frame rate). A drop within
+//    2 minutes of going back up doubles that wait and lowers the bar by what high really cost; after
+//    three such drops it stays low.
+const AQ_N = 2048, AQ_LONG = 8000, AQ_KEEP = 10000, AQ_SLOW = 18.5;
+const AQ = {
+  sim: false, last: 0, t0: 0, skip: 45, hold: 0, held: {},
+  // the steps' window (plain arrays, refilled every ~0.75 s)
+  f: { gap: [], cost: [], cpu: [], t: 0, timed: 0 },
+  // the tier's window: the last AQ_KEEP ms of counted frames at the current settings (a ring)
+  l: { gap: new Float32Array(AQ_N), cost: new Float32Array(AQ_N), cpu: new Float32Array(AQ_N), gpu: new Float32Array(AQ_N), timed: new Uint8Array(AQ_N), head: 0, n: 0, t: 0, nt: 0 },
+  trial: null, good: 0, cpuHold: 0, cpuBack: 20000, upHold: 0, backoff: 10000,
+  dropped: false, dropCpu: false, upAt: -1e9, upT: 0, goodT: 0, upNeed: 30000, upBar: 15, fails: 0,
+  gpu: 0, gpuAt: -1e9, progs: -1, tex: -1, geo: -1, cam: new Float32Array(6), camOk: false,
+  T: 0, TL: 0, PH: 0, gapM: 0, lastEnd: 0,
+};
+const _aqS = new Float32Array(AQ_N);
+// The p-th percentile of the first n values of a plain array, or of a ring (the long window).
+function aqPct(a, n, p, head = -1) {
+  if (!n) return 0;
+  if (head < 0) for (let i = 0; i < n; i++) _aqS[i] = a[i];
+  else for (let i = 0; i < n; i++) _aqS[i] = a[(head + i) % AQ_N];
+  const s = _aqS.subarray(0, n).sort();
+  return s[Math.min(n - 1, Math.floor(n * p))];
+}
+// Start counting again (settings changed): `frames` frames are skipped first.
+function aqClear(frames) {
+  const F = AQ.f, L = AQ.l;
+  F.gap.length = F.cost.length = F.cpu.length = 0; F.t = F.timed = 0;
+  L.head = L.n = L.t = L.nt = 0;
+  AQ.skip = Math.max(AQ.skip, frames);
+}
+// Frames before `now + ms` are not counted (a known hitch: a curtain, a mission start, a teleport).
+export function holdAutoQuality(ms = 1500, why = 'ext') {
+  const now = document.timeline?.currentTime ?? performance.now();
+  if (now + ms > AQ.hold) AQ.hold = now + ms;
+  AQ.held[why] = (AQ.held[why] || 0) + 1;
+}
+// What happened since the last frame that makes this one say nothing about the steady cost.
+function aqHitch(now, dt) {
+  const i = renderer.info, m = camera.matrixWorld.elements, c = AQ.cam;
+  let why = null, ms = 0;
+  if (i.programs.length !== AQ.progs) { if (AQ.progs >= 0) { why = 'compile'; ms = 1000; } AQ.progs = i.programs.length; }
+  if (i.memory.textures > AQ.tex || i.memory.geometries > AQ.geo) { if (AQ.tex >= 0 && !why) { why = 'upload'; ms = 200; } }
+  AQ.tex = i.memory.textures; AQ.geo = i.memory.geometries;
+  const dx = m[12] - c[0], dy = m[13] - c[1], dz = m[14] - c[2];
+  if (AQ.camOk && (dx * dx + dy * dy + dz * dz > 64 || -(m[8] * c[3] + m[9] * c[4] + m[10] * c[5]) < 0.866) && !why) { why = 'cut'; ms = 1000; }
+  c[0] = m[12]; c[1] = m[13]; c[2] = m[14]; c[3] = -m[8]; c[4] = -m[9]; c[5] = -m[10];
+  AQ.camOk = true;
+  if (why) { if (now + ms > AQ.hold) AQ.hold = now + ms; AQ.held[why] = (AQ.held[why] || 0) + 1; }
+}
+// `gpu`: this frame's GPU time when the timer gives one, else < 0. `sim`: a test drives it
+// (gfxDebug.aqStep), live frames are ignored meanwhile.
+function autoQuality(now, cpu, gpu, sim = false) {
+  if (AQ.sim && !sim) return;
   const dt = AQ.last ? now - AQ.last : 0;
   AQ.last = now;
-  if (QUALITY.setting === 'high' || dt <= 0) return;
-  if (AQ.skip > 0) { AQ.skip--; AQ.n = AQ.sum = 0; return; }
-  if (dt > 100 || document.hidden) return;   // hitches, tab switches
-  AQ.sum += dt; AQ.n++;
-  if (AQ.sum < 700 || AQ.n < 8) return;
-  const T = AQ.sum / AQ.n;
-  AQ.n = AQ.sum = 0;
-  const Q = QSET[QUALITY.tier];
-  if (QUALITY.setting === 'auto' && QUALITY.tier === 'high') {
-    if (!AQ.decided) {
-      AQ.wins.push(T);
-      if (AQ.wins.length >= 4) {
-        AQ.decided = true;
-        const s = [...AQ.wins].sort((a, b) => a - b), med = s[s.length >> 1];
-        if (med > 20) { QUALITY.autoTier = 'low'; QUALITY.reason = `slow (${med.toFixed(1)} ms)`; applyQuality(); return; }
-      }
-    }
-    if (QUALITY.scale <= Q.scaleMin + 1e-3 && T > 24) {
-      if (++AQ.slow >= 8) { QUALITY.autoTier = 'low'; QUALITY.reason = `slow (${T.toFixed(1)} ms)`; applyQuality(); return; }
-    } else AQ.slow = 0;
+  if (!sim) {
+    if (!AQ.t0) { AQ.t0 = now; AQ.hold = Math.max(AQ.hold, now + 3000); }
+    aqHitch(now, dt);
   }
+  if (QUALITY.setting === 'high' || dt <= 0) return;
+  if (dt > 100) { if (now + 1000 > AQ.hold) AQ.hold = now + 1000; AQ.held.gap = (AQ.held.gap || 0) + 1; }   // a long frame (GC, a long task) and the catch-up after it
+  if (AQ.skip > 0) { AQ.skip--; return; }
+  if (now < AQ.hold) return;
+  const timed = gpu >= 0, cost = timed ? Math.max(cpu, gpu) : dt;
+  const F = AQ.f, L = AQ.l;
+  F.gap.push(dt); F.cost.push(cost); F.cpu.push(cpu); F.t += dt; F.timed += timed ? 1 : 0;
+  // the long window: add, then drop the oldest beyond AQ_KEEP ms
+  { const k = (L.head + L.n) % AQ_N;
+    if (L.n === AQ_N) { L.t -= L.gap[L.head]; L.nt -= L.timed[L.head]; L.head = (L.head + 1) % AQ_N; L.n--; }
+    L.gap[k] = dt; L.cost[k] = cost; L.cpu[k] = cpu; L.gpu[k] = timed ? gpu : 0; L.timed[k] = timed ? 1 : 0; L.n++; L.t += dt; L.nt += timed ? 1 : 0;
+    while (L.n > 1 && L.t - L.gap[L.head] >= AQ_KEEP) { L.t -= L.gap[L.head]; L.nt -= L.timed[L.head]; L.head = (L.head + 1) % AQ_N; L.n--; } }
+  if (F.t < 750 || F.gap.length < 8) return;
+  const n = F.gap.length, fTimed = F.timed * 2 >= n, winT = F.t, gapM = F.t / n;
+  const T = fTimed ? Math.min(aqPct(F.cost, n, 0.75), gapM) : gapM;
+  F.gap.length = F.cost.length = F.cpu.length = 0; F.t = F.timed = 0;
+  AQ.T = T;
+  const DOWN = fTimed ? 15.5 : 18.5, UP = fTimed ? 11.5 : 17.4;
+  const Q = QSET[QUALITY.tier];
+  const msaaStep = QUALITY.dyn && QUALITY.setting === 'auto' && QUALITY.tier === 'high' && Q.msaa > 2;
+  if (QUALITY.setting === 'auto' && !AQ.trial && aqTier(now, winT, msaaStep)) return;
   if (!QUALITY.dyn) return;
   // Steps: on 'auto' at the high tier, 4x -> 2x MSAA comes first (fill-bound at high resolutions it
   // is 8-15 % of the frame), then the render scale. A step is a trial: undone if it did not help.
-  const setScale = (s) => { QUALITY.scale = Math.round(Math.max(Q.scaleMin, Math.min(1, s)) * 10) / 10; onResize(); AQ.skip = 12; };
-  const setCut = (on) => { QUALITY.msaaCut = on; applyMsaa(); AQ.skip = 12; };
+  const setScale = (s) => { QUALITY.scale = Math.round(Math.max(Q.scaleMin, Math.min(1, s)) * 10) / 10; onResize(); aqClear(12); };
+  const setCut = (on) => { QUALITY.msaaCut = on; applyMsaa(); aqClear(12); };
   const set = (tr, v) => (tr.msaa ? setCut(v) : setScale(v));
-  const msaaStep = QUALITY.setting === 'auto' && QUALITY.tier === 'high' && Q.msaa > 2;
   if (AQ.trial) {
     const tr = AQ.trial;
     AQ.trial = null;
-    if (tr.dir < 0 && T > tr.T * 0.95) { set(tr, tr.prev); AQ.cpuHold = now + 20000; }
-    else if (tr.dir > 0 && T > 18.5) { set(tr, tr.prev); AQ.upHold = now + AQ.backoff; AQ.backoff = Math.min(AQ.backoff * 2, 160000); }
+    // (a step down that did not help: CPU-bound - undone, and no step down until cpuHold)
+    if (tr.dir < 0 && T > tr.T * 0.95) { set(tr, tr.prev); AQ.cpuHold = now + AQ.cpuBack; AQ.cpuBack = Math.min(AQ.cpuBack * 2, 160000); }
+    else if (tr.dir < 0) AQ.cpuBack = 20000;
+    else if (tr.dir > 0 && T > DOWN) { set(tr, tr.prev); AQ.upHold = now + AQ.backoff; AQ.backoff = Math.min(AQ.backoff * 2, 160000); }
     else if (tr.dir > 0) AQ.backoff = 10000;
     return;
   }
-  if (T > 18.5) {
+  if (T > DOWN) {
     AQ.good = 0;
     if (now <= AQ.cpuHold) return;
     if (msaaStep && !QUALITY.msaaCut) { AQ.trial = { dir: -1, T, msaa: true, prev: false }; setCut(true); }
     else if (QUALITY.scale > Q.scaleMin + 1e-3) { AQ.trial = { dir: -1, T, prev: QUALITY.scale }; setScale(QUALITY.scale - 0.1); }
-  } else if (T < 17.4) {
+  } else if (T < UP) {
     if (++AQ.good < 5 || now <= AQ.upHold) return;
     if (QUALITY.scale < 1) { AQ.good = 0; AQ.trial = { dir: 1, T, prev: QUALITY.scale }; setScale(QUALITY.scale + 0.1); }
     else if (msaaStep && QUALITY.msaaCut && !QUALITY.laptop) { AQ.good = 0; AQ.trial = { dir: 1, T, msaa: true, prev: true }; setCut(false); }
   } else AQ.good = 0;
+}
+// The tier, on the long window (true when it switched).
+function aqTier(now, winT, msaaStep) {
+  const L = AQ.l;
+  if (L.t < AQ_LONG) { AQ.goodT = 0; return false; }
+  const timed = L.nt * 2 >= L.n, gapM = L.t / L.n;
+  const TL = timed ? Math.min(aqPct(L.cost, L.n, 0.75, L.head), gapM) : gapM;
+  AQ.TL = TL; AQ.gapM = gapM;
+  if (QUALITY.tier === 'high') {
+    AQ.goodT = 0;
+    const cpuBound = now <= AQ.cpuHold;
+    const spent = cpuBound || ((!msaaStep || QUALITY.msaaCut) && (!QUALITY.dyn || QUALITY.scale <= QSET.high.scaleMin + 1e-3));
+    if (TL <= AQ_SLOW || !spent) return false;
+    if (now - AQ.upAt < 120000) {
+      // it went back up and was too slow again: wait longer, and the bar is what high really cost
+      AQ.fails++; AQ.upNeed *= 2;
+      AQ.upBar = Math.max(5, Math.min(AQ.upBar, AQ.upT * 15 / TL));
+    }
+    AQ.dropped = true; AQ.dropCpu = cpuBound;
+    QUALITY.autoTier = 'low'; QUALITY.reason = `slow (${TL.toFixed(1)} ms)`;
+    applyQuality();
+    return true;
+  }
+  if (!AQ.dropped || AQ.fails >= 3) return false;
+  // What high would cost: low saves ~25 % of the CPU time and ~40 % of the GPU time (phase 4 round 2
+  // measurements: 4x throttle 17.4 vs 22.5 ms; fill-bound GPU 0.60-0.66x). Without a GPU timer only
+  // a CPU-bound drop can be judged, by the CPU time while every frame comes at the display's rate.
+  const cpuP = aqPct(L.cpu, L.n, 0.75, L.head);
+  const upT = timed ? Math.max(cpuP * 1.3, aqPct(L.gpu, L.n, 0.75, L.head) * 1.6) : AQ.dropCpu && gapM <= 17.4 ? cpuP * 1.3 : Infinity;
+  AQ.PH = upT;
+  if (upT > AQ.upBar || QUALITY.scale < 1 - 1e-3) { AQ.goodT = 0; return false; }
+  AQ.goodT += winT;
+  if (AQ.goodT < AQ.upNeed) return false;
+  AQ.goodT = 0; AQ.upAt = now; AQ.upT = upT; AQ.cpuHold = 0; AQ.cpuBack = 20000;
+  QUALITY.msaaCut = true;   // back at 2x: the probe restores 4x when there is room
+  QUALITY.autoTier = 'high'; QUALITY.reason = 'recovered';
+  applyQuality();
+  return true;
 }
 
 // Snow cover on upward faces, 0..1 (1 = the default first-snow look).
@@ -2027,12 +2138,35 @@ function renderAO() {
 // For test scenarios (render.mjs rprog): the renderer's own per-kind materials.
 export const gfxDebug = {
   kinds: () => ({ names: KIND_NAMES, PRE, DEPTH, NORMAL }),
-  // the automatic quality, fed with simulated frame times (render.mjs rautosim)
+  // the automatic quality, fed with simulated frames (render.mjs rautosim): aqSim(true) starts from
+  // the GPU class's tier at full scale with the dynamic scale on (aqSim(false) restores it);
+  // aqStep(now, { cpu, gpu }) is one frame (no cpu / gpu: the interval alone, as without a GPU
+  // timer); aqReset() starts the live measuring again from scratch (rautolive), aqState() is what
+  // it sees.
   aqSim(on) {
-    if (on) { QUALITY.scale = 1; QUALITY.msaaCut = QUALITY.laptop; QUALITY.autoTier = QUALITY.integrated || QUALITY.weak ? 'low' : 'high'; applyQuality(); }
-    AQ.sim = on; AQ.last = 0; AQ.skip = 0; AQ.n = AQ.sum = 0; AQ.wins = []; AQ.decided = false; AQ.trial = null; AQ.good = AQ.slow = 0; AQ.cpuHold = AQ.upHold = 0; },
-  aqStep: (now) => autoQuality(now, true),
+    if (on && AQ.dyn0 === undefined) { AQ.dyn0 = QUALITY.dyn; QUALITY.dyn = true; }
+    if (!on && AQ.dyn0 !== undefined) { QUALITY.dyn = AQ.dyn0; AQ.dyn0 = undefined; }
+    aqReset(on);
+    AQ.sim = on;
+  },
+  aqStep: (now, c = {}) => autoQuality(now, c.cpu ?? 0, c.gpu ?? -1, true),
+  aqReset: () => aqReset(false),
+  aqState: () => {
+    const L = AQ.l, p = (a, q) => +aqPct(a, L.n, q, L.head).toFixed(1);
+    return { T: +AQ.T.toFixed(1), TL: +AQ.TL.toFixed(1), PH: +(AQ.PH || 0).toFixed(1), long: L.n ? { cpu50: p(L.cpu, 0.5), cpu75: p(L.cpu, 0.75), gpu75: p(L.gpu, 0.75), cost75: p(L.cost, 0.75), gapMean: +(L.t / L.n).toFixed(1), gap75: p(L.gap, 0.75) } : null, win: +(AQ.l.t / 1000).toFixed(1), gpu: +AQ.gpu.toFixed(1), timed: performance.now() - AQ.gpuAt < 500, trial: !!AQ.trial, cpuHold: AQ.cpuHold > (document.timeline?.currentTime ?? 0), dropped: AQ.dropped, goodT: +(AQ.goodT / 1000).toFixed(1), fails: AQ.fails, held: { ...AQ.held } };
+  },
 };
+// Back to the start of measuring: the GPU class's tier at full scale, nothing learned. `sim`: no
+// start-up hold (a test feeds the frames).
+function aqReset(sim) {
+  QUALITY.scale = 1; QUALITY.msaaCut = QUALITY.laptop; QUALITY.autoTier = QUALITY.integrated || QUALITY.weak ? 'low' : 'high';
+  if (QUALITY.setting === 'auto') QUALITY.reason = QUALITY.weak ? 'weak GPU' : QUALITY.integrated ? 'integrated GPU' : QUALITY.laptop ? 'laptop GPU' : 'default';
+  applyQuality();
+  Object.assign(AQ, { last: 0, t0: sim ? 1 : 0, skip: 0, hold: 0, held: {}, trial: null, good: 0, cpuHold: 0, cpuBack: 20000, upHold: 0, backoff: 10000,
+    dropped: false, dropCpu: false, upAt: -1e9, upT: 0, goodT: 0, upNeed: 30000, upBar: 15, fails: 0, T: 0, TL: 0, PH: 0 });
+  aqClear(0);
+  AQ.skip = 0;
+}
 export function sceneDepthTexture() { return QSET[QUALITY.tier].ao && gtao ? gtao.depthTexture : null; }
 export function sceneDepthRange() { return depthRange; }
 
@@ -2247,6 +2381,8 @@ export function makeStatic(root, { freeArrays = true } = {}) {
 // programs) and the frame count.
 export const gfxStats = { ms: 0, aoCalls: 0, calls: 0, tris: 0, pass: { shadow: [0, 0], ao: [0, 0], main: [0, 0] }, cpu: { matrices: 0, pre: 0, main: 0 }, gpuMs: 0, first: null, frames: 0 };
 const _sh = { calls: 0, tris: 0 };
+// The GPU timer (EXT_disjoint_timer_query_webgl2): on 'auto' and 'low' (the automatic quality's
+// frame cost) and with `&gputime` (tests); `&nogputimer` turns it off (the intervals-only fallback).
 let gpuT = null;
 function statsInit() {
   const smr = renderer.shadowMap.render;
@@ -2255,22 +2391,28 @@ function statsInit() {
     smr.call(this, l, s, c);
     _sh.calls += i.calls - c0; _sh.tris += i.triangles - t0;
   };
-  if (PARAMS.has('gputime')) {
+  if (!PARAMS.has('nogputimer')) {
     const gl = renderer.getContext(), ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
-    if (ext) gpuT = { gl, ext, pending: [], q: null };
+    if (ext) gpuT = { gl, ext, pending: [], free: [], q: null, hist: PARAMS.has('gputime') };
   }
 }
 function gpuBegin() {
-  if (!gpuT) return;
+  if (!gpuT || !(gpuT.hist || QUALITY.setting !== 'high')) return;
   const { gl, ext } = gpuT;
-  for (let k = gpuT.pending.length - 1; k >= 0; k--) {
-    const q = gpuT.pending[k];
-    if (gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) {
-      if (!gl.getParameter(ext.GPU_DISJOINT_EXT)) { const ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; gfxStats.gpuMs = ms; (gfxStats.gpuHist ??= []).push(ms); if (gfxStats.gpuHist.length > 2000) gfxStats.gpuHist.shift(); }
-      gl.deleteQuery(q); gpuT.pending.splice(k, 1);
+  // results arrive in order, a few frames late; a disjoint event (power state, another context)
+  // spoils the ones being collected
+  const spoilt = gpuT.pending.length && gl.getParameter(ext.GPU_DISJOINT_EXT);
+  while (gpuT.pending.length && gl.getQueryParameter(gpuT.pending[0], gl.QUERY_RESULT_AVAILABLE)) {
+    const q = gpuT.pending.shift();
+    if (!spoilt) {
+      const ms = gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6;
+      gfxStats.gpuMs = AQ.gpu = ms; AQ.gpuAt = performance.now();
+      if (gpuT.hist) { (gfxStats.gpuHist ??= []).push(ms); if (gfxStats.gpuHist.length > 2000) gfxStats.gpuHist.shift(); }
     }
+    gpuT.free.push(q);
   }
-  gpuT.q = gl.createQuery();
+  if (gpuT.pending.length > 6) return;   // results stopped coming for now: don't pile up queries
+  gpuT.q = gpuT.free.pop() || gl.createQuery();
   gl.beginQuery(ext.TIME_ELAPSED_EXT, gpuT.q);
 }
 function gpuEnd() {
@@ -2290,7 +2432,8 @@ export function renderFrame() {
     // did: then only what was added since is left, and it compiles as it is drawn).
     if (!precompiled) precompile(scene, { warm: false });
   }
-  autoQuality(document.timeline?.currentTime ?? t0);
+  // the frame's start: its rAF timestamp (the game's update ran since then)
+  const fs = document.timeline?.currentTime ?? t0;
   renderer.info.reset();
   _sh.calls = _sh.tris = 0;
   gpuBegin();
@@ -2325,6 +2468,11 @@ export function renderFrame() {
   gfxStats.frames++;
   gfxStats.ms += (dt - gfxStats.ms) * 0.05;
   gfxStats.last = dt;
+  // the frame's CPU work: from its rAF timestamp, or from the end of the previous frame when that ran
+  // past it (else a frame that overran would count again in the next one)
+  const tEnd = performance.now(), work = tEnd - Math.max(Math.min(fs, t0), AQ.lastEnd);
+  AQ.lastEnd = tEnd;
+  autoQuality(fs, Math.max(0, work), tEnd - AQ.gpuAt < 500 ? AQ.gpu : -1);
 }
 
 // ---------------------------------------------------------------------------------------------

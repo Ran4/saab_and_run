@@ -1,8 +1,85 @@
-# Rendering — notes (phase 4, round 2 on top of round 6)
+# Rendering — notes (phase 4, round 2b on top of round 2 and round 6)
 
 Owner of `src/gfx.js`, `src/game/fx.js`, `src/game/markers.js`, `src/world/town.js` (build
 orchestration) and `src/world/batch.js`. The contract is DESIGN.md section 10; this file says what
-changed, why, and the numbers. Phase 4 round 2 first; round 6 (the earlier pass) below it.
+changed, why, and the numbers. Newest first: phase 4 round 2b, round 2, then round 6.
+
+## Phase 4, round 2b (the final verification's polish)
+
+### 1. 'auto' fell to low for good after one bad moment - fixed
+- **Cause:** the first-seconds rule. After a 45-frame warm-up, the median of 4 windows of 0.7 s
+  (about 3 s) of *mean rAF intervals* over 20 ms dropped 'auto' to low once and for good: nothing
+  ever went back up. Whatever was slow in those 3 s decided the session: a busy machine, the day-1
+  intro of a test run, a GC. Reproduced with `rautolive RBURST=0:2.5:4` (a 2.5 s 4x CPU-throttle
+  burst at the start): 'slow (21.9 ms)', low for good while frames were back at 16.7 ms a second
+  later (`out/r2b/r2b_burst_before_after.png`, left = before, right = now).
+- **What it measures now** (autoQuality, gfx.js): per frame the CPU work (from the rAF timestamp,
+  or from the end of the previous frame when that ran past it, to the end of renderFrame: the
+  game's update + the render) and the GPU time (EXT_disjoint_timer_query_webgl2, a small query pool,
+  results a few frames late; on 'auto' and 'low' only). A window's figure is the 75th percentile of
+  max(CPU, GPU), capped by the mean frame interval, so a machine busy with something else (slow
+  frames, cheap work) does not count as slow. Without the timer (Firefox, Safari; `&nogputimer`) it
+  is the mean interval with the old thresholds. On this machine, high at 720p: 5.5-10 ms (CPU
+  bound; GPU 2-7 ms). A first version measured from the rAF timestamp alone: when a frame ran over,
+  the next one counted the overrun again, and the p75 of vsync-quantized intervals (16.7 / 33.3)
+  flipped between the two values at 45-50 fps - both replaced (CPU work, mean interval).
+- **Not counted** (held): the first 3 s; 1 s after a frame interval over 100 ms, a shader compile
+  (`info.programs` changed), a camera cut (> 8 m or > 30 deg in a frame) or a resize; 0.2 s after an
+  upload (`info.memory` textures / geometries up: cars' plates while driving, ~1 a second, so
+  short); 2 s after the tab is shown again; and `holdAutoQuality(ms, why)` (new export).
+- **Steps** (~0.75 s windows, as before): 4x -> 2x MSAA on high, then the render scale; a step that
+  did not make frames >= 5 % faster is undone (CPU-bound) and held 20 s, now doubling to 160 s.
+  Thresholds 15.5 ms down / 11.5 ms for a probe up on the cost (18.5 / 17.4 ms of interval without
+  the timer).
+- **Tier down** only when the steps are spent (2x and the scale at its floor, or a step found
+  CPU-bound within its hold) and the last 8-10 s *at those settings* cost over **18.5 ms** (under
+  ~54 fps). Not 20: with the new figure a 4x-throttled run measured 18.6-20 ms (53 fps in the
+  intro), right on the old line; 18.5 keeps that guarantee and is the old step threshold.
+- **Tier up** (new): only after such a drop (never on a GPU that starts low), after 30 s at full
+  scale with high's predicted cost - low's CPU x 1.3 and GPU x 1.6, the measured tier ratios (4x
+  throttle 17.4 vs 22.5 ms; fill-bound GPU 0.60-0.66x) - at most 15 ms; it comes back at 2x
+  ('recovered') and the probe restores 4x. A drop within 2 minutes of that doubles the wait and
+  lowers the bar by predicted / actual; after three it stays low. Without the timer only a
+  CPU-bound drop can come back (CPU work x 1.3 while every frame comes at the display rate).
+- **rautosim** (simulated frames, 15 cases, all as expected): a single 300 ms frame changes
+  nothing; 2.5 s of 40 ms frames at the start or 5 s at 20 s: a 2x step tried and undone, stays
+  high; sustained 25 fps (CPU 40 ms): low at 11 s (also without the timer); GPU 60 ms: 2x, scale
+  0.9 / 0.8 / 0.7, low at 16 s; recovery: 40 ms for 20 s then 9 ms -> low at 11 s, high at 56 s,
+  4x at 57 s (no timer: 59 s); CPU high 24 / low 18.5 and GPU high 70 / low 30 for 5 min: one drop,
+  never back; CPU high 22 / low 10.5 (worst case for the prediction) for 10 min: one retry, then
+  low; and the old ones (GPU 20.5 ms -> 2x; GPU 16 ms -> nothing; CPU 19.5 ms -> 2x undone, now low
+  at 10 s since 19.5 > 18.5).
+- **rautolive** (new, live, test mode on 'auto' with the dynamic scale, through day 1's intro;
+  `RBURST`, `RTHROTTLE`, `RHITCH`, `RDRIVE`, `RWANT`, `RSHOT`): the 2.5 s burst at the start + a
+  300 ms main-thread block at 20 s: high throughout; 4x throttle for the whole run: low at 17 s
+  ('slow (23.4 ms)', earlier run 14 s) and stays (predicted high 23 ms); 4x for the first 20 s:
+  low at 17 s, back to high at 60 s, 4x at 65 s; spoofed Iris Xe (`&gpu=`): low from the start
+  and for 50 s; `&nogputimer`: the burst stays high, 4x throttle -> low at 20 s; 40 s of AI
+  driving: high, 'upload' holds ~1 a second, the long window still full.
+
+### 2. 'Tar porträtt' is one long task - not in my files; measured fix for main.js
+- The step is one 685-1056 ms task (RPROD rload). Profile: renderPortrait 554 ms, nearly all the
+  cast's faces baked on their first draw inside it (faceDetail, G2, vnoise, faceBake; readPixels +
+  toDataURL ~35 ms); uploadGeometry ~40 and precompile's synchronous part ~70 ms are gfx.js',
+  warmCars' synchronous part the rest. Nothing in gfx.js is worth splitting.
+- **main.js (gameplay_ui):** yield between the portraits, with `nextTask` from gfx.js:
+  `await nextTask();` after `const wc = warmCars(...)`, and
+  `for (const key of Object.keys(HOMES)) { hud.portraits[key] = renderPortrait(renderer, this.npcs[key].model); await nextTask(); }`.
+  Measured with that patch in my copy (then reverted), 3 loads each: the longest task in the step
+  685-1056 -> 189-315 ms (each portrait is now its own < 50-80 ms task), the step's length the same
+  within noise (1.01-1.40 s vs 1.06-1.42 s). Safe: renderPortrait restores the render target, clear
+  colour, shadow flag and the model's parent and pose, so precompile's warm frame may run between
+  two portraits.
+
+### API changes others must know
+- New export `holdAutoQuality(ms = 1500, why)`: frames until then do not count for 'auto'.
+  Optional for main.js (gameplay_ui): `holdAutoQuality(2000, 'curtain')` when `hud.curtain` goes on
+  or off and at a mission's begin / retry / outro (camera cuts, compiles and uploads are detected
+  without it).
+- `qualityInfo().reason` can be 'recovered'. `gfxStats.gpuMs` is filled on 'auto' / 'low' too (the
+  timer runs there); `gfxStats.gpuHist` still only with `&gputime`. `&nogputimer` = no GPU timer.
+- Tests: `gfxDebug.aqStep(now, { cpu, gpu })` (no cpu / gpu = intervals only), `aqSim(on)` (turns
+  the dynamic scale on for the simulation), `aqReset()`, `aqState()`.
 
 ## Phase 4, round 2 (the whole-game review's rendering list)
 

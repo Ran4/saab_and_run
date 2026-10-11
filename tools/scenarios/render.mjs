@@ -129,7 +129,7 @@ export default (helpers) => {
         if (r0.first?.newPrograms?.length) await ev((l) => console.error('rload: the first frame compiled programs: ' + l), JSON.stringify(r0.first.newPrograms));
         const done = r0.phases.find((p) => p[2] === 'done');
         console.log(`[t] rload#${k} first ${JSON.stringify(r0.first)} warm ${JSON.stringify(r0.warm)} tt ${JSON.stringify(r0.tt)} town ${JSON.stringify(r0.town)} maxLong ${maxLong} ready ${done ? done[0] : '?'}`);
-        console.log(`[t] rload#${k} long ${JSON.stringify(r0.long)} phases ${JSON.stringify(r0.phases.map((p) => [p[0], p[1].slice(0, 14), p[2]]))} gaps ${JSON.stringify(r0.gaps.filter((g) => g[1] > 90))}`);
+        console.log(`[t] rload#${k} long ${JSON.stringify(r0.long)} phases ${JSON.stringify(r0.phases.filter((p, i, a) => !i || p[1].slice(0, 12) !== a[i - 1][1].slice(0, 12) || p[2]).map((p) => [p[0], p[1].slice(0, 14), p[2]]))} gaps ${JSON.stringify(r0.gaps.filter((g) => g[1] > 90))}`);
         runs.push({ first: r0.first?.ms ?? 0, firstMain: r0.first?.main ?? 0, town: r0.town.buildMs, maxLong, ready: done ? done[0] : 0 });
       }
       if (NL > 1) {
@@ -366,35 +366,128 @@ export default (helpers) => {
       try { await (await import('./story.mjs')).default(helpers).story(); } finally { alive = false; clearInterval(tick); }
     },
 
-    // the automatic quality's steps with simulated frame times (QUERY='&q=auto&dynscale'): a GPU-bound
-    // model (time ~ samples and scale^2), and a CPU-bound one (steps do nothing: undone and held)
+    // the automatic quality on simulated frames (any URL: the simulation turns the dynamic scale on). Per frame: CPU time by
+    // tier, GPU time by tier x MSAA (4x 1, 2x 0.86) x scale^2, the interval = max of the two (rounded
+    // up to 60 Hz vsync with `vsync`); `timer`: the GPU time is reported (else intervals only).
+    // `phases`: [[from s, cpu [high, low], gpu [high, low]], ...]; `hitch`: [at s, ms] one long frame.
     async rautosim() {
       const r = await ev(async () => {
         const g = await import('/src/gfx.js'), D = g.gfxDebug;
-        const run = (label, base, gpuBound, n = 900) => {
+        const run = (label, { phases, secs = 40, timer = true, vsync = true, hitch = null }) => {
           g.setQuality('auto');
           D.aqSim(true);
-          const seq = []; let now = 1e6, prev = '';
-          for (let k = 0; k < n; k++) {
-            const i = g.qualityInfo();
-            const T = gpuBound ? base * (i.msaa >= 4 ? 1 : i.msaa === 2 ? 0.86 : 0.75) * i.scale * i.scale : base;
-            now += T; D.aqStep(now);
+          const seq = []; let now = 1e6, prev = '', tiers = 0, lowAt = null, prevTier = 'high', hitDone = false;
+          while (now - 1e6 < secs * 1000) {
+            const t = (now - 1e6) / 1000, ph = [...phases].reverse().find((p) => t >= p[0]);
+            const i = g.qualityInfo(), k = i.tier === 'high' ? 0 : 1;
+            const cpu = ph[1][k], gpu = ph[2][k] * (k ? 1 : i.msaa >= 4 ? 1 : 0.86) * i.scale * i.scale;
+            let gap = Math.max(cpu, gpu), c = cpu;
+            if (vsync) gap = Math.ceil(gap / 16.667 - 1e-3) * 16.667;
+            if (hitch && !hitDone && t >= hitch[0]) { hitDone = true; gap = c = hitch[1]; }
+            now += gap;
+            D.aqStep(now, timer ? { cpu: c, gpu } : { cpu: c });
             const j = g.qualityInfo(), st = `${j.tier}/x${j.msaa}/s${j.scale}`;
             if (st !== prev) { seq.push(`${(now / 1000 - 1000).toFixed(1)}s ${st}`); prev = st; }
+            if (j.tier !== prevTier) { tiers++; prevTier = j.tier; if (j.tier === 'low' && lowAt === null) lowAt = +(now / 1000 - 1000).toFixed(1); }
           }
           D.aqSim(false);
-          return `${label}: ${seq.join(' -> ')}`;
+          return { label, seq: seq.join(' -> '), end: prev, tiers, lowAt };
         };
-        const out = [run('gpu 20.5 ms', 20.5, true), run('gpu 24 ms', 24, true), run('cpu 19.5 ms', 19.5, false), run('gpu 16 ms', 16, true)];
+        const fast = [[0, [9, 8], [5, 3]]];
+        const out = [
+          // the old cases (intervals only, no vsync)
+          run('gpu 20.5 ms', { phases: [[0, [5, 5], [20.5, 12]]], timer: false, vsync: false, secs: 20 }),
+          run('cpu 19.5 ms', { phases: [[0, [19.5, 15], [5, 3]]], timer: false, vsync: false, secs: 30 }),
+          run('cpu 18 ms', { phases: [[0, [18, 14], [5, 3]]], secs: 40 }),
+          run('gpu 16 ms', { phases: [[0, [5, 5], [16, 10]]], timer: false, vsync: false, secs: 20 }),
+          // phase 4 round 2b
+          run('hitch 300 ms', { phases: fast, hitch: [5, 300], secs: 60 }),
+          run('burst 0.5-3 s', { phases: [[0, [9, 8], [5, 3]], [0.5, [40, 34], [8, 5]], [3, [9, 8], [5, 3]]], secs: 60 }),
+          run('burst 20-25 s', { phases: [[0, [9, 8], [5, 3]], [20, [45, 38], [8, 5]], [25, [9, 8], [5, 3]]], secs: 60 }),
+          run('cpu 40 ms', { phases: [[0, [40, 30], [6, 4]]], secs: 40 }),
+          run('cpu 40 ms, no timer', { phases: [[0, [40, 30], [6, 4]]], timer: false, secs: 40 }),
+          run('gpu 60 ms', { phases: [[0, [8, 7], [60, 30]]], secs: 40 }),
+          run('recovery', { phases: [[0, [40, 30], [6, 4]], [20, [9, 8], [5, 3]]], secs: 120 }),
+          run('recovery, no timer', { phases: [[0, [40, 30], [6, 4]], [20, [9, 8], [5, 3]]], timer: false, secs: 120 }),
+          // CPU-bound, low ~0.77x high's CPU (measured 0.77 at 4x throttle); GPU-bound, low 0.6x
+          run('cpu high 24 / low 18.5', { phases: [[0, [24, 18.5], [5, 3]]], secs: 300 }),
+          run('gpu high 70 / low 30', { phases: [[0, [8, 7], [70, 30]]], secs: 300 }),
+          // low far cheaper than high (a worst case for the prediction): one retry at most
+          run('cpu high 22 / low 10.5', { phases: [[0, [22, 10.5], [5, 3]]], secs: 600 }),
+        ];
         g.setQuality('high');
         return out;
       });
-      for (const l of r) console.log('[t] rautosim', l);
-      // GPU-bound a little over budget: 2x MSAA first, nothing else; CPU-bound: the step is undone;
-      // under budget: nothing moves
-      const want = [/^gpu 20\.5 ms: 0\.0s high\/x4\/s1 -> [\d.]+s high\/x2\/s1$/, /x2\/s0\.9/, /^cpu 19\.5 ms: .*-> [\d.]+s high\/x4\/s1$/, /^gpu 16 ms: 0\.0s high\/x4\/s1$/];
-      const bad = want.map((re, i) => (re.test(r[i]) ? null : r[i])).filter(Boolean);
+      for (const x of r) console.log('[t] rautosim', `${x.label}: ${x.seq}  [tier changes ${x.tiers}, low at ${x.lowAt}]`);
+      const R = Object.fromEntries(r.map((x) => [x.label, x]));
+      const must = [
+        ['gpu 20.5 ms', (x) => /^0\.0s high\/x4\/s1 -> [\d.]+s high\/x2\/s1$/.test(x.seq), '2x MSAA, nothing else'],
+        ['cpu 19.5 ms', (x) => /^0\.0s high\/x4\/s1 -> [\d.]+s high\/x2\/s1 -> [\d.]+s high\/x4\/s1 -> [\d.]+s low\/x0\/s1$/.test(x.seq) && x.lowAt > 8, 'a 2x step tried and undone (CPU-bound), then low after 8 s'],
+        ['cpu 18 ms', (x) => /high\/x2\/s1/.test(x.seq) && x.end === 'high/x4/s1' && !x.tiers, 'a 2x step tried and undone, stays high (18 ms is not slow)'],
+        ['gpu 16 ms', (x) => x.seq === '0.0s high/x4/s1', 'nothing moves'],
+        ['hitch 300 ms', (x) => x.seq === '0.0s high/x4/s1', 'a single 300 ms frame changes nothing'],
+        ['burst 0.5-3 s', (x) => x.end === 'high/x4/s1' && !x.tiers, 'a 2.5 s slow stretch at the start: stays high'],
+        ['burst 20-25 s', (x) => x.end === 'high/x4/s1' && !x.tiers, 'a 5 s slow stretch later: stays high'],
+        ['cpu 40 ms', (x) => x.end.startsWith('low') && x.tiers === 1 && x.lowAt < 16, 'sustained 25 fps drops to low (< 16 s)'],
+        ['cpu 40 ms, no timer', (x) => x.end.startsWith('low') && x.tiers === 1 && x.lowAt < 16, 'the same without a GPU timer'],
+        ['gpu 60 ms', (x) => /high\/x2\/s0\.7/.test(x.seq) && x.end.startsWith('low') && x.tiers === 1, '2x, the scale to 0.7, then low'],
+        ['recovery', (x) => x.tiers === 2 && x.end === 'high/x4/s1', 'low, then back to high (4x) after good frames'],
+        ['recovery, no timer', (x) => x.tiers === 2 && x.end.startsWith('high'), 'the same without a GPU timer (a CPU-bound drop)'],
+        ['cpu high 24 / low 18.5', (x) => x.tiers === 1 && x.end.startsWith('low'), 'drops once, never back up (no oscillation)'],
+        ['gpu high 70 / low 30', (x) => x.tiers === 1 && x.end.startsWith('low'), 'drops once, never back up (no oscillation)'],
+        ['cpu high 22 / low 10.5', (x) => x.tiers <= 3 && x.end.startsWith('low'), 'one retry at most, then stays low'],
+      ];
+      const bad = must.filter(([l, f]) => !R[l] || !f(R[l])).map(([l, , w]) => `${l} (${w}): ${R[l]?.seq}`);
       if (bad.length) await ev((b) => console.error('rautosim: unexpected steps: ' + b), JSON.stringify(bad));
+      else console.log(`[t] rautosim all ${must.length} cases as expected`);
+    },
+
+    // the automatic quality live, through day 1's intro (test mode on 'auto' with the dynamic scale):
+    // a line a second with the tier / MSAA / scale, the frame gaps of that second and the mission
+    // state. RSEC=n seconds (40), RINTRO=s when missions.begin() is called (2; -1 = never),
+    // RBURST='t:dur:rate,...' CPU-throttle bursts (CDP) from t s for dur s (a shared machine's hitch),
+    // RTHROTTLE=n the whole run throttled n x, RHITCH='s:ms' one main-thread block of ms in a frame at
+    // s, RDRIVE=1 an AI drives Ove's Saab (use with RINTRO=-1). RWANT=high|low: the tier it must end
+    // on; RSHOT=name: a screenshot at the end.
+    async rautolive() {
+      const cdp = await page.target().createCDPSession();
+      await ev(async () => { const g = await import('/src/gfx.js'); g.setQuality('auto'); g.gfxDebug.aqReset?.(); });
+      const thr = +(process.env.RTHROTTLE || 0);
+      if (thr > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: thr });
+      await ev(() => { window.__gaps = []; let l = 0; const f = (t) => { if (l) window.__gaps.push(t - l); l = t; requestAnimationFrame(f); }; requestAnimationFrame(f); });
+      if (process.env.RDRIVE) {
+        // an AI chauffeur drives Ove's Saab round town (cars spawn, things come into view)
+        await ev(() => { const g = __game; g.enterCar(g.named.saab); });
+        await frames(3);
+        await ev(async () => { const g = __game, c = g.playerCar; c.place(30, -40 + 2.75, Math.PI / 2); g.cam.yaw = Math.PI / 2; g.cam.snapNext = true; const { AIDriver } = await import('/src/actors/drivers.js'); c.ai = new AIDriver(c, { mode: 'traffic', cruise: 16, avoid: true }); });
+      }
+      const T = +(process.env.RSEC || 40), intro = +(process.env.RINTRO ?? 2), hitch = process.env.RHITCH ? process.env.RHITCH.split(':').map(Number) : null;
+      const timers = [];
+      for (const b of (process.env.RBURST || '').split(',').filter(Boolean)) {
+        const [t, d, rate] = b.split(':').map(Number);
+        timers.push(setTimeout(() => cdp.send('Emulation.setCPUThrottlingRate', { rate: rate || 4 }).then(() => console.log(`[t] burst x${rate || 4} on at ${t}s`)).catch(() => {}), t * 1000));
+        timers.push(setTimeout(() => cdp.send('Emulation.setCPUThrottlingRate', { rate: thr > 1 ? thr : 1 }).then(() => console.log(`[t] burst off at ${t + d}s`)).catch(() => {}), (t + d) * 1000));
+      }
+      const t0 = Date.now();
+      let begun = intro < 0, last = '';
+      for (let s = 1; s <= T; s++) {
+        await sleep(Math.max(0, t0 + s * 1000 - Date.now()));
+        if (!begun && s >= intro) { begun = true; await ev(() => { __game.missions.begin(); }); }
+        if (hitch && s === hitch[0]) await ev((ms) => { requestAnimationFrame(() => { const t = performance.now(); while (performance.now() - t < ms); }); console.log(`[t] hitch ${ms} ms`); }, hitch[1]);
+        const r = await ev(async () => {
+          const g = await import('/src/gfx.js'), i = g.qualityInfo(), a = window.__gaps.splice(0), m = window.__game.missions;
+          const s = [...a].sort((x, y) => x - y), q = (p) => (s.length ? +s[Math.min(s.length - 1, Math.floor(s.length * p))].toFixed(1) : 0);
+          const f = window.__frame, df = f - (window.__lf || f); window.__lf = f;
+          return { st: `${i.tier}/x${i.msaa}/s${i.scale}`, reason: i.reason, n: a.length, df, p50: q(0.5), p95: q(0.95), max: q(1), ms: m.state, aq: g.gfxDebug.aqState?.() };
+        });
+        console.log('[t] rautolive', `${s}s ${r.st} (${r.reason}) frames ${r.n}/${r.df} gap p50 ${r.p50} p95 ${r.p95} max ${r.max} mission ${r.ms}${r.aq ? ' aq ' + JSON.stringify(r.aq) : ''}`);
+        last = r.st;
+      }
+      for (const t of timers) clearTimeout(t);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+      if (process.env.RSHOT) { await ev(() => { document.getElementById('hud').style.display = 'none'; }); await shot(process.env.RSHOT); }
+      const want = process.env.RWANT;
+      if (want && !last.startsWith(want)) await ev((m) => console.error(m), `rautolive: ended on ${last}, wanted ${want}`);
     },
 
     async rauto() {

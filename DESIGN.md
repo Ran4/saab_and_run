@@ -604,13 +604,24 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
   (WEBGL_debug_renderer_info: Intel, AMD Radeon(TM) Graphics / Vega APUs, plain Apple M-chips,
   mobile, software) and on weak entry-level ones (GeForce MX, Quadro P/T + 3 digits), else high
   (laptop GPUs - 'Laptop', 'Max-Q', 'Mobile' - at 2x MSAA); `classifyGpu(str)` is exported for tests
-  and `&gpu=<string>` pretends to be that GPU. It drops to low (once) when the first ~3 s of frames
-  (4 windows of 0.7 s) have a median over 20 ms; **auto and low** also scale the render resolution
-  0.6/0.7-1.0 with the frame time (down a step when frames take > 18.5 ms, undone if that did not
-  help - CPU-bound - and probed back up after a few seconds at full rate); on the high tier **auto**
-  first steps 4x MSAA down to 2x (and back up last). **high** is always full resolution, 4x. Tests (`?test`) default to high without the dynamic scale (deterministic shots);
-  `&q=auto|high|low`, `?lowgfx` (= low) and `&dynscale` override. Tier switches need no shader
-  recompiles.
+  and `&gpu=<string>` pretends to be that GPU. The automatic quality judges each frame's **cost**:
+  its CPU work (update + render, from the rAF timestamp) and its GPU time (EXT_disjoint_timer_query,
+  on 'auto' and 'low'; `&nogputimer` = the intervals-only fallback of browsers without it), as the
+  75th percentile of max(CPU, GPU) capped by the mean frame interval - a machine busy with something
+  else (slow frames, cheap work) does not count as slow. Frames around known hitches are not counted
+  (the first 3 s, 1 s after a > 100 ms frame, a shader compile, a camera cut or a resize, 0.2 s after
+  an upload, 2 s after the tab is shown, and `holdAutoQuality(ms)`). **auto and low** scale the
+  render resolution 0.6/0.7-1.0 in ~0.75 s windows (down a step when frames cost > 15.5 ms - > 18.5
+  ms of interval without a GPU timer - undone if that did not help, i.e. CPU-bound, and probed back
+  up after a few good windows); on the high tier **auto** first steps 4x MSAA down to 2x (and back up
+  last). **auto** drops to low only when those steps are spent (2x and the scale at its floor, or
+  found CPU-bound) and the last 8-10 s at those settings cost over 18.5 ms (reason 'slow (x ms)');
+  it goes back to high ('recovered', at 2x) after 30 s at full scale with high's predicted cost (low's
+  CPU x 1.3, GPU x 1.6) <= 15 ms, never on a GPU that starts low; a drop within 2 minutes of that
+  doubles the wait and lowers the bar, and after three it stays low. `gfxDebug.aqStep` drives it
+  with simulated frames (render.mjs `rautosim`). **high** is always full resolution, 4x. Tests
+  (`?test`) default to high without the dynamic scale (deterministic shots); `&q=auto|high|low`,
+  `?lowgfx` (= low) and `&dynscale` override. Tier switches need no shader recompiles.
 - Look-dev URL overrides (for testing only): `&hdri=winter_river_2k` (hazier alternative sky),
   `&sunelev=13&sunaz=143`, `&exposure=1.45`, `&tm=aces|agx|neutral|none`, `&sunint=6`,
   `&suncol=1,0.8,0.58`, `&envint=0.62`, `&envsat=0.55`, `&envtint=0.97,1,1.02`, `&fog=0.0012`
@@ -620,7 +631,8 @@ Built in phase 1. Everything below is the actual API; later agents rely only on 
   surface; use with `&tm=none&contrast=0&toe=1&sdesat=1&exposure=1` to read linear values off a
   screenshot), `&glintdbg` (snow crystal cells in green, their glints in red), `&black=0.03` (soft
   black point), `&aofar=80` (AO pre-pass far plane), `&farevery=n` (far cascade every n frames),
-  `&gputime` (GPU timer -> `gfxStats.gpuMs`), `&debug` (shader error checks, on in tests),
+  `&gputime` (GPU timer -> `gfxStats.gpuMs` and `gpuHist`; 'auto' / 'low' fill `gpuMs` anyway),
+  `&nogputimer` (no GPU timer), `&debug` (shader error checks, on in tests),
   `&nobatch`, `&nomultidraw` (BatchedMesh without WEBGL_multi_draw), `&nowarmdraw` (no warm frame
   while loading), `&gpu=<renderer string>`, `&leanprops=120`, `&envdown=1&envband=0.17` (the env's
   ground: brightness multiplier and the fade depth under the horizon, radians), `&townhash`,
@@ -825,10 +837,10 @@ to the constructors if needed.
 desaturated, tinted, x env intensity), `fog` colour, `fogExp2` - for custom shaders), `FOG_GLSL`,
 `setRoadGrid`,
 `gfxReady` (promise: await it after `initGfx()` before building content; main.js does),
-`renderFrame, setQuality, getQuality, qualityInfo, classifyGpu, precompile, uploadGeometry, gpuIdle,
-nextTask, makeStatic, prepareKind, setSnow, getSnow, setWetness, setLight, gfxStats` (`ms` (renderFrame
+`renderFrame, setQuality, getQuality, qualityInfo, classifyGpu, holdAutoQuality, precompile,
+uploadGeometry, gpuIdle, nextTask, makeStatic, prepareKind, setSnow, getSnow, setWetness, setLight, gfxStats` (`ms` (renderFrame
 CPU, smoothed), `calls, tris, aoCalls` (shadow + AO pre-pass calls); `pass.{shadow, ao, main}` =
-[calls, tris] of the last frame, `cpu.{matrices, pre, main}` ms, `gpuMs` with `&gputime`, `first` =
+[calls, tris] of the last frame, `cpu.{matrices, pre, main}` ms, `gpuMs` (`&gputime`, 'auto', 'low'), `first` =
 { ms, programs, newPrograms } of the first frame; also in `__stats()`), `warmStats` (the loading's
 warm frame: drawMs, gpuWaitMs), `gfxDebug` (tests), `sceneDepthTexture()`, `sceneDepthRange()`, `followSun()` and
 `tickSky(t)` (kept for main.js; `tickSky` drives water/time uniforms), `mat, PRIM, makeWedge,
