@@ -195,11 +195,12 @@ export const voice = {
   // main.js: the dialogue box is up (nothing queued starts between two of its lines).
   held: () => false,
   _pump() {
-    if (this._paused || this.held()) return;
-    const t = this.now();
+    if (this._paused) return;
+    const t = this.now(), held = this.held();
     for (let k = 0; k < this.queue.length; k++) {
       const u = this.queue[k];
       if (t > u.deadline) { this.queue.splice(k--, 1); this._drop(u); continue; }
+      if (held) continue;   // (what waits still runs out of time while the dialogue box is up)
       const busyMain = !!this.playing.main, busyBubble = !!this.playing.bubble;
       const self = [this.playing.main, this.playing.bubble].some((p) => p && p.who === u.who);
       // Main lines wait for both slots (a radio call waits for a bubble); bubbles wait for quiet and

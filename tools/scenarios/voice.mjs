@@ -72,7 +72,7 @@ export default (H) => {
     let wait = null;
     g.onFrame(() => {
       const V = window.__voice, dlg = document.getElementById('dialog');
-      if (!dlg?.classList.contains('show') || !V.quiet()) { wait = null; return; }
+      if (!dlg?.classList.contains('show') || V.playing.main) { wait = null; return; }
       if (wait == null) wait = performance.now() + 500 + Math.random() * 300;
       if (performance.now() > wait) { wait = null; setTimeout(() => { g.input._press('Enter'); requestAnimationFrame(() => requestAnimationFrame(() => g.input._release('Enter'))); }, 0); }
     });
