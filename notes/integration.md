@@ -783,3 +783,56 @@ heart, the notes, the music duck) follow by themselves. coldwalk / colddrive rec
 `cold.update` in the page (`c.update` wrapped on the instance) and read the rate off frame by frame;
 the old pace is integrated over the same frames for the before / after (on foot 16.1 -> 25.7 s in
 the cold, the Saab 7.6 -> 10.8 s).
+
+## Feature snöhög: the hoppbacke (2026-10-12) — what changed
+
+The park's snow pile is a jump now (world: notes/world.md *The hoppbacke*; the flying: notes/cars.md
+*Snow hills and flights*). `src/game/hoppbacke.js` (`Hoppbacke`, `g.hopp`) is what the game makes
+of a flight:
+- **Hooks** (main.js): `onCarTakeoff(car)` → `hopp.takeoff`, `onCarFlight(car, landed)` → `hopp.land`,
+  `onTrailerBounce(tr, impact)` → `hopp.trailerBounce`; `onCarLanded` returns at once for a car with a
+  `flight` (the bump, the thud and the dust were the old landing's). `hopp.update(dt)` every frame
+  after the horn: what is said a moment later goes through `hopp.after(t, fn)` (game time).
+- **Takeoff**: powder (`fx.powder`: many small wisps, spread and slowed fast; a few big puffs read as
+  cotton balls) from the rear wheels, `audio.hoppTakeoff` (the tyres letting go of packed snow, the
+  springs unloading), for the player's car `audio.hoppWind(t)` for the likely air time.
+  `updateAudio`: in the air the engine revs on the throttle (the speed it is given × 1 + 0.45 ×
+  throttle) and the tyres are silent (`audio.engine(…, 'air')`), no tracks are drawn on a hill
+  (`!c.hill`: they lie at the ground's height).
+- **Landing**, by the speed into the snow: soft < 5 m/s, good < 8.5, hard < 12.5, else a crash.
+  Powder from all four wheels (more and bigger with the impact, thrown along with the car),
+  `audio.hoppLand(impact)` (a deep crunch, the springs bottoming out; past 8 a clatter and the exhaust
+  against the body; past 12 a bang; it cuts the wind), the camera shakes with it, a crash flashes
+  white. `hopp.log` keeps the last 40 flights (kind, v0, air, dist, apex, impact, onHill, cls).
+- **A real jump** (the player's, ≥ 0.55 s, no scene, not dying of cold): a toast in Ove's hand ("Ove
+  antecknar · Lufttid 1,07 s · 14,1 m · Bra landning"); a flight of ≥ 0.7 s longer than `hopp.best`
+  is his record ("Rekord!" once there was one to beat, a saved one too) and saves (`save.hopp`: dm,
+  0-2000, sanitised).
+- **Ove** (≥ 0.85 s, at most every 25 s, 0.9 s after, 2.6 s if a passenger spoke): in his own Saab,
+  landed soft or good: "Saab byggde flygplan först. Det märks." (the first time always, then 40 %);
+  in a car that isn't his after a hard one (or 45 % of the rest): "Det är inte min bil."; towing:
+  "Hmpf." / "Det var meningen."; a hard one: "Det var meningen." / "Det där såg ingen."; a Saab:
+  TYRE.saab900; else "Bra däck." / "Hmpf." / "Jaså." (script.js `OVE_HOPP`: the two new lines,
+  voiced; the rest his own lines from elsewhere).
+- **A passenger** (every 12 s, after a big one or a hard landing): Patrick "Oj! Jag hoppade till.",
+  Parvaneh "Måste du, Ove?", Anita "Ove, Rune blir rädd.", Rune by the make ("...Saab."), Jimmy "Ove!
+  Mannen själv!", the girls "Igen!", Anders, Vita skjortan; Adrian "Ove!".
+- **People who saw it** (within 38 m of where it took off or came down; neighbours 60 m; at most
+  every 6 s): `horn.react(p, car, true, { kind, gesture, line, delay })` (horn.js takes a spectator's
+  own reaction now and doesn't count it in its stats) plays it out as a honk's reaction: children
+  cheer ("Igen!", "Häftigt!"), pensioners shake a fist ("Ungdomen nu för tiden!", "Mitt hjärta!",
+  "Men herregud!"), teenagers "Lugna dig, gubbe!" / "Chilla!", the rest flinch, or leap if it came
+  down within 7 m ("Jösses!", "Jag fick nästan hjärtstopp!", "Men herregud!", "Det är bilfritt
+  här!"); two lines at most. One neighbour has an opinion (every 30 s): Anders "Jag tar upp det på
+  årsmötet, Ove!" (fist), Patrick "Wow. Det ser ut som i reklamen.", Parvaneh "Ove, du ser nästan
+  glad ut i dag.", Jimmy "Ove! Mannen själv!", Anita "Hej, Ove.", Rune "...Saab.", the girls "Igen!
+  Igen!" / "Igen!", Vita skjortan "Det där noteras."; Adrian waves. All lines are the pool voices' and
+  the neighbours' own (already voiced for them). It costs no Ordning.
+- **Trailer bounce**: powder at the axle, `audio.trailerClank`.
+- **Camera** (camera.js): in the air (`car.flight`, from 0.08 s) `airK` eases to 1 (5/s; back at
+  1.6/s): the boom 0.7 m longer, the fov 4° wider, and the camera rises after the car at 0.4 × its
+  rate, so the car climbs in the picture against the sky (it comes down with it at the usual pace).
+- `hopp.rand` is every chance (scenarios: 0 = all come true), `hopp.stats` counts everything.
+- Scenarios (tools/scenarios/snohog.mjs): `snohog` (real keys, six runs: Saab 13.5 m/s and flat out
+  from the street, Volvo 240 12, Audi flat out, van 14, Volvo 740 with a trailer 12.5; `RUNS=`,
+  `FILM=1`), `snohogsim` (deterministic, 64 runs), `snohogwalk`, `snohogsound`.

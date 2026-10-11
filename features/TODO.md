@@ -18,3 +18,4 @@ features/implemented/fixa_hoppet.md
 features/implemented/fixa_outro_anita.md
 features/implemented/avgrunden.md
 features/implemented/avgrunden2.md
+features/implemented/snöhög.md

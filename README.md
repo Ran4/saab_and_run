@@ -103,6 +103,15 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   Ove ber den om ursäkt. Tutar du i onödan (ingen framför bilen, ingen bil framför) blir det
   **Onödig tutning**: −2 Ordning, och Anders eller någon i ett fönster säger ifrån. Och prova att
   tuta *shave and a haircut*.
+- **Hoppbacken i parken.** Den stora snöhögen i parken (väster om Oves område, på andra sidan
+  Parkvägen) går att köra upp på och hoppa från. Den är formad som ett hoppbord: en uppfart i var
+  ände som blir brantare upp mot kanten, en platt avsats överst och nedfarten på andra sidan, så det
+  går åt båda hållen. Ta sats från gatan, eller längre över gräsmattan inifrån parken. För sakta och
+  du landar på avsatsen och rullar ner, i lagom fart (runt 45-50 km/h vid kanten) landar du mjukt i
+  nedfarten, för fort och du flyger förbi alltihop och tar i hårt. Alla bilar flyger, även med
+  släpkärra (släpet dinglar efter, och studsar efter en hård landning). Ove antecknar lufttiden och
+  längden, och det längsta hoppet är hans rekord. Efter ett riktigt hopp har han en åsikt, liksom
+  passagerarna, folk som såg det och grannarna. Till fots går det att gå upp på högen.
 - **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket
@@ -175,7 +184,8 @@ src/world/                 stadsplan och vägnät (layout), kollision, kvarteren
                            buildings, places, streets, outskirts), skyltar, rekvisita, Oves garageport
                            (garagedoor), Anitas och Runes kök och Oves sovrum (interior: dag 3:s scen,
                            uppvaknandet); utanför stan: terrängen att gå på, skogsgatorna, granarna
-                           och stenblocken (outskirts)
+                           och stenblocken (outskirts); snöhögar att köra och gå på, hoppbacken i
+                           parken (snowhill)
 src/actors/car.js          bilarna: fysik, lampor, registreringsskyltar (carmodels.js: modellerna)
 src/actors/trailer.js      släpkärran
 src/actors/drivers.js      AI-förare: trafik, rutt, jakt, flykt, stanna vid kanten
@@ -185,6 +195,7 @@ src/game/patrol.js         felparkeringar, anteckningsblocket, smitare, Ordning-
 src/game/interruptions.js  avbrotten: samtalen och ärendena
 src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, anteckna, hämta, skjutsa, jaga...)
 src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
+src/game/hoppbacke.js      hoppen från hoppbacken: snöpudret, ljuden, Oves anteckning och rekord, vad alla säger
 src/game/missions.js       de sju dagarna och uppdragskörningen
 src/game/luftning.js       dag 3:s scen: Ove luftar elementet hemma hos Anita och Rune (och katten tittar in)
 src/game/cold.js           kylan utanför stan: köldmätaren, frosten, huttrandet, snöyran, döden av frost
@@ -224,6 +235,8 @@ PORT=8791 node tools/shot.mjs voice vcut vpool             # rösterna: turordni
 PORT=8791 node tools/shot.mjs coldwalk colddrive coldback  # kylan med riktiga tangenter: ut till fots och med Saaben (takten mätt på vägen), och in igen när Ove tänker på Sonja
 PORT=8791 node tools/shot.mjs coldrate coldmission coldwall coldbed coldbedskip   # 112 s vid kanten, ett uppdrag som misslyckas, väggen för alla andra, sängscenen
 PORT=8791 node tools/shot.mjs coldlook coldsound coldperf  # bilder därute, ljuden offline, ritanrop och trianglar (A/B)
+PORT=8791 node tools/shot.mjs snohog snohogsim             # hoppbacken: sex hopp med riktiga tangenter (bilar, farter, släp; FILM=1), och 64 uträknade
+PORT=8791 node tools/shot.mjs snohogwalk snohogsound       # Ove går över hoppbacken; hoppets ljud offline
 ```
 
 I testerna (`?test=1`) är rösterna avstängda, så de går lika fort som förut; `&voice` slår på dem.

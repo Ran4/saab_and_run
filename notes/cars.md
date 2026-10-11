@@ -669,3 +669,42 @@ Ove can drive out onto the hills now. The ground there is the hills' mesh (layou
 pitches the car as before and, beyond |x| or |z| 320 only, rolls it too (`groundRoll` from the ground
 under its left and right sides, damped; the wheels follow it in `writeWheels`). In town nothing
 changes (groundRoll stays 0). Its AI cars stop at BOUND (main.js keepCarsInside).
+
+## Snow hills and flights (feature snöhög, 2026-10-12)
+
+On a snow hill (collision.js `HILL`, world/snowhill.js: the park's hoppbacke, the preschool's mound)
+the car flies. `HOPP = { grav: 15, slope: 9.8, carry: 1, nose: 0.85, hold: 3.5 }`, exported.
+- **On it** (`car.hill`: the HILL block under it, set after each ground step): gravity along the slope
+  (`slope` / √(1 + |∇|²) × the gradient, forwards on `vf`; sideways on `vr` only past `hold` m/s², so
+  a car standing across a flank stays put and slips down a steeper one): a climb costs speed, and a
+  car stopped on a face without the brake rolls back (a parked one holds: its 8 m/s² friction). The
+  vertical speed is the ground's (`(gh - y)/dt`, ±20, not the kerb rule's -6..12), and its changes
+  give the springs a push (`sus.hv -= Δvy × 0.035`). Sideways roll from the ground under its sides as
+  out on the hills (`groundRoll`), while on a hill.
+- **Takeoff**: each step on (or just off) a hill, if the ground ahead is more than 4 mm below where a
+  stone thrown with the car's vertical speed would be (`pred = y + vy dt - grav dt²/2`), the car flies:
+  `car.air`, `car.flight = { t, x0, z0, y0, apex, v0, vy0, hill, dist }`, `game.onCarTakeoff(car)`.
+  4 mm a step is 29 m/s² beyond gravity: off the kicking edge's rounding from ~6 m/s (as v²κ > g says),
+  never on the smooth faces.
+- **In the air**: `grav` 15 (a car off a ledge or blown up still falls at 22), `flight.t`, `apex`;
+  the nose follows the flight path (`groundPitch` → `nose` × its angle, damped 4/s instead of 0.6 and
+  6), so it meets the landing face with it. Nothing steers or drives up there.
+- **Landing**: on a hill the impact is the speed into the slope along its normal (`hillSlope`); what
+  goes along it carries on (`carry`: a landing on the downslope adds a little speed), and the vertical
+  speed becomes the slope's. Over 4 m/s: the old bump, springs, `game.onCarLanded`, damage past 13
+  (only 20+ m/s overshoots get there: −1.5 to −2.3 hp). Over 1.5 m/s off a flight the springs dip
+  too. Then `car.landed = { ...flight, impact, onHill, x, z }`, `car.flight = null`,
+  `game.onCarFlight(car, landed)`. main.js' `onCarLanded` leaves a flight to it (game/hoppbacke.js).
+- **The trailer** (trailer.js) has a vertical life of its own: the ground contact under the axle
+  (`ay`, `avy`) follows the ground, flies off a hill's edge by the same rule (gravity 15), lands with
+  up to three bounces (`BOUNCE` 0.45 of the speed into the ground comes back while that is over
+  `BUMP` 2 m/s; a little yaw jolt each; `game.onTrailerBounce(trailer, impact)`); a ledge (> 0.35 m) is a
+  fall, not a snap. The box hangs on the tow ball (`ballY()`: the car's height, heave and pitched body
+  at `model.hitch`) and pitches to rest on the axle (`pitch`, + = the back up: A cos θ - B sin θ = Δy
+  for the coupling 0.47 m over the wheels' contact and the axle 2.3 m back), no more than `PMAX` 0.6
+  rad either way: past it the car lifts the trailer (into the air) or drags it down after it.
+  `root` is placed under the coupling (`rootPose`) with Euler 'YXZ' (pitch, yaw); `writeWheels` the
+  same. On flat ground it is level as before (the `trailer` sim: identical numbers to HEAD).
+- Measured (`snohogsim`: the car stepped by hand over the real hill, both ways, 5-22 m/s; saab900,
+  volvo240, audi, van, volvo740 + trailer): nobody ever under the snow, every car upright, level and
+  on its line after, no damage below 20 m/s; Saab 13 m/s: 1.0 s in the air, 13.5 m, impact 4.5-5.6.

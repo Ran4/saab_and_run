@@ -32,7 +32,11 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   beyond the town, features/implemented/avgrunden.md: `coldwalk colddrive coldback` with real keys,
   `coldrate coldmission coldwall coldbed coldbedskip`, `coldlook coldsound coldperf` (an A/B of draw
   calls and triangles with the cars and people hidden; copy cold.mjs into an old checkout); run
-  `coldwalk colddrive coldbed` after touching the cold, the death or the waking scene).
+  `coldwalk colddrive coldbed` after touching the cold, the death or the waking scene), snohog.mjs (the
+  hoppbacke in the park, features/implemented/snöhög.md: `snohog` = six jumps with real keys, several
+  cars and speeds, a trailer, `RUNS=`, `FILM=1` keeps the frames; `snohogsim` = 64 deterministic runs
+  over the real hill; `snohogwalk snohogsound`); run `snohogsim snohog` after touching car or trailer
+  physics, collision.js or the hill).
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -81,7 +85,10 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   beyond BOUND.
 - Everything off the asphalt is at `CURB` (0.15). Solids are footprints with a top height:
   a wall if `top > y + step`, a floor otherwise (characters step 0.45, cars 0.6). Ramps are
-  oriented boxes whose top rises along their yaw. Snow banks have no collision.
+  oriented boxes whose top rises along their yaw. Snow banks have no collision. Snow hills (`HILL`,
+  world/snowhill.js: the park's hoppbacke, the preschool's mound) are smooth heightfields: never a
+  wall, always a floor whatever the step; a car on one feels its slope and flies where it falls away
+  (car.js `HOPP`, `car.flight`).
 - Rendering is physically based (no toon shading, no outlines). Static geometry goes through
   `GeoBuilder` (vertex colours, merged per block) and says what it is made of with
   `g.use('wood')` etc. (the surfaces table, DESIGN.md 10.2); `realMesh(geo)` (alias `toonMesh`)

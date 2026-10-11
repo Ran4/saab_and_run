@@ -942,3 +942,43 @@ cold kills him further out (game/cold.js). What the world does for it:
   the window with the jacket over its back, a white wardrobe, a rag rug, a Saab calendar by the door
   with November crossed out up to the 23rd, the door to the hall, a globe lamp (off). One GeoBuilder
   + three textured planes (photo, calendar); ~25 ms to build, behind the curtain.
+
+## The hoppbacke: snow hills to drive and walk on (feature snöhög, 2026-10-12)
+
+**Why the old pile bounced cars.** The park's pulkabacke was `mound()`: eight stacked 0.4 m circle
+floors (r 9 m, 3.2 m high). A car's ground point could step 0.4 m up, but its 4.5 m body overlapped
+the circle two steps higher (0.8 m above it, over the car's 0.6 m step), and `collideStatic` took that
+for a wall: the car was pushed back with a bounce, every time.
+
+**collision.js `HILL`** (shape 3): `hill(x, z, r, top, at, kind = 'mound', base = CURB)`, a smooth
+heightfield: `at(x, z)` its top there (-Infinity off it), `top` its highest point, within a circle of
+radius `r`. It is never a wall (`circleVsBlock` / `obbVsBlock` return false: whoever runs into it is
+lifted onto it) and always a floor whatever the step (`groundAt` takes it however far above `y + step`
+it is: nothing goes under a snow hill). `topAt` gives its surface, `contains` = in the circle and
+above `base`, `segmentBlocked` only where the surface is above the line, `hillSlope(b, x, z, out)` its
+gradient over ±0.25 m (`out.gx`, `out.gz`). camera.js `near()` counts it wherever the boom is below
+its surface.
+
+**world/snowhill.js `jumpHill(f, lx, lz, ly)`**: the park's hoppbacke, park-local (-13.5, 18.5),
+its axis along +x (world centre (66.5, 18.5); feet at x 52.2 and 80.8), on the one lane of open lawn
+in the park: z 16.5-21.5 is clear from x 49 (Parkvägen's sidewalk) to 111 (the far street), north of
+the lime alley. A two-way tabletop, symmetric; the long profile is Hermite knots `JUMP` (s from the
+centre: table 0-3.5 m dipping 7 cm in the middle, the edge at 3.4 m, a 0.6 m rounding to the face's
+24° (0.45) for 3.6 m, 1.6 m easing to 16°, 2.6 m of that, a parabola to the ground at 14.3 m; every
+segment's drop is its mean slope × length, so there is no bump in it: one there gave a 0.05 s hop
+at 18 m/s). Designed with a flight simulation (snohogsim, and a stand-alone copy of it): up to
+~11 m/s at the edge a car lands on the table and rolls off the far edge, 12-14 on the far face,
+15-18 overshoot to the flat (impact ~12), 22 m/s flies 33 m. Plan view: an oval (half width 10.2 m)
+round a flat crown (2.8 m half width, narrower towards the feet) with flanks that fill the rest at
+no more than ~36°; the crown's edge and the outline wander with low-frequency noise (in the
+collider too). The mesh is a 0.4 × 0.36 m grid of that same function (~5 k vertices) plus up to
+2 cm of lumps on the drive line and 14 cm on the flanks (drawn only), vertex colours for a packed
+lane, two wheel ruts, seven pulka runs down the faces, grit at the foot; 22 lumps of packed snow
+round the foot (kit.js `chunks`). `JUMP_HILLS` (snowhill.js) holds it for the game: x, z, the axis
+(fx, fz, rx, rz), table, edge, end, top, `at`, `along(x, z)`, `across(x, z)`.
+Moved for it: the two pulkas (to the foot), the emblem on the hill (now on the table, from
+`JUMP_HILLS[0]`). New: the kommun's sign at the west foot ("Pulkaåkning sker på egen risk" /
+"Motortrafik förbjuden"). The `pulkabacke` landmark stays (65, 6.5), off the hill.
+
+**`mound()`** (places.js: the preschool's sledding mound, still round) keeps its cap and gets a
+collider of the same shape (`domeHill`) instead of the stepped circles.

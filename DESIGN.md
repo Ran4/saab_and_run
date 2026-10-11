@@ -283,6 +283,26 @@ neighbour's, its trailer too) is back at home, a borrowed one stays out there (t
 later); no kronor, no Ordning, the clock and the day unchanged. The skip keys go to the black from
 the banner on, and through the bedroom.
 
+### 4.9 The hoppbacke (`src/world/snowhill.js`, `src/game/hoppbacke.js`, feature snöhög)
+The park's big pile of snow (west of Ove's area, across Parkvägen) is a jump: a 28.6 m long, 3.4 m
+high plowed pile shaped as a two-way tabletop (a face at each end that steepens to 24° and kicks a car
+off at its edge, a flat 7 m table between them, the far face the landing: 24° easing to 16°, then the
+runout; steep lumpy flanks), along a 62 m lane of open lawn. Any car can drive up it and fly (a
+trailer too), and Ove can walk all over it. The flight is the car's own physics (car.js `HOPP`: gentler
+gravity in the air than off a ledge); up to ~11 m/s at the edge a car lands on the table and rolls off
+the far edge, 12-14 m/s on the far face, faster ones overshoot to the flat with a hard thump (damage
+only past ~20 m/s). What the town makes of it: snow powder off the edge and round the wheels at the
+landing, a whumpf, the wind, the landing by how hard it was (the springs bottoming out, a clatter, a
+bang), a trailer bouncing after with a clank; the camera opens up and rises after the car slowly. A
+real jump (0.55 s in the air) Ove writes down (a toast in his hand: air time and length, the longest
+his record, saved); after a big one (0.85 s) he says what he thinks (in his own Saab, landed well:
+"Saab byggde flygplan först. Det märks."; in a car that isn't his: "Det är inte min bil."; else his
+SLID / TYRE lines), a passenger says theirs, people within 38 m react as to a honk (children cheer,
+pensioners shake their fists; lines they already say), and a neighbour within 60 m has an opinion
+(Anders: "Jag tar upp det på årsmötet, Ove!", Patrick: "Wow. Det ser ut som i reklamen.", Anita:
+"Hej, Ove."). It costs no Ordning. A sign at its foot: "Pulkaåkning sker på egen risk" / "Motortrafik
+förbjuden".
+
 ## 5. Story — seven days (`src/game/missions.js`)
 
 Each day: a giver NPC at a landmark (amber marker over the head, E to talk), intro dialogue in the
@@ -454,6 +474,11 @@ on the near hills (to ~760 m: instanced, a silhouette LOD and no AO / shadows wh
 the town, `tickWild`), silhouettes beyond. No buildings out there. Nothing is spawned or placed
 beyond `BOUND` (HALF + 34); `COLD` = BOUND + 30, `edgeDist(x, z)` = max(|x|, |z|).
 
+Snow hills to drive and walk on (feature snöhög) are `HILL` floors (collision.js `hill(x, z, r, top,
+at)`: `at(x, z)` the top there): never a wall, always a floor whatever the step (`groundAt`), and the
+mesh is built from the same function (snowhill.js: `jumpHill` for the park's hoppbacke, `domeHill` for
+`places.js mound`'s round sledding mounds, which were stepped circle floors).
+
 `town.js` must export (in addition to the existing `parkedCars`, `pedLoops`, `animated`,
 `lamps`, `bouncers`, and `doors`: the doors that move, Ove's garage door `name: 'oveGarage'`,
 a `GarageDoor` from `garagedoor.js` whose mesh town.js adds after the static world):
@@ -506,6 +531,11 @@ tall`). Every `Car` gets:
   own OBB against static solids; `trailer.x/z/yaw/len/wid`.
 - Player-car speed boost reduced to realistic arcade (≈ 140 km/h top). Speeds in m/s; the HUD
   shows km/h.
+- Snow hills (`HILL` floors, feature snöhög): on one the car follows the surface and feels its
+  slope, flies off where the surface falls away faster than gravity (`car.flight` while up, then
+  `car.landed`; `game.onCarTakeoff` / `onCarFlight`), lands judged by the speed into the slope, the
+  nose following the flight path. The trailer has a vertical speed of its own at the axle and pitches
+  about the tow ball (`trailer.pitch`), bouncing on a hard landing (`game.onTrailerBounce`).
 - Driver visibility: closed cabin, tinted glass; drivers/passengers seated inside are visible
   through it.
 
