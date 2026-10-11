@@ -563,6 +563,45 @@ export const audio = {
     burst(t + 0.012, 0.025, 0.2, 3200, 'bandpass', 3);
     burst(t + 0.03, 0.06, 0.06, 1400, 'bandpass', 4);
   },
+  // Ove's garage door, a steel vipport. kind: 'latch' (the handle turned), 'roll' (on its way for
+  // dur s: the rollers knocking along the tracks in a rumble, the springs creaking), 'up' (against its
+  // stops, open), 'shut' (into its frame: a heavy sheet-metal clang that rings; a car into it too),
+  // 'tug' (pulled on, shut: a short rattle in the frame). k: loudness (by distance).
+  garage(kind, k = 1, dur = 1.2) {
+    if (!S || !(k > 0.02)) return;
+    const t = now();
+    if (kind === 'latch') {
+      burst(t, 0.025, 0.3 * k, 2400, 'bandpass', 5);
+      burst(t + 0.09, 0.035, 0.36 * k, 1700, 'bandpass', 4);
+      osc('sine', 820, t + 0.09, 0.06, 0.04 * k, { to: 760 });
+    } else if (kind === 'roll') {
+      burst(t, dur, 0.13 * k, 320, 'bandpass', 0.9, { attack: dur * 0.3, soft: true });
+      const n = Math.round(dur * 15);
+      for (let i = 0; i < n; i++) burst(t + (i + Math.random() * 0.6) * dur / n, 0.018, rnd(0.05, 0.11) * k, rnd(480, 900), 'bandpass', 3);
+      const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(rnd(70, 90), t); o.frequency.linearRampToValueAtTime(rnd(110, 130), t + dur * 0.7);
+      f.type = 'bandpass'; f.Q.value = 9;
+      f.frequency.setValueAtTime(1300, t); f.frequency.linearRampToValueAtTime(1900, t + dur * 0.8);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.03 * k, t + dur * 0.25); g.gain.linearRampToValueAtTime(0.0001, t + dur * 0.85);
+      o.connect(f).connect(g).connect(S.sfx);
+      o.start(t); o.stop(t + dur);
+    } else if (kind === 'up') {
+      osc('sine', 120, t, 0.12, 0.2 * k, { to: 75 });
+      burst(t, 0.07, 0.17 * k, 700, 'lowpass', 0.8);
+      for (const fr of [930, 1710]) burst(t, 0.2, 0.025 * k, fr, 'bandpass', 14);
+    } else if (kind === 'shut') {
+      osc('sine', 78, t, 0.3, 0.44 * k, { to: 46 });
+      burst(t, 0.22, 0.34 * k, 650, 'lowpass', 0.8);
+      burst(t + 0.005, 0.09, 0.14 * k, 2100, 'bandpass', 1.6);
+      for (const fr of [410, 1130, 1870, 2950]) verbSend(burst(t + rnd(0, 0.01), rnd(0.35, 0.6), 0.045 * k, fr * rnd(0.97, 1.03), 'bandpass', 16), 0.25);
+    } else if (kind === 'tug') {
+      burst(t, 0.03, 0.17 * k, 900, 'bandpass', 2.5);
+      burst(t + 0.035, 0.025, 0.11 * k, 1300, 'bandpass', 3);
+      osc('sine', 140, t, 0.06, 0.08 * k, { to: 95 });
+      for (const fr of [520, 1450]) burst(t, 0.12, 0.018 * k, fr, 'bandpass', 14);
+    }
+  },
   pickup() {
     if (!S) return;
     const t = now();

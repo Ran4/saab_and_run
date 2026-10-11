@@ -14,8 +14,9 @@ built; DESIGN.md §6 is the contract it implements. Everything is PBR via the §
 | `surface.js` | **(round 3)** ground-surface registry: `addGround(surface, x, z, w, d, yaw, y)`, `addGroundCircle`, `surfaceAt(x, z)` → `'snow' \| 'asphalt' \| 'paving' \| 'gravel'` |
 | `kit.js` | building kit: `Frame` (local frames; also `.roof .bank .pile .fringe .cam`), `flatQuad` (round 4: a horizontal ground quad, no risers), **tree templates** (`tree()` kinds `birch spruce pine lime`(=`bare`) `small thuja`, lite / small LODs), `hedge` (kinds evergreen / bare / square), `granris`, `shrub`, `streetLamp`, `pathLamp`, `signPost`, `snowBank`, `snowPile`, **`snowFringe`**, **`chunks`**, `metalRoof` (low roofs), **roof furniture `snowGuard roofLadder ventStack downpipe slopeAt`**, `win`/`winLite`/`door`/`canopy`/`lampBox`, **`glow(hex, L)`** (round 6: a 'light' colour capped at emission luminance L, under the bloom threshold), `quads` (flat paint), `fineTex`, `shadeLast`, `camBlock`, noise `vnoise vnoise2 vnoise3 hash`, palette `C`, `WALLS`, `DOORS`, `HEDGE_GREEN`, `HEDGE_BARE`, debug `treeStats`, `snowStats` |
 | `signs.js` | **sign atlas**: every printed sign / plate / painted ground symbol in town is a quad on one of 8 atlas page kinds (plain, glow, cutout, decal, **twig**, **leaf** (round 5: evergreen hedges), **conifer**, **crown**; the four card pages are split into a 3 × 3 grid of meshes for culling). `picto(name)`, `textFace(text, w, h, opts)`, `decal(name)`, `twigFace(kind, v)`, `addSign`, `addDecal`, `addCard`, `addQuad` (round 4: a card of any orientation), `finalizeSigns(scene)`; debug `rebuildSigns(scene)`, `signPages()` |
-| `rowhouse.js` | 1970s radhus: `radhusRow`, `garageRow`, `garageInterior`, `radhusArea` (whole area: lot, garages, soprum, 4 rows, walkways, bike shed, playground) |
-| `ove.js` | Ove's block = `radhusArea` + named units, open garage, signs, landmarks, violation spots |
+| `rowhouse.js` | 1970s radhus: `radhusRow`, `garageRow` (`moving`: the open garage gets door tracks instead of a door tipped up under the ceiling), `garageInterior`, `radhusArea` (whole area: lot, garages, soprum, 4 rows, walkways, bike shed, playground; `movingGarage`) |
+| `ove.js` | Ove's block = `radhusArea` + named units, his garage and its door (`GarageDoor`, into `doors`), signs, landmarks, violation spots |
+| `garagedoor.js` | **(feature oppna_garaget)** `GarageDoor`: Ove's up-and-over garage door, the one world mesh that moves (see *Ove's garage door* below) |
 | `buildings.js` | `gableHouse`, `flatBuilding`, `lamellhus`, `hipGeo`, `flagpole`; blocks `villaBlock`, `apartmentsBlock`, `radhusBlock` |
 | `places.js` | blocks `centrumBlock hospitalBlock churchBlock cemeteryBlock dealerBlock preschoolBlock kommunBlock gasBlock parkBlock fieldBlock forestBlock`, `mound` (sledding hill) |
 | `streets.js` | slabs, kerbs, sidewalks, markings, zebras (`CROSSINGS`), bus stops (`BUS_STOPS`), lamps, road signs, snow banks, street violation spots, ped loops |
@@ -40,7 +41,7 @@ appear (solid kinds `building`, `garage`).
 
 ## Exports (`town.js`)
 
-`buildTown(scene)`, `tickTown(t)`, `parkedCars`, `pedLoops`, `animated` (empty), `lamps`
+`buildTown(scene)`, `tickTown(t)`, `parkedCars`, `pedLoops`, `animated` (empty), `doors` (Ove's garage door), `lamps`
 (`{x,z}`), `bouncers` (empty — no trampolines that bounce), `violationSpots`, `litterSpots`,
 `collectibleSpots`, `carFreeZones`, `isCarFree`, `mapLabels` (`[label, landmarkKey]`, Swedish),
 `townStats` (`buildMs, meshes, landmarks, violationSpots, litter, parkedCars`), and (round 3)
@@ -838,3 +839,36 @@ colour). town.js / batch.js are the rendering fixer's (props.js uses `StaticBatc
   cars (up to 1.5 M, cars agent) are now a large share; see the levers under Performance.
 - Old missions/NPC homes in `main.js` still reference the Bigmouth landmarks; my copy aliased
   them (`birch → oveHouse` …). Phase 3 must switch to the new names.
+
+## Ove's garage door (feature oppna_garaget, 2026-10-11)
+
+`garagedoor.js` `GarageDoor(f, cx, { name, w, color, open })`: built by ove.js into the garage row's
+frame (`area.garageFrame`, doors face local −z) for garage 1 (`name: 'oveGarage'`, 2.73 × 2.16 m,
+the row's door colour), listed in data.js `doors` (re-exported by town.js). town.js adds its mesh
+(`d.build()`: 'painted' panel with the row's five ribs and handle, the ribs take snow like the
+other doors' do, a steel frame, lock bar and inner handle on the inside) after `makeStatic`, so it
+is the only world mesh that is not static. The garage row builds Ove's garage as before (shell,
+interior, light) but, with `moving`, two tracks under the ceiling (rising 9 cm inwards, hung from
+the roof) instead of the door tipped up; no `rnd` is drawn for any of it (the town after it is
+unchanged).
+
+- **Motion**: `p` 0 (shut) .. 1 (open). The panel's top edge runs in the tracks (2.16 → 2.25 m up,
+  2.25 m in); the panel tips to 6° short of level, its front edge 2.02 m up and 0.08 m inside the
+  frame; on the way the top edge is held back (`SWING` 0.45) so the bottom swings out ~0.3 m at
+  knee height. Opening is a smoothstep over 1.5 s, closing `1 − s²` over 1.15 s (it falls shut).
+  The sweep inside the frame stays above ~1.1 m from 0.12 m in: the Saab parked in
+  `oveGarageSpot` (its tail 0.17 m behind the shut panel) is never touched (checked against every
+  vertex of the Saab's meshes over the whole sweep). `kin(p)` gives the top edge and tilt,
+  `pointUp(u)` a point u m up the panel from its bottom edge in door coordinates.
+- **API**: `open()`, `close()` (false if moving or there), `set(open)` (at once: save, tests),
+  `update(dt)` → `'opened' | 'closed' | null` (main.js plays the sounds), `bump(a)` (a rattle in
+  the frame: a tug, a car into it), `isOpen` (the state it is in or going to), `moving`,
+  `local(x, z)` → [across, out] (out > 0 outside), `world(a, o)`, `band(out, inn)` (an oriented box
+  across the doorway, collision.js RAMP shape, for obbVsBlock / circleVsBlock), `between(ax, az, bx,
+  bz)` (the shut door is between two points).
+- **Collider**: one block (`kind: 'garageDoor'`, top 99, `ref` = the door) across the doorway,
+  overlapping both walls; alive while shut, closing, or < 85 % open. hud.js's base map ignores the
+  kind. The camera's boom treats it as a wall.
+- **camBlocks**: the open panel is an overhang box (2.15-2.45 m) while it is fully open, so the
+  camera stays under it (the old static door was not one); far below the ground otherwise.
+

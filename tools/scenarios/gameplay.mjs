@@ -16,7 +16,8 @@
 // kick, trailer, grave flowers, dropped errand, KAOS hold), reloadday (short intro, "Fri patrull"),
 // titlekeys (Enter / Space / pad on the title, Patrick on a continued day 2), titlepose, bouquet
 // (look-dev). Their failed checks count as errors. Round 2b: camroof (the chase camera under bus
-// shelters, the Akut canopy, in Ove's garage).
+// shelters, the Akut canopy, in Ove's garage). Feature oppna_garaget: garage (Ove's garage door: shut and
+// open from both sides with E, the tugs, colliders, the in-car hint, the save, day 3).
 
 export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, standBy, fresh, fps, PORT, errors = [] }) => {
   // A failed check of the phase-4 round-2 scenarios ends the run with 'N errors' (like the story's).
@@ -1720,6 +1721,143 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       await frames(4);
       await page.keyboard.down('KeyW'); await sleep(1200); await page.keyboard.up('KeyW');
       await check('road', false); await shot('camroof_road');
+    },
+
+    // (feature oppna_garaget) Ove's garage door, with real E presses: shut from outside (he reaches up
+    // for the edge, steps back from the swing, then tugs the handle three times), the collider holds
+    // Ove and the Saab, no "Kliv in" through it, open again, refused with the Saab in the doorway,
+    // shut and opened from inside, the in-car hint and a drive into it, the save round trip, and
+    // day 3's key search with the door shut (the door first). Shots out/garage_*.png.
+    async garage() {
+      const D = () => ev(() => { const d = __game.garage, g = __game, p = g.player, [a, o] = d.local(p.x, p.z); return { p: +d.p.toFixed(2), dir: d.dir, shut: !d.block.dead, op: g.doorOp?.phase || null, tugs: g.doorOp?.tugs ?? null, a: +a.toFixed(2), o: +o.toFixed(2), it: g.nearestInteractable()?.type || null, prompt: document.getElementById('prompt').textContent }; });
+      // Ove on foot `o` m out from the door (negative: inside), `a` across, facing it (or `turn` off it).
+      const at = (o, a = 0, turn = 0) => ev(({ o, a, turn }) => {
+        const g = __game, d = g.garage;
+        if (g.playerCar) g.exitCar(true);
+        const [x, z] = d.world(a, o), yaw = Math.atan2(-Math.sign(o) * d.ox, -Math.sign(o) * d.oz) + turn;
+        g.player.teleport(x, z, yaw);
+        g.cam.yaw = yaw; g.cam.pitch = 0.2; g.cam.snapNext = true;
+      }, { o, a, turn });
+      const saabAt = (o, a = 0, yaw = null) => ev(({ o, a, yaw }) => { const g = __game, d = g.garage, c = g.named.saab, [x, z] = d.world(a, o); c.place(x, z, yaw ?? Math.atan2(-d.ox, -d.oz)); c.ctrl.park = true; c.sync(0); }, { o, a, yaw });
+      const saabHome = () => ev(() => { const c = __game.named.saab; c.place(c.home.x, c.home.z, c.home.yaw); c.ctrl.park = true; c.sync(0); });
+      const waitOp = async (ms = 8000) => { try { await until(() => !__game.doorOp && !__game.garage.moving, ms); } catch (e) { errors.push('garage: the door op never ended'); } };
+      const ok = (label, cond, info) => console.log('[t] garage', label, verdict('garage ' + label, !!cond), info === undefined ? '' : JSON.stringify(info));
+      // The tugs and the op's phases, as they happen.
+      await ev(() => { window.__tugs = 0; window.__phases = []; const g = __game; g.onFrame(() => { const op = g.doorOp; if (op) { window.__tugs = Math.max(window.__tugs, op.tugs); if (window.__phases.at(-1) !== op.phase) window.__phases.push(op.phase); } }); });
+      await saabHome();
+
+      // 1. Open at the start; outside, facing it: "E Stäng garageporten".
+      await at(1.0, 0.3);
+      await frames(20);
+      let s = await D();
+      ok('starts open, prompt', s.p === 1 && !s.shut && /Stäng garageporten/.test(s.prompt), s);
+      await shot('garage_0_open');
+      // 2. Shut it from outside.
+      await tap('KeyE');
+      await sleep(400); await shot('garage_1_reach');
+      await until(() => __game.garage.dir < 0 && __game.garage.p < 0.6, 6000).catch(() => {});
+      await shot('garage_2_closing');
+      await until(() => __game.garage.p === 0, 6000).catch(() => {});
+      await sleep(350); await shot('garage_3_tug');
+      await waitOp();
+      s = await D();
+      const ph = await ev(() => window.__phases.join(' '));
+      ok('shut from outside, three tugs', s.p === 0 && s.shut && (await ev(() => window.__tugs)) === 3 && ph === 'reach pull back tug', { ...s, phases: ph, tugs: await ev(() => window.__tugs) });
+      await shot('garage_4_shut');
+      // 3. It holds: Ove walks at it for 1.5 s.
+      await at(1.2, 0);
+      await frames(4);
+      await hold(['KeyW'], 1500);
+      s = await D();
+      ok('Ove stops at the shut door', s.o > 0.35, s);
+      // 4. The Saab inside (nose in), Ove outside: no "Kliv in" through the door, facing it or not.
+      await ev(() => { const b = window.__lm('oveGarageSpot'), c = __game.named.saab; c.place(b.x, b.z, b.yaw); c.ctrl.park = true; c.sync(0); });
+      await at(0.6, 0, 0); await frames(6);
+      const f1 = (await D()).it;
+      await at(0.6, 0, Math.PI); await frames(6);
+      const f2 = (await D()).it;
+      ok('no Kliv in through the shut door', f1 === 'garage' && f2 !== 'car', { facing: f1, away: f2 });
+      // 5. Open it again from outside (the Saab inside, parked nose in, is not in the way).
+      await at(1.0, -0.5); await frames(6);
+      await tap('KeyE');
+      await until(() => __game.garage.dir > 0 && __game.garage.p > 0.35, 6000).catch(() => {});
+      await shot('garage_5_opening');
+      await waitOp();
+      s = await D();
+      ok('open from outside with the Saab inside', s.p === 1 && !s.shut, s);
+      await sleep(400); await shot('garage_6_saab_inside');
+      // ... and Ove can get into the Saab now (beside the door, facing the car's tail: either is fine).
+      await at(0.6, 0, Math.PI); await frames(6);
+      ok('Kliv in once it is open', (await D()).it === 'car', await D());
+      // 6. Refused: the Saab half out of the doorway.
+      await saabAt(-2.0);
+      await at(1.0, 1.0, 0); await frames(6);
+      await tap('KeyE'); await frames(10);
+      s = await D();
+      const bubble = await ev(() => [...document.querySelectorAll('.bubble')].map((b) => b.textContent).join(' | '));
+      ok('refused with the Saab in the doorway', s.p === 1 && !s.op && /Saaben står i vägen/.test(bubble), { ...s, bubble });
+      // 7. From inside (the Saab back at its spot outside): shut, no tugs; open again.
+      await saabHome();
+      await at(-1.0, 0.2); await frames(10);
+      await ev(() => { window.__tugs = 0; window.__phases = []; });
+      await tap('KeyE');
+      await sleep(900); await shot('garage_7_inside_closing');
+      await waitOp();
+      s = await D();
+      ok('shut from inside, no tugs', s.p === 0 && s.shut && (await ev(() => window.__tugs)) === 0, { ...s, phases: await ev(() => window.__phases.join(' ')) });
+      await shot('garage_8_inside_shut');
+      await at(-1.0, -0.2); await frames(6);
+      await tap('KeyE');
+      await waitOp();
+      s = await D();
+      ok('open from inside', s.p === 1 && !s.shut, s);
+      // 8. In the Saab in front of the shut door: the hint; then W into it - the car stops.
+      await at(1.0, 0); await frames(6);
+      await tap('KeyE'); await waitOp();
+      await ev(() => { const g = __game; g.enterCar(g.named.saab); g.cam.yaw = g.playerCar.yaw; g.cam.snapNext = true; });
+      await frames(12);
+      s = await D();
+      ok('in-car hint at the shut door', /Garageporten är stängd/.test(s.prompt), s.prompt);
+      await shot('garage_9_car_hint');
+      await hold(['KeyW'], 1800);
+      await frames(20);
+      const car = await ev(() => { const g = __game, c = g.playerCar, d = g.garage, [, o] = d.local(c.x, c.z); return { front: +(o - c.obb.hz).toFixed(2), kmh: +(c.speed * 3.6).toFixed(0), hp: +c.hp.toFixed(0) }; });
+      ok('the shut door stops the Saab', car.front > -0.05 && (await D()).shut, car);
+      await shot('garage_10_car_door');
+      // 9. The save: shut is kept over a reload (and a save without the field is open).
+      await ev(() => { const g = __game; g.exitCar(true); g.save(); });
+      const saved = await ev(() => JSON.parse(localStorage.getItem('saab-and-run-v1')).garage);
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?test=1`, { waitUntil: 'load' });
+      await until(() => window.__ready === true, 120000);
+      await frames(10);
+      const after = await ev(() => ({ p: __game.garage.p, shut: !__game.garage.block.dead }));
+      ok('shut is saved', saved === 0 && after.p === 0 && after.shut, { saved, after });
+      await ev(() => { const s = JSON.parse(localStorage.getItem('saab-and-run-v1')); delete s.garage; localStorage.setItem('saab-and-run-v1', JSON.stringify(s)); });
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?test=1`, { waitUntil: 'load' });
+      await until(() => window.__ready === true, 120000);
+      await frames(10);
+      ok('no field in the save: open', await ev(() => __game.garage.p === 1));
+      await ev(() => localStorage.removeItem('saab-and-run-v1'));
+      // 10. Day 3 with the door shut: at the garage the objective is the door, E opens it, then the
+      // key search (hold E) goes on.
+      await page.goto(`http://127.0.0.1:${PORT}/index.html?test=1&fresh=1&mission=2`, { waitUntil: 'load' });
+      await until(() => window.__ready === true, 120000);
+      await until(() => !!__game.missions.offered, 20000);
+      await ev(() => { __game.garage.set(false); __game.missions.begin(); });
+      await until(() => __game.missions.state === 'running', 60000);
+      const t = await ev(() => __game.missions.target());
+      await ev((t) => { const g = __game, d = g.garage, yaw = Math.atan2(-d.ox, -d.oz); if (g.playerCar) g.exitCar(true); g.player.teleport(t.x, t.z, yaw); g.cam.yaw = yaw; g.cam.snapNext = true; }, t);
+      await frames(8);
+      const obj = await ev(() => ({ stage: __game.missions.stageI, sub: __game.missions.stage.sub, prompt: document.getElementById('prompt').textContent, it: __game.nearestInteractable()?.type }));
+      ok('day 3: the door first', obj.stage === 0 && obj.sub === 'Öppna garageporten' && obj.it === 'garage' && /Öppna garageporten/.test(obj.prompt), obj);
+      await shot('garage_11_day3_door');
+      await tap('KeyE');
+      await waitOp();
+      await frames(4);
+      await page.keyboard.down('KeyE'); await sleep(1900); await page.keyboard.up('KeyE');
+      await frames(6);
+      const st3 = await ev(() => ({ stage: __game.missions.stageI, p: __game.garage.p }));
+      ok('day 3: the search after the door', st3.stage >= 1 && st3.p === 1, st3);
     },
   };
 };

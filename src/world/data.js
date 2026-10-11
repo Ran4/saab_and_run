@@ -4,6 +4,8 @@
 export const parkedCars = [];      // { type, x, z, yaw, color, name, trailer }
 export const pedLoops = [];        // { i, j, pts: [[x, z] x 4] } sidewalk loops per block
 export const animated = [];        // { tick(t) }
+// Doors that open and close (garagedoor.js): Ove's garage door, by its name 'oveGarage'.
+export const doors = [];
 export const lamps = [];           // { x, z } street and path lamps
 export const bouncers = [];        // trampoline-like floors (none in this town; kept for the API)
 export const violationSpots = [];  // { x, z, yaw, kind, where }

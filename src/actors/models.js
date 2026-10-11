@@ -4285,6 +4285,7 @@ const _sS = new THREE.Vector3(), _sL = new THREE.Vector3(), _sR = new THREE.Vect
 function workPose(m, st, P, Q, t) {
   const D = m.D, k = D.k, kind = st.workKind || 'bend';
   Q.set(P);
+  if (kind === 'door') { doorPose(m, st, Q); return; }
   const thighL = D.hipY - D.kneeY, shinL = D.kneeY - D.ankleY;
   const [hf, kf, bend, chest] = kind === 'low' ? [1.3, 2.05, 0.38, 0.1] : kind === 'shovel' ? [0.62, 0.95, 0.6, 0.12] : kind === 'wall' ? [0.06, 0.1, 0.14, 0.04] : [0.32, 0.5, 0.62, 0.16];
   for (const i of [0, 1]) {
@@ -4332,6 +4333,35 @@ function workPose(m, st, P, Q, t) {
     aimHand(m, Q, Q, i, fd[0], fd[1], fd[2], pn[0], pn[1], pn[2]);
     handShape(Q, i, kind === 'shovel' ? 'grip' : 'carry');
     if (kind !== 'shovel') handShape(Q, i, 'grip', 0.4 + 0.3 * Math.max(0, s));
+  }
+}
+
+// At the garage door ('door' work, main.js): both hands a shoulder's width apart on what st.reach
+// gives in body space, [height above the soles, ahead, to the left] - the handle, or the bottom edge
+// of the open door overhead. Overhand low down, the palms turning to the door as the hands go up;
+// he leans in to reach low and stretches up (looking up) to reach high. st.tug (0..1): a pull back
+// on the handle, the weight going back onto the heels. Standing: the legs keep the stance under it.
+function doorPose(m, st, Q) {
+  const D = m.D, k = D.k, r = st.reach || [D.hipY + 0.1, 0.45 * k, 0], tug = st.tug || 0;
+  const ry = r[0], rz = r[1], rx = r[2] || 0;
+  const hi = sstep(D.chestY, D.headY + 0.15, ry), low = 1 - sstep(D.hipY - 0.05, D.chestY, ry);
+  const far = sstep(0.42 * k, 0.75 * k, rz);
+  Q[B.spine * 3] = 0.06 + 0.2 * low * (0.4 + far) + 0.08 * far * (1 - hi) - 0.07 * hi - 0.13 * tug;
+  Q[B.spine * 3 + 1] = 0; Q[B.spine * 3 + 2] = 0;
+  Q[B.chest * 3] = 0.03 + 0.05 * low - 0.06 * hi - 0.05 * tug; Q[B.chest * 3 + 1] = 0; Q[B.chest * 3 + 2] = 0;
+  Q[B.neck * 3] = 0.22 * (1 - hi) - 0.42 * hi; Q[B.neck * 3 + 1] = 0;
+  Q[B.head * 3] = 0.08 * (1 - hi) - 0.12 * hi;
+  // the knees give a little when he reaches low, and against a tug
+  for (const i of [0, 1]) {
+    const bend = 0.12 * low + 0.1 * tug;
+    Q[(i ? B.thighL : B.thighR) * 3] -= bend; Q[(i ? B.shinL : B.shinR) * 3] += bend * 2; Q[(i ? B.footL : B.footR) * 3] -= bend;
+  }
+  Q[OFF + 1] -= 0.02 * low + 0.025 * tug;
+  Q[OFF + 2] -= 0.04 * tug;
+  const ny = -(1 - hi), nz = 0.25 + 0.75 * hi;
+  for (const i of [0, 1]) {
+    const side = i ? 1 : -1;
+    gripBar(m, Q, Q, i, rx + side * 0.2 * k, ry, rz, -side, 0, 0, 0, ny, nz, side * 0.7, -0.6, -0.2 + 0.3 * hi, 'grip');
   }
 }
 

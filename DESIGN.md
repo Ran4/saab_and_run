@@ -180,7 +180,19 @@ like Rune. A knock-down depends only on the car's own speed into the person (> 4
 walking into a parked car just stops Ove. Pushing Rune: 3.0 m/s (3.6 with Shift). **J/click:
 "sparka på däcket"** — kicking a car's tyre plays a thunk, rocks the car (a parked car asleep is
 woken) and an Ove comment by make ("Bra däck." / "Plast och elektronik." / "Sommardäck. I november."); kicking props still breaks them (−Ordning; one kick breaks the nearest prop only). E: talk / get in & out / hold to
-interact. F: hold to write a report.
+interact / Ove's garage door. F: hold to write a report.
+
+**Ove's garage door** (`src/world/garagedoor.js`, driven by main.js `useGarage`): a steel
+up-and-over door (vipport) that E opens or shuts from outside or inside, facing it within 1.5 m.
+Ove takes the handle and lifts (the springs take it the rest of the way, ~1.5 s), stepping back
+from the bottom's ~0.3 m swing; or reaches up for the open door's edge (2.02 m), pulls it down,
+steps back as it falls shut (~1.15 s, a clang) and - from outside - tugs the handle three times.
+While his hands are on it he can't walk off; then a step, jump, kick or E of his own ends it. Not
+with a car in the doorway or within 0.45 m of it ("Saaben står i vägen.") or, to shut it, somebody
+under it. A collider fills the doorway while it is shut, closing or < 85 % open: Ove and the Saab
+stay out (or in), and no "Kliv in" reaches a car through it; a car driven into it booms and rattles
+it ("Porten!"). In a car in front of the shut door: "Garageporten är stängd · kliv ur (E) och öppna
+den". Open at the start; saved (`garage`: 0 = shut).
 
 ### 4.5 Money & collectibles
 `kr` (kronor) replaces coins: pantburkar (cans) lying around (1 kr), rewards. 7 Saab-emblem and
@@ -194,7 +206,7 @@ Göteborg. Hon skrattade åt honom hela vägen."). All reachable without double 
 | Mus | titta | titta |
 | Shift | spring | |
 | Space | hoppa | handbroms |
-| E | prata, kliva in, interagera (håll) | kliva ur |
+| E | prata, kliva in, garageporten, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll) |
 | J / klick | sparka (däck) | |
 | H | | tuta |
@@ -276,7 +288,8 @@ after each stop; after three stops in one drive he gives up: "Jag skickar ett br
 Rekommenderat!"); `catchFails`
 / the def's `bustFails` turn contact into a fail instead), `pickup` (+ `walk`: they walk there),
 `dropoff` (+ `walk`), `escort`, `fetch`, `holdAt` (+ `cut`: one press of E, the job happens off
-screen), `catchCat` (patience: it bolts from a stride or a close approach and outruns Ove, sits
+screen; + `ready(g)`: a text while the job can't be done yet, shown as the objective with E left
+free - day 3's "Öppna garageporten"), `catchCat` (patience: it bolts from a stride or a close approach and outruns Ove, sits
 again, and comes to a man who stands still), `parkIn` (box, heading tolerance, optional trailer and
 reverse-only, on-screen guidance in the objective line, `clear` tows away felparkeringar in the
 way), `report` (forced spawns near a landmark, smitare off), `race` (a cut to the grid, Ove in the
@@ -293,8 +306,9 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    trailer in the box; Patrick shouts useless advice) → report 3 felparkeringar at the guest
    parking (tutorial: no smitare) → get in the `saab` (put back at the garages first if Ove left it
    far off in free roam and it can't be seen; else "Hämta Saaben") → park it nose first in
-   `oveGarageSpot`. Driving forward through the trailer box on the way past it is never scolded,
-   however slowly; only stopping in it nose first is ("Backa in!").
+   `oveGarageSpot` (its door must be open: shut, the car hint says so). Driving forward through
+   the trailer box on the way past it is never scolded, however slowly; only stopping in it nose
+   first is ("Backa in!").
    Outro at Ove's garage door: Parvaneh brings saffransris; Ove pretends not to want it.
 2. **Sjukhuset** (Tisdag, 150 kr) — giver `parvaneh`; Patrick fell off the ladder putting up an
    advent star and went in the ambulance (`away`), the girls are at Jimmy's (`elsewhere`), and
@@ -305,8 +319,9 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    → park in `hospitalSpot`. Outro: "Jag betalar inte för att stå still!" — and she decides he will
    teach her to drive. **From now on Patrick wears a cast.**
 3. **Elementet** (Onsdag, 150 kr) — giver `anita` at `runeHouse`. The elementnyckel's hook in
-   `oveGarage` is empty (hold E: "Tom krok. Rune lånade elementnyckeln 1998.") → it isn't in Rune's
-   Volvo in the garage row either (`runeVolvo`, hold E at its door: a note in the glove box,
+   `oveGarage` is empty (a shut garage door is opened first; hold E: "Tom krok. Rune lånade
+   elementnyckeln 1998.") → it isn't in Rune's Volvo in the garage row either (`runeVolvo`, hold
+   E at its door: a note in the glove box,
    "utlånad till Anders, 2015") → fetch it at Anders' door across the area ("Jaså, den. Den låg i
    Audin."; brass, Ove's since 1991, Rune's since 1998, Anders' since 2015) → Anita
    phones: two cars block the soprum → report 2 at
@@ -369,7 +384,8 @@ Jimmy's and Anders' houses are all here), `radhus` (other row-house areas), `vil
 `kommun`, `gas`, `park`, `field`, `forest` (edges).
 
 `town.js` must export (in addition to the existing `parkedCars`, `pedLoops`, `animated`,
-`lamps`, `bouncers`):
+`lamps`, `bouncers`, and `doors`: the doors that move, Ove's garage door `name: 'oveGarage'`,
+a `GarageDoor` from `garagedoor.js` whose mesh town.js adds after the static world):
 
 - **landmarks** (via `f.mark`; `{x, z, yaw}` — for people, `yaw` is the direction someone
   standing there faces). Spots must be free ground-level positions, never inside a footprint:
@@ -379,7 +395,7 @@ Jimmy's and Anders' houses are all here), `radhus` (other row-house areas), `vil
   `dealer`, `church`, `cemetery` (gate), `sonjaGrave` (standing spot in front of the stone,
   facing it), `kommun`, `gas`, `park`, `field`, `busStop`.
 - **boxes** (landmarks with `w`, `l`; `yaw` = the heading a car parked correctly has):
-  `oveGarageSpot` (inside Ove's open garage), `parvanehDrive` (on the walkway in front of their
+  `oveGarageSpot` (inside Ove's garage), `parvanehDrive` (on the walkway in front of their
   house, long enough for car + trailer ≈ 9.5 × 3.2 m), `hospitalSpot` (a bay in the hospital
   car park), `saabSpot` (where the Saab stands at start, outside the garage).
 - **parkedCars names:** `saab` (type `saab900`, mid-blue metallic `0x2c5596`, at `saabSpot`), `patrickCar` (type
@@ -436,7 +452,9 @@ Added in phase 2 (details and the bone order in `notes/people.md`):
   `carryPoint(model, outVec3)` (world space, after the model's matrices are updated). The cat has
   `sit(on)` (waiting) and `hold(on)` (curled while carried).
 - `st.work` + `st.workKind` — hold-E jobs: `'bend'` (default), `'low'` (a tyre), `'shovel'`,
-  `'wall'` (a radiator). Every `holdAt` stage passes its kind.
+  `'wall'` (a radiator). Every `holdAt` stage passes its kind. `'door'` (Ove's garage door):
+  both hands on `st.reach` = [height above the soles, ahead, to the left] (body space), leaning in
+  low and stretching up high; `st.tug` 0..1 pulls back on it.
 - `st.cheer` ("yes!"), `st.talk`, blinking (automatic at lod 0), finger/thumb bones and hand shapes
   (grip, fist, pen, phone, board, carry).
 - `buildCharacter(def, { lod, headLod, faceTex })`: the cast is lod 0 with a per-character baked

@@ -284,6 +284,8 @@ const walkToLot = (speed) => ({
 const SKODA_WAIT = { x: -37.25, z: -5, yaw: Math.PI };
 // Day 6: the same street, by the lot entrance (seen from the entrance as the Saab comes out).
 const SKODA_DAY6 = { x: -37.25, z: -9, yaw: Math.PI };
+// Day 3: the key's hook is in Ove's garage - behind its door, if he has shut it (world/garagedoor.js).
+const garageShut = (g) => (g.garage && !g.garage.block.dead ? 'Öppna garageporten' : null);
 // Day 3: the radiator key should be in Rune's Volvo (in the garage row): beside its driver's door.
 const RUNE_VOLVO = (g) => { const c = g.ensureNamedCar('runeVolvo'); return c ? g.exitSpot(c, 1) : lm('oveGarage'); };
 // ... but Anders has had it since 2015: a step in front of him at his door.
@@ -398,8 +400,9 @@ export const MISSIONS = [
     ],
     retryIntro: [['anita', 'Ove... det klickar fortfarande i elementen.'], ['ove', 'Jag hämtar nyckeln.']],
     stages: [
-      // The key isn't on its hook: Rune borrowed it in 1998, and it is still in his Volvo.
-      also(() => holdAt({ at: 'oveGarage', secs: 1.4, radius: 2.2, label: 'Leta efter elementnyckeln', text: 'Hämta elementnyckeln i garaget', work: 'wall' }), {
+      // The key isn't on its hook: Rune borrowed it in 1998, and it is still in his Volvo. (Ove
+      // opens his garage door first if he has shut it.)
+      also(() => holdAt({ at: 'oveGarage', secs: 1.4, radius: 2.2, label: 'Leta efter elementnyckeln', text: 'Hämta elementnyckeln i garaget', work: 'wall', ready: garageShut }), {
         done: (g) => { hud.toast('Tom krok. Rune lånade elementnyckeln 1998. Den ligger säkert kvar i hans Volvo.', '', 7000); g.say(g.player, 'Rune. Naturligtvis.', 2.2); },
       }),
       // Not in the Volvo either: a note in the glove box sends Ove across the area to Anders.

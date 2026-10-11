@@ -126,7 +126,7 @@ call `disposeCtx` on complete / fail / abort** (or do the same by hand). Each st
 |---|---|
 | `getInCar` | `{ car: 'patrickCar', any: false, text }` |
 | `goto` | `{ to \| who, radius = 7, text, timer, failText, inCar, onFoot, stop, with: [npc keys], radio: [[who, text]], chaser: { type, color, name, who, cruise, catchFails, catchText } }` (chaser = a car in AI `chase` that hunts Ove; `catchFails` fails the stage after 2.5 s within 6 m) |
-| `holdAt` | `{ at \| spots: [places], secs = 3, label, radius = 1.8, text, mounds, work, pose }` — hold E on foot; Ove takes the people area's `work` pose of kind `work` ('bend' \| 'low' \| 'shovel' \| 'wall'; without it guessed from the label: lufta/element/lås → wall, skott → shovel, punkter/däck/blomm/grav → low, else bend); `pose: 'write'` keeps the notebook instead; `mounds` puts a snow heap on each spot (Ove stands at its edge, not in it) |
+| `holdAt` | `{ at \| spots: [places], secs = 3, label, radius = 1.8, text, mounds, work, pose, ready }` — hold E on foot (`ready(g)` → null or a text: while there is a text the job can't be done yet, the text is the objective within 8 m and E is left to the rest, e.g. day 3's "Öppna garageporten"); Ove takes the people area's `work` pose of kind `work` ('bend' \| 'low' \| 'shovel' \| 'wall'; without it guessed from the label: lufta/element/lås → wall, skott → shovel, punkter/däck/blomm/grav → low, else bend); `pose: 'write'` keeps the notebook instead; `mounds` puts a snow heap on each spot (Ove stands at its edge, not in it) |
 | `fetch` | `{ at, item: 'key' \| 'phone' \| 'wrench' \| 'papers' \| 'flowers', label, text, rMin, rMax, exact, got }` → `m.data.carrying = label` |
 | `pickup` | `{ who, at, needCar, text, carText, hello }` — on foot: walk up, they follow; in a car: stop within 9 m |
 | `dropoff` | `{ who, at, radius = 8, text, bye, needCar, carText }` — `needCar`: they must arrive in Ove's car (walking beside him doesn't count; `carText` says so) |
@@ -572,3 +572,46 @@ Closed the cross-owner requests above and from the other handbacks:
   into the Centrum one, the Akut canopy's edge filling the top); now none.
 - Seen in passing (rendering's): the first gameplay frames after Spela still take ~0.3-0.5 s in
   headless Chrome here (the title's fade jumps from 0.99 to 0.29 over it, ui.mjs `titlegone`).
+
+## Feature oppna_garaget: Ove's garage door (2026-10-11) — what changed
+
+- **main.js** drives the door (world: notes/world.md, *Ove's garage door*). `game.garage` is the
+  `GarageDoor` named 'oveGarage'. `nearestInteractable()` offers `{ type: 'garage', open }` when
+  `garageReach()` says Ove can work it (on foot, on the ground, not carrying the cat or pushing
+  Rune, within 1.5 m of it on either side and across it, the door still) and he faces it (> 0.5),
+  or nothing else is in reach and he isn't turned away (< 1.1 m): so a car right behind him, or the
+  Saab beside him in the garage, doesn't take E from the door. Cars on the other side of the shut
+  door are never offered (`garage.between`). Prompt "E Öppna / Stäng garageporten".
+- **useGarage → doorOp** (`stepDoorOp`, from `tickGarage` in `update`): `garageBlocked(open)` first
+  (a car's OBB in the band from 0.45 m outside to 0.12 m inside: "Saaben står i vägen." / "Det står
+  en bil i vägen."; to shut it, anyone within 0.2 m of the panel: "Flytta på dig."). Phases:
+  `reach` (he walks to his spot - the handle in the middle, or the open door's edge where he stands,
+  0.38-0.55 m out - and reaches; the door starts once he is there, ≥ 0.35 s, or after 1.2 s),
+  `pull` (hands on the handle until p 0.25 / on the edge until p 0.75), `back` (hands off, he backs
+  to 0.82 m outside / 0.95 m inside, clear of the swing), `tug` (outside, shut: back at the handle,
+  three tugs 0.34 s apart, a rattle and a `bump` each; 35 %: "Så." / "Stängt." / "Ordning och
+  reda."). `op.lock` (reach, pull): no input moves him (fixedStep takes `op.wx/wz`), no jump, kick
+  or E, no prompts. After that, a step, a jump, a kick or E of his own ends the op (E then does its
+  usual thing). `p.faceWish` is off during the op; his yaw is damped towards the door. Ends at
+  once in a car, knocked over, in a scene or a failed mission (the door goes on by itself).
+- **Pose**: `posePlayer('work', 'door')` with `poseReach` = the grip point in his body space
+  (`doorReach`) and `poseTug`; syncAll passes them as `anim.reach` / `anim.tug` and keeps the
+  'door' kind while the pose fades (it used to fall back to 'bend' during any fade-out).
+- **Sounds** (`audio.garage(kind, k, dur)`, by distance): `latch`, `roll` (rollers and springs over
+  the move), `up`, `shut` (a clang with a ring; also a car into the door, louder with the impact),
+  `tug`.
+- **In a car** at the shut door (within 4 m of it nose or tail first, < 6 m/s): "Garageporten är
+  stängd · kliv ur (E) och öppna den". A car into the door: `onCarImpact`'s 6th argument (the
+  block) → `garageHit` (a bump, a boom; Ove: "Porten!" / "Min garageport!" / "Den var stängd,
+  Ove.", at most every 10 s).
+- **Save**: `garage` (0 = shut; anything else, or none, = open as at the start), applied in `load`.
+- **Missions**: day 3's first `holdAt` (the empty hook, at `oveGarage`) has `ready: garageShut`:
+  with the door shut the objective is "Öppna garageporten" and E opens it; then the search. Day 1's
+  `parkIn` needs nothing new (the car hint).
+- **Check**: gameplay.mjs `garage` (15 checks, real key presses): shut from outside (phases reach
+  pull back tug, three tugs), Ove stops at the shut door, no "Kliv in" through it, open with the
+  Saab inside, "Kliv in" once open, refused with the Saab in the doorway, shut and open from inside
+  (no tugs), the in-car hint, a drive into it (the Saab stops, the door holds), the save round trip
+  (shut kept; no field = open), day 3 with the door shut (door first, then the search). Shots
+  out/garage_*.png.
+

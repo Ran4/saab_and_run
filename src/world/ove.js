@@ -1,5 +1,6 @@
 // Ove's radhusområde (block type 'ove'): the shared radhusområde layout plus everything that
-// makes it Ove's - named units, his open garage, the Saab, signs at every entrance, the board.
+// makes it Ove's - named units, his garage (its door opens and closes), the Saab, signs at every
+// entrance, the board.
 //
 // Local layout (block interior centre = origin, -z = north):
 //   z -31..-19.5  parking lot (north bays, aisle, entrance from the west street)
@@ -13,7 +14,8 @@ import { CURB, carFreeZones, landmarks } from './layout.js';
 import { C, rnd, R, win, door, lampBox, limb, wrapYaw, canopy, glow } from './kit.js';
 import { radhusArea, garageInterior, UW, D } from './rowhouse.js';
 import { picto, textFace } from './signs.js';
-import { violationSpots, parkedCars, shared } from './data.js';
+import { violationSpots, parkedCars, shared, doors } from './data.js';
+import { GarageDoor } from './garagedoor.js';
 import { mulberry32 } from '../util.js';
 
 export function oveBlock(bf) {
@@ -28,7 +30,7 @@ export function oveBlock(bf) {
     frontFn: (row, k) => (row === 'S1a' && k === 4 ? 'square' : null),
     pre: (row, k) => (row === 'N1a' && k === 4 ? { doorC: 0x2a2c2e, noCanopy: true } : null),
     garageWall: C.brown, garageDoor: 0x5a4632,
-    openGarage: 0, advent: 0.35,
+    openGarage: 0, movingGarage: true, advent: 0.35,
     unit: (row, k, info) => {
       const key = row === 'S1a' && k === 4 ? 'ove' : row === 'N1a' && k === 0 ? 'parvaneh' : row === 'S1b' && k === 0 ? 'rune' : row === 'N1b' && k === 3 ? 'jimmy' : row === 'N1a' && k === 4 ? 'anders' : null;
       if (key) { units[key] = info; decorate(key, info, r); }
@@ -64,6 +66,8 @@ export function oveBlock(bf) {
   bf.mark('playground', 14, 25.0, 0);
   bf.mark('torg', 1.8, 3.8, -Math.PI / 2);
   garageInterior(area.garageFrame, 3.05 / 2);
+  // His garage door goes up and down (E at the door; garagedoor.js). Open at the start, as it was.
+  doors.push(new GarageDoor(area.garageFrame, 3.05 / 2, { name: 'oveGarage', w: 3.05 - 0.32, color: 0x5a4632 }));
   area.garageFrame.sign(textFace('OVE', 0.42, 0.13, { bg: '#f2f0e8', fg: '#1a1a1a', ppm: 300, weight: '700' }), 3.05 / 2 + 0.6, CURB + 2.36, -0.065, 0.42, 0.13, Math.PI);
 
   // ----- Named cars.

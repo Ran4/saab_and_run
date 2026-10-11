@@ -306,7 +306,9 @@ function gardenSet(f, x, z) {
 
 // ---------------------------------------------------------------------------------------------
 // Garage row (garagelänga). f at the row's front-left corner, doors along local x facing local -z.
-// o.open: index of a garage standing open with its interior; o.doorC, o.wall.
+// o.open: index of a garage built open with its interior; o.doorC, o.wall. o.moving: that garage's
+// door is a moving one (garagedoor.js, Ove's): only its tracks are built here, not the door tipped up
+// under the ceiling.
 export function garageRow(f, n, o = {}) {
   const GW = o.GW ?? 3.05, GD = 6.0, GH = 2.55, len = n * GW;
   const wall = o.wall ?? C.brown, trim = o.trim ?? C.trim, doorC = o.doorC ?? 0x6a4a34;
@@ -328,8 +330,18 @@ export function garageRow(f, n, o = {}) {
     f.box(wall, cx, CURB, GD - 0.08, GW, GH, 0.16);
     f.solid(cx, GD - 0.08, GW, 0.16, 99, 'garage');
     f.use('concrete', { snow: 0 }).box(0x8e8c88, cx, CURB, GD / 2, GW - 0.1, 0.03, GD - 0.1);
-    // The up-and-over door, tipped up under the ceiling.
-    f.use('painted', { snow: 0 }).box(doorC, cx, CURB + GH - 0.32, 1.25, GW - 0.5, 0.05, 2.2);
+    // The up-and-over door, tipped up under the ceiling; a moving one rides in two tracks there.
+    if (!o.moving) f.use('painted', { snow: 0 }).box(doorC, cx, CURB + GH - 0.32, 1.25, GW - 0.5, 0.05, 2.2);
+    else {
+      // (the panel's edges run just inside them; they rise 9 cm into the garage, hung from the
+      // ceiling)
+      f.use('metal', { snow: 0 });
+      for (const s of [-1, 1]) {
+        const x = cx + s * (GW / 2 - 0.17);
+        f.boxC(0x5e6266, x, CURB + 2.21, 1.27, 0.03, 0.06, 2.42, 0, -0.037);
+        for (const z of [1.3, 2.42]) f.box(0x5e6266, x, CURB + 2.2, z, 0.025, GH + 0.1 - 2.2, 0.04);
+      }
+    }
     // (round 6: a bright tube, but under the bloom threshold: it smeared across the garage ceiling)
     f.use('light', { snow: 0 }).box(glow(0xf4f6ff, 1.5), cx, CURB + GH - 0.1, GD * 0.55, 0.1, 0.05, 1.3);
   }
@@ -423,7 +435,7 @@ export function radhusArea(bf, o = {}) {
   bf.pile(-30.0, -30.3, 1.4, 0.8, false, Math.PI / 2);
   // Garage row on the south-east side of the aisle.
   const gf = bf.sub(3.5, -19.5, 0);
-  out.garages = garageRow(gf, 9, { wall: o.garageWall ?? o.walls?.[0] ?? C.brown, open: o.openGarage ?? -1, doorC: o.garageDoor ?? 0x5a4632 });
+  out.garages = garageRow(gf, 9, { wall: o.garageWall ?? o.walls?.[0] ?? C.brown, open: o.openGarage ?? -1, moving: !!o.movingGarage, doorC: o.garageDoor ?? 0x5a4632 });
   out.garageFrame = gf;
   // Soprum + återvinning: a small building with its doors on the aisle, containers in a screen.
   const sp = bf.sub(-6.8, -17.0, 0);

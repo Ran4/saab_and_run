@@ -17,11 +17,12 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   errands collect patrol freeroam stages` and phase 4's `gperf carcycle gamepad corruptsave tabhide
   titlecheck quality recycle smalltalk tagmerge companion p4ui titlecam` and round 2's `dilation errandprog
   r2checks reloadday titlekeys collcull titlepose bouquet` and round 2b's `camroof` (the chase cam
-  under low roofs) (notes/integration.md), story.mjs `story m1..m7 gate aftermath` plus the no-warp
-  checks `m5race m7chase m4cat lotwalk hospdrive retry` and round 2's `giveup outrosmet flowercalls
-  dusk camwall`, ui.mjs `uiportraits uitoasts uiabort uifavicon titlegone`, render.mjs `rperf rload rprog rgpu
-  rautosim`, cars.mjs (round 2: `wheelfaces trailersleep`), people.mjs (round 2: `pplanim pplcine`),
-  world.mjs (round 2: `wsame wcalls wvram wprops`).
+  under low roofs) and `garage` (Ove's garage door, E from both sides) (notes/integration.md),
+  story.mjs `story m1..m7 gate aftermath` plus the no-warp checks `m5race m7chase m4cat lotwalk
+  hospdrive retry` and round 2's `giveup outrosmet flowercalls dusk camwall`, ui.mjs `uiportraits
+  uitoasts uiabort uifavicon titlegone`, render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
+  (round 2: `wheelfaces trailersleep`), people.mjs (round 2: `pplanim pplcine`), world.mjs (round 2:
+  `wsame wcalls wvram wprops`).
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -91,5 +92,6 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   caption)` is the cut to black (time skips, the race grid, "Ove går in och luftar elementen").
   `game.storyWorld()` applies what the story changed (Patrick's cast after day 2, the cat by Ove's
   door after day 4, Adrian's Saab in the lot after day 5) at load and after each day.
-- Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`), every
-  field sanitised on load. Settings separately in `saab-and-run-settings` (`music`, `sound`, `quality`).
+- Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`, `garage`
+  0 = Ove's garage door shut), every field sanitised on load. Settings separately in
+  `saab-and-run-settings` (`music`, `sound`, `quality`).

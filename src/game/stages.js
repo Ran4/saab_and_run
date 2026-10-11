@@ -285,7 +285,9 @@ export const goto = (o) => ({
 //      'shovel' | 'wall': the people area's work pose while E is held; without it the kind is
 //      guessed from the label, else 'bend'), pose ('write': the notebook instead of working),
 //      cut (a caption: the job happens off screen - one press of E and the scene cuts to black
-//      with the caption while the bar fills by itself, "Ove går in och luftar elementen") }.
+//      with the caption while the bar fills by itself, "Ove går in och luftar elementen"),
+//      ready (g -> null | text: while it gives a text the job can't be done yet - the text is the
+//      objective there, and E is left to whatever else is at hand: "Öppna garageporten" on day 3) }.
 const WORK_GUESS = [[/lufta|element|lås/i, 'wall'], [/skott|snö/i, 'shovel'], [/punkter|däck|blomm|grav/i, 'low']];
 function workKind(o) {
   if (o.work) return o.work;
@@ -309,10 +311,11 @@ export const holdAt = (o) => ({
   target() { const s = this.spot(); return { x: s.x, z: s.z, r: 1.2 }; },
   markers() { return this.spots.slice(this.i + 1).map((s) => ({ type: 'item', x: s.x, z: s.z })); },
   close(g) { const s = this.spot(); return onFoot(g) && dist(g.player.x, g.player.z, s.x, s.z) < (o.radius || 1.8); },
+  notReady(g) { return o.ready ? o.ready(g) : null; },
   cleanup(g) { if (this.cutT != null) { hud.curtain(false); g.inDialog = false; this.cutT = null; } },
   prompt(g) {
     if (this.cutT != null) return null;
-    if (this.close(g)) return { text: `<b>E</b> ${o.label}`, hold: o.cut ? null : this.p, takesE: true };
+    if (this.close(g) && !this.notReady(g)) return { text: `<b>E</b> ${o.label}`, hold: o.cut ? null : this.p, takesE: true };
     if (g.playerCar) { const s = this.spot(), f = g.focus(); if (dist(f.x, f.z, s.x, s.z) < 9) return { text: 'Kliv ur bilen först', takesE: false }; }
     return null;
   },
@@ -338,7 +341,7 @@ export const holdAt = (o) => ({
         if (d < 0.72) { const ux = d > 0.01 ? dx / d : -Math.sin(p.yaw), uz = d > 0.01 ? dz / d : -Math.cos(p.yaw); p.x = q.x + ux * 0.72; p.z = q.z + uz * 0.72; }
       }
     }
-    const close = this.close(g);
+    const why = this.notReady(g), near = this.close(g), close = near && !why;
     if (o.cut && close && g.input.pressed('interact')) {
       this.cutT = 0; this.p = 0;
       g.inDialog = true;
@@ -347,7 +350,7 @@ export const holdAt = (o) => ({
       return;
     }
     this.active = close && g.input.down('interact');
-    this.sub = !close && g.playerCar && dist(g.focus().x, g.focus().z, s.x, s.z) < 12 ? 'Kliv ur bilen.' : null;
+    this.sub = !near && g.playerCar && dist(g.focus().x, g.focus().z, s.x, s.z) < 12 ? 'Kliv ur bilen.' : why && onFoot(g) && dist(g.player.x, g.player.z, s.x, s.z) < 8 ? why : null;
     if (this.active) {
       this.p += dt / this.secs;
       const p = g.player;

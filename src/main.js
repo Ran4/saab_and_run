@@ -9,7 +9,7 @@ import { parkedCars, tickTown, litterSpots, collectibleSpots, mapLabels as townL
 import * as TOWN from './world/town.js';
 import { finalizeProps, tickProps, breakProp, propsNear, props as allProps } from './world/props.js';
 import { lm, landmarks, routeAim, N, LANE, RHW, SW, nodeX, nodeZ, neighbors, BOUND, isRoad, isCarFree, HALF, P } from './world/layout.js';
-import { groundAt, queryBlocks, contains, circleVsObb } from './world/collision.js';
+import { groundAt, queryBlocks, contains, circleVsObb, circleVsBlock, obbVsBlock } from './world/collision.js';
 import { Car, collideCars, warmCars } from './actors/car.js';
 import { Character } from './actors/character.js';
 import { CHARS, buildBust, randomPed, buildCat, carryPoint } from './actors/models.js';
@@ -25,6 +25,7 @@ import * as stages from './game/stages.js';
 import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
 import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
+import { HANDLE as DOOR_HANDLE } from './world/garagedoor.js';
 
 const STEP = 1 / 60;
 // At most two fixed steps per frame: a slow frame is caught up once, never with a burst of four that
@@ -157,6 +158,7 @@ const TRAFFIC = ['volvo240', 'volvo740', 'volvo740', 'golf', 'golf', 'kombi', 'k
 
 const _v = new THREE.Vector3();
 const _hit = {}, _hit2 = {}, _obst = { dist: 0, isPlayer: false };
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const isPerson = (c) => c.state === 'normal' || c.state === 'down' || c.state === 'flung';
 
 class Game {
@@ -198,6 +200,8 @@ class Game {
     this.stepN = 0;
     this.crumbs = [];               // Ove's trail on foot, for the people walking with him
     this.isNewGame = true;
+    this.garage = null;             // Ove's garage door (world/garagedoor.js)
+    this.doorOp = null;             // Ove working it (useGarage / stepDoorOp)
   }
 
   async init() {
@@ -227,6 +231,8 @@ class Game {
     if (TOWN.buildTownAsync) await TOWN.buildTownAsync(scene, (f) => setLoading(`Plogar gatorna… ${Math.round(f * 100)} %`));
     else TOWN.buildTown(scene);
     finalizeProps(scene);
+    // Ove's garage door (world/garagedoor.js; E at it, see useGarage)
+    this.garage = TOWN.doors?.find((d) => d.name === 'oveGarage') || null;
     hud.buildBaseMap();
     initCans(scene, litterSpots);
     setLoading('Tankar bilarna…');
@@ -939,7 +945,8 @@ class Game {
     if (kr > 0) { this.addCoins(-kr); this.penaltyKr += kr; this.penaltyT = 1.2; }
   }
 
-  onCarImpact(a, b, impact, cx, cz) {
+  onCarImpact(a, b, impact, cx, cz, blk = null) {
+    if (blk?.kind === 'garageDoor') this.garageHit(a, impact);
     const pc = this.playerCar;
     const involved = a === pc || b === pc;
     const f = this.focus();
@@ -1146,7 +1153,7 @@ class Game {
       // short retry lines, not the whole scene again - the day's progress itself is not kept)
       const ms = this.missions, cur = ms.current;
       const begun = cur && (ms.state !== 'idle' || ms.gaveUp.has(cur.day)) ? ms.index : null;
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave() }));
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave(), garage: this.garage && !this.garage.isOpen ? 0 : 1 }));
     } catch (e) { /* private mode: progress just won't persist */ }
   }
   // Every field is checked: a hand-edited or half-written save must not kill the story (mission -1
@@ -1165,6 +1172,8 @@ class Game {
           this.got.photos = ids(s.photos, this.photos?.length || 7);
           this.unlocked = new Set((Array.isArray(s.unlocked) ? s.unlocked : []).filter((v) => typeof v === 'string'));
           this.patrol.fromSave(s.patrol);
+          // (the garage door: 0 = shut; anything else, or none, = open as at the start)
+          if (this.garage && s.garage === 0) this.garage.set(false);
           const clock = Number(s.clock);
           if (s.clock != null && clock >= 0 && clock < 24 * 60) this.clockMin = clock;
           // Saved between two days: the next one still waits for a little patrolling.
@@ -1330,6 +1339,7 @@ class Game {
     }
     this.missions.update(dt);
     this.missions.updateFailed(dt);
+    this.tickGarage(dt);
     this.interrupts.update(dt);
     this.patrol.update(dt);
     this.tickPickups(dt);
@@ -1370,11 +1380,12 @@ class Game {
       if (input.pressed('interact') && !sp?.takesE) this.exitCar();
       return;
     }
-    if (p.state !== 'normal') return;
+    if (p.state !== 'normal' || this.doorOp?.lock) return;
     if (input.pressed('jump') && p.onGround && !this.pushedNpc()) p.jump(JUMP_V);
     if (input.pressed('attack') && this.kickT <= 0 && p.onGround && !this.pushedNpc()) {
       p.anim.kick = 1; this.kickT = 0.5; this.kickHitT = 0.14;
     }
+    if (input.pressed('interact') && this.doorOp) this.endDoorOp();
     if (input.pressed('interact') && !sp?.takesE) this.interact();
   }
 
@@ -1404,6 +1415,7 @@ class Game {
     if (it.type === 'talk') this.missions.begin();
     else if (it.type === 'chat') this.chat(it.who);
     else if (it.type === 'car') this.enterCar(it.car);
+    else if (it.type === 'garage') this.useGarage();
   }
 
   // The lines a neighbour may say now (see CHATTER, CHATTER_FIRST, CHATTER_AFTER).
@@ -1435,6 +1447,8 @@ class Game {
 
   nearestInteractable() {
     const p = this.player;
+    // (nothing else while he is at the garage door: an E after his hands are off it ends that first)
+    if (this.doorOp) return null;
     if (this.missions.offered) {
       const g = this.npc(this.missions.offered.giver);
       if (g && !g.car && g.state === 'normal' && dist(g.x, g.z, p.x, p.z) < 3.4 && Math.abs(g.y - p.y) < 2) return { type: 'talk', who: g };
@@ -1443,12 +1457,18 @@ class Game {
     for (const c of this.cars) {
       if (c.dead || c.locked || Math.abs(c.x - p.x) > 8 || Math.abs(c.z - p.z) > 8) continue;
       if (p.y > c.y + c.height - 0.3) continue;
+      // (not through the shut garage door: the Saab inside, Ove outside)
+      if (this.garage?.between(p.x, p.z, c.x, c.z)) continue;
       const h = _hit2;
       if (circleVsObb(p.x, p.z, 2.2, c.obb, h)) {
         const d = 2.2 - h.depth;
         if (d < bd) { bd = d; best = { type: 'car', car: c }; }
       }
     }
+    // The garage door, when Ove faces it (a car beside or behind him doesn't take E from it), or
+    // when nothing else is in reach and he isn't turned away from it.
+    const gr = this.garageReach();
+    if (gr && (gr.facing > 0.5 || (!best && gr.facing > -0.2 && gr.d < 1.1))) return { type: 'garage', open: !this.garage.isOpen };
     if (best) return best;
     let nb = null, nd = 2.6;
     for (const k in this.npcs) {
@@ -1458,6 +1478,156 @@ class Game {
       if (d < nd) { nd = d; nb = { type: 'chat', who: n }; }
     }
     return nb;
+  }
+
+  // ------------------------------------------------------------------------------------------
+  // Ove's garage door (world/garagedoor.js). E at it, from outside or in, facing it: opening, he
+  // takes the handle and lifts (the springs take it the rest of the way up) and steps back from the
+  // bottom's swing; closing, he reaches up for the open door's edge, pulls it down, steps back as it
+  // falls shut and then - from outside - tugs the handle three times to see that it is shut properly.
+  // Not with a car or somebody in the doorway. While his hands are on it (op.lock) he stays put;
+  // after that a step, a jump, a kick or E of his own ends it (the door goes on by itself).
+
+  // Can Ove work the door from where he stands? { a, o (door coordinates), d, side (1 outside),
+  // facing (1 = straight at it) } or null.
+  garageReach() {
+    const d = this.garage, p = this.player;
+    if (!d || d.moving || this.doorOp || this.playerCar || p.state !== 'normal' || !p.onGround || p.y > 0.5 || this.carrying || this.pushedNpc()) return null;
+    const [a, o] = d.local(p.x, p.z);
+    if (Math.abs(a) > d.w / 2 + 0.25 || Math.abs(o) > 1.5) return null;
+    const side = o >= 0 ? 1 : -1;
+    return { a, o, d: Math.abs(o), side, facing: -side * (Math.sin(p.yaw) * d.ox + Math.cos(p.yaw) * d.oz) };
+  }
+
+  useGarage() {
+    const d = this.garage, p = this.player, r = this.garageReach();
+    if (!r) return;
+    const open = !d.isOpen, why = this.garageBlocked(open);
+    if (why) { this.say(p, why, 1.8); audio.talk(CHARS.ove.voice); return; }
+    // (the handle is in the middle; the open door's edge he takes where he stands)
+    this.doorOp = { open, side: r.side, phase: 'reach', t: 0, pt: 0, a: open ? 0 : clamp(r.a, -0.8, 0.8), lock: true, walk: true, wx: 0, wz: 0, at: false, tugs: 0 };
+    p.faceWish = false;
+  }
+
+  // What is in the door's way (Ove's line for it), or null: a car in the doorway, under the bottom's
+  // swing (0.3 m out) or less than 0.12 m in (the Saab parked nose in is 0.2 m in), or, to come down,
+  // somebody standing in the doorway.
+  garageBlocked(open) {
+    const d = this.garage, h = _hit2;
+    let band = d.band(0.45, 0.12);
+    for (const c of this.cars) {
+      if (Math.abs(c.x - d.x) > 9 || Math.abs(c.z - d.z) > 9) continue;
+      if (obbVsBlock(c.obb, band, h)) return c === this.named.saab ? 'Saaben står i vägen.' : 'Det står en bil i vägen.';
+    }
+    if (open) return null;
+    band = d.band(0.2, 0.2);
+    for (const ch of this.allChars(this._doorChs ||= [])) {
+      if (ch === this.player || ch.state === 'hidden' || ch.state === 'seated' || Math.abs(ch.x - d.x) > 4 || Math.abs(ch.z - d.z) > 4) continue;
+      if (circleVsBlock(ch.x, ch.z, ch.r, band, h)) return 'Flytta på dig.';
+    }
+    return null;
+  }
+
+  tickGarage(dt) {
+    const d = this.garage;
+    if (!d) return;
+    if (this.doorOp) this.stepDoorOp(this.doorOp, dt);
+    const ev = d.update(dt);
+    if (ev) audio.garage(ev === 'opened' ? 'up' : 'shut', this.doorVol());
+  }
+  doorVol() { const f = this.focus(); return clamp(1.1 - dist(f.x, f.z, this.garage.x, this.garage.z) / 45, 0, 1); }
+
+  stepDoorOp(op, dt) {
+    const d = this.garage, p = this.player;
+    // (into a car, knocked over, a scene: he lets go; the door goes on)
+    if (this.playerCar || p.state !== 'normal' || this.inDialog || this.missions.state === 'failed') { this.endDoorOp(); return; }
+    // After his hands are off it, a step (a jump, a kick) of his own is the end of it.
+    if (!op.lock && (Math.abs(input.moveX() || 0) > 0.2 || Math.abs(input.moveY() || 0) > 0.2 || input.pressed('jump') || input.pressed('attack'))) { this.endDoorOp(); return; }
+    op.t += dt; op.pt += dt;
+    const out = op.side > 0, k = d.p;
+    // How far from the door he stands (the bottom swings out ~0.3 m at knee height on the way).
+    let dist0;
+    if (op.phase === 'reach') dist0 = op.open ? 0.55 : out ? 0.38 : 0.5;
+    else if (op.phase === 'pull') dist0 = op.open ? 0.55 + 0.27 * sstep(0.06, 0.25, k) : out ? 0.38 + 0.25 * sstep(1, 0.75, k) : 0.5;
+    else if (op.phase === 'back') dist0 = out ? 0.82 : 0.95;
+    else dist0 = 0.5;
+    const [a, o] = d.local(p.x, p.z), ea = op.a - a, eo = op.side * dist0 - o;
+    let wa = ea * 5, wo = eo * 5;
+    const l = Math.hypot(wa, wo);
+    if (l > 1.3) { wa *= 1.3 / l; wo *= 1.3 / l; }
+    op.wx = d.ax * wa + d.ox * wo; op.wz = d.az * wa + d.oz * wo;
+    op.at = Math.hypot(ea, eo) < 0.1;
+    p.yaw = dampAngle(p.yaw, yawTo(-op.side * d.ox, -op.side * d.oz), 9, dt);
+    this.poseTug = 0;
+    if (op.phase === 'reach') {
+      // the handle (opening), the open door's bottom edge overhead (closing)
+      this.doorReach(op, op.open ? DOOR_HANDLE : 0, op.open ? 0.05 : 0);
+      if ((op.at && op.pt > 0.35) || op.pt > 1.2) {
+        if (op.open ? d.open() : d.close()) {
+          const v = this.doorVol();
+          if (op.open) audio.garage('latch', v);
+          audio.garage('roll', v, op.open ? 1.3 : 1.05);
+        }
+        op.phase = 'pull'; op.pt = 0;
+      }
+    } else if (op.phase === 'pull') {
+      this.doorReach(op, op.open ? DOOR_HANDLE : 0, op.open ? 0.05 : 0);
+      if (op.open ? k >= 0.25 : k <= 0.75) { op.phase = 'back'; op.pt = 0; op.lock = false; }
+    } else if (op.phase === 'back') {
+      if (!d.moving) {
+        if (op.open || !out) { this.endDoorOp(); return; }
+        op.phase = 'tug'; op.pt = 0;
+      }
+    } else if (op.phase === 'tug') {
+      // three tugs on the handle, a third of a second apart, once he is back at it
+      this.doorReach(op, DOOR_HANDLE, 0.05);
+      if (op.t0 == null) { if (op.at || op.pt > 0.7) op.t0 = op.pt + 0.15; return; }
+      const tt = op.pt - op.t0, n = Math.floor(tt / 0.34), f = tt - n * 0.34;
+      if (tt >= 0 && n < 3) {
+        this.poseTug = f < 0.2 ? Math.sin(Math.PI * f / 0.2) : 0;
+        if (n >= op.tugs && f >= 0.09) { op.tugs = n + 1; d.bump(0.012); audio.garage('tug', this.doorVol()); }
+      }
+      if (tt > 3 * 0.34 + 0.15) {
+        if (Math.random() < 0.35) { this.say(p, pick(['Så.', 'Stängt.', 'Ordning och reda.']), 1.4); audio.talk(CHARS.ove.voice); }
+        this.endDoorOp();
+      }
+    }
+  }
+  // Hands on the door, u metres up the panel from its bottom edge (and `face` out from it, towards
+  // Ove: the handle stands off the panel), at the grip's place across it.
+  doorReach(op, u, face) {
+    const d = this.garage, p = this.player, q = d.pointUp(u, this._dq ||= []);
+    const [wx, wz] = d.world(op.a, q[1] + face * op.side);
+    const dx = wx - p.x, dz = wz - p.z, s = Math.sin(p.yaw), c = Math.cos(p.yaw);
+    this.poseReach = [q[0] - p.y, dx * s + dz * c, dx * c - dz * s];
+    this.posePlayer('work', 'door');
+  }
+  endDoorOp() {
+    this.doorOp = null;
+    this.player.faceWish = true;
+    this.poseTug = 0;
+  }
+
+  // The shut garage door right in front of (or behind) a car that is about to drive into it.
+  garageAhead(c) {
+    const d = this.garage;
+    if (!d || d.block.dead || c.speed > 6) return false;
+    const [a, o] = d.local(c.x, c.z);
+    if (Math.abs(a) > 2.2 || Math.abs(o) > 7.5) return false;
+    const toward = -Math.sign(o) * (Math.sin(c.yaw) * d.ox + Math.cos(c.yaw) * d.oz);
+    return Math.abs(toward) > 0.75 && Math.abs(o) - c.obb.hz < 4;
+  }
+  // A car into the shut door: it booms and rattles in its frame (and Ove has something to say).
+  garageHit(car, impact) {
+    const d = this.garage;
+    if (!d) return;
+    d.bump(Math.min(0.05, 0.008 + impact * 0.003));
+    audio.garage('shut', this.doorVol() * Math.min(1, 0.3 + impact / 12));
+    if (car === this.playerCar && impact > 3 && this.time > (this._doorLineT || 0)) {
+      this._doorLineT = this.time + 10;
+      this.say(this.player, pick(['Porten!', 'Min garageport!', 'Den var stängd, Ove.']), 1.8);
+      audio.talk(CHARS.ove.voice);
+    }
   }
 
   // Physics for everything but the player's input (the title screen runs this too).
@@ -1496,6 +1666,7 @@ class Game {
       c.park = false;
     } else if (p.state === 'normal') {
       if (this.inDialog || this.missions.state === 'failed') { p.wishX = p.wishZ = 0; }
+      else if (this.doorOp?.walk) { p.wishX = this.doorOp.wx; p.wishZ = this.doorOp.wz; p.anim.sprint = false; }
       else {
         const mx = input.moveX() || 0, my = input.moveY() || 0;
         const fx = Math.sin(this.cam.yaw), fz = Math.cos(this.cam.yaw);
@@ -1832,7 +2003,9 @@ class Game {
     p.anim.push = !this.playerCar && (!!this.pushedNpc() || (posing && this.pose === 'push'));
     p.anim.carry = !this.playerCar && !!this.carrying?.root && !p.anim.push;
     p.anim.work = posing && this.pose === 'work';
-    p.anim.workKind = p.anim.work ? this.poseKind || 'bend' : null;
+    // (the garage door's pose keeps its kind while it fades out: it would bend over on the way)
+    p.anim.workKind = p.anim.work ? this.poseKind || 'bend' : p.anim.workKind === 'door' ? 'door' : null;
+    if (p.anim.work && this.poseKind === 'door') { p.anim.reach = this.poseReach; p.anim.tug = this.poseTug || 0; }
     if (posing && this.pose === 'write') p.anim.write = true;
     p.sync(dt);
     if (!title) {
@@ -2042,7 +2215,10 @@ class Game {
           if (it?.type === 'talk') parts.push(`<b>E</b> Prata med ${it.who.def.name}`);
           else if (it?.type === 'car') parts.push(it.car.driverBust ? '<b>E</b> Låna bilen' : '<b>E</b> Kliv in');
           else if (it?.type === 'chat') parts.push(`<b>E</b> Småprata med ${it.who.def.name}`);
+          else if (it?.type === 'garage') parts.push(`<b>E</b> ${it.open ? 'Öppna' : 'Stäng'} garageporten`);
         }
+        // Driving up to the shut garage door (or out at it from inside): it doesn't open by itself.
+        if (this.playerCar && this.garageAhead(this.playerCar)) parts.push('Garageporten är stängd · kliv ur (<b>E</b>) och öppna den');
         // Ove driving inside the car-free area: what it costs, for as long as he is in there (one
         // Anders shout a minute was all the feedback, and the meter fell 53 -> 16 in three minutes).
         const pc = this.playerCar;

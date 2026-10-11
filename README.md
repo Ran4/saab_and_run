@@ -39,7 +39,7 @@ vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 | Mus | titta | titta |
 | Shift | spring | |
 | Mellanslag | hoppa (ett litet hopp) | handbroms |
-| E | prata, kliva in, interagera (håll) | kliva ur |
+| E | prata, kliva in, öppna/stänga garageporten, interagera (håll) | kliva ur |
 | F | anteckna felparkering (håll) | anteckna felparkering (håll, rutan nere, i krypfart) |
 | J / klick | sparka (på däcket) | |
 | H | | tuta |
@@ -60,6 +60,12 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
 
 - **Saaben** står framför Oves garage vid boendeparkeringen, söder om radhusen (gå ut mot
   Solrosvägen). Går den sönder står det en ny där när du kommer tillbaka.
+- **Garageporten.** Ställ dig framför Oves garageport och tryck **E** för att öppna eller stänga den.
+  Det går inifrån garaget också. Ove lyfter i handtaget och kliver undan när porten svänger ut. När
+  han stänger når han upp till kanten, drar ner porten och rycker sedan tre gånger i handtaget för
+  att se att den verkligen är stängd. En stängd port släpper varken in eller ut Saaben, och det står
+  i bilen när du kör fram till den. Porten går inte igen om en bil står i vägen. Den står öppen från
+  början, och spelet kommer ihåg hur du lämnade den.
 - **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket
@@ -111,7 +117,8 @@ src/main.js                Game: bygger världen, fast tidssteg, tangenter -> Ov
 src/gfx.js                 PBR-renderaren: ytor, triplanara texturer, snö, skuggor, AO, dimma, GeoBuilder
 src/input.js, audio.js     tangentbord/mus/handkontroll; syntetiserat ljud (Saab-motor, telefon, piano)
 src/world/                 stadsplan och vägnät (layout), kollision, kvarteren (town, ove, rowhouse,
-                           buildings, places, streets, outskirts), skyltar, rekvisita
+                           buildings, places, streets, outskirts), skyltar, rekvisita, Oves garageport
+                           (garagedoor)
 src/actors/car.js          bilarna: fysik, lampor, registreringsskyltar (carmodels.js: modellerna)
 src/actors/trailer.js      släpkärran
 src/actors/drivers.js      AI-förare: trafik, rutt, jakt, flykt, stanna vid kanten
