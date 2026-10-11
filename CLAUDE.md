@@ -34,10 +34,21 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `m5race` (a key-driven bot must win; `RACE_VMAX=22` = a careful driver) and `m7chase` (the day-7
   Škoda must close to < 40 m by itself; `CHASER_AWAY=1` = spawned facing away). Failed checks are
   pushed to the run's errors ('N errors').
+- **Voices and music** (features/implemented/a_fully_voiced_game.md): every line said out loud is in
+  `src/game/script.js` (pure data, `allLines()` = `[who, text, part]`); code never inlines voiced
+  text (toasts, banners, objectives stay in code). After editing a line: `make voice DRY=1`, then
+  `make voice` (only missing or changed clips cost; one clip per line, retakes on a bad take), and
+  `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 16 000 chars and ≲ 25
+  words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
+  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (490 lines, 15 116 chars on
+  2026-10-11). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
+  retry: < 5 % cut off, no two voices at once), `vstory` (story with the voices). Every headless tool
+  starts Chrome with `--mute-audio`: never play sound on the speakers.
 - Test mode is `?test=1` (no title, no pointer lock, dialogue auto-advances, no automatic phone
   calls unless `&calls`, no wait between story days unless `&gate`). `&fresh` ignores the save,
   `&mission=n` starts at day n+1. `window.__game`, `__lm(name)`, `__props`, `__stats()`,
-  `__patrol`, `__interrupt`, `__stages` are exposed for scenarios.
+  `__patrol`, `__interrupt`, `__stages`, `__voice` are exposed for scenarios.
 
 ## Conventions that bite
 
@@ -98,6 +109,15 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   horn (audio.js `HORNS`), smitare are spooked or pressed, needless honking costs Ordning. People's
   reactions run through `horn.drive(ch, dt, ped)` (called first by `Ped.update` and `stepNpcs`);
   `horn.last` is the latest honk (a pickup comes out to the car); `horn.rand` / `horn.stats` for tests.
+- **Voices** (`voice.js`): `game.say` / `radio` / `shout`, the dialogue box and the phone calls go
+  through `voice.play(who, text, { slot, mode, ... })`: two slots ('main', 'bubble'), a queue (a
+  dialogue line breaks in; radio waits up to 6 s, a bubble 2.5 s; the same speaker waits for
+  himself; nothing starts while the dialogue box is up). A line without a clip is mumbled but still
+  takes its turn. With the voices off `play()` returns null and the caller murmurs as before.
+  Timers that pace lines (stage radio, also()'s lines and calls, the calls' scripts) run only while
+  `voice.quiet()`; the outro waits for quiet. `game.murmur(pitch)` is the old murmur, voices off only.
+  Music: `audio.music(state)` from main.js `musicState()` (roam playlist, errand, pursuit, race,
+  chase, hurry, finale); the generative piano is the fallback.
 - Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`, `garage`
   0 = Ove's garage door shut), every field sanitised on load. Settings separately in
-  `saab-and-run-settings` (`music`, `sound`, `quality`).
+  `saab-and-run-settings` (`music`, `sound`, `quality`, `voice`, `voiceLevel`).

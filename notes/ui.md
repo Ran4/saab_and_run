@@ -311,6 +311,9 @@ Portraits
 
 ## audio API
 
+(Voices and the composed score, 2026-10-11: see DESIGN.md section 9's last audio bullet,
+`src/voice.js`'s header and features/implemented/a_fully_voiced_game.md.)
+
 All old calls kept: `init, setMuted, setMusic, duckMusic, engine, skid, tone, noise, coin, jump,
 kick, smash, crash, thud, boing, ouch, splash, door, pickup, squash, talk, checkpoint, tick, horn,
 jingle(start|complete|fail|record), shameBell`, flags `muted`, `musicOn`, `ready`.

@@ -27,6 +27,12 @@ behöver inget nätverk.
 URL-val: `?fresh` struntar i det sparade spelet, `?mission=N` börjar på dag N+1 (0–6), `?q=auto`,
 `?q=high` eller `?q=low` väljer grafiknivå (`?lowgfx` = låg).
 
+**Röster och musik.** Ove pratar med riktig röst i hela spelet, och dag 1 är röstsatt (Patrick
+och Parvaneh också; barnen mumlar och fnissar). De andra mumlar som förut tills deras repliker är
+inspelade, och textningen syns alltid. Ingen pratar i munnen på någon: repliker väntar på sin tur. Musiken är
+komponerad (tema, patrull, ärenden, jakt, racet, Vita skjortan) med det genererade pianot emellan.
+**Röster** och **Röstvolym** i pausmenyn stänger av rösterna (då blir det mummel) och sänker dem.
+
 **Grafik** i pausmenyn växlar Auto → Hög → Låg. Auto är förvalt: spelet väljer själv efter datorn
 (låg på inbyggda och svaga grafikkretsar, och det går ner till låg om bildfrekvensen blir för låg) och visar
 vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
@@ -138,7 +144,10 @@ index.html, style.css      sidan, HUD-stilar, titel- och pausskärm (typsnitten 
 src/main.js                Game: bygger världen, fast tidssteg, tangenter -> Ove eller bilen, grannarna,
                            händelser, sparning, berättelsens spår i världen (gips, katt, Adrians Saab)
 src/gfx.js                 PBR-renderaren: ytor, triplanara texturer, snö, skuggor, AO, dimma, GeoBuilder
-src/input.js, audio.js     tangentbord/mus/handkontroll; syntetiserat ljud (Saab-motor, telefon, piano)
+src/input.js, audio.js     tangentbord/mus/handkontroll; ljudet: syntetiserade effekter (Saab-motor, telefon),
+                           röstkedjan (lägen, duckning) och musikregissören (komponerade stycken, pianot)
+src/voice.js               rösterna: klippen, turordningen (kön), mummel när klipp saknas, läppsynken
+src/game/script.js         manuset: alla repliker som sägs högt, som ren data (allLines())
 src/world/                 stadsplan och vägnät (layout), kollision, kvarteren (town, ove, rowhouse,
                            buildings, places, streets, outskirts), skyltar, rekvisita, Oves garageport
                            (garagedoor)
@@ -154,6 +163,10 @@ src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och ka
 src/game/missions.js       de sju dagarna och uppdragskörningen
 src/game/hud.js            HUD, karta, dialog, porträtt, anteckningsbok
 src/game/camera.js, fx.js, markers.js   kameran, partiklar, markeringar
+tools/voice/               rösterna: voice.mjs (generering, kontroll), cast.json (rollerna), lines.json (regi),
+                           review.mjs (provlyssningssidan), analyze.py (taligenkänning och tonhöjd, lokalt)
+tools/music/               musiken: music.mjs och cues.json
+assets/voice/, assets/music/   de färdiga klippen och styckena (index.json: manifesten)
 tools/shot.mjs             headless-testkörning (scenarier i tools/scenarios/)
 tools/gait.mjs             Oves gång, löpning och hopp filmade bild för bild, med mätvärden
 ```
@@ -175,13 +188,34 @@ PORT=8791 node tools/shot.mjs titlecheck quality tabhide gamepad corruptsave   #
 PORT=8791 node tools/shot.mjs titlekeys reloadday r2checks smalltalk dilation    # titeln med tangenter, omladdning, klockan, småprat, tid under 30 fps
 PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausmenyns Avbryt dagens uppdrag, notiser under scener
 PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
+PORT=8791 node tools/shot.mjs voice vcut                   # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt
 ```
+
+I testerna (`?test=1`) är rösterna avstängda, så de går lika fort som förut; `&voice` slår på dem.
+
+## Röster och musik
+
+Replikerna är genererade i förväg med ElevenLabs (`eleven_v4`, svenska) och incheckade. Spelet
+anropar aldrig API:t. Nyckeln ligger i `.env` (`ELEVENLABS_API_KEY`) och används bara av verktygen.
+
+```sh
+make voice DRY=1            # vad som skulle göras och vad det kostar, utan anrop
+make voice                  # gör klippen som saknas (inom omfånget i tools/voice/cast.json)
+make voice-check            # saknas något? (inga anrop)
+make voice-review           # provlyssningssidan: http://127.0.0.1:8795/ (byt röst, gör om repliker)
+make voice-cast WHO=anita   # provinspelningar av en rolls kandidater (Voice Library)
+make music DRY=1            # musiken: samma sak, tools/music/cues.json
+```
+
+Ändrar man en replik i `src/game/script.js` mumlas just den tills `make voice` har körts. Mer i
+`features/implemented/a_fully_voiced_game.md`.
 
 ## Tillgångar och tack
 
 Alla texturer och himlen är CC0 (Poly Haven, ambientCG), se `assets/LICENSES.md`. Typsnitten
 Barlow, Barlow Condensed och Caveat (SIL Open Font License 1.1) ligger inbäddade i `style.css`.
-Allt annat (modeller, ljud, musik) genereras i koden.
+Rösterna och musiken är gjorda med ElevenLabs (rösterna från deras Voice Library, musiken med Eleven
+Music). Allt annat (modeller, ljudeffekter, pianot) genereras i koden.
 
 Ett fanprojekt, fritt efter Fredrik Backmans roman *En man som heter Ove*. Inte associerat med
 Fredrik Backman, förlaget, filmbolagen eller Saab. Inga Volvoägare tillfrågades.

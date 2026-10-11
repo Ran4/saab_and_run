@@ -540,6 +540,17 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
   whole context, for a hidden tab), `audio.ringing` / `audio.state` (tests). The horn (feature
   tuta_med_bilen): `audio.horn(on, kind)` and `audio.honk(vol, dur, kind, delay)` take the car's model
   (`HORNS`: a horn per make), `audio.yelp(pitch, k)` (a fright's gasp and 'ah!'), `audio.hiss(k)`.
+- Voices and music (feature a_fully_voiced_game, first version 2026-10-11): pre-made ElevenLabs clips
+  (`assets/voice/`, made by `tools/voice/voice.mjs` from `src/game/script.js`, which holds every
+  line said out loud) played by `src/voice.js` (`voice.play(who, text, { slot, mode, ... })`: two
+  slots, a queue, a murmur with a guessed length when there is no clip; contract in its header).
+  `audio.voiceChain(mode)` ('dialog' | 'phone' | 'car' | 'world' | 'shout'), `audio.voiceDuck(on)`
+  (music −8 dB, engine −4 dB under speech), `audio.setVoiceLevel(v)`, `audio.setListener(...)`,
+  `audio.giggle(pitch)` (the mumbled children). The composed score: `audio.music(state, { day })`
+  plays `assets/music/` cues (title, roam playlist with the generative piano, errand, pursuit,
+  hurry, race, chase, finale), cross-faded; the piano is the fallback. Characters get
+  `anim.mouth` (0..1) while a clip plays: the jaw follows it (models.js). Pause menu **Röster** and
+  **Röstvolym** (`voice`, `voiceLevel` in `saab-and-run-settings`).
 - Title (phase 4): the scene is the picture: Ove beside his Saab, rolled out of its bay in front of
   his garage, in the right half; the left holds the title card with **Spela** (or, with a save,
   **Fortsätt** + "Dag N · Veckodag" and a small two-click **Nytt spel**) and a **Kontroller** button

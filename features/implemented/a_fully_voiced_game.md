@@ -1,15 +1,297 @@
-# Förslag: ett fullt röstsatt spel (och riktig musik)
+# Ett fullt röstsatt spel (och riktig musik)
 
-> **Status: förslag.** Inget av detta är byggt. Implementera inte förrän utvecklaren säger till.
-> Skrivet 2026-10-11 och uppdaterat samma dag med det syskonprojektet
-> `../nothing_and_run__seinfeld` lärde sig när det röstsatte hela sitt manus (avsnitt 2).
-> **Den här featuren röstsätter bara en del av replikerna** (se "Första versionen" nedan). Resten
-> görs i `features/resten_av_replikerna_for_a_fully_voiced_game.md`, med samma verktyg.
-> Uppgifterna om ElevenLabs (modeller, priser, gränser) kommer från deras dokumentation den dagen
-> och ändras ofta. Kolla dem igen innan vi bygger. Det som inte gick att bekräfta är markerat
-> *(overifierat)*.
+> **Status: första versionen är byggd (2026-10-11).** Ove pratar i hela spelet, Patrick och Parvaneh
+> till och med dag 1, och allt runt omkring är byggt: manuset i `src/game/script.js`, verktyget,
+> provlyssningssidan, turordningen, ljudkedjan, läppsynken och musiken. Vad som faktiskt gjordes,
+> vilka röster som valdes och varför, vad det kostade och vad som avviker från förslaget står i
+> "Det här gjordes" nedan. Resten av replikerna görs i
+> `features/resten_av_replikerna_for_a_fully_voiced_game.md`.
+>
+> Efter det avsnittet följer förslaget som det skrevs (före bygget), med korta noteringar
+> **(Blev: …)** där det blev annorlunda.
 
-## Kortversion
+## Det här gjordes (2026-10-11)
+
+Första versionen är byggd. Rösterna:
+
+- **Ove** har röst i hela spelet.
+- **Patrick och Parvaneh** har röst till och med dag 1.
+- **Sara och Nasanin** mumlar och fnissar.
+- **Alla andra** mumlar som förut, men tar nu sin tur i kön (de väntar in varandra).
+
+Resten är byggt fullt ut:
+
+- manuset i `src/game/script.js`
+- verktyget och provlyssningssidan
+- turordningen
+- ljudkedjan
+- läppsynken
+- musiken och musikregissören
+
+Spelet anropar aldrig API:t. Med rösterna avstängda, och i testläget utan `&voice`, beter det sig
+som förut.
+
+### Kontot och röstplatserna (11.1)
+
+- **Alla 10 platser för egna röster är upptagna** (Seinfeld-spelet). Ett försök att spara en
+  designad röst gav `voice_limit_reached (10 / 10)`.
+- **Utvecklarens beslut:** ingen uppgradering, inga borttagna röster och inga nya designade
+  röster. Bara färdiga röster: premade och Voice Library.
+- **Voice Library tar ingen plats.**
+  - En röst därifrån kan användas direkt i API:t. Den läggs till på kontot vid första anropet.
+  - Den tar ingen egen röstplats: kontot har nu 10 egna röster plus 16 tillagda från Voice
+    Library (3 fanns där sedan tidigare), och de egna är fortfarande 10 av 10.
+  - Även Voice Library-röster som ursprungligen gjorts med Voice Design (Setareh, Niloofar) läggs
+    till utan plats, som kopior med `is_owner: false`.
+  - Alla röster som provlyssnades ligger kvar på kontot. Inga togs bort.
+- **Premade-rösterna används inte.** Alla 21 är engelska röster, och på svenska skulle de få
+  engelsk brytning. Voice Library har 61 röster med svenska som modersmål och dialektetiketter
+  (standard, Stockholm, Göteborg, Skåne, Norrland), så rollerna togs därifrån.
+- **Voice Design** hann provas två gånger innan beslutet:
+  - en provkörning för Ove, med tre kandidater som ligger kvar i `.cache` men aldrig sparades
+  - ett försök med Sara, som API:t vägrade (se Barnen nedan)
+
+  Inget av det används. `make voice-cast DESIGN=1` finns kvar i verktyget, men kräver en ledig
+  plats för att en designad röst ska kunna väljas.
+
+### Rollbesättningen
+
+Kandidaterna valdes på Voice Library-etiketterna: modersmål svenska, kön, ålder, dialekt och
+avgift 1× (några röster tar 2–3 gånger så mycket per tecken). Varje kandidat läste en provtext av
+rollens egna repliker med `eleven_v4`, cirka 215 tecken. Provet mättes på tre sätt:
+
+- vad taligenkänningen hörde
+- tonhöjd med Praat: median och spann
+- tempo i tecken per sekund
+
+Jag kan inte lyssna, så valen bygger på mätvärdena och beskrivningarna. Alla prov ligger på
+provlyssningssidan (`make voice-review`), och där byter man röst med ett klick. Det enda
+utvecklaren behöver göra är att lyssna.
+
+| Roll | Röst (Voice Library) | Etikett | Varför | Andra kandidater på sidan |
+|---|---|---|---|---|
+| **Ove** | Brage – Nordic Storyteller (`nEJYXtiAMFuP7hh9yoi4`) | man, medelålder, norrländsk | den djupaste och långsammaste: 127 Hz (92–201) och 11,9 tecken/s på provet, 110 Hz på korta repliker. "Mörk, jordnära, lite väderbiten, återhållsam". Närmast "låg, lite grusig, korthuggen" | Robert (skånsk, äldre), JJ (skånsk, 45–60), Ola Paulakoski (värmländsk), Andreas (skådespelare, standard), Mathias (göteborgsk; 175 Hz, för ljus för Ove) |
+| **Patrick** | Filip – Energetic and expressive (`ISDDl0xPNLMD73L5PQj4`) | man, ung, standard | störst tonhöjdsspann (119–337 Hz), vilket passar en nervös man som avbryter sig själv. Taligenkänningen hörde provet helt rätt | Tobias (småländsk, snabb, ljus), Andreas – Natural (göteborgsk) |
+| **Parvaneh** | Setareh – Expressive Tehrani Creator (`8Ebkg5uUcbSbeqGucAoR`) | kvinna, persiska som modersmål | en verklig persisk röst som talar svenska ger en äkta brytning, inte en härmad. Snabbast (13,7 tecken/s) och "uttrycksfull, nyfiken" stämmer med "snabb, varm, bestämd, retsam". Taligenkänningen hörde provet helt rätt | Niloofar (persiska), Noushin/"Sahar" (persisk brytning, varmare och lägre), Sanna Hartfield – Sassy (Stockholm, ingen brytning) |
+| **Sara, Nasanin** | ingen: mummel och fniss | | se Barnen | |
+
+- **Dialekterna (11.4):** Voice Library har ingen äldre man på västgötska. Ove fick den röst som
+  bäst passar ålder och klang, och den är norrländsk.
+  - Vill man hellre ha dialekten än klangen är Ola Paulakoski (värmländska, grannlandskapet)
+    eller Mathias (göteborgska) ett klick bort på sidan.
+  - Patrick har rikssvenska i stället för stockholmska.
+  - Parvanehs brytning kommer från rösten själv. Hur tydlig den är har ingen hört än: jämför med
+    Niloofar och Noushin på sidan.
+- **Dialektomskrivningar (11.5): inga.** Oves röst är inte västgötsk, så västgötska ord hade
+  krockat med uttalet, och Parvanehs brytning sitter i rösten. Undertexten och talet är samma text
+  överallt.
+- **Barnen (11.3):** Voice Design vägrar ("blocked_generation: … safety guidelines", HTTP 403) att
+  ens göra en 7-årings röst, och Voice Library tar inte barnröster. Sara och Nasanin blev därför väg
+  c: mummel som förut, och ett syntetiskt fniss efter ungefär varannan replik (`audio.giggle`).
+  Deras sex repliker i småpratet före dag 1 står som `"mumble": true` i `cast.json`, så
+  `make voice-check` räknar dem inte som saknade.
+
+### Vad som röstsattes
+
+Räknat med `allLines()`:
+
+- **Manuset:** 490 repliker och 15 116 tecken. Det är fler än förslagets 354, eftersom featurerna
+  oppna_garaget, roligare_bilkorning och tuta_med_bilen lade till repliker, och delade rader nu
+  räknas en gång per talare.
+- **Inom omfånget:** 173 repliker och 4 639 tecken. 167 av dem har klipp, och 6 är barnens
+  (mummel).
+
+| Roll | Klipp | Tecken | Tal | Tempo |
+|---|---|---|---|---|
+| Ove (alla delar: dag 1–7, ärenden, samtal, reaktioner, tutan, garaget, sladdarna) | 149 | 3 704 | 5,4 min | 11,2 tecken/s |
+| Patrick (dag 1 och småpratet före) | 10 | 512 | 0,7 min | 12,0 tecken/s |
+| Parvaneh (dag 1 och småpratet före) | 8 | 361 | 0,5 min | 12,6 tecken/s |
+| **summa** | **167** | **4 577** | **6,6 min** | |
+
+- **Ljudet:** klippen är mono-mp3 i 64 kbps och 44,1 kHz, −20 LUFS (uppmätt −21,0 till −19,0),
+  med en limiter vid −1,5 dBTP. `assets/voice/` är 3,3 MB.
+- **Oves tystnad** ("..." dag 4, när katten får stanna) är en suck, `tts: "[sighs] ..."` i
+  `lines.json`. `eleven_v4` läser audio tags: taligenkänningen hörde inga ord i den.
+- **Text to Dialogue** användes inte. Jag kan inte höra om det låter bättre, och en replik per
+  anrop låter en ändrad replik göras om ensam. Varje replik är vanlig TTS med tidsstämplar.
+- **Uttalsordlistan** (`tools/voice/lexicon.pls`) byter "Škoda" mot "Skoda" i det som skickas. Den
+  rör ingen replik i första versionen. Namnen (Parvaneh, Ove, Patrick, Sonja) hördes rätt utan den.
+
+### Kvalitetskontrollen
+
+- **Lokal taligenkänning i stället för Scribe:** Scribe kostar 330 credits per minut, alltså
+  ungefär 2 200 för första versionen. I stället körs KBLab:s svenska `kb-whisper-small` lokalt
+  (faster-whisper på CPU, gratis) via `tools/voice/analyze.py`, som också mäter tonhöjden med
+  Praat.
+- **Normaliseringen** behandlar följande som samma ord, så att det inte blir falska underkännanden:
+  - "Jaja" och "Ja, ja"
+  - "i går" och "igår"
+  - "Patrik" och "Patrick"
+  - "5 000" och "femtusen"
+- **Underkännanden:** 7 tagningar underkändes och gjordes om automatiskt. 5 klarade sig på första
+  omtagningen. Två fick göras om en gång till, och sedan behölls den tagning taligenkänningen
+  gillade bäst: "Jaja. Jag kommer." och "Kiss, kiss... Hmpf.". Omtagningarna står i
+  `tools/voice/lines.json`.
+- **Granskningslistan:** 155 av 167 tagningar godkändes direkt. 12 ligger på listan, och för
+  nästan alla beror det på att taligenkänningen inte skriver ut grymtningar:
+  - 6 med "Hmpf"
+  - Oves suck
+  - de korta "Ja?", "Ove.", "Mm." och "Så."
+  - "IT-konsult", som hördes som "i tekonsult"
+
+### Musiken
+
+Eleven Music kostar 900 credits per minut på abonnemanget, inte 0,15 dollar per minut som
+förslaget räknade med (det priset gäller deras API-fakturering i dollar). API:t rapporterar ingen
+kostnad. Förslagets plan, cirka 120 minuter med fyra varianter, hade kostat cirka 108 000 credits.
+Musiken fick därför högst 300 sekunder och **en tagning per stycke, inga varianter**: ungefär
+4 500 credits.
+
+| Stycke | Längd | Loop | När |
+|---|---|---|---|
+| `tema` | 53 s | nej | titelskärmen (första tangenten eller klicket startar ljudet), dag 7 vid graven och sista outrot |
+| `patrull-kall` | 59 s | nej | fri patrull dag 1–3, i en spellista |
+| `patrull-varm` | 60 s | nej | fri patrull dag 4–7, i en spellista |
+| `vardag` | 26 s | ja | ärenden och samtal, och dagarnas uppdrag |
+| `jakt` | 24 s | ja | jakt på en smitare, och dag 2:s körning till sjukhuset mot klockan |
+| `racet` | 22 s | ja | dag 5, Saab mot Audi |
+| `vita-skjortan` | 27 s | ja | dag 6:s jakt och dag 7:s Škoda |
+| `klart` | 5 s | nej | (stinger från spiken; inte inkopplad, syntjinglarna finns kvar) |
+
+- **Styckenas storlek:** stereo-mp3 i 128 kbps, −24 LUFS. `assets/music/` är 4,3 MB.
+- **Det gemensamma temat:** de båda patrullstyckena gjordes med `conditioning_ref` på temat, och
+  API:t tog emot det. Om de verkligen delar dess melodi går bara att höra.
+- **Looparna** bakas med en övertoning slut → början och har explicita looppunkter i
+  `assets/music/index.json`. Mätt korrelation över skarven: 0,985–1,0. Tre loop-tagningar slutade
+  med ett slutackord trots regin; deras slut klipptes bort före bakningen.
+- **Spellistan för patrullen:** stycket, 8–15 s tystnad, det genererade pianot 70–120 s, 5–10 s
+  tystnad, sedan stycket igen. Pianot är alltså både reserv och en del av spellistan, vilket svarar
+  på fråga 11.8: båda, inget val i inställningarna. Saknas ett stycke, eller laddas det inte, spelar
+  pianot.
+- **Fler stycken:** `sjukhuset` och `sonja` gjordes inte. Det som saknas görs med
+  `make music`, efter att `maxSeconds` i `tools/music/cues.json` har höjts.
+
+### Kostnad (uppmätt där API:t rapporterar den)
+
+| Vad | Credits |
+|---|---|
+| spik: v4-priset, ett Voice Library-test, stabilitets- och audio tag-prov | ~90 |
+| provlyssning: 13 kandidater × ~215 tecken | 368 |
+| pilot (9 repliker) | 75 |
+| första versionen (158 repliker till) | 532 |
+| automatiska omtagningar (9) | 25 |
+| **röster, summa** | **~1 090** |
+| Voice Design: en provkörning för Ove och ett nekat försök för Sara | rapporteras inte (högst ~240) |
+| musik: 300 s | ~4 500 (900/min, rapporteras inte) |
+| **totalt** | **~5 600–5 850** |
+
+- `eleven_v4` kostade **0,13–0,14 credits per tecken** i dag, med rabatten som går ut 12 oktober.
+  Priset därefter är inte uppmätt.
+- Totalen ligger under taket på 7 000. Nyckeln saknar `user_read`, så saldot kan inte läsas, och
+  kontots sida har exakta siffror.
+
+### Spelet
+
+- **Manuset:** `src/game/script.js` är en ren datafil med 490 repliker, 15 116 tecken och 13
+  `del`-värden (`day1`–`day7`, `chatterFirst`, `chatter`, `chatterAfter`, `errands`, `calls`,
+  `reactions`, `horn`, `patrol`, `peds`, `stages`). Villkoren i småpratet är taggar (`whenOk`).
+  Flytten ändrade ingen text: varje literal som lämnade koden finns i script.js, och tabellerna
+  byggda från gammal och ny källkod jämfördes värde för värde, 239 kontroller utan skillnad.
+- **`src/voice.js`:** kön, de två platserna, mummel med gissade längder, läppkurvan, uppspelningen
+  (de 24 senaste klippen avkodade) och klipp som inte går att ladda (de mumlas). API:t står överst i
+  filen och i CLAUDE.md.
+- **Var rösterna kopplas in:**
+  - **Dialogrutan:** texten skrivs ut i takt med talet. Första trycket visar hela texten, det andra
+    går vidare.
+  - **Bubblor:** en bubbla står kvar tills rösten har sagt repliken.
+  - **Radio och rop:** toasten kommer när repliken sägs och står kvar så länge den sägs.
+  - **Telefonsamtalen:** tiderna kommer från klippen, och samtalet väntar in varje replik.
+  - **Småpratet:** Ove svarar när grannen har sagt sitt. Ingen pratar i munnen på någon, och ingen
+    pratar inom 6 m från den som har dagens uppdrag.
+  - **Etappernas radio, also()-repliker och samtal:** klockorna går bara när det är tyst.
+  - **Outrot** väntar tills det är tyst.
+  - **Ett ärendes tack och fail-repliker** stryks aldrig (`must`).
+- **Ljudkedjan (`audio.js`):**
+  - Rösterna har en egen buss.
+  - Under tal sänks musiken 8 dB och motorn 4 dB.
+  - Det finns fyra lägen:
+    - `dialog`: torrt
+    - `phone`: 300–3 400 Hz och lätt mättnad
+    - `car`: passagerare lite till höger
+    - `world` och `shout`: `PannerNode` där personen står. Ett rop långt bort hörs som högst 22 m
+      bort, åt rätt håll, och inne i bilen är det dämpat med lågpass.
+  - **Pausmenyn** pausar rösterna.
+- **Läppsynken:** käken följer klippets volymkurva (30 bilder/s, 64 nivåer) och sluts på m, b och
+  p. Utan klipp flaxar den efter mumlet.
+- **Inställningarna:** "Röster" (på/av) och "Röstvolym" (100/70/40 %) i pausmenyn, sparade som
+  `voice` och `voiceLevel`.
+- **Testerna:** se nedan. Alla headless-verktyg startar nu Chrome med `--mute-audio`. Det saknades
+  förut, så ljud kunde i princip höras i högtalarna.
+
+### Tester
+
+Alla körningar var headless, på egen port och med Chrome tystat (`--mute-audio`).
+
+- **`story`, rösterna av (som i alla vanliga tester):** slutar med `#7 idle stage 7`, `hud watch: 2838
+  samples, 0 leaks` och `no errors`.
+- **Regression, rösterna av:** `m1 retry interrupt errands patrol horn smalltalk companion garage`
+  ger `no errors`. Alla nio ärenden är ok, och garaget klarar alla sina kontroller.
+- **`voice`**, med ett påhittat manifest:
+  - En dialog med klipp på 1,5 och 1,0 s tar 3,3 s, alltså klippen plus 0,4 s vardera.
+  - En bubbla under en dialogreplik stryks efter sina 2,5 s. Radion köar och börjar efter
+    dialogen.
+  - Samma talare väntar in sig själv: 7,61–9,60 och sedan 9,60–10,61 s.
+  - Ett trasigt klipp mumlas: tre mummel och inget fel i konsolen.
+  - Käken öppnas på kurvan, sluts på "p" och rör sig 0,010–0,078 rad.
+  - Musiken duckas till 0,40 under tal och går tillbaka till 1,0.
+  - Avstängda röster ger `null`.
+- **`music`:** dag 1:s patrull spelar `patrull-kall`, ett ärende `vardag` och sedan patrullen
+  igen. Looppunkterna laddas. Uppmätta nivåer före `CUE_GAIN`: stycket −40 dBFS, pianot −35 och en
+  röst −17. Styckena höjdes 4,6 dB så att de ligger i nivå med pianot.
+- **`vcut`**, dag 1–4 med rösterna och en läsare som trycker 0,5–0,8 s efter varje sagd replik:
+  - 60 repliker begärda och 60 sagda, 37 av dem med klipp och 0 strukna.
+  - **0 avklippta** (målet var under 5 %; Seinfeld-spelet låg på 24 % före sin kö).
+  - **0 gånger två röster samtidigt.**
+  - 0 repliker som inte står i script.js.
+
+  Ett misslyckat race med omstart (`retry`) gav 8 repliker, 0 avklippta och 0 överlappande. Inget
+  uppdrag i de körningarna har en röstad fail-replik, så "fail-repliker avklippta" blev 0 av 0.
+  Ärendenas fail-repliker är `must` och stryks aldrig.
+- **`vstory`**, alla sju dagarna med rösterna (autoDialog väntar in varje klipp plus 0,4 s): slutar med
+  `#7 idle stage 7`, `hud watch: 4851 samples, 0 leaks` och `no errors`.
+  - 122 repliker begärda och 119 sagda, 65 av dem med klipp och 3 strukna.
+  - **1 avklippt (0,8 %):** Anitas "Ove, elementet klickar igen..." på dag 7. Ove kom fram och
+    samtalet lades på, som det är tänkt.
+  - 0 gånger två röster samtidigt, 0 radiotoasts som försvann för tidigt och 0 repliker utanför
+    script.js.
+- **Verktygen:**
+  - `make voice-check`: ok, 167 av 167 klipp inom omfånget.
+  - `make music-check`: ok, 8 av 8 stycken.
+  - Provlyssningssidan svarar med rollerna, 57 scener, granskningslistan och musiken.
+  - Filservern vägrar sökvägar utanför `assets/` och `.cache/`.
+- **En bugg hittad på vägen:** en bubbla som köades precis när ett intro började låg kvar i kön
+  (kön stod still medan dialogrutan var uppe), så `quiet()` blev aldrig sann igen. Nu löper
+  tidsgränsen även medan dialogrutan är uppe.
+
+### Det här behöver utvecklaren göra eller bestämma
+
+1. **Lyssna** på provlyssningssidan (`make voice-review`, http://127.0.0.1:8795/):
+   - **Rollerna:** Oves norrländska Brage mot Ola Paulakoski (värmländsk) och Mathias
+     (göteborgsk). Hur tydlig är Parvanehs brytning hos Setareh, jämfört med Niloofar och Noushin?
+     "Välj" byter röst. Rollens klipp blir då inaktuella, och `make voice` gör om dem.
+   - **Granskningen:** de tolv på listan, framför allt Oves "Hmpf." (sex repliker). Låter de fel
+     finns "Gör om" med regi, t.ex. `[scoffs] Hmpf.`.
+   - **Musiken:** varje stycke, och om patrullstyckena delar temats melodi.
+2. **Rabatten på `eleven_v4` går ut 12 oktober.** Resten av replikerna, ungefär 10 500 tecken,
+   kostar i dag runt 1 500 credits. Till fullpris kan de kosta runt 10 500. Enligt instruktionen
+   gjordes de inte nu.
+3. **Barnen:** riktiga inspelningar (väg b), eller mummel och fniss som nu?
+4. **Fler röstplatser** behövs bara om ni vill ha designade röster (en västgötsk Ove, egna röster
+   för statisterna). Allt i första versionen klarar sig utan.
+
+## Förslaget
+
+### Kortversion
 
 - **Rösterna:** replikerna blir riktigt tal. Talet genereras i förväg med ElevenLabs (`eleven_v4`,
   svenska) och checkas in som små mono-mp3-filer. Spelet anropar aldrig API:t, och API-nyckeln
@@ -22,7 +304,8 @@
   Seinfeld-spelet.
 - **Rollerna:** varje roll får en egen röst med rätt ålder och dialekt: Ove västgöte, Rune
   göteborgare, Anita norrländska och så vidare. Rösterna tas fram med Voice Design, och du väljer
-  dem på en provlyssningssida.
+  dem på en provlyssningssida. **(Blev: färdiga röster ur Voice Library, som inte tar någon
+  röstplats; Oves röst är norrländsk. Se "Rollbesättningen".)**
 - **Regenerering:** `make voice` genererar bara det som saknas eller har ändrats, en tagning per
   replik. Taligenkänning flaggar dåliga tagningar, och de görs om. Ett hårt tak i tecken och stopp
   vid första API-felet gör att en körning aldrig kan kosta mer än tänkt. Ändrar man en replik låter
@@ -37,7 +320,8 @@
   dag 7-jakten, minnen av Sonja och final. En liten musikregissör i `audio.js` tonar mellan dem.
   Dagens genererade piano blir reserv.
 - **Kostnad och storlek:** första versionen kostar ungefär 5 000 credits och blir ungefär 3 MB
-  röster. Hela spelet blir ungefär 25 000 credits och 11 MB (Seinfeld: 18 000 tecken kostade
+  röster. **(Blev: rösterna ~1 090 credits med v4-rabatten och 3,3 MB; musiken ~4 500 credits för
+  300 s, 4,3 MB.)** Hela spelet blir ungefär 25 000 credits och 11 MB (Seinfeld: 18 000 tecken kostade
   18 100 credits). Musiken blir ungefär 25 MB.
 - **Största osäkerheterna:**
   - hur bra svenska *dialekter* blir
@@ -61,6 +345,7 @@ när manuset har flyttats:
 | **dag 1** (intro, outro, omstart, radio) utom Ove | 12 | 653 | Patrick, Parvaneh |
 | **småpratet före dag 1** (`CHATTER_FIRST`) | 11 | 286 | Patrick, Parvaneh, Sara, Nasanin |
 | **första versionen** | **125 (35 %)** | **3 794 (30 %)** | |
+| **(Blev, efter tre nya features och flytten)** | **173 (167 med klipp, 6 barnens mummel)** | **4 639** | Ove 149, Patrick 10, Parvaneh 8, Sara 3, Nasanin 3 |
 | resten (resten-featuren) | 229 | 8 845 | Anita, Rune, Jimmy, Adrian, Anders, Vita skjortan, statisterna; Patrick, Parvaneh, Sara och Nasanin efter dag 1 |
 | hela spelet | 354 | 12 639 | |
 
@@ -195,7 +480,7 @@ när manuset har flyttats:
 
 Om det är samma ElevenLabs-konto gäller också det här (från deras rapport 2026-10-11):
 
-- Alla 10 platser för egna röster är upptagna.
+- Alla 10 platser för egna röster är upptagna. **(Bekräftat: `voice_limit_reached (10 / 10)`.)**
 - Ungefär 65 000–69 000 credits fanns kvar efteråt.
 - Nyckeln saknar rättigheten `user_read`, så skriptet kan inte läsa saldot. Med den rättigheten
   kan `make voice DRY=1` visa saldot bredvid kostnaden.
@@ -205,7 +490,8 @@ Om det är samma ElevenLabs-konto gäller också det här (från deras rapport 2
 
 ## 3. Röstmotorn: ElevenLabs
 
-- **Modell:** `eleven_v4`, deras nyaste flaggskepp, för alla roller. Den stöder svenska och audio
+- **Modell:** `eleven_v4`, deras nyaste flaggskepp, för alla roller. **(Blev så: 0,13–0,14
+  credits/tecken med rabatten. Audio tags fungerar, "[sighs]" lästes inte upp.)** Den stöder svenska och audio
   tags som `[sighs]` och `[whispers]`.
   - ElevenLabs skriver själva att röster från Voice Design kan bli "mindre performativa" i v4.
     Låter en roll platt i spiken skärper vi beskrivningen eller inställningarna.
@@ -265,6 +551,9 @@ man hör vem som pratar utan att titta.
 | Vita skjortan | 40–50 | rikssvenska, "myndighetssvenska" | platt, korrekt, artig och kall |
 | Sara | 7 | neutral, uppvuxen här | barn, se 4.4 |
 | Nasanin | 3 | – | litet barn, enstaka ord, se 4.4 |
+
+**(Blev: Ove = Brage (norrländsk), Patrick = Filip (rikssvenska), Parvaneh = Setareh (persiska som
+modersmål), barnen mumlar. Se "Rollbesättningen".)**
 
 Parvanehs brytning ska vara lätt och ge värme, aldrig bli en karikatyr. Hur tydlig den ska vara
 avgör du på provlyssningssidan.
@@ -341,6 +630,8 @@ eget bruk *(overifierat)*. Därför finns tre vägar:
 - **c) Mummel som i dag, plus fniss.** Nasanins repliker är ändå ett till tre ord ("Ove! Ove!
   Ove!", "Snö!", "Katten!").
 
+**(Blev: a gick inte. Voice Design vägrar barnröster med HTTP 403. Det blev c: mummel och fniss.)**
+
 Mitt förslag är att pröva a i spiken. Går det inte blir det b om det finns barnröster att spela in,
 annars c.
 
@@ -411,7 +702,8 @@ ingen väg.
    - Ett nätverksfel får ett nytt försök efter 3 s. Första API-felet stoppar allt.
    - Varje anrop loggar sin kostnad ur `character-cost`.
    - Råklippet sparas i `.cache/voice/raw/` innan det efterbehandlas.
-4. **Kvalitetskontrollen:** Scribe v2 (ElevenLabs taligenkänning, svenska) skriver ut varje
+4. **Kvalitetskontrollen** **(Blev: KBLab:s `kb-whisper-small` lokalt, gratis; Scribe kostar 330
+   credits/min):** Scribe v2 (ElevenLabs taligenkänning, svenska) skriver ut varje
    tagning, och utskriften jämförs med repliken efter normalisering (små bokstäver, utan
    skiljetecken). En tagning underkänns om den:
    - hoppar över eller lägger till ord
@@ -601,7 +893,7 @@ reserv (inga filer, eller medan musiken laddas) och kan finnas kvar som ett val 
 
 | Stycke | När | Längd | Stil (idé till prompten) |
 |---|---|---|---|
-| `tema` | titeln; finalen i full version | 90 s + 2–3 min | nordisk melankolisk melodi på solopiano, stråkar som kommer in |
+| `tema` | titeln; finalen i full version | 90 s + 2–3 min **(Blev: 53 s, även finalen)** | nordisk melankolisk melodi på solopiano, stråkar som kommer in |
 | `patrull-kall` ×2 | fri patrull dag 1–3 | 2–3 min styck | glest filtpiano, celesta, mjuka stråkar, mycket luft |
 | `patrull-varm` ×2 | fri patrull dag 4–7 | 2–3 min styck | samma instrument men varmare, en cellomelodi, lite fylligare: Ove tinar |
 | `vardag` | ärenden och samtal | loop 60–90 s | lätt och torrt komisk: pizzicato, klarinett och fagott, vispar |
@@ -633,6 +925,8 @@ temat.
 - **Senare:** ElevenLabs ska ha en endpoint för stem-separation *(overifierat, källan är
   tredjepartsdokumentation)*. Med den kan patrullmusiken delas i lager (piano, stråkar, slagverk)
   som läggs till när Ordning sjunker eller det blir kaos. Det behövs inte i första versionen.
+
+**(Blev: åtta stycken, en tagning var, 300 s sammanlagt: musiken kostar 900 credits/min. Se "Musiken".)**
 
 ### 8.4 Skript
 
@@ -669,7 +963,7 @@ rabatten kollas i spiken.
 | omtagningar | ~10 % | ~400 credits |
 | röstdesign | 5 roller (+ 2 dialektprov) × 2 körningar × ~200 tecken | okänt, rapporteras inte (högst ~3 000) |
 | kvalitetskontroll (Scribe v2) | ~5 min tal | några cent |
-| musik | ~12 stycken × 2,5 min × 4 varianter ≈ 120 min | ~18 $ (0,15 $/min) |
+| musik | ~12 stycken × 2,5 min × 4 varianter ≈ 120 min | ~18 $ (0,15 $/min) **(Blev: 900 credits/min på abonnemanget: 300 s ≈ 4 500 credits)** |
 
 **Resten-featuren**, för jämförelse:
 
@@ -723,6 +1017,12 @@ När featuren flyttas till `features/implemented/` skrivs det in vad som faktisk
 `resten_av_replikerna_for_a_fully_voiced_game.md` uppdateras med siffrorna.
 
 ## 11. Öppna frågor
+
+**(Besvarade av utvecklaren 2026-10-11: 1. ingen uppgradering, inga borttagna röster, inga designade
+röster, färdiga röster ur Voice Library; 2. ja; 3. AI om det är trovärdigt, annars mummel: blev
+mummel; 4. förslagen i 4.1: närmast möjliga i Voice Library; 5. ja, lätt: inga gjordes, se
+"Rollbesättningen"; 6. ja; 7. nej, toasts förblir text; 8. båda: pianot är reserv och del av
+patrullens spellista.)**
 
 1. **Kontot:** är det samma ElevenLabs-konto som Seinfeld-spelet använder? Då är alla 10
    röstplatser upptagna. Första versionen behöver fem (tre om barnen blir mummel), hela spelet
