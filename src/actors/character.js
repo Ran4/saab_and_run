@@ -5,6 +5,13 @@ import { dampAngle, yawTo } from '../util.js';
 
 export const STEP = 0.45;
 const GRAV = 24;
+// A grown man's jump (Ove is 59): a wind-up of `wind` s standing (`windRun` on the move) before he
+// leaves the ground, a flight under `grav` (gentler than a fall, so the jump takes its time:
+// ~0.56 s in the air for 0.55 m, against 0.45 s), and for `slow` s after the landing his legs take
+// him on at no more than `slowMin` of the speed asked for, rising back to all of it.
+export const JUMP = { wind: 0.22, windRun: 0.1, grav: 14, slow: 0.42, slowMin: 0.45 };
+const lerp = (a, b, t) => a + (b - a) * t;
+const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const _blocks = [], _hit = {};
 
 // Animation level of detail (p4r2). Posing a person (animateCharacter) and updating the ~50
@@ -38,7 +45,8 @@ function viewFrustum() {
 //   speed, air, vy, kick (1 -> 0), talk, wave, cheer, sprint, look (neck yaw), spin (air spin),
 //   write (notebook + pencil), phone (phone at the ear), push (hands on a wheelchair/trolley),
 //   yell, seated + driving (set from the car seat), flung / flungT, down / downLeft, carry, work +
-//   workKind, listen, kneel (+ kneelReach).
+//   workKind, listen, kneel (+ kneelReach), and a jump's jumpWind / jumping / landT / jumpV (set
+//   here: see JUMP and jump()).
 export class Character {
   constructor(def, opts = {}) {
     this.def = def;
@@ -59,6 +67,8 @@ export class Character {
     this.downT = 0; this.flungT = 0;
     this.wishX = 0; this.wishZ = 0;
     this.faceWish = true;
+    // a jump: winding up (windT >= 0), in the air (jumping), landed landT s ago
+    this.windT = -1; this.windDur = JUMP.wind; this.jumpV = 0; this.jumping = false; this.landT = 9;
     this.anim = {
       speed: 0, air: false, vy: 0, kick: 0, talk: false, seated: false, driving: false, flung: false, down: false,
       t: Math.random() * 10, spin: 0, look: 0, wave: false, cheer: false, sprint: false,
@@ -66,6 +76,7 @@ export class Character {
       carry: false, work: false, workKind: null,   // carrying (the cat) at chest height; hold-E jobs
       listen: false,                                 // listening to someone talking: small nods
       kneel: false, kneelReach: undefined,           // down on one knee (Sonja's grave): see models.js
+      jumpWind: 0, jumping: false, landT: 9, jumpV: 0, // a jump's wind-up (0..1), flight, landing (see JUMP)
     };
     this.car = null;
     this.spin = 0; this.spinRate = 0;
@@ -87,12 +98,15 @@ export class Character {
     this.y = groundAt(x, z, 0.2, 0.6);
     this.vx = this.vz = this.vy = 0;
     this.onGround = true;
+    this.windT = -1; this.jumping = false; this.landT = 9;
   }
 
+  // Starts a jump: the wind-up first, then the push off the ground at v m/s (game.onJump), the
+  // landing (game.onJumpLand). False if he can't (busy, in the air, already winding up).
   jump(v = 8.2) {
-    if (this.state !== 'normal' || this.wheelchair) return false;
-    this.vy = v;
-    this.onGround = false;
+    if (this.state !== 'normal' || this.wheelchair || this.windT >= 0 || this.jumping || !this.onGround) return false;
+    this.windT = 0; this.jumpV = v;
+    this.windDur = lerp(JUMP.wind, JUMP.windRun, Math.min(1, this.speed / 3));
     return true;
   }
 
@@ -106,6 +120,7 @@ export class Character {
     if (Math.hypot(vx, vz) > 0.5) this.yaw = yawTo(-vx, -vz);
     this.spinRate = (Math.random() < 0.5 ? -1 : 1) * (0.6 + Math.random() * 1.4);
     this.bounces = 0;
+    this.windT = -1; this.jumping = false; this.landT = 9;
     this.flungT = 0;
     return true;
   }
@@ -139,11 +154,20 @@ export class Character {
       }
       return;
     }
+    if (this.windT >= 0) {
+      this.windT += dt;
+      if (this.windT >= this.windDur) {
+        this.windT = -1;
+        if (this.onGround) { this.vy = this.jumpV; this.onGround = false; this.jumping = true; game?.onJump?.(this); }
+      }
+    }
+    if (this.landT < 9) this.landT += dt;
+    const slow = this.landT < JUMP.slow ? lerp(JUMP.slowMin, 1, sstep(0, JUMP.slow, this.landT)) : 1;
     const accel = this.onGround ? 42 : 14;
-    const dvx = this.wishX - this.vx, dvz = this.wishZ - this.vz;
+    const dvx = this.wishX * slow - this.vx, dvz = this.wishZ * slow - this.vz;
     const dl = Math.hypot(dvx, dvz), maxD = accel * dt;
     if (dl > maxD) { this.vx += (dvx / dl) * maxD; this.vz += (dvz / dl) * maxD; } else { this.vx = this.wishX; this.vz = this.wishZ; }
-    this.vy -= GRAV * dt;
+    this.vy -= (this.jumping ? JUMP.grav : GRAV) * dt;
     this.x += this.vx * dt; this.z += this.vz * dt; this.y += this.vy * dt;
     this.collideWalls(false);
     let gh = groundAt(this.x, this.z, this.y, STEP);
@@ -153,6 +177,7 @@ export class Character {
       if (roof && roof.top > gh) { gh = roof.top; gb = null; this.standingOn = roof.car; } else this.standingOn = null;
     }
     if (this.y <= gh) {
+      if (this.jumping) { this.jumping = false; this.landT = 0; game?.onJumpLand?.(this, -this.vy); }
       if (!this.onGround && this.vy < -6) { this.model.squash = 0.5; game?.onLand(this, -this.vy); }
       this.y = gh;
       this.vy = 0;
@@ -223,6 +248,10 @@ export class Character {
     a.downLeft = this.state === 'down' ? this.timer : 0;
     a.seated = this.state === 'seated';
     a.driving = a.seated && !!this.car && this.car.driver === this;
+    a.jumpWind = this.windT >= 0 ? Math.min(1, this.windT / this.windDur) : 0;
+    a.jumping = this.jumping && this.state === 'normal';
+    a.landT = this.state === 'normal' ? this.landT : 9;
+    a.jumpV = this.jumpV;
     if (a.kick > 0) a.kick = Math.max(0, a.kick - dt * 3.2);
     // animation level of detail: pose every k-th frame with the accumulated dt
     const k = this.animStride(dt);

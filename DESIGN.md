@@ -169,7 +169,10 @@ stage kinds as missions):
    (he must arrive in the car: dropoff option `needCar`).
 
 ### 4.4 On foot
-Walk 3.2 m/s, rask gång (Shift) 5.5 m/s, one small jump (no double jump, no stomp). People walking
+Walk 3.2 m/s (a determined power walk), Shift 5.5 m/s (an older man running hard), one small jump
+(no double jump, no stomp): a grown man's, with a wind-up, a grunt as he pushes off, ~0.56 s in the
+air for 0.55 m, and a landing his knees take (an 'uff', a moment before he is up to speed again);
+see notes/people.md, *Gait*. People walking
 with Ove (errands) follow his trail (a point every 0.6 m) round fences and hedges, and are still
 "with him" until they have been more than 20 m behind for 2 s (beyond 35 m they give up). Children
 (cast and pedestrians) and the neighbours are never knocked over by cars; they are shoved aside,

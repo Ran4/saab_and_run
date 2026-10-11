@@ -3006,7 +3006,7 @@ export const CHARS = {
     face: { jaw: 1.12, chin: 1.05, nose: 1.12, noseW: 1.1, hump: 0.5, tip: -0.3, brow: 1.45, cheek: 0.85, width: 1.04, lips: 0.72, mouthW: 0.97, eye: 0.92, old: 0.18, rosy: 1.0, oil: 0.95, cold: 1.15, smile: -0.2 }, beard: { style: 'stubble', color: 0x8a8680 },
     coat: { type: 'jacket', color: 0x1d2636, len: 0.48, collar: 'stand', cuffs: 0x161c28, zipColor: 0x101318 },
     trousers: { type: 'slacks', color: 0x55575c }, shoes: { type: 'shoes', color: 0x5a3a24, sole: 0x2a2018 },
-    props: ['note', 'pencil', 'phone', 'shovel', 'wrench'], voice: 150, style: { swing: 0.65, lean: 0.04, stiff: 1 },
+    props: ['note', 'pencil', 'phone', 'shovel', 'wrench'], voice: 150, style: { swing: 0.85, lean: 0.03, old: 0.6 },
   },
   parvaneh: {
     name: 'Parvaneh', kind: 'adult', sex: 'f', age: 32, height: 1.64, build: 1.0, pregnant: true, skin: 0xb98466,
@@ -3509,22 +3509,34 @@ export function buildCharacter(def, opts = {}) {
 
 // ---------------------------------------------------------------------------------------------
 // Animation. A pose is a Float32Array: Euler XYZ per core bone + the pelvis offset. Each frame:
-// locomotion (idle -> walk -> brisk -> jog/run, by speed) -> upper-body overlays (write, phone,
-// wave, talk, push, cheer...) blended by smoothed weights -> whole-body states (seated, air,
-// kick, flung, down + getting up) -> bones.
+// locomotion (idle -> walk -> brisk -> run, by speed) -> upper-body overlays (write, phone,
+// wave, talk, push, cheer...) blended by smoothed weights -> whole-body states (seated, a jump's
+// wind-up / flight / landing, air, kick, flung, down + getting up) -> bones.
 
+// Gait curves: one leg, phase u from its heel strike (degrees). hip = the thigh's flexion from the
+// vertical, knee = flexion, foot = the sole's pitch to the ground (toes up +).
+// The walk is a normal ~1.4 m/s walk: heel strike on a nearly straight knee, the knee yielding ~15 deg
+// under the load, the heel rising from ~45 %, toe-off at ~60 %, the swing knee peaking at ~73 % and
+// straight again just before the next heel strike. locomotion() makes faster walks of it (a longer
+// stride, a deeper stance knee, a harder push-off, an earlier toe-off).
 const WALK = {
-  hip: periodic([[0, 23], [0.1, 18], [0.2, 10], [0.3, 2], [0.4, -5], [0.5, -11], [0.58, -13], [0.65, -6], [0.72, 8], [0.82, 22], [0.9, 25], [1, 22]]),
-  knee: periodic([[0, 3], [0.1, 15], [0.18, 16], [0.3, 7], [0.42, 4], [0.52, 8], [0.6, 30], [0.68, 55], [0.75, 60], [0.85, 35], [0.93, 10], [1, 3]]),
-  foot: periodic([[0, 14], [0.06, 6], [0.1, 0], [0.45, 0], [0.52, -6], [0.6, -28], [0.68, -12], [0.78, 0], [0.9, 6], [1, 14]]),
+  hip: periodic([[0, 22], [0.1, 19], [0.2, 12], [0.3, 4], [0.4, -5], [0.5, -13], [0.56, -16], [0.62, -12], [0.68, -3], [0.76, 11], [0.86, 22], [0.93, 24], [1, 22]]),
+  knee: periodic([[0, 4], [0.08, 12], [0.15, 16], [0.25, 11], [0.38, 5], [0.48, 6], [0.56, 19], [0.62, 37], [0.7, 57], [0.75, 60], [0.84, 42], [0.92, 14], [0.97, 4], [1, 4]]),
+  foot: periodic([[0, 15], [0.05, 6], [0.1, 0], [0.42, 0], [0.5, -7], [0.56, -20], [0.62, -34], [0.68, -16], [0.76, -2], [0.86, 4], [0.94, 10], [1, 15]]),
 };
+// The run: heel strike under a slightly bent knee, the knee yielding ~40 deg, toe-off at ~29 % off the
+// toes, the heel coming up behind to a jogger's ~95 deg (not a sprinter's heel to the buttock), the
+// thigh driven forward, the shin reaching out again before landing.
 const RUN = {
-  hip: periodic([[0, 22], [0.13, 2], [0.27, -24], [0.4, -16], [0.55, 6], [0.72, 32], [0.86, 32], [1, 22]]),
-  knee: periodic([[0, 18], [0.1, 36], [0.27, 16], [0.42, 70], [0.56, 112], [0.7, 100], [0.86, 55], [0.95, 26], [1, 18]]),
-  foot: periodic([[0, 4], [0.1, 0], [0.27, -42], [0.42, -18], [0.6, 4], [0.85, 10], [1, 4]]),
+  hip: periodic([[0, 25], [0.13, 7], [0.27, -22], [0.38, -18], [0.52, 2], [0.7, 29], [0.86, 30], [1, 25]]),
+  knee: periodic([[0, 16], [0.1, 38], [0.22, 25], [0.29, 21], [0.4, 56], [0.54, 96], [0.66, 90], [0.82, 50], [0.94, 21], [1, 16]]),
+  foot: periodic([[0, 8], [0.06, 0], [0.18, 0], [0.29, -46], [0.42, -24], [0.6, 0], [0.85, 8], [1, 8]]),
 };
-export const GAIT = { walk: 1, run: 1 };   // stride scale (look-dev tuning hook)
+// stride scale (look-dev tuning hook) and the tuning knobs of locomotion (the gait look-dev page sets
+// them live; the defaults are the game's)
+export const GAIT = { walk: 1, run: 1, k: {} };
 const _la0 = [0, 0, 0], _la1 = [0, 0, 0];
+// shoulder swing over the same leg's phase: back at its heel strike, forward at the other's
 const WALK_ARM = periodic([[0, -1], [0.25, -0.2], [0.5, 1], [0.75, 0.2], [1, -1]]);
 
 const _e = new THREE.Euler(), _q = new THREE.Quaternion(), _m1 = new THREE.Matrix4(), _m2 = new THREE.Matrix4(), _m3 = new THREE.Matrix4(), _mc = new THREE.Matrix4();
@@ -3683,7 +3695,11 @@ export function animateCharacter(m, st, dt) {
   // weights
   const seatT = st.seated ? 1 : 0;
   const wSeat = smoothW(m, 'seat', seatT, 14, dt);
-  const wAir = smoothW(m, 'air', st.air && !st.flung && !st.down ? 1 : 0, 10, dt);
+  const wAir = smoothW(m, 'air', st.air && !st.flung && !st.down ? 1 : 0, st.jumping ? 16 : 10, dt);
+  // a jump's wind-up: the crouch follows the wind-up and lets go quickly once he is off the ground
+  m.windC = st.jumpWind > 0 ? sstep(0, 0.85, st.jumpWind) : (m.windC || 0) * (dt > 0 ? Math.exp(-14 * dt) : 0);
+  // the landing: the knees give in ~70 ms, he is up again by ~0.4 s
+  const lt = st.landT ?? 9, wLand = lt < 0.45 && !st.air ? (lt < 0.07 ? sstep(0, 0.07, lt) : 1 - sstep(0.1, 0.42, lt)) : 0;
   const wFlung = smoothW(m, 'flung', st.flung ? 1 : 0, 14, dt);
   const wDown = smoothW(m, 'down', st.down ? 1 : 0, st.down ? 30 : 6, dt);
   const wWrite = smoothW(m, 'write', st.write ? 1 : 0, 7, dt);
@@ -3716,14 +3732,22 @@ export function animateCharacter(m, st, dt) {
   if (wWork > 0.001 && !wheel) { workPose(m, st, P, Q, t); lerpPose(P, Q, wWork); }
   if (wKneel > 0.001 && !wheel) { kneelPose(m, st, P, Q, t); lerpPose(P, Q, wKneel); }
   if (wSeat > 0.001) { seatPose(m, st, Q, t); lerpPose(P, Q, wSeat); }
-  if (wAir > 0.001) { airPose(m, st, P, Q); lerpPose(P, Q, wAir * 0.8, 0, OFF); }
+  if (m.windC > 0.001 && !st.seated) jumpGather(m, P, m.windC, sstep(0.5, 3, st.speed || 0));
+  if (wAir > 0.001) {
+    if (st.jumping) { jumpAirPose(m, st, P, Q, t); lerpPose(P, Q, wAir); }
+    else { airPose(m, st, P, Q); lerpPose(P, Q, wAir * 0.8, 0, OFF); }
+  }
+  if (wLand > 0.001 && !st.seated) jumpLand(m, P, wLand, sstep(0.5, 3, st.speed || 0), sty.old || 0);
   if (st.kick > 0) { kickPose(m, st, P, Q); lerpPose(P, Q, 1); }
   if (wFlung > 0.001) { flungPose(m, st, Q, t); lerpPose(P, Q, wFlung); }
   if (wDown > 0.001) { downPose(m, st, Q, t); lerpPose(P, Q, wDown); }
   if (m.squash > 0) { const s = Math.sin(Math.min(1, m.squash / 0.6) * PI) * 0.6; P[OFF + 1] -= 0.06 * s; for (const i of [0, 1]) { P[(i ? B.thighL : B.thighR) * 3] -= 0.35 * s; P[(i ? B.shinL : B.shinR) * 3] += 0.7 * s; P[(i ? B.footL : B.footR) * 3] -= 0.35 * s; } }
   // mouth: barely moves
   const jawT = st.talk ? 0.02 + 0.055 * Math.abs(Math.sin(t * 13 + Math.sin(t * 4.7) * 2)) * (0.6 + 0.4 * Math.sin(t * 2.3 + m.seed * 9)) : st.yell || st.flung ? 0.16 : 0.004;
-  P[B.jaw * 3] = jawT;
+  // (a jump: clenched while gathering, open on the grunt as he pushes off and on the 'uff' as he
+  // lands; running hard: breathing through the mouth)
+  const jr = st.jumping ? clamp((st.vy || 0) / Math.max(1, st.jumpV || 4), -1, 1) : -1;
+  P[B.jaw * 3] = st.talk ? jawT : Math.max(jawT * (1 - m.windC), 0.075 * sstep(0.35, 0.75, jr), 0.06 * wLand, (0.025 + 0.02 * Math.sin(t * 9)) * (m.gaitRun || 0) * sstep(0.5, 3, st.speed || 0));
   P[B.jaw * 3 + 1] = 0; P[B.jaw * 3 + 2] = 0;
   // look
   P[B.neck * 3 + 1] += (st.look || 0) * (1 - wDown);
@@ -3769,56 +3793,124 @@ export function animateCharacter(m, st, dt) {
     let c = 0;
     if (m.blink > 0) { m.blink += dt; const u = m.blink; c = u < 0.06 ? u / 0.06 : u < 0.09 ? 1 : u < 0.21 ? 1 - (u - 0.09) / 0.12 : 0; if (u >= 0.21) m.blink = 0; }
     const shut = st.down && (st.downLeft ?? 9) > 1.3 ? 0.85 : wFlung * 0.5;
-    const down = 0.3 * wWrite + 0.22 * wKneel;
+    const down = 0.3 * wWrite + 0.22 * wKneel + 0.3 * Math.max(m.windC, 0.6 * wLand);
     for (const l of m.lids) l.rotation.x = m.lidClose * Math.max(c, shut) + down * (1 - c);
   }
 }
 
+// The thigh's local rotation for a leg flexed by h in the body's sagittal plane and leaned out by ab
+// (about the forward axis, towards +x), under a pelvis turned by (yaw, roll): the pelvis' turn is taken
+// back out, so the leg keeps swinging straight ahead and a planted foot neither slides sideways nor
+// twists while the hips rotate and tilt (it used to: 13 cm per step at 3.2 m/s, the feet landing on
+// one line).
+const _tq = new THREE.Quaternion(), _tq2 = new THREE.Quaternion(), _te = new THREE.Euler(), _tx = new THREE.Vector3(1, 0, 0), _tz = new THREE.Vector3(0, 0, 1);
+function thighRot(P, b, h, ab, yaw, roll) {
+  _tq.setFromEuler(_te.set(0, yaw, roll)).invert();
+  _tq.multiply(_tq2.setFromAxisAngle(_tz, ab)).multiply(_tq2.setFromAxisAngle(_tx, -h));
+  _te.setFromQuaternion(_tq, 'XYZ');
+  P[b * 3] = _te.x; P[b * 3 + 1] = _te.y; P[b * 3 + 2] = _te.z;
+}
+const _lh = [0, 0], _lk = [0, 0], _lf = [0, 0], _lx = [0, 0], _lt = [false, false], _lw = [0, 0], _la2 = [0, 0, 0];
+
 function locomotion(m, st, dt, P) {
-  const D = m.D, sty = m.style, t = st.t || 0;
+  const D = m.D, sty = m.style, t = st.t || 0, K = GAIT.k;
   const v = st.speed || 0;
-  const L = D.hipY, thighL = D.hipY - D.kneeY, shinL = D.kneeY - D.ankleY;
-  const runW = sstep(3.9, 4.8, v);
+  const thighL = D.hipY - D.kneeY, shinL = D.kneeY - D.ankleY;
+  // style.old (0..1): an older, heavier body (Ove): toes turned out, a wider and more rocking gait,
+  // knees that bend less in the swing, the trunk and head a little forward, the elbows out on a run
+  const old = sty.old || 0;
+  // Walk or run: people switch gait rather than blend one into the other (a half-run at 4.3 m/s
+  // fits neither), with hysteresis (a run from 4.1 m/s, a walk again below 3.6), cross-faded over a
+  // fifth of a second.
+  m.runOn = v > (m.runOn ? K.runOff ?? 3.6 : K.runOn ?? 4.1);
+  m.runT = dt > 0 ? (m.runT ?? 0) + ((m.runOn ? 1 : 0) - (m.runT ?? 0)) * (1 - Math.exp(-(K.runRate ?? 12) * dt)) : m.runOn ? 1 : 0;
+  if (m.runT > 0.999) m.runT = 1; else if (m.runT < 0.001) m.runT = 0;
+  const runW = sstep(0, 1, m.runT);
+  const fast = sstep(1.0, 3.3, v);           // a stroll .. a power walk (Ove's 3.2 m/s)
   const brisk = sstep(1.7, 3.3, v) * (1 - runW);
   const moveW = sstep(0.06, 0.45, v);
+  m.gaitRun = runW;
   const rollator = m.d.aid === 'rollator', stick = m.d.aid === 'stick';
   const strideK = (sty.stride || 1) * (rollator ? 0.7 : 1);
-  const ampW = clamp(0.82 + 0.34 * v / Math.max(0.6, strideK), 0.6, 1.85) * Math.min(1, 0.6 + 0.4 * strideK);
-  const ampR = clamp(0.85 + 0.05 * v, 0.9, 1.25);
+  // Walk amplitudes: the hip's flexion (forward) and extension (back). A fast walk lengthens the
+  // stride mostly behind (a longer push-off from the toes); a heel reaching far out ahead drops the
+  // body by the leg's arc (a 40 deg heel strike: 12 cm per step). Faster: the stance knee yields more.
+  const ampW = clamp((K.f0 ?? 1) + (K.f1 ?? 0.12) * v / Math.max(0.6, strideK), 0.6, 1.6) * Math.min(1, 0.6 + 0.4 * strideK);
+  const ampE = clamp((K.e0 ?? 1) + (K.e1 ?? 0.3) * v / Math.max(0.6, strideK), 0.6, 2.4) * Math.min(1, 0.6 + 0.4 * strideK);
+  const ampR = clamp(0.85 + 0.05 * v, 0.9, 1.25) * (K.ampR ?? 1);
+  const loadK = (K.load ?? 12) * fast, pushK = 1 + (K.push ?? 0.3) * fast;
+  const swingK = (1 + 0.06 * fast) * (1 - 0.1 * old), runKnee = 1 - 0.1 * old;
   P.fill(0);
   const hipA = [0, 0], swingA = [0, 0], stanceA = [0, 0], ext = [0, 0];
   // leg angles (hip flexion h, knee flexion k, foot pitch fp, radians) at phase uu
   const legAt = (uu, out) => {
-    const hW = WALK.hip(uu) * ampW, kW = WALK.knee(uu) * lerp(0.75, 1.1, clamp(ampW - 0.4, 0, 1)), fW = WALK.foot(uu) * Math.min(1, ampW);
+    const uf = fract(uu), hw = WALK.hip(uu), fw = WALK.foot(uu);
+    const hW = hw * (hw > 0 ? ampW : ampE);
+    const kW = WALK.knee(uu) * (uf > 0.5 ? swingK : 1) + loadK * Math.max(0, Math.sin(PI * Math.min(1, uf / (K.loadEnd ?? 0.32))));
+    const fW = fw * (fw < 0 ? pushK : Math.min(1.2, ampW));
+    const kR = RUN.knee(uu) * (uf > 0.3 ? runKnee : 1);
     out[0] = lerp(hW, RUN.hip(uu) * ampR, runW) * DEG * moveW;
-    out[1] = lerp(kW, RUN.knee(uu), runW) * DEG * moveW;
+    out[1] = lerp(kW, kR, runW) * DEG * moveW;
     out[2] = lerp(fW, RUN.foot(uu), runW) * DEG * moveW;
     return out;
   };
+  // The pelvis turns forward on the side of the leg that swings (most at its heel strike: yaw > 0 is
+  // the right hip forward), drops on the swinging side just after the other heel strikes, and shifts
+  // over the standing foot (less at speed, more for a heavy or old body).
+  const u = m.phase / TAU;
+  const idleShift = (1 - moveW) * Math.sin(t * 0.55 + m.seed * 7);
+  const yawA = lerp(lerp(0.06, 0.1, fast), 0.11, runW) * moveW * (K.yaw ?? 1);
+  const yaw = yawA * Math.cos(TAU * u);
+  const rollA = (lerp(0.055, 0.04, fast) + 0.015 * old) * (1 - runW) + 0.03 * runW;
+  const roll = -rollA * Math.sin(TAU * (u + 0.05)) * moveW + idleShift * 0.035;
+  const wz = Math.sin(TAU * (u - 0.05));      // +1: the weight over the right foot
+  const swayA = ((lerp(0.02, 0.012, fast) * (sty.sway || 1) + 0.01 * old) * (1 - runW) + 0.008 * runW) * (K.sway ?? 1);
+  P[OFF] = -swayA * wz * moveW + idleShift * 0.014;
   // Planted feet. The stance foot touches down heel first at u = 0 and leaves from the toe at uTO;
   // the stride is whatever lets that contact point stay put while the body moves on, and during
   // the stance the hip angle is solved so it does (the gait curves alone skate the foot back and
-  // forth, as the hip does not sweep linearly in time).
+  // forth, as the hip does not sweep linearly in time). The hip joints ride forward and back with the
+  // pelvis' turn (fwd).
   const F = D.footLen, uTO = lerp(0.6, 0.285, runW);
   const ankX = (a) => thighL * Math.sin(a[0]) + shinL * Math.sin(a[0] - a[1]);
   const zHeel = (fp) => D.ankleY * Math.sin(fp) - 0.24 * F * Math.cos(fp);
   const zToe = (fp) => D.ankleY * Math.sin(fp) + 0.76 * F * Math.cos(fp);
-  const a0 = legAt(0, _la0), a1 = legAt(uTO, _la1);
-  const hx0 = ankX(a0) + zHeel(a0[2]);
-  const S = Math.max(0.3, (hx0 + F - ankX(a1) - zToe(a1[2])) / uTO) * GAIT.walk;
-  if (v > 0.01) m.phase += (TAU * v * dt) / S;
-  const u = m.phase / TAU;
+  const fwdAt = (uu) => D.hipX * Math.sin(yawA * Math.cos(TAU * uu));   // the right hip joint's
   const heel = 0.17 * D.k;
   const extOf = (a) => thighL * Math.cos(a[0]) + shinL * Math.cos(a[0] - a[1]) + Math.sin(Math.max(0, -a[2])) * heel;
+  const L1 = (thighL + shinL) * 0.997;
+  const ankleAt = (fp, toe) => (toe ? D.ankleY * Math.cos(fp) - 0.76 * F * Math.sin(fp) : D.ankleY * Math.cos(fp) + 0.24 * F * Math.sin(fp));
+  const reach = (X, fp, toe) => ankleAt(fp, toe) + Math.sqrt(Math.max(0, L1 * L1 - X * X)) - D.ankleY;
+  // What depends only on the speed and the gait (the stride, the contact angles, the pelvis' range,
+  // the landing path's start), cached per person while those stay the same (to the cm/s): most
+  // people walk at a steady speed, and this is most of locomotion's cost.
+  const w0 = K.land0 ?? 0.86;
+  let gc = m.gc;
+  if (!gc || Math.abs(gc.v - v) > 0.005 || gc.runW !== runW || gc.K !== K || gc.gw !== GAIT.walk) {
+    gc = m.gc ||= { a0: [0, 0, 0] };
+    gc.v = v; gc.runW = runW; gc.K = K; gc.gw = GAIT.walk;
+    const a0 = legAt(0, gc.a0), a1 = legAt(uTO, _la1);
+    gc.hx0 = ankX(a0) + zHeel(a0[2]);
+    gc.S = Math.max(0.3, (gc.hx0 + F - ankX(a1) - zToe(a1[2]) + fwdAt(0) - fwdAt(uTO)) / uTO) * GAIT.walk;
+    // the double support at a heel strike: the leading heel on its mark, the trailing toes on theirs
+    const fpT = legAt(0.5, _la2)[2], xT = gc.hx0 + F - gc.S * 0.5 - zToe(fpT) + fwdAt(0) - fwdAt(0.5);
+    gc.pvLow = Math.min(reach(gc.hx0 - zHeel(a0[2]), a0[2], false), reach(xT, fpT, true)) - 0.004;
+    gc.pvHigh = extOf(legAt(0.28, _la2));
+    gc.landRef = ankX(legAt(w0, _la2));
+    gc.flOff = extOf(legAt(0.285, _la2)); gc.flOn = extOf(a0);
+  }
+  const a0 = gc.a0, hx0 = gc.hx0, S = gc.S;
+  if (v > 0.01) m.phase += (TAU * v * dt) / S;
   const la = [0, 0, 0];
   for (const i of [0, 1]) {
-    const uu = u + (i ? 0.5 : 0);
+    const uu = u + (i ? 0.5 : 0), side = i ? 1 : -1;
+    const fwd = -side * D.hipX * Math.sin(yaw);
     legAt(uu, la);
     let [h, k, fp] = la;
     const uf0 = fract(uu);
+    const toe = fp < -0.004 && uf0 > uTO * 0.3 && uf0 < 0.9;
+    const xA = (toe ? hx0 + F - S * uf0 - zToe(fp) : hx0 - S * uf0 - zHeel(fp)) + fwdAt(0) - fwd;
     if (moveW > 0.02 && uf0 < uTO + 0.05) {
-      const toe = fp < -0.004 && uf0 > uTO * 0.3;
-      const xA = toe ? hx0 + F - S * uf0 - zToe(fp) : hx0 - S * uf0 - zHeel(fp);
       let hh = h;
       for (let it = 0; it < 3; it++) { const f = thighL * Math.sin(hh) + shinL * Math.sin(hh - k) - xA; hh -= f / (thighL * Math.cos(hh) + shinL * Math.cos(hh - k)); }
       const bo = lerp(0.05, 0.012, runW);    // a running stance is short: hold the foot to toe-off
@@ -3827,7 +3919,7 @@ function locomotion(m, st, dt, P) {
     // running: in the last part of the swing the heel comes down onto the point where it will land
     // (fixed on the ground), instead of skidding in at the body's speed
     if (moveW > 0.02 && runW > 0.01 && uf0 > 0.86) {
-      const xA = hx0 + S * (1 - uf0) - zHeel(fp);
+      const xA = hx0 + S * (1 - uf0) - zHeel(fp) + fwdAt(0) - fwd;
       let hh = h;
       for (let it = 0; it < 3; it++) { const f = thighL * Math.sin(hh) + shinL * Math.sin(hh - k) - xA; hh -= f / (thighL * Math.cos(hh) + shinL * Math.cos(hh - k)); }
       h = lerp(h, hh, sstep(0.86, 0.95, uf0) * runW);
@@ -3838,59 +3930,121 @@ function locomotion(m, st, dt, P) {
       const soft = (i ? ws : -ws) > 0 ? 0.09 : 0.015;
       h += (1 - moveW) * soft * 0.5; k += (1 - moveW) * soft;
     }
-    hipA[i] = h;
+    hipA[i] = h; _lh[i] = h; _lk[i] = k; _lf[i] = fp; _lx[i] = xA; _lt[i] = toe;
     const uf = fract(uu);
     swingA[i] = lerp(sstep(0.55, 0.65, uf) * (1 - sstep(0.92, 1, uf)), sstep(0.25, 0.32, uf) * (1 - sstep(0.95, 1, uf)), runW) * moveW;
     stanceA[i] = 1 - swingA[i];
-    const thigh = i ? B.thighL : B.thighR, shin = i ? B.shinL : B.shinR, foot = i ? B.footL : B.footR;
-    P[thigh * 3] = -h; P[shin * 3] = k; P[foot * 3] = h - k - fp;
-    ext[i] = thighL * Math.cos(h) + shinL * Math.cos(h - k) + Math.sin(Math.max(0, -fp)) * heel;
+    // (from the hip joint: the pelvis' tilt raises one and lowers the other)
+    ext[i] = thighL * Math.cos(h) + shinL * Math.cos(h - k) + Math.sin(Math.max(0, -fp)) * heel - side * D.hipX * Math.sin(roll);
+    // walking: the share of the body's weight on this leg, handed over during the double support
+    // (the leading leg takes it from its heel strike, the trailing one keeps its toes down by IK)
+    _lw[i] = sstep(-0.02, 0.06, uf > 0.9 ? uf - 1 : uf) * (1 - sstep(0.48, 0.56, uf));
   }
-  // pelvis height: the supporting leg(s) reach the ground; in a running flight phase, a ballistic
-  // arc from take-off to the other foot's touch-down
+  // Pelvis height. Walking: a smooth double bump, highest over the standing leg at mid-stance and
+  // lowest at the heel strike, as low as the leading heel and the trailing toes can both reach;
+  // running: the supporting leg(s) reach the ground, in a flight phase a ballistic arc from take-off
+  // to the other foot's touch-down.
+  const sr = D.hipX * Math.sin(roll);
+  const landX = (fp, i) => hx0 + S * (1 - fract(u + (i ? 0.5 : 0))) - zHeel(fp) + fwdAt(0) + (i ? 1 : -1) * D.hipX * Math.sin(yaw);
+  let pvW = gc.pvHigh - Math.max(0, gc.pvHigh - gc.pvLow) * moveW * (0.5 - 0.5 * Math.cos(4 * PI * (u - 0.27)));
+  // held below what each loaded foot can reach (the trailing foot only until the other heel is down:
+  // after that its toes leave the ground when it can no longer reach them)
+  for (const i of [0, 1]) {
+    const uf = fract(u + (i ? 0.5 : 0)), side = i ? 1 : -1;
+    if (uf > 0.52 && uf < 0.99) continue;
+    const X = uf >= 0.99 ? landX(_lf[i], i) : _lx[i];
+    pvW = Math.min(pvW, reach(X, _lf[i], _lt[i]) - side * sr);
+  }
   let pv = -1;
   for (const i of [0, 1]) if (stanceA[i] > 0.5) pv = Math.max(pv, ext[i]);
   if (pv < 0) {
     const ur = fract(u), a = ur < 0.5 ? ur : ur - 0.5;
     const f = clamp((a - 0.285) / (0.5 - 0.285), 0, 1);
-    const off = extOf(legAt(0.285, [0, 0, 0])), on = extOf(legAt(0, [0, 0, 0]));
-    pv = lerp(off, on, f) + 4 * f * (1 - f) * 0.06 * (sty.bounce || 1);
+    pv = lerp(gc.flOff, gc.flOn, f) + 4 * f * (1 - f) * 0.06 * (sty.bounce || 1);
+  }
+  pv = moveW > 0.02 ? lerp(pvW, pv, runW) : pv;
+  // Walking: the legs reach their marks by two-bone IK (hip and knee). A planted foot: its heel or toe
+  // stays on its point on the ground (the trailing leg bends its knee to push off). The end of the
+  // swing: the heel slows down onto the point where it will land and comes down to it, instead of
+  // skimming in at the body's speed; in the swing the foot stays clear of the ground.
+  if (moveW > 0.02 && runW < 0.999) {
+    for (const i of [0, 1]) {
+      const uf = fract(u + (i ? 0.5 : 0)), side = i ? 1 : -1;
+      const fp = _lf[i], toe = _lt[i], hj = D.ankleY + pv + side * sr, ankH = ankleAt(fp, toe);
+      const vert = thighL * Math.cos(_lh[i]) + shinL * Math.cos(_lh[i] - _lk[i]), cx = thighL * Math.sin(_lh[i]) + shinL * Math.sin(_lh[i] - _lk[i]);
+      let X, Y, c;
+      if (uf < uTO + 0.05) { X = _lx[i]; Y = ankH - hj; c = 1 - sstep(uTO - 0.05, uTO + 0.05, uf); }
+      else {
+        // (the lowest point of the foot above the ground, as the curves have it)
+        const lowH = hj - vert - Math.max(ankH, ankleAt(fp, !toe));
+        const minH = lerp(0.014, K.heelUp ?? 0.035, sstep(0.75, 0.86, uf)) * moveW;
+        // (from w0 the heel follows a path that arrives on its landing point at the heel strike with no
+        // speed over the ground: the landing point minus a gap that closes quadratically)
+        const lift = sstep(minH * 2.5, minH, lowH), land = sstep(w0, w0 + 0.03, uf);
+        const hT = Math.max(lowH, minH) * (1 - sstep(K.land1 ?? 0.94, 1, uf));
+        const q = Math.max(0, (1 - uf) / (1 - w0)), gap = landX(fp, i) + S * (uf - w0) - gc.landRef;
+        X = lerp(cx, landX(fp, i) - gap * q * q, land);
+        Y = -vert + (hT - lowH);
+        c = Math.max(land, lift) * sstep(uTO + 0.02, uTO + 0.1, uf);
+      }
+      c *= 1 - runW;
+      if (c < 0.001) continue;
+      const d = Math.min(Math.hypot(X, Y), (thighL + shinL) * 0.9999);
+      const kk = Math.acos(clamp((d * d - thighL * thighL - shinL * shinL) / (2 * thighL * shinL), -1, 1));
+      const hh = Math.atan2(X, -Y) + Math.atan2(shinL * Math.sin(kk), thighL + shinL * Math.cos(kk));
+      _lh[i] = lerp(_lh[i], hh, c); _lk[i] = lerp(_lk[i], kk, c);
+      ext[i] = thighL * Math.cos(_lh[i]) + shinL * Math.cos(_lh[i] - _lk[i]) + Math.sin(Math.max(0, -fp)) * heel - side * D.hipX * Math.sin(roll);
+    }
   }
   P[OFF + 1] = pv - (thighL + shinL);
   P[OFF + 1] -= (1 - moveW) * 0.004;
-  // pelvis yaw / roll / sway, spine counter-rotation
-  const yaw = -(hipA[1] - hipA[0]) * lerp(0.16, 0.12, runW);
-  const roll = -(swingA[1] - swingA[0]) * 0.035 * moveW;
-  const idleShift = (1 - moveW) * Math.sin(t * 0.55 + m.seed * 7);
-  P[OFF] = (stanceA[1] - stanceA[0]) * 0.011 * (sty.sway || 1) * moveW + idleShift * 0.014;
+  // The legs: each foot on its own line (step width W, feet under the hips when standing), turned out
+  // a little; the pelvis' turn and tilt taken out of the thighs (thighRot), the sole kept level.
+  const W = lerp(lerp(((K.width ?? 0.1) + 0.04 * old) * D.k, 0.06 * D.k, runW), 1.7 * D.hipX, 1 - moveW);
+  const toeOut = ((K.toe ?? 5) + 7 * old) * DEG;
+  for (const i of [0, 1]) {
+    const side = i ? 1 : -1, h = _lh[i], k = _lk[i], fp = _lf[i];
+    const ab = Math.atan2(side * W / 2 - (P[OFF] + side * D.hipX * Math.cos(roll)), Math.max(0.3, ext[i] + side * D.hipX * Math.sin(roll)));
+    const thigh = i ? B.thighL : B.thighR, shin = i ? B.shinL : B.shinR, foot = i ? B.footL : B.footR;
+    thighRot(P, thigh, h, ab, yaw, roll);
+    P[shin * 3] = k;
+    P[foot * 3] = h - k - fp; P[foot * 3 + 1] = side * toeOut; P[foot * 3 + 2] = -ab;
+  }
   P[B.pelvis * 3 + 1] = yaw;
-  P[B.pelvis * 3 + 2] = roll + idleShift * 0.035;
+  P[B.pelvis * 3 + 2] = roll;
+  // The trunk leans into the walk (more at speed, more on a run), the thorax turns against the
+  // pelvis (the shoulders counter the hips, the head stays on the way ahead) and stays upright over the
+  // tilting pelvis; an old body rocks a little over the standing foot.
   const stoop = (sty.stoop || 0) * 0.22;
-  const lean = 0.02 + 0.05 * brisk + 0.13 * runW + (sty.lean || 0) + stoop + (rollator ? 0.12 : 0);
+  const lean = 0.02 + 0.06 * fast * (1 - runW) + 0.13 * runW + (sty.lean || 0) + stoop + (rollator ? 0.12 : 0) + 0.03 * old * moveW;
   P[B.spine * 3] = lean * 0.6;
-  P[B.spine * 3 + 1] = -yaw * 0.6;
-  P[B.spine * 3 + 2] = -P[B.pelvis * 3 + 2] * 0.7;
+  P[B.spine * 3 + 1] = -yaw * 0.85;
+  P[B.spine * 3 + 2] = -roll * 0.7 + wz * (0.025 * old * (1 - runW) + 0.012 * runW) * moveW;
   const breath = Math.sin(t * 1.55 + m.seed * 3);
   P[B.chest * 3] = lean * 0.4 - 0.012 * breath * (1 - moveW * 0.5);
-  P[B.chest * 3 + 1] = -yaw * 0.6;
-  P[B.neck * 3] = -lean * 0.75 + stoop * 0.4;
+  P[B.chest * 3 + 1] = -yaw * 0.85;
+  P[B.neck * 3] = -lean * 0.75 + stoop * 0.4 + 0.04 * old * moveW;
   P[B.neck * 3 + 1] = -(P[B.pelvis * 3 + 1] + P[B.spine * 3 + 1] + P[B.chest * 3 + 1]) + (1 - moveW) * 0.18 * Math.sin(t * 0.23 + m.seed * 11) * Math.sin(t * 0.11 + m.seed * 5);
   P[B.neck * 3 + 2] = -P[B.spine * 3 + 2] * 0.5;
   P[B.head * 3] = -lean * 0.15 + (1 - moveW) * 0.03 * Math.sin(t * 0.4 + m.seed * 2);
-  // arms
-  const swing = (0.13 + 0.42 * brisk + 0.5 * runW) * moveW * (sty.swing || 1) * (sty.stiff ? 0.75 : 1);
-  // standing: the elbows a little more bent and the arms closer in (no A-pose), drifting slowly with
-  // the weight shift
+  // Arms: they swing from the shoulder against the legs (a little behind them), wider and with more
+  // bent elbows the faster the walk; on a run bent ~85 deg and pumping, the hands coming in towards the
+  // middle on the forward swing (an old runner: elbows out). Standing: elbows a little bent, the arms
+  // close in (no A-pose), drifting slowly with the weight shift.
+  const swing = ((0.17 + 0.3 * fast) * (1 - runW) + 0.62 * (1 - 0.15 * old) * runW) * moveW * (sty.swing || 1) * (sty.stiff ? 0.8 : 1);
   const idle = 1 - moveW, drift = Math.sin(t * 0.55 + m.seed * 7);
-  const elbow = 0.18 + 0.1 * idle + 0.75 * brisk + 1.0 * runW + (sty.stiff ? 0.05 : 0);
+  const elbow = 0.18 + 0.1 * idle + 0.42 * fast * (1 - runW) + 1.25 * runW + (sty.stiff ? 0.05 : 0) + 0.06 * old * moveW;
   for (const i of [0, 1]) {
     const side = i ? 1 : -1, arm = i ? B.armL : B.armR, fore = i ? B.foreL : B.foreR, hand = i ? B.handL : B.handR;
-    const a = WALK_ARM(u + (i ? 0.5 : 0) + 0.02) * swing + idle * (0.035 + 0.025 * Math.sin(t * 0.37 + m.seed * 4 + i * 2.1));
-    const out = (m.armOut || 0.08) * (1 - 0.3 * idle) + 0.012 * idle + 0.05 * runW + 0.012 * breath * idle + 0.012 * idle * drift * side;
-    P[arm * 3] = -a - 0.02;
-    P[arm * 3 + 1] = side * 0.05 * runW;
-    P[arm * 3 + 2] = side * out;
-    P[fore * 3] = -(elbow + 0.35 * Math.max(0, a) * (1 + brisk));
+    const cw = WALK_ARM(u + (i ? 0.5 : 0) - 0.03);
+    const a = cw * swing + idle * (0.035 + 0.025 * Math.sin(t * 0.37 + m.seed * 4 + i * 2.1));
+    const out = (m.armOut || 0.08) * (1 - 0.3 * idle) + 0.012 * idle + (0.05 + 0.06 * old) * runW + 0.012 * breath * idle + 0.012 * idle * drift * side;
+    // (running, the upper arm swings mostly behind the body: the elbow goes well back, the hand only
+    // comes up to the chest in front)
+    P[arm * 3] = -a - 0.02 + 0.24 * runW * moveW;
+    P[arm * 3 + 1] = side * (0.05 + 0.1 * Math.max(0, cw)) * runW;
+    P[arm * 3 + 2] = side * (out - 0.03 * Math.max(0, cw) * moveW * (1 + 2 * runW));
+    P[fore * 3] = -(elbow + 0.3 * Math.max(0, a) * (1 + brisk) - 0.12 * runW * cw);
     P[fore * 3 + 1] = -side * (0.25 + 0.2 * runW);
     P[hand * 3] = -0.08;
     P[hand * 3 + 2] = side * 0.06;
@@ -4307,6 +4461,79 @@ function airPose(m, st, P, Q) {
     Q[arm * 3 + 2] = (i ? 1 : -1) * 0.45;
     Q[fore * 3] = -0.7;
   }
+}
+
+// A grown man's jump (Character.jump, st.jumpWind / jumping / landT). squatAdd bends both legs by dk
+// on top of any pose (hip and ankle half each, so the feet stay under him and flat) and drops the
+// pelvis by what that costs, the trunk leaning in by `lean`.
+function squatAdd(m, P, dk, lean) {
+  const D = m.D, L = D.hipY - D.ankleY;
+  for (const i of [0, 1]) {
+    const th = i ? B.thighL : B.thighR, sh = i ? B.shinL : B.shinR, ft = i ? B.footL : B.footR;
+    P[th * 3] -= dk * 0.5; P[sh * 3] += dk; P[ft * 3] -= dk * 0.5;
+  }
+  P[OFF + 1] -= L * (1 - Math.cos(dk * 0.5));
+  P[B.spine * 3] += lean; P[B.chest * 3] += lean * 0.25; P[B.neck * 3] -= lean * 0.7;
+}
+// The wind-up (c 0..1: knees bending, the trunk folding forward, the arms swinging back, the head
+// down a little, gathering himself), and the landing (c 0..1: the knees take it, the trunk goes
+// forward, the arms come forward and out to catch the balance).
+function jumpGather(m, P, c, moving) {
+  const k = c * lerp(1, 0.5, moving);
+  squatAdd(m, P, 0.95 * k, 0.36 * k);
+  P[B.neck * 3] += 0.12 * k;
+  for (const i of [0, 1]) {
+    const side = i ? 1 : -1, arm = i ? B.armL : B.armR, fore = i ? B.foreL : B.foreR;
+    P[arm * 3] = lerp(P[arm * 3], 0.62, k); P[arm * 3 + 2] = lerp(P[arm * 3 + 2], side * 0.16, k);
+    P[fore * 3] = lerp(P[fore * 3], -0.35, k);
+  }
+}
+function jumpLand(m, P, c, moving, old) {
+  const k = c * lerp(1, 0.55, moving);
+  squatAdd(m, P, 1.1 * k * (1 + 0.15 * old), 0.42 * k);
+  for (const i of [0, 1]) {
+    const side = i ? 1 : -1, arm = i ? B.armL : B.armR, fore = i ? B.foreL : B.foreR;
+    P[arm * 3] = lerp(P[arm * 3], -0.4, k); P[arm * 3 + 2] = lerp(P[arm * 3 + 2], side * 0.34, k);
+    P[fore * 3] = lerp(P[fore * 3], -0.75, k);
+  }
+}
+// In the air (r: vertical speed over take-off speed, 1 -> -1). Standing: pushed off and stretched on
+// the way up (toes pointed, the arms swung forward and up), the knees coming up a little over the top
+// (an old body hardly tucks) with the arms going out to the sides for balance, a little flailing, the
+// legs reaching down for the ground before it comes. On the move, a leap: the left leg reaching ahead,
+// the right folded behind, the right arm forward and the left back and out, both legs coming forward
+// to land.
+function jumpAirPose(m, st, P, Q, t) {
+  Q.set(P);
+  const old = m.style.old || 0, r = clamp((st.vy || 0) / Math.max(1, st.jumpV || 4), -1, 1);
+  const up = sstep(0, 1, r), dn = sstep(0, 1, -r), mid = 1 - up - dn;
+  const mv = sstep(0.5, 3, st.speed || 0), tuck = 1 - 0.3 * old;
+  for (const i of [0, 1]) {
+    const side = i ? 1 : -1;
+    const thigh = i ? B.thighL : B.thighR, shin = i ? B.shinL : B.shinR, foot = i ? B.footL : B.footR;
+    const arm = i ? B.armL : B.armR, fore = i ? B.foreL : B.foreR;
+    // standing
+    let h = 0.1 * up + 0.42 * tuck * mid + 0.24 * dn + (i ? 0.07 : -0.03) * (1 - up);
+    let k = 0.2 * up + 0.55 * tuck * mid + 0.24 * dn + (i ? 0.1 : 0) * mid;
+    let ax = -(1.0 * up + 0.3 * mid + 0.3 * dn), az = 0.12 * up + 0.66 * mid + 0.52 * dn, fx = -(0.45 * up + 0.35 * mid + 0.4 * dn);
+    // on the move (i = 1, the left, leads)
+    const hM = i ? 0.42 + 0.18 * mid + 0.1 * dn : -0.32 * (1 - dn) + 0.05 * dn, kM = i ? 0.22 + 0.25 * mid - 0.05 * dn : 0.95 * (1 - dn) + 0.45 * dn;
+    const axM = i ? 0.45 : -0.7, azM = i ? 0.42 : 0.22, fxM = -1.0;
+    h = lerp(h, hM, mv); k = lerp(k, kM, mv); ax = lerp(ax, axM, mv); az = lerp(az, azM, mv); fx = lerp(fx, fxM, mv);
+    const fp = -0.5 * up * (1 - 0.6 * mv) - 0.08 * mid + 0.12 * dn;
+    Q[thigh * 3] = -h; Q[thigh * 3 + 1] = 0; Q[thigh * 3 + 2] = side * 0.05;
+    Q[shin * 3] = k; Q[shin * 3 + 1] = 0; Q[shin * 3 + 2] = 0;
+    Q[foot * 3] = h - k - fp; Q[foot * 3 + 1] = side * 0.12 * old; Q[foot * 3 + 2] = 0;
+    Q[arm * 3] = ax; Q[arm * 3 + 1] = 0;
+    Q[arm * 3 + 2] = side * (az + 0.07 * old * mid * Math.sin(t * 13 + i * 2));
+    Q[fore * 3] = fx; Q[fore * 3 + 1] = -side * 0.3;
+  }
+  Q[B.pelvis * 3] = 0; Q[B.pelvis * 3 + 1] = 0.12 * mv; Q[B.pelvis * 3 + 2] = 0;
+  Q[B.spine * 3] = 0.04 * up + 0.13 * mid + 0.2 * dn + 0.03 * old + 0.06 * mv; Q[B.spine * 3 + 1] = -0.1 * mv; Q[B.spine * 3 + 2] = 0;
+  Q[B.chest * 3] = 0.03 * mid; Q[B.chest * 3 + 1] = -0.06 * mv; Q[B.chest * 3 + 2] = 0;
+  Q[B.neck * 3] = -0.06 * up - 0.12 * mid - 0.05 * dn; Q[B.neck * 3 + 1] = -0.12 * mv * 0.5 + 0.04 * mv; Q[B.neck * 3 + 2] = 0;
+  Q[B.head * 3] = -0.04 * up + 0.1 * dn;
+  Q[OFF] = 0; Q[OFF + 1] = 0; Q[OFF + 2] = 0;
 }
 
 function kickPose(m, st, P, Q) {

@@ -124,6 +124,7 @@ src/game/missions.js       de sju dagarna och uppdragskörningen
 src/game/hud.js            HUD, karta, dialog, porträtt, anteckningsbok
 src/game/camera.js, fx.js, markers.js   kameran, partiklar, markeringar
 tools/shot.mjs             headless-testkörning (scenarier i tools/scenarios/)
+tools/gait.mjs             Oves gång, löpning och hopp filmade bild för bild, med mätvärden
 ```
 
 ## Headless-tester

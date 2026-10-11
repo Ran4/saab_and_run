@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <title>Saab & Run - gång</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <style>html, body { margin: 0; overflow: hidden; background: #6a7078; }</style>
+  <script type="importmap">
+    { "imports": { "three": "../node_modules/three/build/three.module.js", "three/addons/": "../node_modules/three/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    // Gait look-dev (gait.mjs drives it): Ove as a real Character (physics + animation) stepped at a
+    // fixed 60 Hz on flat paving with a tape-measure line every 0.5 m, filmed from the side (or behind),
+    // so walk, run, jump and the transitions between them can be looked at frame by frame.
+    import { THREE, initGfx, gfxReady, scene, camera, renderer, renderFrame, GeoBuilder, realMesh } from '../src/gfx.js';
+    import { CHARS, GAIT } from '../src/actors/models.js';
+    import { Character } from '../src/actors/character.js';
+    import { audio } from '../src/audio.js';
+
+    initGfx(document.getElementById('app'));
+    await gfxReady;
+
+    {
+      const g = new GeoBuilder();
+      g.use('paving', { snow: 0.3 }).boxB(null, 0, 0.05, 0, 400, 0.1, 30);   // top at CURB (0.15): where Ove stands off the road
+      // marks every 0.5 m (every 2 m a long one) along the walking line: a sliding foot shows against them
+      for (let x = -100; x <= 100; x += 0.5) g.use('painted').boxB(0xe8e4da, x, 0.15, Math.round(x * 2) % 4 ? 0.75 : 0.9, 0.025, 0.004, Math.round(x * 2) % 4 ? 0.5 : 0.8);
+      g.use('snow').boxB(null, 0, -0.05, -5.5, 400, 0.4, 2.2);
+      g.use('wood').boxB(0x8a2a1e, 0, 0, -8, 400, 3.4, 0.3);
+      scene.add(realMesh(g.build()));
+    }
+
+    const H = 1 / 60;
+    let ove = null, game = null, lastLand = 0, y0 = 0;
+    const log = [];
+    // a stand-in for the bits of Game that Character.step calls
+    const fakeGame = { carRoofAt: () => null, onLand: (c, v) => { lastLand = v; log.push(['land', +v.toFixed(2)]); }, onBounce() {}, onBodyBounce() {}, onGetUp() {} };
+
+    // reset: Ove at x0 facing +x (yaw pi/2), standing
+    window.__reset = (x0 = -20) => {
+      if (ove) scene.remove(ove.root);
+      ove = new Character(CHARS.ove, { x: x0, z: 0, yaw: Math.PI / 2 });
+      ove.animLod = false; y0 = ove.y;
+      scene.add(ove.root);
+      log.length = 0;
+      return true;
+    };
+    // advance n fixed steps with the given wish speed (m/s, along +x) and brisk flag; jump: press
+    // jump on the first step (through the same call the game makes, if it exists)
+    window.__step = (n, speed = 0, o = {}) => {
+      for (let k = 0; k < n; k++) {
+        ove.wishX = speed; ove.wishZ = 0;
+        ove.anim.sprint = !!o.brisk;
+        if (o.jump && k === 0) {
+          const ok = (window.__jumpFn || ((c) => c.jump(o.v)))(ove);
+          log.push(['jump', ok]);
+        }
+        ove.step(H, fakeGame);
+        ove.sync(H);
+      }
+      return { x: +ove.x.toFixed(3), y: +ove.y.toFixed(3), vy: +ove.vy.toFixed(2), speed: +ove.speed.toFixed(2), onGround: ove.onGround, phase: +(ove.model.phase || 0).toFixed(3) };
+    };
+    // camera: 'side' (from -z... looking at Ove's left side), 'back' (the game's chase view), 'front', 'q' (three-quarter)
+    window.__cam = (kind = 'side', o = {}) => {
+      const x = ove.x, y = y0;   // the camera stays at ground level: a jump shows
+      const d = o.d ?? 3.4, h = o.h ?? 1.0, fov = o.fov ?? 40;
+      if (kind === 'side') { camera.position.set(x, y + h, d); camera.lookAt(x, y + (o.lh ?? 0.9), 0); }
+      else if (kind === 'back') { camera.position.set(x - (o.d ?? 4.2), y + (o.h ?? 1.9), 0.0); camera.lookAt(x + 1.5, y + (o.lh ?? 1.2), 0); }
+      else if (kind === 'front') { camera.position.set(x + d, y + h, 0.4); camera.lookAt(x, y + (o.lh ?? 0.9), 0); }
+      else if (kind === 'q') { camera.position.set(x + d * 0.6, y + h, d * 0.8); camera.lookAt(x, y + (o.lh ?? 0.9), 0); }
+      camera.fov = fov; camera.updateProjectionMatrix();
+      renderFrame();
+      return true;
+    };
+    // Numbers over n steps at a steady speed (after `warm` steps): cadence, step length, the pelvis'
+    // bob and sway, foot slip on the ground, how far a foot dips into it, toe clearance in the swing,
+    // step width, toe-out, the hands' fore-aft swing. Heel / toe = the foot bone's (0, -ankleY, -0.24 F)
+    // and (0, -ankleY, 0.76 F), as models.js plants them.
+    const _v = new THREE.Vector3();
+    window.__metrics = (speed, o = {}) => {
+      __reset();
+      const m = ove.model, D = m.D, F = D.footLen, B = m.bi;
+      const pt = (b, x, y, z) => { _v.set(x, y, z); m.bones[b].localToWorld(_v); return [_v.x, _v.y - y0, _v.z]; };
+      for (let k = 0; k < (o.warm ?? 240); k++) { ove.wishX = speed; ove.wishZ = 0; ove.anim.sprint = !!o.brisk; ove.step(H, fakeGame); ove.sync(H); }
+      const n = o.n ?? 240, rows = [];
+      const ph0 = m.phase;
+      for (let k = 0; k < n; k++) {
+        ove.wishX = speed; ove.wishZ = 0; ove.anim.sprint = !!o.brisk;
+        ove.step(H, fakeGame); ove.sync(H);
+        ove.root.updateMatrixWorld(true);
+        const r = { hip: pt(B.pelvis, 0, 0, 0) };
+        for (const [s, f] of [['R', B.footR], ['L', B.footL]]) { r['h' + s] = pt(f, 0, -D.ankleY, -0.24 * F); r['t' + s] = pt(f, 0, -D.ankleY, 0.76 * F); }
+        r.hand = [pt(B.handR, 0, 0, 0), pt(B.handL, 0, 0, 0)];
+        r.x = ove.x;
+        rows.push(r);
+      }
+      const cyc = (m.phase - ph0) / (2 * Math.PI), secs = n * H;
+      const stride = speed * secs / Math.max(1e-6, cyc);
+      const hy = rows.map((r) => r.hip[1]), hz = rows.map((r) => r.hip[2]);
+      // slip: the lower of heel / toe while it is within 1.5 cm of the ground, its horizontal speed
+      let slip = 0, ns = 0, dip = 0, clear = 9, width = [], toeOut = [];
+      for (const s of ['R', 'L']) {
+        for (let k = 1; k < n; k++) {
+          // (the lower of heel and toe is the contact point)
+          const lo = (r) => (r['h' + s][1] < r['t' + s][1] ? r['h' + s] : r['t' + s]);
+          const heelNow = rows[k]['h' + s][1] < rows[k]['t' + s][1], a = heelNow ? rows[k - 1]['h' + s] : rows[k - 1]['t' + s], b = lo(rows[k]);
+          dip = Math.min(dip, rows[k]['h' + s][1], rows[k]['t' + s][1]);
+          if (b[1] < 0.015) { slip += Math.hypot(b[0] - a[0], b[2] - a[2]) / H; ns++; }
+          // toe clearance in mid-swing: the foot well off the ground at the heel, toe lowest
+          const h = rows[k]['h' + s], t = rows[k]['t' + s];
+          if (h[1] > 0.06 && Math.min(h[1], t[1]) < clear && t[0] - rows[k].hip[0] > -0.15 && t[0] - rows[k].hip[0] < 0.15) clear = Math.min(h[1], t[1]);
+          // flat on the ground: width from the body's line, toe-out from the foot's direction
+          if (h[1] < 0.012 && t[1] < 0.012) { width.push(Math.abs((h[2] + t[2]) / 2 - rows[k].hip[2])); toeOut.push(Math.atan2(Math.abs(t[2] - h[2]), t[0] - h[0]) * 180 / Math.PI); }
+        }
+      }
+      const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN;
+      const hx = rows.map((r) => r.hand[0][0] - r.hip[0]);
+      return {
+        speed, cadence: +(cyc / secs * 120).toFixed(0), step: +(stride / 2).toFixed(3),
+        bob: +(Math.max(...hy) - Math.min(...hy)).toFixed(3), sway: +(Math.max(...hz) - Math.min(...hz)).toFixed(3),
+        slip: +(slip / Math.max(1, ns)).toFixed(3), dip: +dip.toFixed(3), clear: +clear.toFixed(3),
+        width: +(2 * avg(width)).toFixed(3), toeOut: +avg(toeOut).toFixed(1), handSwing: +(Math.max(...hx) - Math.min(...hx)).toFixed(3),
+      };
+    };
+    // render a few frames first (the materials, the face texture and the shadows settle)
+    window.__warm = (n = 30) => { for (let i = 0; i < n; i++) renderFrame(); return true; };
+    window.__log = () => log.slice();
+    window.__ove = () => ove;
+    window.THREE = THREE; window.__GAIT = GAIT;
+    // Ove's jump sounds next to two old ones for level (rendered offline): grunt, oof, ouch, talk x3;
+    // 16-bit PCM, base64, and each one's peak / RMS
+    window.__sounds = async () => {
+      const sr = 44100, plan = [[0.1, (a) => a.grunt(150)], [0.75, (a) => a.oof(150)], [1.3, (a) => a.grunt(150)], [1.9, (a) => a.oof(150)], [2.5, (a) => a.ouch()], [3.1, (a) => a.talk(150)], [3.35, (a) => a.talk(150)], [3.6, (a) => a.talk(150)]];
+      const buf = await audio._offline(4, async (a, oc) => { for (const [at, f] of plan) { await oc.suspend(at); f(a); oc.resume(); } });
+      const d = buf.getChannelData(0), stats = plan.map(([at], i) => { const e = (plan[i + 1]?.[0] ?? 4) - 0.05; let pk = 0, ss = 0, n = 0; for (let k = Math.floor(at * sr); k < e * sr; k++) { pk = Math.max(pk, Math.abs(d[k])); ss += d[k] * d[k]; n++; } return [at, +pk.toFixed(3), +Math.sqrt(ss / n).toFixed(4)]; });
+      const pcm = new Int16Array(d.length); for (let k = 0; k < d.length; k++) pcm[k] = Math.max(-1, Math.min(1, d[k])) * 32767;
+      let bin = ''; const u8 = new Uint8Array(pcm.buffer); for (let k = 0; k < u8.length; k += 0x8000) bin += String.fromCharCode(...u8.subarray(k, k + 0x8000));
+      return { stats, b64: btoa(bin) };
+    };
+    __reset();
+    renderFrame();
+    window.__ready = true;
+  </script>
+</body>
+</html>

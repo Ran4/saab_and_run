@@ -52,6 +52,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   makes the mesh. Call `renderFrame()`, not `renderer.render()`. Don't add lights (the HDRI and the
   sun do it). Keep new materials to a minimum: use surfaces. Full contract: DESIGN.md section 10.
 - Look-dev without gameplay: `PORT=88xx node tools/look.mjs <name> '<json camera shots>'`.
+  Gait (walk, run, jump, their numbers and the jump's sounds): `PORT=88xx node tools/gait.mjs
+  [walk run jump clip metrics sound ...]` (notes/people.md, *Gait*). Run `metrics` after touching
+  `locomotion()`: no foot below the ground, slip on the ground under ~0.2 m/s.
 - `teleport`/`place` snap to ground-level floors only (`groundAt(x, z, 0.2, 0.6)`), never
   roofs; landmarks must not sit inside a building footprint. `car.place()` resets a trailer.
 - The module `fx` (particles) is easy to shadow with a local `const fx = Math.sin(...)`.

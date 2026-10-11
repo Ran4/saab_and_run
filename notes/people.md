@@ -216,14 +216,16 @@ the seat code puts the hips `0.12` above the seat with `root.y = seatY + 0.12 - 
 measurements), **`headP`** (head parameters), `d` (normalised def), `squash`, `phase`.
 
 `animateCharacter` overwrites every core bone each call, so drive poses through `st`. Also exported:
-`GAIT` (`{ walk: 1, run: 1 }`, a stride-scale hook for look-dev; leave at 1, the feet are planted).
+`GAIT` (`{ walk: 1, run: 1, k: {} }`: a stride-scale hook and locomotion's tuning knobs for look-dev,
+`tools/gait.html` sets them live; leave them alone, the feet are planted).
 
 ### Animation flags (`st` = `Character.anim`)
 
 | flag | effect |
 |---|---|
-| `speed` (m/s) | idle (breathing, weight shift, glances; pregnant characters now and then rest a hand on the bump) → walk → brisk walk → jog/run (≥ ~4.3 m/s). **Feet are planted**: the stride comes from the gait curves and during stance the hip angle is solved so the heel, then the toe, stays where it touched down. |
-| `air`, `vy` | mild jump pose |
+| `speed` (m/s) | idle (breathing, weight shift, glances; pregnant characters now and then rest a hand on the bump) → walk → brisk walk → run. Walk or run is a **switch with hysteresis** (a run from 4.1 m/s, a walk again below 3.6, cross-faded over ~0.2 s), not a blend. **Feet are planted** (see *Gait* below). |
+| `air`, `vy` | a fall or a bounce: a mild air pose |
+| `jumpWind`, `jumping`, `landT`, `jumpV` | a jump (Character sets them, see *Gait*): the wind-up (0..1: knees bend, trunk folds, arms back, lids squint, jaw clenched), the flight (`vy / jumpV`: stretched on the way up, a small tuck and the arms out over the top, legs reaching for the ground; on the move a leap, the left leg leading), the landing (s since: the knees take it in ~70 ms, up again by ~0.4 s) |
 | `kick` (1 → 0) | tyre kick with the right foot |
 | `talk` | head nods and slow tilts; both hands up in front of the waist, the leading one making continuous small beats (the palm turning up and over), the other lower and quieter, swapping every few seconds; jaw moves a few mm |
 | `wave` | left hand raised, open, waving |
@@ -310,7 +312,9 @@ age 0.52–0.62)),
 `shoes: { type: shoes|sneakers|boots|winter|tall, color, sole, trim }`, `gloves`, `mittens`,
 `props: ['note','pencil','phone']`, `clipboard`, `bag`, `cast: 'R'|'L'`, `slingColor`,
 `aid: 'rollator'|'stick'`, `aidColor`, `blanket: { color, color2 }`,
-`style: { swing, stride, stoop, lean, sway, bounce, pockets, stiff }`. Small kids in snowsuits are
+`style: { swing, stride, stoop, lean, sway, bounce, pockets, stiff, old }` (`old` 0..1: an older,
+heavier gait: toes further out, a wider and more rocking step, stiffer swing knees, trunk and head a
+little forward, elbows out on a run; Ove 0.6). Small kids in snowsuits are
 made rounder automatically (build 1.1–1.3, thicker suit).
 
 `randomPed(rng)`: (faces spread wider: jaw, nose, nose width, hump, tip, chin, cheek, width, lips,
@@ -780,3 +784,47 @@ bones by CORE position); `buildCharacter` now sorts the core bones first. Bald m
   slightly in a long stride.
 - lod-0 heads cost ~15 k triangles each and the lod-0 eyes ~1.4 k each (fine for the 13 cast; don't
   make peds lod 0).
+
+## Gait (2026-10, Ove's walk, run and jump)
+
+Feature `features/implemented/oves_ganganimation.md`: Ove's walk and run looked bad and his jump was
+too quick. The speeds stay (walk 3.2 m/s, Shift 5.5 m/s), which is a power walk and a hard run; the
+motion was rebuilt around them. `locomotion()` in models.js, for everybody:
+
+- **Feet on two lines, not one.** The pelvis turns and tilts; the thighs used to inherit that, so a
+  planted foot slid ~13 cm sideways per step at 3.2 m/s and landed on the centre line. `thighRot()`
+  takes the pelvis' yaw/roll back out of each thigh, and a small abduction puts each foot on its own
+  line (step width ~0.10 m × height/1.78, +0.04 for `old`; ~0.06 running; under the hips standing).
+  Toes out 5° (+7° × `old`). The hip joints' fore/aft motion from the pelvis' turn is in the stride.
+- **Pelvis.** Turn ±3.4–5.7° (walk, more at speed), drop on the swing side, sway over the standing
+  foot (± 1.2–2 cm, more for `old`), all from the phase (no longer from the leg angles). Walking
+  height: a smooth double bump from the stride's geometry: highest at mid-stance, lowest at the heel
+  strike, as low as the leading heel and the trailing toes can both reach, held below each loaded
+  foot's reach.
+- **Two-bone IK while walking**: every planted heel/toe reaches its point exactly (the trailing leg
+  bends its knee to push off instead of lifting the body off the leading heel), and at the end of the
+  swing the heel follows a path that arrives on its landing point with no speed over the ground,
+  kept ≥ 1.4 cm (3.5 cm late in the swing) above the ground.
+- **Walk curves**: the hip extends further behind (thigh to vertical ~+22/−16 at 1.4 m/s, more at
+  speed), the stance knee yields more at speed (`load`), a harder push-off (`push`). **Run curves**: a
+  jogger's swing knee (~95°, not a sprinter's 112°), toe-off at 29 %.
+- **Arms** swing from the shoulder (±10–27° walking, with the elbows bending more at speed), a little
+  behind the legs, the hands coming in on the forward swing; running bent ~85°, the upper arm swinging
+  mostly behind the body. Thorax counter-rotates against the pelvis (0.7 of it). Jaw a little open
+  running.
+- **Jump** (Character.jump, `JUMP` in character.js): a wind-up (0.22 s standing, 0.1 s on the move),
+  then off the ground (`game.onJump`: `audio.grunt`, a strained 'hnngh'), a flight under 14 m/s²
+  (0.55 m, ~0.56 s, was 0.45 s under 24), a landing (`game.onJumpLand`: footstep, thud, `audio.oof`
+  seven times out of ten, a little snow) after which his speed is capped at 45 % rising back over
+  0.42 s. Presses during the wind-up are ignored (still no double jump).
+- Numbers (`tools/gait.mjs metrics`, Ove): cadence 112 / 160 / 211 / 209 steps per minute at 1.4 /
+  2.2 / 3.2 / 5.5 m/s, step 0.75 / 0.83 / 0.91 / 1.58 m, pelvis bob 6 / 8 / 10 / 9 cm (3.2 m/s with a
+  0.9 m step: the leg's arc, not a choice), foot slip on the ground 0.04–0.18 m/s (was 0.37–0.95 by
+  the same measure), no foot below the ground, step width 0.11 m, toes out 9°. The people page's
+  `slip` view: walking 0.02–0.13, running 0.08–0.11 m/s (was 0.06–0.14 / 0.13–0.24).
+- Cost: ~+0.7–1 µs per posed person (speed-only values are cached per person: `m.gc`).
+- Look-dev: `PORT=88xx node tools/gait.mjs [walk run walkback runback walkfront jump walkjump runjump
+  clip metrics sound]` films a real Character on `tools/gait.html` (fixed 60 Hz steps, a tape mark
+  every 0.5 m) into `out/gait_<take>.png` contact sheets (`VIDEO=1`/`clip`: an mp4, `CAM=back`),
+  `metrics` prints the numbers above, `sound` renders the jump's voice next to `ouch` / `talk` into
+  `out/gait_sounds.wav` + a spectrogram, `eval <file.js>` runs a script in the page.

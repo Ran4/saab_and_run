@@ -518,7 +518,7 @@ export const audio = {
     for (const f of [1180, 2630, 3950]) burst(t + rnd(0, 0.03), rnd(0.25, 0.45), 0.05 * i, f * rnd(0.9, 1.1), 'bandpass', 14);
     if (i > 0.55) for (let k = 0; k < 8; k++) osc('sine', rnd(3000, 7500), t + rnd(0.05, 0.5), rnd(0.03, 0.1), rnd(0.006, 0.02) * i);
   },
-  thud() { if (!S) return; const t = now(); osc('sine', 115, t, 0.13, 0.22, { to: 62 }); burst(t, 0.08, 0.12, 320, 'lowpass', 0.7); },
+  thud(k = 1) { if (!S) return; const t = now(); osc('sine', 115, t, 0.13, 0.22 * k, { to: 62 }); burst(t, 0.08, 0.12 * k, 320, 'lowpass', 0.7); },
   boing() {
     if (!S) return;
     const t = now();
@@ -536,6 +536,22 @@ export const audio = {
     env(g, t, 0.34, 0.02, 0.2);
     o.connect(f1).connect(g); o.connect(f2).connect(g); g.connect(S.sfx);
     o.start(t); o.stop(t + 0.3);
+  },
+  // Ove pushing off for a jump: a short, strained, half-swallowed 'hnngh' (the mouth opening from a
+  // nasal murmur onto an 'uh'), the pitch squeezed up and falling off, a breath out after it.
+  // pitch: the CHARS voice (Ove 150 -> ~95 Hz).
+  grunt(pitch = 150) {
+    if (!S) return;
+    const t = now(), f0 = clamp(pitch * 0.63, 80, 220) * rnd(0.94, 1.06), dur = rnd(0.24, 0.32), j = rnd(0.94, 1.06);
+    vocal(t, dur, [f0 * 0.9, f0 * rnd(1.15, 1.28), f0 * 0.8], [270 * j, 1000 * j, 2350], [rnd(540, 620) * j, 1150 * j, 2500], 0.12, { at: 0.3, open: rnd(0.08, 0.13), creak: 55, press: 1 });
+    burst(t + dur * 0.62, 0.16, 0.014, 1500, 'bandpass', 0.7, { attack: 0.03 });
+  },
+  // ...and landing: a breath knocked out of him and a low, short 'uff' closing to an 'oo'.
+  oof(pitch = 150) {
+    if (!S) return;
+    const t = now() + 0.02, f0 = clamp(pitch * 0.6, 75, 210) * rnd(0.94, 1.06), dur = rnd(0.15, 0.2), j = rnd(0.94, 1.06);
+    burst(t - 0.02, 0.07, 0.02, 1100, 'bandpass', 0.8, { attack: 0.005 });
+    vocal(t, dur, [f0 * 1.06, f0, f0 * 0.72], [520 * j, 950 * j, 2300], [340 * j, 760 * j, 2200], 0.09, { at: 0.15, open: dur * 0.8, creak: 35, delayOpen: 0 });
   },
   // Slush.
   splash() { if (!S) return; const t = now(); burst(t, 0.45, 0.3, 1100, 'bandpass', 0.5); burst(t, 0.3, 0.17, 1, 'bandpass', 0.5, { buf: S.crunch, rate: 0.7 }); },
@@ -761,6 +777,43 @@ export const audio = {
     return buf;
   },
 };
+
+// A short wordless effort sound (grunts, groans): a voice (a sawtooth, its pitch jittered by low
+// noise: creak) through three formants gliding from vowel v0 to v1 ([F1, F2, F3] Hz) over `open` s,
+// with a pressed, slightly shaking loudness. f: the pitch at the start, at `at` of dur, and at the end.
+function vocal(t, dur, f, v0, v1, peak, { at = 0.3, open = 0.1, creak = 40, press = 0.6, delayOpen = 0.35 } = {}) {
+  const o = ctx.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(f[0], t);
+  o.frequency.linearRampToValueAtTime(f[1], t + dur * at);
+  o.frequency.exponentialRampToValueAtTime(f[2], t + dur);
+  const jn = ctx.createBufferSource(), jf = ctx.createBiquadFilter(), jg = ctx.createGain();
+  jn.buffer = S.noise; jf.type = 'lowpass'; jf.frequency.value = 60; jg.gain.value = creak * 6;
+  jn.connect(jf).connect(jg).connect(o.detune);
+  const g = ctx.createGain(), trem = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+  trem.gain.value = 1; lfo.frequency.value = rnd(16, 22); lg.gain.value = 0.18 * press;
+  lfo.connect(lg).connect(trem.gain);
+  const shape = ctx.createBiquadFilter();
+  shape.type = 'lowpass'; shape.frequency.value = 2600 + 1400 * press; shape.Q.value = 0.4;
+  const gains = [1, 0.55 + 0.25 * press, 0.22 + 0.2 * press], qs = [5, 7, 9];
+  for (let k = 0; k < 3; k++) {
+    const bp = ctx.createBiquadFilter(), bg = ctx.createGain();
+    bp.type = 'bandpass'; bp.Q.value = qs[k];
+    bp.frequency.setValueAtTime(v0[k], t);
+    bp.frequency.setValueAtTime(v0[k], t + open * delayOpen);
+    bp.frequency.linearRampToValueAtTime(v1[k], t + open);
+    bg.gain.value = gains[k] * 3.2;
+    o.connect(bp).connect(bg).connect(shape);
+  }
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.03);
+  g.gain.setValueAtTime(peak, t + dur * 0.55);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  shape.connect(trem).connect(g).connect(S.sfx);
+  verbSend(g, 0.08);
+  o.start(t); lfo.start(t); jn.start(t, Math.random() * 1.5);
+  for (const n of [o, jn, lfo]) n.stop(t + dur + 0.05);
+}
 
 function hornVoice(t, vol) {
   const g = ctx.createGain(), sh = ctx.createWaveShaper(), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter();
