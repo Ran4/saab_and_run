@@ -9,7 +9,8 @@
 //           0.5-0.8 s after it has been said), then a failed day and its retry; measures what the
 //           sibling project measured: clips cut off (> 0.25 s unsaid; goal < 5 %), two voices at
 //           once (> 0.3 s; goal 0), fail lines cut (goal 0), radio toasts gone before their clip
-//           (goal 0), and lines said that aren't in script.js (goal 0).
+//           (goal 0), and lines said that aren't in script.js (goal 0). LUFTSKIP=s: the reader
+//           also skips day 3's radiator scene with Enter, s s into it (1 = in its first black).
 //   vstory  the whole story with the voices on (FROM=n works): `story` + the vcut numbers.
 //   vpool   the passers-by's pool voices (the real manifest): sex, age band, the same voice every
 //           time, children murmur, drivers, windows, the neighbours' shared lines; a clip for each.
@@ -68,17 +69,23 @@ export default (H) => {
     return r;
   };
   // A human reader: once a dialogue line has been said, E after 0.5-0.8 s (autoDialog off).
-  const reader = () => ev(() => {
+  // (LUFTSKIP=s: and Enter s s into day 3's radiator scene, which skips it.)
+  const reader = () => ev((luftSkip) => {
     const g = __game;
     g.autoDialog = false;
     let wait = null;
     g.onFrame(() => {
-      const V = window.__voice, dlg = document.getElementById('dialog');
+      const V = window.__voice, dlg = document.getElementById('dialog'), L = window.__luft;
+      if (luftSkip && L && !L.readerSkip && L.t >= luftSkip) {
+        L.readerSkip = true;
+        console.log('[t] the reader skips the radiator scene at', L.t.toFixed(2), 's');
+        setTimeout(() => { g.input._press('Enter'); requestAnimationFrame(() => requestAnimationFrame(() => g.input._release('Enter'))); }, 0);
+      }
       if (!dlg?.classList.contains('show') || V.playing.main) { wait = null; return; }
       if (wait == null) wait = performance.now() + 500 + Math.random() * 300;
       if (performance.now() > wait) { wait = null; setTimeout(() => { g.input._press('Enter'); requestAnimationFrame(() => requestAnimationFrame(() => g.input._release('Enter'))); }, 0); }
     });
-  });
+  }, +(process.env.LUFTSKIP || 0));
 
   return {
     async voice() {

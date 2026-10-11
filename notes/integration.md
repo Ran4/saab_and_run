@@ -83,7 +83,8 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   snaps in at once and eases out; pulled in close it stays low, steps over the right shoulder (on
   foot ~0.5 m) and **looks ahead past Ove / over the car's roof** instead of down at his back or the
   roof (garages). People the camera ends up inside are hidden for that frame
-  (`hideNearCamera`). On foot it swings in behind Ove after ~2.5 s without the mouse while he walks
+  (`hideNearCamera`), except those a scene has taken off the stage (`offstage(ch, true)`: day 3's
+  kitchen; `offstage(ch, false)` puts them back as their state says). On foot it swings in behind Ove after ~2.5 s without the mouse while he walks
   forward-ish. `cam.frame(a, b)` (dialogue) tries both sides square on and turned ±17°/±34°, pulls
   each candidate in to its clear part and takes the longest clear one.
 - **Title** (phase 4): Ove beside his Saab, rolled 4.1 m out of its bay in front of his garage
@@ -710,3 +711,24 @@ ever leaves 0 in `speedslide`).
   junction at (40, -40) from ~60 km/h without the handbrake, held and caught (must slide, must leave
   down the cross street); pushes 'speedslide: ...' errors; shots `out/speedslide_*.png`. `m5race`
   takes `RACE_VC` (the corner speeds ×, a hasty driver).
+
+## Fix fixa_outro_anita: nobody left invisible after day 3's kitchen (2026-10-11) — what changed
+
+vcut (TO=7) found Anita invisible through day 3's and day 6's outro (`shown=false`, state
+`normal`). The radiator scene (luftning.js) snapshotted the real Ove's, Anita's and Rune's
+`root.visible` when it built its set (0.65 s after E) and put that back at the end; in the frames
+before, the on-foot camera at the door could be pulled in by the house within a neighbour's reach,
+and `hideNearCamera` had hidden them for that frame, so the snapshot said 'hidden'. Its own restore
+then showed the real one outside during the scene, and the scene's restore hid them for good (no
+one shows a `normal` NPC again). Which side the camera was on depended on Ove's yaw from the step
+before: with a human reader in vcut, one run in two.
+- main.js `offstage(ch, off)`: off = hidden and `ch.offstage` set (`hideNearCamera` neither restores
+  nor hides them); on = `root.visible = ch.state !== 'hidden'`. luftning.js takes Ove, Anita and
+  Rune off with it and puts them back with it; the window's pane keeps its snapshot.
+- story.mjs `luftcam`: the scene started with the camera at Anita, then at Rune (a yaw found that
+  makes `hideNearCamera` hide them at the door): the real ones hidden throughout the scene, all
+  three shown after. Without the fix: 6 checks fail (both of them, never shown again).
+- voice.mjs `vcut`: `LUFTSKIP=s` makes the reader skip the radiator scene with Enter s s into it.
+- story.mjs `reverseInto` (day 1's trailer) checks the stage in the same call it reads `stage.b` in:
+  the box could be reached in a frame between two calls (vstory under load: "reading 'yaw'").
+

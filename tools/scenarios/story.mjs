@@ -33,7 +33,9 @@
 //           each outro, and every single shot (cam.single) like the two-shots; retry checks that a
 //           given-up race day goes straight to the grid; gate checks no call for 75 s after a dawn.
 //   luft    day 3's radiator scene, held at each beat for a screenshot (out/luft_*.png), then checked
-//           (back on the walkway, no set, pane, people and curtain as before); luftskip skips it.
+//           (back on the walkway, no set, pane, people and curtain as before); luftskip skips it;
+//           luftcam starts it with the camera at Anita, then at Rune (hideNearCamera hides them for
+//           that frame): both off the stage meanwhile, and all three back after (fixa_outro_anita).
 // Screenshots: out/story_*.png (key moments), out/m1_*.png, out/m5r_*.png, out/m7c_*.png, out/m4c_*.png, out/m6c_*.png.
 
 export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors }) => {
@@ -234,6 +236,8 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     for (let k = 0; k < 220; k++) {
       if (!(await ev(() => __game.missions.stage?.kind === 'parkIn'))) break;
       await ev((along) => {
+        // (the box may have been reached in a frame since the check above: the stage is gone then)
+        if (__game.missions.stage?.kind !== 'parkIn') return;
         const g = __game, b = g.missions.stage.b, c = g.playerCar, fx = Math.sin(b.yaw), fz = Math.cos(b.yaw);
         const r = (c.x - b.x) * fx + (c.z - b.z) * fz, d = r - along;
         const v = d > 0.05 ? -Math.min(1.6, Math.max(0.35, d * 1.2)) : 0;
@@ -1454,6 +1458,43 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     await log('luftskip: over', secs.toFixed(2), 's after Space');
     if (secs > 3.2) await bad(`luftskip: ${secs.toFixed(1)} s to skip`);
     await luftLeft('luftskip');
+  };
+  // (fixa_outro_anita) The scene starts with the camera on someone's side: the on-foot camera at
+  // the door, pulled in by the house, inside Anita's (or Rune's) reach, so hideNearCamera hides them
+  // for that frame. They used to be put back after the scene as they were when it built its set, i.e.
+  // hidden, for the rest of the game (vcut: day 3's and day 6's outro without Anita). The yaw is
+  // found here, not assumed: the first that hides them while Ove stands at the door.
+  sc.luftcam = async () => {
+    for (const who of ['anita', 'rune']) {
+      await toRadiator();
+      const yaw = await ev(async (who) => {
+        const g = __game, n = g.npc(who), f = () => new Promise((r) => requestAnimationFrame(() => r()));
+        window.__luftcamYaw = null;
+        g.onFrame(() => { if (window.__luftcamYaw != null && !window.__luft?.built) g.cam.yaw = window.__luftcamYaw; });
+        for (let k = 0; k < 32; k++) {
+          window.__luftcamYaw = (k / 32) * 2 * Math.PI - Math.PI; g.cam.snapNext = true;
+          for (let i = 0; i < 4; i++) await f();
+          if (!n.root.visible && n.state === 'normal') return window.__luftcamYaw;
+        }
+        window.__luftcamYaw = null;
+        return null;
+      }, who);
+      if (yaw == null) { await bad(`luftcam: no camera yaw at the door hides ${who}`); continue; }
+      await tap('KeyE');
+      await until(() => window.__luft?.built, 20000);
+      const during = await ev(() => { const g = __game; return { ove: g.player.root.visible, anita: g.npc('anita').root.visible, rune: g.npc('rune').root.visible }; });
+      await until(() => window.__luft && window.__luft.t > 2.0, 20000);
+      const later = await ev(() => { const g = __game; return { ove: g.player.root.visible, anita: g.npc('anita').root.visible, rune: g.npc('rune').root.visible }; });
+      await log(`luftcam ${who}: camera yaw ${yaw.toFixed(2)}; the real ones in the scene`, JSON.stringify(during), JSON.stringify(later));
+      if (Object.values(during).some(Boolean) || Object.values(later).some(Boolean)) await bad(`luftcam ${who}: a real one shown in the scene ${JSON.stringify(later)}`);
+      await tap('Space');
+      try { await until(() => __game.missions.state === 'outro', 8000); } catch (e) { await bad(`luftcam ${who}: no outro`); continue; }
+      await frames(4);
+      await luftLeft(`luftcam ${who}`);
+      const r = await ev(() => { const g = __game, v = (n) => n.root.visible && n.state === 'normal'; return { ove: g.player.root.visible, anita: v(g.npc('anita')), rune: v(g.npc('rune')) }; });
+      if (!r.ove || !r.anita || !r.rune) await bad(`luftcam ${who}: not back after the scene ${JSON.stringify(r)}`);
+      await shot(`luftcam_${who}`);
+    }
   };
   // The radiator's sounds (luftning.js), each rendered offline (nothing is played): peak and RMS
   // beside the door's thud for scale; none silent, none clipping.

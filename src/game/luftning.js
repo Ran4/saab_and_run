@@ -114,11 +114,13 @@ class LuftScene {
     const k = (this.set = buildKitchen(info));
     scene.add(k.root);
     this.W = (p) => new THREE.Vector3(...k.at(p[0], p[1], p[2]));
-    // the window's pane (seen from inside it was a slab), the real Ove and the neighbours outside
+    // the window's pane (seen from inside it was a slab); the real Ove and the neighbours outside go
+    // off the stage (main.js offstage: back as their state says, not as they were this frame - the
+    // camera may have hidden one of them for it, and putting that back hid Anita for good)
     this.hidden = [];
-    const hide = (o) => { if (o) { this.hidden.push([o, o.visible]); o.visible = false; } };
-    hide(info.paneMesh);
-    for (const ch of [g.player, g.npc('anita'), g.npc('rune')]) hide(ch?.root);
+    if (info.paneMesh) { this.hidden.push([info.paneMesh, info.paneMesh.visible]); info.paneMesh.visible = false; }
+    this.offstage = [g.player, g.npc('anita'), g.npc('rune')].filter(Boolean);
+    for (const ch of this.offstage) g.offstage(ch, true);
     // the puppets
     this.ove = this.puppet(CHARS.ove, OVE.x, OVE.z, OVE.yaw);
     this.rune = this.puppet(RUNE_IN, RUNE.x, RUNE.z, Math.atan2(OVE.x - RUNE.x, OVE.z - RUNE.z) - 0.25);
@@ -383,6 +385,7 @@ class LuftScene {
     const g = this.g;
     this.hush();
     for (const [o, v] of this.hidden) o.visible = v;
+    for (const ch of this.offstage) g.offstage(ch, false);
     for (const p of [this.ove, this.rune, this.anita]) { scene.remove(p.m.root); p.m.root.traverse((x) => x.geometry?.dispose()); }
     scene.remove(this.cat.root); this.cat.root.traverse((x) => x.geometry?.dispose());
     for (const m of [this.key, this.cup, ...this.drops.map((d) => d.m)]) { scene.remove(m); m.traverse((x) => { if (x.geometry !== this.dropGeo) x.geometry?.dispose(); }); }

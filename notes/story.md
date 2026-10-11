@@ -424,8 +424,12 @@ beats in `T` (s from the press):
 - **Skip**: the skip keys (Space, E, Enter, a click; the pad's A, Y) from 0.9 s on: straight to
   the closing black and out (~2.2 s). The E that started it doesn't count.
 - **People**: puppets, not the NPCs: `buildCharacter` + `animateCharacter` with the scene's own
-  state (no physics); the real Ove, Anita and Rune are hidden meanwhile (their `root.visible`
-  restored after) and the kitchen window's pane mesh too. Indoors Anita wears a cardigan, Rune no cap
+  state (no physics); the real Ove, Anita and Rune are taken off the stage meanwhile (main.js
+  `offstage(ch, true)`: hidden, and `hideNearCamera` leaves them be) and put back after as their
+  state says (`offstage(ch, false)`), never as they were at the first black: the camera at the door
+  may have hidden one of them for that frame, and putting that back kept Anita invisible for the
+  rest of the game (fixa_outro_anita). The kitchen window's pane mesh is hidden too (its own
+  `visible` restored after). Indoors Anita wears a cardigan, Rune no cap
   or coat (`ANITA_IN`, `RUNE_IN`: made once, as models.js caches a face texture per def). Ove kneels
   (models.js `kneelPose`), his hands placed by the scene (`st.hands`, `st.lean`, `st.head`: see
   notes/people.md) along a keyframe track in his body space: resting on his knee, a fist off the
@@ -442,4 +446,6 @@ beats in `T` (s from the press):
 - **Camera**: `g.cam.cine` set directly per shot (`SHOTS`: unit-local camera, look, fov and a slow
   drift), a cut at each change; released at the last black with `cam.behind(g.player)`.
 - Tests: story.mjs `luft` (held at each beat for a screenshot, `__luft.pauseAt`; then: back on the
-  walkway, no set, pane, people and curtain as before), `luftskip`, `luftsound`; `story` plays it.
+  walkway, no set, pane, people and curtain as before), `luftskip`, `luftcam` (started with the
+  camera at Anita, then at Rune: nobody hidden after), `luftsound`; `story` plays it; `vcut`
+  with `LUFTSKIP=s` has the reader skip it with Enter.

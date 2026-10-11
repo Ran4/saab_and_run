@@ -23,7 +23,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   (notes/integration.md),
   story.mjs `story m1..m7 gate aftermath` plus the no-warp checks `m5race m7chase m4cat lotwalk
   hospdrive retry` and round 2's `giveup outrosmet flowercalls dusk camwall` and `luft luftskip
-  luftsound` (day 3's radiator scene: a shot per beat, the skip, its sounds offline), ui.mjs `uiportraits
+  luftcam luftsound` (day 3's radiator scene: a shot per beat, the skip, started with the camera at
+  Anita or Rune, its sounds offline), ui.mjs `uiportraits
   uitoasts uiabort uifavicon titlegone uipause` (the pause card at 15 window sizes: run it after
   touching the pause menu or its rows), render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
   (round 2: `wheelfaces trailersleep`; the slides: `handling drift driftshot speedslide`), people.mjs
@@ -53,8 +54,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (490 lines, 15 114 chars on
   2026-10-11; with the pool 1 295 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
-  retry: < 5 % cut off, no two voices at once; `TO=7` all seven days), `vstory` (story with the
-  voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line). Every headless tool
+  retry: < 5 % cut off, no two voices at once; `TO=7` all seven days; `LUFTSKIP=s`: the
+  reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line). Every headless tool
   starts Chrome with `--mute-audio`: never play sound on the speakers.
 - Test mode is `?test=1` (no title, no pointer lock, dialogue auto-advances, no automatic phone
   calls unless `&calls`, no wait between story days unless `&gate`). `&fresh` ignores the save,
@@ -84,7 +85,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - A scene inside a house (day 3's kitchen, `world/interior.js`): the set is built inside the real
   house only while the scene runs (houses are closed boxes, invisible from inside), the window it
   looks out of has its pane as a mesh of its own (data.js `interiors`), the people are puppets
-  (`buildCharacter` + `animateCharacter`), the real ones hidden meanwhile. notes/world.md, story.md.
+  (`buildCharacter` + `animateCharacter`), the real ones off the stage meanwhile (`g.offstage(ch, true)`,
+  then `false`: back as their state says, never a snapshot of `root.visible`: `hideNearCamera` may hide anyone for
+  a frame). notes/world.md, story.md.
 - `teleport`/`place` snap to ground-level floors only (`groundAt(x, z, 0.2, 0.6)`), never
   roofs; landmarks must not sit inside a building footprint. `car.place()` resets a trailer.
 - The module `fx` (particles) is easy to shadow with a local `const fx = Math.sin(...)`.

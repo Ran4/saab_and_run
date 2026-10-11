@@ -2058,13 +2058,24 @@ class Game {
     }
   }
 
+  // A scene that plays someone with a puppet (day 3's kitchen, luftning.js) takes the real one off
+  // the stage meanwhile, and puts them back after as their state says (shown unless 'hidden'), never
+  // as they happened to be when it began: hideNearCamera may have hidden them for that one frame, and
+  // putting that back kept Anita invisible for the rest of the game (fixa_outro_anita).
+  offstage(ch, off) {
+    if (!ch?.root) return;
+    ch.offstage = !!off;
+    ch.root.visible = !off && ch.state !== 'hidden';
+  }
+
   // Nobody's head fills the screen: anyone the camera has ended up inside (a neighbour standing
   // right behind Ove at a wall) is hidden for that frame. Ove himself never is.
   hideNearCamera() {
     const hidden = (this._camHidden ||= []);
     // Restored whatever happened since (seated in a car included: a seat keeps the root's own
-    // visibility, so someone hidden the frame before a scene seated them stayed invisible).
-    for (const ch of hidden) if (ch.state !== 'hidden') ch.root.visible = true;
+    // visibility, so someone hidden the frame before a scene seated them stayed invisible), except
+    // whoever a scene has taken off the stage since (offstage: they come back when it ends).
+    for (const ch of hidden) if (ch.state !== 'hidden' && !ch.offstage) ch.root.visible = true;
     hidden.length = 0;
     if (this.cam.cine || this.aerial) return;
     const cp = camera.position;

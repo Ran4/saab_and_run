@@ -200,7 +200,7 @@ PORT=8791 node tools/shot.mjs titlekeys reloadday r2checks smalltalk dilation   
 PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausmenyns Avbryt dagens uppdrag, notiser under scener
 PORT=8791 node tools/shot.mjs uipause                      # pausmenyn i 15 fönsterstorlekar: anteckningsboken lika hög som menyn, inget utanför
 PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
-PORT=8791 node tools/shot.mjs luft luftskip luftsound      # dag 3:s scen i köket: en bild per ögonblick, att hoppa över den, ljudnivåerna
+PORT=8791 node tools/shot.mjs luft luftskip luftcam luftsound   # dag 3:s scen i köket: en bild per ögonblick, att hoppa över den, kameran hos Anita/Rune, ljudnivåerna
 PORT=8791 node tools/shot.mjs voice vcut vpool             # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt (TO=7: alla sju); statisternas röster
 ```
 

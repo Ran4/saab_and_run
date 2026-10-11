@@ -15,3 +15,4 @@ features/implemented/anteckningsbok_renderingsbugg.md
 features/implemented/luftning_borde_vara_en_scen.md
 features/implemented/resten_av_replikerna_for_a_fully_voiced_game.md
 features/implemented/fixa_hoppet.md
+features/implemented/fixa_outro_anita.md
