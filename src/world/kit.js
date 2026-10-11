@@ -1619,7 +1619,8 @@ function onF(f, fn) {
   }
 }
 // (lx, lz) is a point on the wall surface, ly the wall's outward normal (local yaw), y the bottom
-// of the opening.
+// of the opening. o.glassG: the panes go into that builder instead (a window someone looks out of
+// from inside: Rune's kitchen, world/interior.js - its pane is a mesh of its own that can be hidden).
 
 export function win(f, lx, y, lz, w, h, ly, o = {}) { onF(f, () => winB(f, lx, y, lz, w, h, ly, o)); }
 function winB(f, lx, y, lz, w, h, ly, o) {
@@ -1637,12 +1638,13 @@ function winB(f, lx, y, lz, w, h, ly, o) {
   for (let k = 1; k < panes; k++) { p = at(-w / 2 + k * (pw + mw) - mw / 2, 0.035); f.box(trim, p[0], y, p[1], mw, h, 0.06, ly); }
   if (o.transom) { p = at(0, 0.035); f.box(trim, p[0], y + h * o.transom - mw / 2, p[1], w, mw, 0.06, ly); }
   f.use('glass');
+  const G = o.glassG?.use('glass');
   for (let k = 0; k < panes; k++) {
     if (o.transom) {
       const h0 = h * o.transom - mw / 2;
-      p = at(-w / 2 + pw / 2 + k * (pw + mw), 0.012); f.box(null, p[0], y, p[1], pw, h0, 0.02, ly);
-      f.box(null, p[0], y + h0 + mw, p[1], pw, h - h0 - mw, 0.02, ly);
-    } else { p = at(-w / 2 + pw / 2 + k * (pw + mw), 0.012); f.box(null, p[0], y, p[1], pw, h, 0.02, ly); }
+      p = at(-w / 2 + pw / 2 + k * (pw + mw), 0.012); f.box(null, p[0], y, p[1], pw, h0, 0.02, ly, G);
+      f.box(null, p[0], y + h0 + mw, p[1], pw, h - h0 - mw, 0.02, ly, G);
+    } else { p = at(-w / 2 + pw / 2 + k * (pw + mw), 0.012); f.box(null, p[0], y, p[1], pw, h, 0.02, ly, G); }
   }
   if (o.sill !== false) { f.use('metal'); p = at(0, 0.075); f.box(o.sillC ?? 0x5e6264, p[0], y - b - 0.035, p[1], w + 2 * b + 0.08, 0.035, 0.15, ly); }
   if (o.lamp) { f.use('light'); p = at(o.lamp[0], 0.02); f.box(glow(o.lamp[1] ?? 0xffd9a0, 1.2), p[0], y + 0.05, p[1], 0.2, 0.32, 0.08, ly); }

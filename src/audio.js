@@ -943,6 +943,11 @@ export const audio = {
     }
   },
 
+  // Sounds made elsewhere with this file's tools (game/luftning.js: the radiator): fn({ ctx, sfx,
+  // now, osc, burst, vocal, verbSend, noise }) is called with them, and its result returned; null
+  // before the first gesture (no context yet).
+  synth(fn) { return S ? fn({ ctx, sfx: S.sfx, now, osc, burst, vocal, verbSend, noise: S.noise }) : null; },
+
   // Test hook: render `fn(audio, offlineCtx)` into an OfflineAudioContext of `secs` seconds and
   // return the AudioBuffer (the live graph is untouched). `fn` may await offlineCtx.suspend(t).
   async _offline(secs, fn, sr = 44100) {

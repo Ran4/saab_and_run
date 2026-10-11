@@ -17,6 +17,7 @@ built; DESIGN.md §6 is the contract it implements. Everything is PBR via the §
 | `rowhouse.js` | 1970s radhus: `radhusRow`, `garageRow` (`moving`: the open garage gets door tracks instead of a door tipped up under the ceiling), `garageInterior`, `radhusArea` (whole area: lot, garages, soprum, 4 rows, walkways, bike shed, playground; `movingGarage`) |
 | `ove.js` | Ove's block = `radhusArea` + named units, his garage and its door (`GarageDoor`, into `doors`), signs, landmarks, violation spots |
 | `garagedoor.js` | **(feature oppna_garaget)** `GarageDoor`: Ove's up-and-over garage door, the one world mesh that moves (see *Ove's garage door* below) |
+| `interior.js` | **(feature luftning_borde_vara_en_scen)** `buildKitchen(info)`: Anita and Rune's kitchen, the set of day 3's radiator scene, built inside their real house only while the scene runs (see *Rooms inside the houses* below) |
 | `buildings.js` | `gableHouse`, `flatBuilding`, `lamellhus`, `hipGeo`, `flagpole`; blocks `villaBlock`, `apartmentsBlock`, `radhusBlock` |
 | `places.js` | blocks `centrumBlock hospitalBlock churchBlock cemeteryBlock dealerBlock preschoolBlock kommunBlock gasBlock parkBlock fieldBlock forestBlock`, `mound` (sledding hill) |
 | `streets.js` | slabs, kerbs, sidewalks, markings, zebras (`CROSSINGS`), bus stops (`BUS_STOPS`), lamps, road signs, snow banks, street violation spots, ped loops |
@@ -839,6 +840,33 @@ colour). town.js / batch.js are the rendering fixer's (props.js uses `StaticBatc
   cars (up to 1.5 M, cars agent) are now a large share; see the levers under Performance.
 - Old missions/NPC homes in `main.js` still reference the Bigmouth landmarks; my copy aliased
   them (`birch → oveHouse` …). Phase 3 must switch to the new names.
+
+## Rooms inside the houses (feature luftning_borde_vara_en_scen, 2026-10-11)
+
+Day 3's radiator scene (game/luftning.js) is played inside Anita and Rune's real row house (row
+S1b, unit 0), so its kitchen window looks out on the real walkway. What makes that work:
+
+- Every house is closed boxes in the batches. From inside one, all their faces point away from the
+  camera and are culled: the house is invisible from inside. Only what sits *on* the facade faces
+  inwards too: the window frame, the mullion and the pane (an opaque 'glass' box). The frame and
+  mullion stay (they are the window, seen from inside); the pane would be a slab.
+- So that one window's panes are built into a builder of their own: radhusRow's per-unit
+  `pre(k).kitchenGlass` (ove.js passes it for Rune's unit) goes to `win(..., { glassG })` (kit.js:
+  the panes go into that builder instead of the frame's). ove.js puts it in data.js `interiors.rune`
+  (`pane`), with the row's frame and the unit (`ox, oz, yaw, a0, y0`); town.js makes it a mesh of its
+  own (`pane:rune`, no shadow like every window, static) and stores it as `paneMesh`. From outside
+  it looks as before (only its curtains' random pick differs). The town's `rnd` sequence is
+  unchanged.
+- `interior.js` `buildKitchen(info)` -> `{ root, at(lx, ly, lz) (unit-local, ly above the floor ->
+  world [x, y, z]), yaw(local), FY, dispose() }`, with `ROOM`, `WIN` (the window's opening),
+  `RAD`, `VENT` (the radiator and its bleed valve) exported for the scene. A closed room (floor,
+  ceiling, four walls with the window opening and a door) 0.12 m inside the house's walls, all
+  section-10 surfaces in one GeoBuilder (`realMesh(..., { snow: false, cast: false })`: no snow
+  indoors; nothing casts, the sun cannot get in through the house anyway) plus one `signMesh` (the
+  bonad). No lights: the room is lit by the sky like any shade, the lamps only glow (`glow()`).
+  It is built when the scene's first black falls (~150 ms with the puppets, behind the curtain) and
+  removed at its last, so it costs nothing in play. Being inside someone's house, the camera
+  cannot film it from outside: from outside the house's front face is opaque, window or not.
 
 ## Ove's garage door (feature oppna_garaget, 2026-10-11)
 

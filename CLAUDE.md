@@ -20,7 +20,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   under low roofs) and `garage` (Ove's garage door, E from both sides) and `horn` (the horn with real
   T presses: 19 checks; `hornlook` = close-ups, `WHO=adult|kid|old|patrick`) (notes/integration.md),
   story.mjs `story m1..m7 gate aftermath` plus the no-warp checks `m5race m7chase m4cat lotwalk
-  hospdrive retry` and round 2's `giveup outrosmet flowercalls dusk camwall`, ui.mjs `uiportraits
+  hospdrive retry` and round 2's `giveup outrosmet flowercalls dusk camwall` and `luft luftskip
+  luftsound` (day 3's radiator scene: a shot per beat, the skip, its sounds offline), ui.mjs `uiportraits
   uitoasts uiabort uifavicon titlegone uipause` (the pause card at 15 window sizes: run it after
   touching the pause menu or its rows), render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
   (round 2: `wheelfaces trailersleep`; the slides: `handling drift driftshot speedslide`), people.mjs
@@ -70,6 +71,10 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   Gait (walk, run, jump, their numbers and the jump's sounds): `PORT=88xx node tools/gait.mjs
   [walk run jump clip metrics sound ...]` (notes/people.md, *Gait*). Run `metrics` after touching
   `locomotion()`: no foot below the ground, slip on the ground under ~0.2 m/s.
+- A scene inside a house (day 3's kitchen, `world/interior.js`): the set is built inside the real
+  house only while the scene runs (houses are closed boxes, invisible from inside), the window it
+  looks out of has its pane as a mesh of its own (data.js `interiors`), the people are puppets
+  (`buildCharacter` + `animateCharacter`), the real ones hidden meanwhile. notes/world.md, story.md.
 - `teleport`/`place` snap to ground-level floors only (`groundAt(x, z, 0.2, 0.6)`), never
   roofs; landmarks must not sit inside a building footprint. `car.place()` resets a trailer.
 - The module `fx` (particles) is easy to shadow with a local `const fx = Math.sin(...)`.
@@ -103,7 +108,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - **Story** (missions.js): `MISSIONS` (seven days: giver, at, extra, away, elsewhere, reward, intro,
   retryIntro, setup, stages, retry, outro, outroAt, outroSetup) and `MissionRunner` (`offered`,
   `begin`, `retry`, `abort`, the between-days gate, `placeCast` for the outro). `hud.curtain(on,
-  caption)` is the cut to black (time skips, the race grid, "Ove går in och luftar elementen").
+  caption)` is the cut to black (time skips, the race grid). Day 3's radiator is a cutscene in Anita
+  and Rune's kitchen (game/luftning.js, holdAt's `scene`; notes/story.md).
   `game.storyWorld()` applies what the story changed (Patrick's cast after day 2, the cat by Ove's
   door after day 4, Adrian's Saab in the lot after day 5) at load and after each day.
 - **Horn** (`game.horn`, horn.js): T / H (pad L3 / RB) in a car. People in front leap aside (`anim.fright`,

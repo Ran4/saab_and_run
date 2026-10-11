@@ -291,6 +291,9 @@ export const goto = (o) => ({
 //      guessed from the label, else 'bend'), pose ('write': the notebook instead of working),
 //      cut (a caption: the job happens off screen - one press of E and the scene cuts to black
 //      with the caption while the bar fills by itself, "Ove går in och luftar elementen"),
+//      scene ((g, { open, close }) -> { t, length, update(dt) -> true when over, dispose() }: with cut,
+//      one press of E plays a cutscene instead - day 3's radiator, game/luftning.js - with cut as the
+//      caption going in and sceneEnd coming out; the stage is done when it is over),
 //      ready (g -> null | text: while it gives a text the job can't be done yet - the text is the
 //      objective there, and E is left to whatever else is at hand: "Öppna garageporten" on day 3) }.
 const WORK_GUESS = [[/lufta|element|lås/i, 'wall'], [/skott|snö/i, 'shovel'], [/punkter|däck|blomm|grav/i, 'low']];
@@ -317,9 +320,12 @@ export const holdAt = (o) => ({
   markers() { return this.spots.slice(this.i + 1).map((s) => ({ type: 'item', x: s.x, z: s.z })); },
   close(g) { const s = this.spot(); return onFoot(g) && dist(g.player.x, g.player.z, s.x, s.z) < (o.radius || 1.8); },
   notReady(g) { return o.ready ? o.ready(g) : null; },
-  cleanup(g) { if (this.cutT != null) { hud.curtain(false); g.inDialog = false; this.cutT = null; } },
+  cleanup(g) {
+    if (this.cutT != null) { hud.curtain(false); g.inDialog = false; this.cutT = null; }
+    if (this.scene) { this.scene.dispose(); this.scene = null; this.hush = false; }
+  },
   prompt(g) {
-    if (this.cutT != null) return null;
+    if (this.cutT != null || this.scene) return null;
     if (this.close(g) && !this.notReady(g)) return { text: `<b>E</b> ${o.label}`, hold: o.cut ? null : this.p, takesE: true };
     if (g.playerCar) { const s = this.spot(), f = g.focus(); if (dist(f.x, f.z, s.x, s.z) < 9) return { text: 'Kliv ur bilen först', takesE: false }; }
     return null;
@@ -330,6 +336,14 @@ export const holdAt = (o) => ({
   },
   update(g, m, dt) {
     const s = this.spot();
+    if (this.scene) {
+      // (the music steps back while it plays: main.js reads hush)
+      this.p = Math.min(1, this.scene.t / this.scene.length);
+      if (!this.scene.update(dt)) return;
+      this.scene = null; this.hush = false;
+      audio.checkpoint();
+      return 'done';
+    }
     if (o.cut && this.cutT != null) {
       // Off screen: black, the caption, the bar fills; then back to the scene.
       this.cutT += dt;
@@ -347,6 +361,11 @@ export const holdAt = (o) => ({
       }
     }
     const why = this.notReady(g), near = this.close(g), close = near && !why;
+    if (o.scene && close && g.input.pressed('interact')) {
+      this.p = 0; this.hush = true;
+      this.scene = o.scene(g, { open: o.cut, close: o.sceneEnd });
+      return;
+    }
     if (o.cut && close && g.input.pressed('interact')) {
       this.cutT = 0; this.p = 0;
       g.inDialog = true;

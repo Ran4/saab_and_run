@@ -356,9 +356,14 @@ conversation), `cut` (to black and back: a time skip, the clock), `wait`.
    "utlånad till Anders, 2015") → fetch it at Anders' door across the area ("Jaså, den. Den låg i
    Audin."; brass, Ove's since 1991, Rune's since 1998, Anders' since 2015) → Anita
    phones: two cars block the soprum → report 2 at
-   `garbageRoom` → at `runeHouse` "Gå in och lufta elementen": one press of E and a cut to black
-   ("Ove går in och luftar elementen. Ett i taget."). Outro: Rune, lucid for a second: "...Saab." —
-   "Ja, Rune. Saab."
+   `garbageRoom` → at `runeHouse` "Gå in och lufta elementen": one press of E and Ove is inside
+   their kitchen (a ~14 s cutscene, skippable; feature luftning_borde_vara_en_scen,
+   `game/luftning.js` on a set built inside their real house, `world/interior.js`): three knocks
+   (hollow), an ear to the radiator (it gurgles), the brass key and Anita's good cup under the
+   valve, a hiss that goes on and on (Ove looks into the camera; Rune nods off), a few drops of
+   rust-brown water, one more knock (a dull thud: full), "Mm.", Rune wakes with a snort; on the
+   sill outside a striped cat looks in (tomorrow's), eye to eye, "Hmpf." Black: "Sex element till.
+   Ett i taget." Outro: Rune, lucid for a second: "...Saab." — "Ja, Rune. Saab."
 4. **Katten** (Torsdag, 150 kr) — giver `jimmy` at `jimmyHouse`. The stray sits in the snow by the
    `bikeShed` (somewhere open) → `catchCat` (110 s): running after it never works; Jimmy first says
    "Spring efter den!", then "Nej, vänta! Stå still!"; standing still, the cat comes to Ove ("Kiss,

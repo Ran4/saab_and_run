@@ -2316,7 +2316,8 @@ class Game {
     // generative piano under a chase or a call; a composed cue is mixed for its moment.
     const ms = this.musicState();
     audio.music(ms, { day: this.storyDayNow() });
-    audio.duckMusic(audio.musicCue === 'piano' && (this.patrol.pursuit || this.interrupts.call) ? 0.5 : 1);
+    // (a stage's own cutscene with its own sounds - day 3's radiator - wants the music well back)
+    audio.duckMusic(this.missions.stage?.hush ? 0.3 : audio.musicCue === 'piano' && (this.patrol.pursuit || this.interrupts.call) ? 0.5 : 1);
   }
   // What the music should be doing (audio.music's states): the day's race, Vita skjortan's Škoda
   // (day 6's chase, day 7's chaser), the drive to the hospital against the clock, Sonja's grave and

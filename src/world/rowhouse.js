@@ -130,9 +130,10 @@ export function radhusRow(f, n, o = {}) {
     if (!pre.noCanopy) canopy(f, X(dA - 0.1), Y0 + 2.27, 0, 1.75, 1.05, Math.PI, C.metalBlack, trim);
     lampBox(f, X(dA + 0.82), Y0 + 1.65, 0, Math.PI);
     f.sign(numFace(info.num), X(dA + 0.82), Y0 + 2.08, -0.035, 0.2, 0.17, Math.PI);
-    // Kitchen window by the door; upstairs windows or a dormer.
+    // Kitchen window by the door; upstairs windows or a dormer. (pre.kitchenGlass: a builder for its
+    // panes - Rune's, looked out of from inside: world/interior.js)
     const kw = advent;
-    win(f, X(4.35), Y0 + 1.0, 0, 1.25, 1.05, Math.PI, { trim });
+    win(f, X(4.35), Y0 + 1.0, 0, 1.25, 1.05, Math.PI, { trim, glassG: pre.kitchenGlass });
     if (r() < (o.advent ?? 0.3)) kw(f, X(4.35), Y0 + 1.02, 0, Math.PI);
     if (two) {
       win(f, X(1.35), Y0 + 3.55, 0, 1.15, 1.1, Math.PI, { trim });

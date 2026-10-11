@@ -38,6 +38,7 @@ import {
   race, destroy, grab, talk, cut, at, lmOr,
 } from './stages.js';
 import { STORY } from './script.js';
+import { luftScene } from './luftning.js';
 
 // The days' lines (script.js).
 const D1 = STORY.slapet, D2 = STORY.sjukhuset, D3 = STORY.elementet, D4 = STORY.katten, D5 = STORY.saab, D6 = STORY.vitskjortan, D7 = STORY.varkarna;
@@ -391,7 +392,8 @@ export const MISSIONS = [
       also(() => report({ n: 2, near: 'garbageRoom', radius: 40, smitare: false, text: 'Två bilar står framför soprummet. Anteckna dem' }), {
         call: D3.call,
       }),
-      () => holdAt({ at: 'runeHouse', secs: 2.6, label: 'Gå in och lufta elementen', text: 'Lufta elementen hos Anita och Rune', work: 'wall', cut: 'Ove går in och luftar elementen. Ett i taget.' }),
+      // One press of E and Ove is inside, bleeding their radiator (game/luftning.js).
+      () => holdAt({ at: 'runeHouse', secs: 2.6, label: 'Gå in och lufta elementen', text: 'Lufta elementen hos Anita och Rune', work: 'wall', cut: 'Ove går in och luftar elementen.', scene: luftScene, sceneEnd: 'Sex element till. Ett i taget.' }),
     ],
     // Out on the walkway in front of their door, facing it (not on Rune's ramp: its railings
     // filled the shot and the camera ended up filming the ground).

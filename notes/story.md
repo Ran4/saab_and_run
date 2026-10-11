@@ -66,6 +66,11 @@ After day 7: banner **OMRÅDET ÄR I ORDNING** (Ordning lifted to ≥ 90) over t
   being put there; Swedish `Stanna så kan ${namn} kliva in.`
 - `dropoff`: `walk: (g) => [points]` (where they walk after getting out), `byeSecs`; `Du glömde X!`.
 - `holdAt`: `cut: caption` — one press of E: black + caption, the bar fills by itself, back.
+  `scene: (g, { open, close }) => scene` (feature luftning_borde_vara_en_scen) — the press of E
+  plays a cutscene instead, `cut` its caption going in and `sceneEnd` coming out; the stage is done
+  when `scene.update(dt)` says it is over, and `cleanup` calls `scene.dispose()` (a fail, an
+  abort). While it runs the stage's `hush` is set (main.js steps the music back to 0.3). Day 3:
+  `luftScene` (game/luftning.js), see *Day 3's radiator scene* below.
 - `catchCat` (rewritten): modes sit | rest | wander | run | come. Starts somewhere open (most of 12
   directions free ≥ 4 m, never on the asphalt). Bolts when Ove strides (Shift, > 4 m/s) within 7 m,
   walks within 3.2 m or comes by car; runs 3-4.5 s at 6 m/s (7.2 with him within 4.5 m; the run (Shift) is
@@ -396,3 +401,45 @@ passing) ending `#7 idle` / `no errors`; `m5race` alone (won, Anders 92 m short)
   misslyckat uppdrag; håll Q 1 s: avbryt ett pågående"); Parvaneh's small talk still has "Vill du ha
   lite saffransris?" after day 1 (CHATTER_AFTER could drop it once she has brought it); the save's
   `begun` → `gaveUp` path now takes day 5 straight to the grid.
+
+## Day 3's radiator scene (feature luftning_borde_vara_en_scen, 2026-10-11)
+
+`game/luftning.js` `luftScene(g, { open, close })`, run by day 3's last `holdAt` (one press of E at
+Anita and Rune's door). ~18 s from the press, ~14 s of it in their kitchen (world/interior.js),
+beats in `T` (s from the press):
+
+| s | beat |
+|---|---|
+| 0 | black, "Ove går in och luftar elementen.", a door; at 0.65 the set and the puppets are built |
+| 1.25 | the kitchen (from its far end): Ove on one knee at the radiator under the window, Anita and Rune watching, the cat already on the outer sill. Three knocks: a hollow ring |
+| 3.0 | his left side: the ear to the radiator, a hand on it. It gurgles |
+| 4.6 | the valve: the brass key between his fingers, Anita's good cup (white, a blue band) in his other hand. 5.0 the key turns, 5.15 the hiss starts (and a thin wisp, fx.exhaust) |
+| 6.7 | his face, Anita and Rune behind: the hiss goes on. 7.45 he looks into the camera and holds it; Rune nods off (chin on his chest) |
+| 9.05 | a sputter; 9.5 the cup: three drops of rust-brown water, then a spurt (the water rises, each drop plinks higher); 11.1 the key back |
+| 11.45 | from the kitchen end: one more knock, a dull thud (it is full). "Mm." and a nod; Anita nods; 12.8 Rune wakes with a snort |
+| 13.45 | what Ove sees: the grey striped cat on the sill outside, looking in; it tilts its head |
+| 14.25 | what it sees: Ove, eye to eye. "Hmpf." |
+| 15.15 | the cat looks away. 16.0 black: "Sex element till. Ett i taget."; 16.7 everything goes; 17.55 the walkway; 18.15 done (UPPDRAG KLART) |
+
+- **Skip**: the skip keys (Space, E, Enter, a click; the pad's A, Y) from 0.9 s on: straight to
+  the closing black and out (~2.2 s). The E that started it doesn't count.
+- **People**: puppets, not the NPCs: `buildCharacter` + `animateCharacter` with the scene's own
+  state (no physics); the real Ove, Anita and Rune are hidden meanwhile (their `root.visible`
+  restored after) and the kitchen window's pane mesh too. Indoors Anita wears a cardigan, Rune no cap
+  or coat (`ANITA_IN`, `RUNE_IN`: made once, as models.js caches a face texture per def). Ove kneels
+  (models.js `kneelPose`), his hands placed by the scene (`st.hands`, `st.lean`, `st.head`: see
+  notes/people.md) along a keyframe track in his body space: resting on his knee, a fist off the
+  radiator (each knock drives it in 6 cm), a palm on its top, the key pinched (its turn rolls the
+  palm), the cup round its side. Rune's doze and jerk and Anita's lean and nod are added to their
+  bones after `animateCharacter`. The cat is `buildCat()`, sitting, its head turned after `animate`.
+- **Said**: only Ove's two grunts, his small-talk replies from script.js `OVE_REPLY` ("Mm.",
+  "Hmpf."), already voiced: `g.say` on a point over his head (a bubble; the murmur with the voices
+  off). Nothing new for the voice tool.
+- **Sounds** (`RADIATOR`, made with `audio.synth`): knock (hollow steel), thud (full), gurgle,
+  key (tick, squeak, tick), hiss (`stop()`-able: a fluttering band of noise and a thin whistle
+  that sags with the pressure), sputter, drip (pitch by the water level), spurt, Rune's snort.
+  Levels (story.mjs `luftsound`, offline): peaks 0.05-0.15 like the door's 0.13, the hiss RMS 0.028.
+- **Camera**: `g.cam.cine` set directly per shot (`SHOTS`: unit-local camera, look, fov and a slow
+  drift), a cut at each change; released at the last black with `cam.behind(g.player)`.
+- Tests: story.mjs `luft` (held at each beat for a screenshot, `__luft.pauseAt`; then: back on the
+  walkway, no set, pane, people and curtain as before), `luftskip`, `luftsound`; `story` plays it.

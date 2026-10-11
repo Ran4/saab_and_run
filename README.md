@@ -157,7 +157,7 @@ src/voice.js               rösterna: klippen, turordningen (kön), mummel när 
 src/game/script.js         manuset: alla repliker som sägs högt, som ren data (allLines())
 src/world/                 stadsplan och vägnät (layout), kollision, kvarteren (town, ove, rowhouse,
                            buildings, places, streets, outskirts), skyltar, rekvisita, Oves garageport
-                           (garagedoor)
+                           (garagedoor), Anitas och Runes kök (interior: dag 3:s scen)
 src/actors/car.js          bilarna: fysik, lampor, registreringsskyltar (carmodels.js: modellerna)
 src/actors/trailer.js      släpkärran
 src/actors/drivers.js      AI-förare: trafik, rutt, jakt, flykt, stanna vid kanten
@@ -168,6 +168,7 @@ src/game/interruptions.js  avbrotten: samtalen och ärendena
 src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, anteckna, hämta, skjutsa, jaga...)
 src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
 src/game/missions.js       de sju dagarna och uppdragskörningen
+src/game/luftning.js       dag 3:s scen: Ove luftar elementet hemma hos Anita och Rune (och katten tittar in)
 src/game/hud.js            HUD, karta, dialog, porträtt, anteckningsbok
 src/game/camera.js, fx.js, markers.js   kameran, partiklar, markeringar
 tools/voice/               rösterna: voice.mjs (generering, kontroll), cast.json (rollerna), lines.json (regi),
@@ -196,6 +197,7 @@ PORT=8791 node tools/shot.mjs titlekeys reloadday r2checks smalltalk dilation   
 PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausmenyns Avbryt dagens uppdrag, notiser under scener
 PORT=8791 node tools/shot.mjs uipause                      # pausmenyn i 15 fönsterstorlekar: anteckningsboken lika hög som menyn, inget utanför
 PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
+PORT=8791 node tools/shot.mjs luft luftskip luftsound      # dag 3:s scen i köket: en bild per ögonblick, att hoppa över den, ljudnivåerna
 PORT=8791 node tools/shot.mjs voice vcut                   # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt
 ```
 

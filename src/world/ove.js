@@ -9,18 +9,21 @@
 //   cross walkway x -3..3 from the lot to the south street; south band: footpath, bike shed,
 //   playground, green, hedge.
 
-import { PRIM } from '../gfx.js';
+import { PRIM, GeoBuilder } from '../gfx.js';
 import { CURB, carFreeZones, landmarks } from './layout.js';
 import { C, rnd, R, win, door, lampBox, limb, wrapYaw, canopy, glow } from './kit.js';
 import { radhusArea, garageInterior, UW, D } from './rowhouse.js';
 import { picto, textFace } from './signs.js';
-import { violationSpots, parkedCars, shared, doors } from './data.js';
+import { violationSpots, parkedCars, shared, doors, interiors } from './data.js';
 import { GarageDoor } from './garagedoor.js';
 import { mulberry32 } from '../util.js';
 
 export function oveBlock(bf) {
   const r = mulberry32(1955);
   const units = {};
+  // Anita and Rune's kitchen window gets a pane of its own (town.js makes the mesh): day 3's
+  // radiator scene looks out of it from inside (world/interior.js, game/luftning.js).
+  const runePane = new GeoBuilder();
   const area = radhusArea(bf, {
     r,
     walls: [C.ochre, C.offwhite, C.falu, C.greygreen],
@@ -28,7 +31,7 @@ export function oveBlock(bf) {
     roofs: ['tile', 'metalroof', 'tile', 'tile'],
     fronts: ['green', 'fence', 'bare', 'fence'],
     frontFn: (row, k) => (row === 'S1a' && k === 4 ? 'square' : null),
-    pre: (row, k) => (row === 'N1a' && k === 4 ? { doorC: 0x2a2c2e, noCanopy: true } : null),
+    pre: (row, k) => (row === 'N1a' && k === 4 ? { doorC: 0x2a2c2e, noCanopy: true } : row === 'S1b' && k === 0 ? { kitchenGlass: runePane } : null),
     garageWall: C.brown, garageDoor: 0x5a4632,
     openGarage: 0, movingGarage: true, advent: 0.35,
     unit: (row, k, info) => {
@@ -48,6 +51,7 @@ export function oveBlock(bf) {
   L('parvanehHouse', at('parvaneh', Math.PI));
   // Rune's door has the wheelchair ramp in front of it: stand at its foot, out on the walkway.
   { const u = units.rune, [x, z] = u.f.W(u.a0 + u.dA, -3.7); L('runeHouse', { x, z, yaw: wrapYaw(u.f.yaw + Math.PI) }); }
+  (interiors.rune ||= {}).pane = runePane;
   L('jimmyHouse', at('jimmy', Math.PI));
   L('andersHouse', at('anders', Math.PI));
   // Garage 1 (open) is Ove's: the row starts at local (3.5, -19.5), garages 3.05 m wide.
@@ -183,6 +187,8 @@ function decorate(key, u, r) {
     for (const a of [0, Math.PI / 4]) f.boxC(glow(0xffd890, 1.25), X(4.35), Y0 + 1.6, -0.075, 0.1, 0.1, 0.01, 0, 0, a);
   } else if (key === 'rune') {
     plate('Rune & Anita');
+    // The kitchen inside (world/interior.js builds it when day 3's scene starts).
+    Object.assign(interiors.rune ||= {}, { ox: f.ox, oz: f.oz, yaw: f.yaw, a0: u.a0, y0: Y0 });
     // Wheelchair ramp up to the door, with a railing.
     f.use('wood').boxC(0x7a6650, X(dA), CURB + 0.17, -1.45, 1.25, 0.06, 2.5, 0, -0.12);
     f.ramp(X(dA), -1.45, 0, 1.25, 2.5, CURB + 0.01, CURB + 0.34, 'ramp');

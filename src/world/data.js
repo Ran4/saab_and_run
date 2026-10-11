@@ -21,6 +21,10 @@ export const shared = { glassG: null };
 // shed / garage / shelter roofs, carports, the big entrance canopies. World AABBs:
 // { x0, z0, x1, z1, bottom, top }.
 export const camBlocks = [];
+// Rooms that a scene goes into (world/interior.js): rune = Anita and Rune's kitchen - the row's
+// frame (ox, oz, yaw), the unit's a0 and floor y0, and its kitchen window's pane (pane: the builder,
+// paneMesh: the mesh town.js makes of it, hidden while the camera is inside).
+export const interiors = {};
 // Street names (the same lists patrol.js uses for the notebook's Plats): roads along z (north-south)
 // at x = rc(i) -> ns[i]; roads along x at z = rc(j) -> ew[j]. at(x, z): the nearest road's name.
 export const roadNames = {

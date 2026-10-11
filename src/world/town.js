@@ -18,12 +18,12 @@ import { centrumBlock, hospitalBlock, churchBlock, cemeteryBlock, dealerBlock, p
 import { buildStreets, BUS_STOPS } from './streets.js';
 import { buildOutskirts } from './outskirts.js';
 import { finalizeSigns } from './signs.js';
-import { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, mapLabels, shared, camBlocks, roadNames } from './data.js';
+import { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, mapLabels, shared, camBlocks, roadNames, interiors } from './data.js';
 import { surfaceAt } from './surface.js';
 import { fx } from '../game/fx.js';
 import { mulberry32 } from '../util.js';
 
-export { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, carFreeZones, isCarFree, mapLabels, surfaceAt, camBlocks, roadNames };
+export { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, carFreeZones, isCarFree, mapLabels, surfaceAt, camBlocks, roadNames, interiors };
 
 // Blocks right around Ove's that get a few extra violation spots of their own.
 const NEAR_SPOTS = new Set(['2,3', '3,4', '3,2', '1,3']);
@@ -164,6 +164,15 @@ function* townSteps(scene) {
     lap('batch');
   }
   if (!glassG.empty) { const m = realMesh(glassG.build(), { snow: false, cast: false }); m.renderOrder = 2; m.name = 'glass'; scene.add(m); }
+  // Window panes that a scene looks out through from inside (world/interior.js), each its own mesh
+  // (no shadow, like every window: they are in the ground builders, which cast none).
+  for (const [k, it] of Object.entries(interiors)) {
+    const geo = it.pane?.build();
+    if (!geo) continue;
+    const m = (it.paneMesh = realMesh(geo, { snow: false, cast: false }));
+    m.name = `pane:${k}`;
+    scene.add(m);
+  }
   finalizeSigns(scene);
   lap('signs');
   yield* y(0.96);

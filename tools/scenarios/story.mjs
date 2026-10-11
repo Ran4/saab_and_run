@@ -32,6 +32,8 @@
 //           2.2 m); story checks the day-6 talk framing, the camera and the small-talk pause after
 //           each outro, and every single shot (cam.single) like the two-shots; retry checks that a
 //           given-up race day goes straight to the grid; gate checks no call for 75 s after a dawn.
+//   luft    day 3's radiator scene, held at each beat for a screenshot (out/luft_*.png), then checked
+//           (back on the walkway, no set, pane, people and curtain as before); luftskip skips it.
 // Screenshots: out/story_*.png (key moments), out/m1_*.png, out/m5r_*.png, out/m7c_*.png, out/m4c_*.png, out/m6c_*.png.
 
 export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors }) => {
@@ -1398,6 +1400,81 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     await log('within 45 m of the kiosk:', b, JSON.stringify(await ev(() => { const s = __game.missions.stage; return { kind: s?.kind, callI: s?.callI, callAtT: s?.callAtT, call: !!__interrupt.call, dlg: __game.inDialog }; })));
     if (b !== 'patrick') await bad(`flowercalls: calls near the kiosk (${b})`);
     await shot('flowercalls');
+  };
+  // Day 3's radiator scene (game/luftning.js, feature luftning_borde_vara_en_scen): luft holds it at
+  // each beat for a screenshot (out/luft_*.png) and checks it ends on the walkway with nothing of it
+  // left; luftskip skips it (Space) in the middle: over within ~2.5 s, same checks. LUFT_AT='5.6,8.2'
+  // shoots only those times.
+  const toRadiator = async () => {
+    await fresh('&mission=2');
+    await startMission();
+    await ev(() => { const g = __game, m = g.missions; m.stage.cleanup?.(g, m.m); m.stageI = 4; m.startStage(); });
+    const r = await L('runeHouse');
+    await onFootAt(r.x, r.z);
+    await frames(4);
+  };
+  const luftLeft = async (label) => {
+    const r = await ev(() => {
+      const g = __game, kids = g.player.root.parent.children;
+      return {
+        state: g.missions.state, set: kids.filter((o) => /^interior:/.test(o.name)).length, pane: kids.find((o) => o.name === 'pane:rune')?.visible,
+        player: g.player.root.visible, anita: g.npc('anita').root.visible || g.npc('anita').state === 'hidden', rune: g.npc('rune').root.visible || g.npc('rune').state === 'hidden',
+        curtain: document.querySelector('#curtain').classList.contains('on'), luft: !!window.__luft, stage: g.missions.stage?.kind || null,
+      };
+    });
+    await log(`${label}: after the scene`, JSON.stringify(r));
+    if (r.set || !r.pane || !r.player || !r.anita || !r.rune || r.luft || r.curtain) await bad(`${label}: the scene left something behind ${JSON.stringify(r)}`);
+  };
+  sc.luft = async () => {
+    await toRadiator();
+    await tap('KeyE');
+    const only = process.env.LUFT_AT ? process.env.LUFT_AT.split(',').map(Number) : null;
+    const beats = only ? only.map((s) => [String(s), s]) : [['wide', 2.45], ['listen', 3.9], ['valve', 5.7], ['face', 8.2], ['cup', 10.62], ['wide2', 12.5], ['cat', 14.1], ['hmpf', 14.9], ['away', 15.8]];
+    for (const [name, s] of beats) {
+      await ev((s) => { window.__luft.pauseAt = s; }, s);
+      await until((s) => window.__luft && window.__luft.t >= s - 1e-3, 30000, s);
+      await frames(25);
+      await shot('luft_' + name);
+    }
+    await log('luft: the set was built in', await ev(() => window.__luft.buildMs), 'ms');
+    await ev(() => { window.__luft.pauseAt = null; });
+    try { await until(() => __game.missions.state === 'outro', 30000); } catch (e) { await bad('luft: no outro after the scene'); return; }
+    await luftLeft('luft');
+    await sleep(600);
+    await shot('luft_after');
+  };
+  sc.luftskip = async () => {
+    await toRadiator();
+    await tap('KeyE');
+    await until(() => window.__luft && window.__luft.t > 6.0, 20000);
+    const t0 = Date.now();
+    await tap('Space');
+    try { await until(() => __game.missions.state === 'outro', 8000); } catch (e) { await bad('luftskip: Space did not end the scene'); return; }
+    const secs = (Date.now() - t0) / 1000;
+    await log('luftskip: over', secs.toFixed(2), 's after Space');
+    if (secs > 3.2) await bad(`luftskip: ${secs.toFixed(1)} s to skip`);
+    await luftLeft('luftskip');
+  };
+  // The radiator's sounds (luftning.js), each rendered offline (nothing is played): peak and RMS
+  // beside the door's thud for scale; none silent, none clipping.
+  sc.luftsound = async () => {
+    const r = await ev(async () => {
+      const { audio } = await import('./src/audio.js');
+      const S = (await import('./src/game/luftning.js')).RADIATOR;
+      const out = {};
+      const measure = async (name, fn, secs) => {
+        const b = await audio._offline(secs, async (a) => { fn(a); });
+        let pk = 0, ss = 0, n = 0;
+        for (let c = 0; c < b.numberOfChannels; c++) { const d = b.getChannelData(c); for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > pk) pk = v; ss += d[i] * d[i]; n++; } }
+        out[name] = { peak: +pk.toFixed(3), rms: +Math.sqrt(ss / n).toFixed(4), nan: Number.isNaN(pk) };
+      };
+      await measure('door', (a) => a.door(), 1.5);
+      for (const k of ['knock', 'thud', 'gurgle', 'key', 'sputter', 'drip', 'spurt', 'snort']) await measure(k, (a) => a.synth((A) => S[k](A, k === 'drip' ? 1.2 : undefined)), 2);
+      await measure('hiss', (a) => a.synth((A) => S.hiss(A, 3.9)), 4.5);
+      return out;
+    });
+    await log('luftsound', JSON.stringify(r));
+    for (const [k, v] of Object.entries(r)) if (v.nan || v.peak < 0.01 || v.peak > 0.99) await bad(`luftsound: ${k} ${JSON.stringify(v)}`);
   };
   for (let n = 2; n <= 7; n++) sc['m' + n] = async () => { await fresh(`&mission=${n - 1}`); await D[n](); };
   return sc;

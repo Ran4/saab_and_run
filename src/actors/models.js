@@ -4413,6 +4413,11 @@ function doorPose(m, st, Q) {
 // going down (~0.5 s), reaching forward and down to lay them on the ground ~0.45 m ahead of the root
 // (0.6-2.3 s, the back leaning in), straightening up with the hands resting on the forward knee (from
 // ~2.9 s). kneelPoint(m) is the point between the hands (where the bouquet's stems are held).
+// A scene may take the hands and the head itself (day 3's radiator, game/luftning.js): st.hands =
+// [right, left], each null (as above) or { p: [x, y, z] (body space: y above the soles, z ahead, x to
+// the left), fd, pn (the fingers' direction and the palm's normal, body space), shape (HANDS), pole
+// (the elbow's pole, chest space) }; st.lean (rad: the back bends further in), st.head ([neck pitch,
+// neck yaw, head roll] added: an ear to the radiator, a look up at the window).
 const _kR = new THREE.Vector3(), _kL = new THREE.Vector3(), _kA = new THREE.Vector3();
 function kneelPose(m, st, P, Q, t) {
   const D = m.D, k = D.k, T = m.kneelT;
@@ -4431,15 +4436,24 @@ function kneelPose(m, st, P, Q, t) {
   Q[OFF] = 0; Q[OFF + 1] = H - D.hipY - 0.02 * reach; Q[OFF + 2] = (-0.12 + 0.05 * reach) * k;
   set3(Q, B.pelvis, 0.12 * reach, 0.06, 0);
   // the back upright, leaning in to lay the flowers; the head bowed (a small nod while talking)
-  set3(Q, B.spine, 0.04 + 0.62 * reach, -0.04, 0); set3(Q, B.chest, 0.03 + 0.16 * reach, 0, 0);
+  set3(Q, B.spine, 0.04 + 0.62 * reach + (st.lean || 0), -0.04, 0); set3(Q, B.chest, 0.03 + 0.16 * reach, 0, 0);
   set3(Q, B.neck, 0.3 - 0.2 * reach + (st.talk ? 0.04 * Math.sin(t * 2.3) : 0), 0.04, 0); set3(Q, B.head, 0.14, 0, 0);
+  if (st.head) { Q[B.neck * 3] += st.head[0]; Q[B.neck * 3 + 1] += st.head[1]; Q[B.head * 3 + 2] += st.head[2]; }
   // hands: holding the stems at the waist / laying them on the ground ahead / resting on the knee
   const kz = Q[OFF + 2] + thighL * Math.sin(h), ky = H - thighL * Math.cos(h), kx = D.hipX + 0.02;
   const hold = (i, out) => out.set(i ? 0.035 : -0.035, H + (i ? 0.2 : 0.13) * k, 0.2 * k);
   const lay = (i, out) => out.set(i ? -0.01 : -0.08, 0.27 * k + (i ? 0.035 : 0), 0.4 * k + (i ? -0.01 : 0.02));
   const knee = (i, out) => out.set(i ? kx + 0.01 : kx - 0.07, ky + (i ? 0.075 : 0.1), kz - (i ? 0.05 : 0.1));
   for (const i of [0, 1]) {
-    const side = i ? 1 : -1, tgt = i ? _kL : _kR;
+    const side = i ? 1 : -1, tgt = i ? _kL : _kR, own = st.hands?.[i];
+    if (own) {
+      bodyToChest(m, Q, own.p[0], own.p[1], own.p[2], _T);
+      const q = own.pole || [side * 0.8, -0.5, -0.3];
+      armIK(m, Q, i, _T.x, _T.y, _T.z, q[0], q[1], q[2]);
+      aimHand(m, Q, Q, i, own.fd[0], own.fd[1], own.fd[2], own.pn[0], own.pn[1], own.pn[2]);
+      handShape(Q, i, own.shape || 'grip');
+      continue;
+    }
     hold(i, tgt); knee(i, _kA); tgt.lerp(_kA, rest); lay(i, _kA); tgt.lerp(_kA, reach);
     bodyToChest(m, Q, tgt.x, tgt.y, tgt.z, _T);
     armIK(m, Q, i, _T.x, _T.y, _T.z, side * 0.8, -0.5, -0.3);
