@@ -142,7 +142,8 @@ export function speakersFor(who, text, tags) {
     else if (conf.roles[t]) out.add(t);   // (a role: a neighbour, or 'ped_kid', mumbled)
     else if (POOL_AGES[t]) for (const [k, r] of pool) { if (POOL_AGES[t].includes(r.pool.age)) out.add(k); }
   }
-  return [...out];
+  // (a speaker nobody knows stays in the plan as itself: "no voice", never silently gone)
+  return out.size || POOL_AGES[who] ? [...out] : [who];
 }
 // The pool as the game reads it (index.json _pool): { 'f_young': [keys], ... }.
 export function poolGroups() {
@@ -267,7 +268,8 @@ function processTake(l) {
   const pcm = decode(raw);
   const [a, b] = speechBounds(pcm);
   const seg = pcm.subarray(Math.floor(a * SR), Math.floor(b * SR));
-  const tmp = path.join(CACHE, `tmp-${process.pid}-${l.hash}.wav`);
+  // (in memory where there is a /dev/shm: nothing on a disk that may be full)
+  const tmp = path.join(fs.existsSync('/dev/shm') ? '/dev/shm' : CACHE, `saab-voice-${process.pid}-${l.hash}.wav`);
   fs.mkdirSync(CACHE, { recursive: true });
   writeWav(tmp, seg);
   const i = lufsOf(tmp), gainDb = i == null ? 0 : lufsTarget(l) - i;
@@ -276,6 +278,7 @@ function processTake(l) {
   execFileSync('ffmpeg', ['-hide_banner', '-nostats', '-loglevel', 'error', '-y', '-i', tmp, '-af', `volume=${gainDb.toFixed(2)}dB,alimiter=limit=${(10 ** (TP / 20)).toFixed(3)}:level=0`,
     '-ar', String(SR), '-ac', '1', '-c:a', 'libmp3lame', '-b:a', `${KBPS}k`, out]);
   fs.rmSync(tmp);
+  if (!(fs.statSync(out).size > 0)) { fs.rmSync(out); throw new Error(`ffmpeg wrote nothing for ${l.file} (a full disk?)`); }
   const times = al ? al.characters.map((c, j) => [c, al.character_start_times_seconds[j] - a, al.character_end_times_seconds[j] - a]) : [];
   const meta = { f: `${l.who}/${l.hash}.mp3`, d: Math.round(seg.length / SR * 100) / 100, t: charTimes(l.text, l.spoken, al, a), lip: lipCurve(seg, 10 ** (gainDb / 20), times), lufs: i == null ? null : Math.round(i * 10) / 10 };
   writeJson(path.join(RAW, l.who, l.hash + '.meta.json'), meta);
@@ -387,11 +390,14 @@ async function generate() {
     await Promise.all(Array.from({ length: WORKERS }, worker));
     // Listen to everything that came back, process what passed, retake what didn't.
     const got = todo.filter((l) => fs.existsSync(path.join(RAW, l.who, l.hash + '.mp3')));
-    const heard = analyze(got.map((l) => ({ file: path.join(RAW, l.who, l.hash + '.mp3'), text: l.spoken })));
-    const again = [];
+    // (a take already listened to - a run that died before processing it - isn't heard again)
+    const known = (l) => qc[l.hash] && qc[l.hash].take === l.take && qc[l.hash].text === l.text && qc[l.hash].dur != null;
+    const fresh = analyze(got.filter((l) => !known(l)).map((l) => ({ file: path.join(RAW, l.who, l.hash + '.mp3'), text: l.spoken })));
+    const heard = got.map((l) => (known(l) ? { ...qc[l.hash], dur: qc[l.hash].dur } : fresh.shift()));
+    const again = [], keep = [];
     for (const [k, l] of got.entries()) {
       const a = heard[k], v = verdict(l, a, tempo[l.who]);
-      qc[l.hash] = { who: l.who, text: l.text, take: l.take, heard: a.heard, wer: a.wer, f0: a.f0, cps: v.cps, flags: v.flags, verdict: v.verdict };
+      qc[l.hash] = { who: l.who, text: l.text, take: l.take, heard: a.heard, wer: a.wer, f0: a.f0, cps: v.cps, flags: v.flags, verdict: v.verdict, dur: a.dur };
       if (v.verdict === 'retake' && l.take < RETAKES + (direction[l.who]?.[l.text]?.retakeBase || 0) && round < RETAKES) {
         const d = ((direction[l.who] ||= {})[l.text] ||= {});
         d.retake = (d.retake || 0) + 1; d.auto = true;
@@ -400,10 +406,14 @@ async function generate() {
         continue;
       }
       if (v.verdict !== 'ok') console.log(`  for review (${v.flags.join(', ') || 'short line'}; heard "${a.heard}"): ${l.who} "${l.text}"`);
-      processTake(l);
+      keep.push(l);
     }
+    // (what was heard and the retakes are written before the processing: a run that dies there,
+    // a full disk say, doesn't lose them)
+    writeJson(QCF, qc);
+    if (again.length) saveLines();
+    for (const l of keep) processTake(l);
     if (again.length) {
-      saveLines();
       const fresh = await plan();
       todo = again.map((l) => fresh.find((x) => x.who === l.who && x.text === l.text));
     } else todo = [];

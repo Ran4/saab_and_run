@@ -8,7 +8,8 @@
   "f0": 123.2,
   "cps": 14.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "9072077d224c": {
   "who": "ove",
@@ -19,7 +20,8 @@
   "f0": 116.2,
   "cps": 11.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 5.956
  },
  "1b4b426dc147": {
   "who": "ove",
@@ -30,7 +32,8 @@
   "f0": 147.6,
   "cps": 12,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.318
  },
  "f8f6432d0426": {
   "who": "patrick",
@@ -41,7 +44,8 @@
   "f0": 215.4,
   "cps": 12.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 6.531
  },
  "9f23ad096f54": {
   "who": "patrick",
@@ -52,7 +56,8 @@
   "f0": 210.6,
   "cps": 12.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 6.766
  },
  "23c1d656308b": {
   "who": "patrick",
@@ -63,7 +68,8 @@
   "f0": 183.6,
   "cps": 10.5,
   "flags": [],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 7.314
  },
  "cc2b239c8270": {
   "who": "parvaneh",
@@ -74,7 +80,8 @@
   "f0": 270.4,
   "cps": 15.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 5.642
  },
  "4b5bef0a2851": {
   "who": "parvaneh",
@@ -85,7 +92,8 @@
   "f0": 284.1,
   "cps": 13.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 5.642
  },
  "cffeac06be9b": {
   "who": "parvaneh",
@@ -96,7 +104,8 @@
   "f0": 287.1,
   "cps": 14.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "107d98c764e1": {
   "who": "patrick",
@@ -107,7 +116,8 @@
   "f0": 239.9,
   "cps": 11,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 5.878
  },
  "afb02ce47f02": {
   "who": "ove",
@@ -118,7 +128,8 @@
   "f0": 90.6,
   "cps": 11.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "386e9edfc0cc": {
   "who": "ove",
@@ -129,7 +140,8 @@
   "f0": 130.3,
   "cps": 9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "e900aaa5c2a3": {
   "who": "ove",
@@ -140,7 +152,8 @@
   "f0": 111.7,
   "cps": 8.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.993
  },
  "9a07f333f1dd": {
   "who": "parvaneh",
@@ -151,7 +164,8 @@
   "f0": 257.5,
   "cps": 12.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.598
  },
  "c326340770f3": {
   "who": "ove",
@@ -162,7 +176,8 @@
   "f0": 124.8,
   "cps": 12.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "b550040a0de8": {
   "who": "patrick",
@@ -173,7 +188,8 @@
   "f0": 255.5,
   "cps": 11,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.239
  },
  "b7cc594fef49": {
   "who": "parvaneh",
@@ -184,7 +200,8 @@
   "f0": 252.5,
   "cps": 12,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "2fed4aaf03fa": {
   "who": "patrick",
@@ -195,7 +212,8 @@
   "f0": 202,
   "cps": 14.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.567
  },
  "d0918250548a": {
   "who": "ove",
@@ -206,7 +224,8 @@
   "f0": 99.1,
   "cps": 5.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.914
  },
  "8db8d03c8a02": {
   "who": "patrick",
@@ -217,7 +236,8 @@
   "f0": 200,
   "cps": 10.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "c9b7fb6f48d5": {
   "who": "ove",
@@ -228,7 +248,8 @@
   "f0": 129.9,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.724
  },
  "44a10739d8fb": {
   "who": "ove",
@@ -239,7 +260,8 @@
   "f0": 116.6,
   "cps": 8.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.508
  },
  "fbc0a2e53c8b": {
   "who": "ove",
@@ -250,7 +272,8 @@
   "f0": 164.5,
   "cps": 10.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.396
  },
  "e8a43800bd98": {
   "who": "ove",
@@ -261,7 +284,8 @@
   "f0": 104.4,
   "cps": 14.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.788
  },
  "1cc664935605": {
   "who": "ove",
@@ -272,7 +296,8 @@
   "f0": 114.9,
   "cps": 12.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.273
  },
  "3c0b002d837c": {
   "who": "ove",
@@ -283,7 +308,8 @@
   "f0": 127,
   "cps": 16,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.161
  },
  "fa5a026b937c": {
   "who": "ove",
@@ -294,7 +320,8 @@
   "f0": 150.8,
   "cps": 15.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.351
  },
  "95d19397b5fc": {
   "who": "ove",
@@ -305,7 +332,8 @@
   "f0": 121,
   "cps": 14,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.004
  },
  "89283528c5c5": {
   "who": "ove",
@@ -316,7 +344,8 @@
   "f0": 134.6,
   "cps": 16.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.194
  },
  "cd95a3e23743": {
   "who": "ove",
@@ -327,7 +356,8 @@
   "f0": 100.9,
   "cps": 8.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.429
  },
  "9000baf81f7c": {
   "who": "ove",
@@ -338,7 +368,8 @@
   "f0": 93.9,
   "cps": 5.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.914
  },
  "6f0f1a73b0f0": {
   "who": "ove",
@@ -349,7 +380,8 @@
   "f0": 127.2,
   "cps": 12.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.847
  },
  "ec0dcaee2733": {
   "who": "ove",
@@ -360,7 +392,8 @@
   "f0": 122.5,
   "cps": 12.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.519
  },
  "05f9a98d5e64": {
   "who": "ove",
@@ -371,7 +404,8 @@
   "f0": 115.3,
   "cps": 14.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "ecba63afbdcd": {
   "who": "ove",
@@ -382,7 +416,8 @@
   "f0": 106.7,
   "cps": 13.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.911
  },
  "8611da8641d1": {
   "who": "ove",
@@ -395,7 +430,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.429
  },
  "b74d3c10970e": {
   "who": "ove",
@@ -406,7 +442,8 @@
   "f0": 114.2,
   "cps": 14.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.754
  },
  "9235d3028fcd": {
   "who": "ove",
@@ -417,7 +454,8 @@
   "f0": 99.1,
   "cps": 8.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.351
  },
  "ab38debbe6c9": {
   "who": "ove",
@@ -428,7 +466,8 @@
   "f0": 95.2,
   "cps": 9.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.914
  },
  "794fb7e86fda": {
   "who": "ove",
@@ -439,7 +478,8 @@
   "f0": 127.8,
   "cps": 12.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.149
  },
  "2e0c357f7897": {
   "who": "ove",
@@ -450,7 +490,8 @@
   "f0": 119.6,
   "cps": 11.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "14a377660d8f": {
   "who": "ove",
@@ -461,7 +502,8 @@
   "f0": 128.5,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.881
  },
  "e51ed5a87ba8": {
   "who": "ove",
@@ -472,7 +514,8 @@
   "f0": 104.1,
   "cps": 14.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.228
  },
  "b9b7aba62ae9": {
   "who": "ove",
@@ -483,7 +526,8 @@
   "f0": 112,
   "cps": 13.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.586
  },
  "a29676ffd46e": {
   "who": "ove",
@@ -494,7 +538,8 @@
   "f0": 131.2,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.709
  },
  "e446e578c085": {
   "who": "ove",
@@ -508,7 +553,8 @@
    "words",
    "pace"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 1.306
  },
  "d38e97cf505f": {
   "who": "ove",
@@ -519,7 +565,8 @@
   "f0": 104.1,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.429
  },
  "902be29342e6": {
   "who": "ove",
@@ -530,7 +577,8 @@
   "f0": 120.2,
   "cps": 14.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "4bb8b7c77baf": {
   "who": "ove",
@@ -543,7 +591,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 1.149
  },
  "bd5c70bfed6d": {
   "who": "ove",
@@ -554,7 +603,8 @@
   "f0": 105.1,
   "cps": 11.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "83a57afcb3ff": {
   "who": "ove",
@@ -565,7 +615,8 @@
   "f0": 92.7,
   "cps": 13.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "fe77350923bb": {
   "who": "ove",
@@ -576,7 +627,8 @@
   "f0": 104.9,
   "cps": 7.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.273
  },
  "be8a19087e28": {
   "who": "ove",
@@ -587,7 +639,8 @@
   "f0": 122.3,
   "cps": 12.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.754
  },
  "d45e54e6c890": {
   "who": "ove",
@@ -598,7 +651,8 @@
   "f0": 107.4,
   "cps": 11.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.926
  },
  "bc863a9ded1b": {
   "who": "ove",
@@ -609,7 +663,8 @@
   "f0": 108.8,
   "cps": 13.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.116
  },
  "f6d5b6b49091": {
   "who": "ove",
@@ -620,7 +675,8 @@
   "f0": 110.3,
   "cps": 13.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.926
  },
  "0bb1268981fb": {
   "who": "ove",
@@ -631,7 +687,8 @@
   "f0": 123,
   "cps": 14.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.149
  },
  "f4401a05d32b": {
   "who": "ove",
@@ -642,7 +699,8 @@
   "f0": 118.6,
   "cps": 7.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.586
  },
  "4398aec8009e": {
   "who": "ove",
@@ -653,7 +711,8 @@
   "f0": 123.7,
   "cps": 15.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "5acf578ad335": {
   "who": "ove",
@@ -664,7 +723,8 @@
   "f0": 100,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "0abb8a7f2cbb": {
   "who": "ove",
@@ -675,7 +735,8 @@
   "f0": 123.6,
   "cps": 13.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.206
  },
  "b9cf26651d41": {
   "who": "ove",
@@ -686,7 +747,8 @@
   "f0": 127.9,
   "cps": 17.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.926
  },
  "9fd07bffbe10": {
   "who": "ove",
@@ -697,7 +759,8 @@
   "f0": 89.6,
   "cps": 13.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.881
  },
  "d43dcbadd19e": {
   "who": "ove",
@@ -708,7 +771,8 @@
   "f0": 109.5,
   "cps": 13.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.273
  },
  "d8918f2c7f42": {
   "who": "ove",
@@ -719,7 +783,8 @@
   "f0": 148.6,
   "cps": 11.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.847
  },
  "f4fb15722709": {
   "who": "ove",
@@ -730,7 +795,8 @@
   "f0": 107.5,
   "cps": 9.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.914
  },
  "90ea7fc46906": {
   "who": "ove",
@@ -741,7 +807,8 @@
   "f0": 107.9,
   "cps": 10.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 6.609
  },
  "fbe0252d1926": {
   "who": "ove",
@@ -752,7 +819,8 @@
   "f0": 123.2,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.567
  },
  "dc61a44b92df": {
   "who": "ove",
@@ -763,7 +831,8 @@
   "f0": 136.9,
   "cps": 12.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.306
  },
  "5441a7971445": {
   "who": "ove",
@@ -774,7 +843,8 @@
   "f0": 107.3,
   "cps": 16,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.586
  },
  "d49751168d4b": {
   "who": "ove",
@@ -785,7 +855,8 @@
   "f0": 93.9,
   "cps": 11.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.567
  },
  "e921fd7301c3": {
   "who": "ove",
@@ -798,7 +869,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.273
  },
  "92942e435575": {
   "who": "ove",
@@ -809,7 +881,8 @@
   "f0": 89.6,
   "cps": 8.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "cdbdfbb1884b": {
   "who": "ove",
@@ -820,7 +893,8 @@
   "f0": 111,
   "cps": 11.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 5.564
  },
  "ae31f8854d3e": {
   "who": "ove",
@@ -831,7 +905,8 @@
   "f0": 98.4,
   "cps": 11.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 5.721
  },
  "4b8c1ec7123b": {
   "who": "ove",
@@ -842,7 +917,8 @@
   "f0": 103.2,
   "cps": 10.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 7.706
  },
  "f5b3377d8442": {
   "who": "ove",
@@ -853,7 +929,8 @@
   "f0": 95.5,
   "cps": 14,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 5.799
  },
  "92e19c3542ee": {
   "who": "ove",
@@ -866,7 +943,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 0.836
  },
  "dfb8bed20f39": {
   "who": "ove",
@@ -877,7 +955,8 @@
   "f0": 112.2,
   "cps": 12.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "52287a44ad26": {
   "who": "ove",
@@ -888,7 +967,8 @@
   "f0": 145.3,
   "cps": 14.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.769
  },
  "294465e0636d": {
   "who": "ove",
@@ -899,7 +979,8 @@
   "f0": 166.1,
   "cps": 6.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "890a3564e5b0": {
   "who": "ove",
@@ -910,7 +991,8 @@
   "f0": 183,
   "cps": 8.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.508
  },
  "654a1621d2f0": {
   "who": "ove",
@@ -921,7 +1003,8 @@
   "f0": 158.9,
   "cps": 9.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.881
  },
  "c0e88f9c49f7": {
   "who": "ove",
@@ -932,7 +1015,8 @@
   "f0": 115,
   "cps": 10.5,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "8e12f1844a28": {
   "who": "ove",
@@ -945,7 +1029,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 1.724
  },
  "fe676315fe84": {
   "who": "ove",
@@ -956,7 +1041,8 @@
   "f0": 123.8,
   "cps": 9.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.508
  },
  "b1aa79ee98f4": {
   "who": "ove",
@@ -969,7 +1055,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.769
  },
  "a0c988add73c": {
   "who": "patrick",
@@ -980,7 +1067,8 @@
   "f0": 198.5,
   "cps": 14.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.049
  },
  "d4f4668cdd73": {
   "who": "patrick",
@@ -991,7 +1079,8 @@
   "f0": 204.6,
   "cps": 7.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.049
  },
  "385bc9b76b66": {
   "who": "patrick",
@@ -1002,7 +1091,8 @@
   "f0": 188.6,
   "cps": 16.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.691
  },
  "ac9f8da48ee2": {
   "who": "parvaneh",
@@ -1013,7 +1103,8 @@
   "f0": 309.7,
   "cps": 13.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.429
  },
  "24920bab6177": {
   "who": "parvaneh",
@@ -1024,7 +1115,8 @@
   "f0": 261.9,
   "cps": 12.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "428b3b380506": {
   "who": "parvaneh",
@@ -1035,7 +1127,8 @@
   "f0": 254.1,
   "cps": 10.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.586
  },
  "0311dbb25052": {
   "who": "ove",
@@ -1048,7 +1141,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 1.959
  },
  "18f0fc460fab": {
   "who": "ove",
@@ -1059,7 +1153,8 @@
   "f0": 129.1,
   "cps": 15.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.724
  },
  "67f4f68e50e9": {
   "who": "ove",
@@ -1070,7 +1165,8 @@
   "f0": 113.2,
   "cps": 13.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.847
  },
  "99f51e718f55": {
   "who": "ove",
@@ -1081,7 +1177,8 @@
   "f0": 103.6,
   "cps": 12.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.769
  },
  "5362be9e10aa": {
   "who": "ove",
@@ -1092,7 +1189,8 @@
   "f0": 94.5,
   "cps": 14.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.149
  },
  "e07250a04697": {
   "who": "ove",
@@ -1103,7 +1201,8 @@
   "f0": 110.5,
   "cps": 8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "b3ff427aca1b": {
   "who": "ove",
@@ -1114,7 +1213,8 @@
   "f0": 110.2,
   "cps": 12.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.847
  },
  "f2c26f3f4778": {
   "who": "ove",
@@ -1125,7 +1225,8 @@
   "f0": 115.3,
   "cps": 14.5,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.429
  },
  "73693f6dd572": {
   "who": "ove",
@@ -1138,7 +1239,8 @@
   "flags": [
    "pace"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 0.836
  },
  "32415f6b9ac9": {
   "who": "ove",
@@ -1149,7 +1251,8 @@
   "f0": 139.7,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "d57d9ec9246e": {
   "who": "ove",
@@ -1162,7 +1265,8 @@
   "flags": [
    "pace"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 0.993
  },
  "75700b7121fe": {
   "who": "ove",
@@ -1173,7 +1277,8 @@
   "f0": 134.6,
   "cps": 8.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.881
  },
  "6f0dc25e188c": {
   "who": "ove",
@@ -1184,7 +1289,8 @@
   "f0": 93.1,
   "cps": 12.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.646
  },
  "1dd75bfd4c2f": {
   "who": "ove",
@@ -1195,7 +1301,8 @@
   "f0": 112.6,
   "cps": 6.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.914
  },
  "e64cc4339f8e": {
   "who": "ove",
@@ -1206,7 +1313,8 @@
   "f0": 126.8,
   "cps": 6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.993
  },
  "6b1c2554369b": {
   "who": "ove",
@@ -1219,7 +1327,8 @@
   "flags": [
    "pace"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 0.914
  },
  "0d32e39a838d": {
   "who": "ove",
@@ -1230,7 +1339,8 @@
   "f0": 98.5,
   "cps": 6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 0.993
  },
  "d2e7acf8d806": {
   "who": "ove",
@@ -1241,7 +1351,8 @@
   "f0": 143.6,
   "cps": 13,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.228
  },
  "6238d3e5947e": {
   "who": "ove",
@@ -1252,7 +1363,8 @@
   "f0": 129.8,
   "cps": 7.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "4587e84091ea": {
   "who": "ove",
@@ -1263,7 +1375,8 @@
   "f0": 90,
   "cps": 11.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.959
  },
  "de25ebba29e1": {
   "who": "ove",
@@ -1274,7 +1387,8 @@
   "f0": 105.4,
   "cps": 8.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "efe1050be0a5": {
   "who": "ove",
@@ -1285,7 +1399,8 @@
   "f0": 109.6,
   "cps": 12,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.239
  },
  "4da1d02d88f5": {
   "who": "ove",
@@ -1296,7 +1411,8 @@
   "f0": 103.1,
   "cps": 6.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.959
  },
  "85ea6c05de0a": {
   "who": "ove",
@@ -1307,7 +1423,8 @@
   "f0": 128.7,
   "cps": 9.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.239
  },
  "73883f8bfa60": {
   "who": "ove",
@@ -1318,7 +1435,8 @@
   "f0": 94.1,
   "cps": 10.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.769
  },
  "75acf4484fa3": {
   "who": "ove",
@@ -1329,7 +1447,8 @@
   "f0": 136.4,
   "cps": 9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "5feb2b6e64cc": {
   "who": "ove",
@@ -1340,7 +1459,8 @@
   "f0": 94.4,
   "cps": 13.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.004
  },
  "0fadd9561592": {
   "who": "ove",
@@ -1354,7 +1474,8 @@
    "words",
    "pace"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 2.586
  },
  "1b23b2d90dea": {
   "who": "ove",
@@ -1365,7 +1486,8 @@
   "f0": 106.8,
   "cps": 12.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 4.127
  },
  "a951b10150f6": {
   "who": "ove",
@@ -1376,7 +1498,8 @@
   "f0": 126.9,
   "cps": 10.5,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.474
  },
  "084ecc4d32dd": {
   "who": "ove",
@@ -1389,7 +1512,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 1.724
  },
  "4e6eb92cece4": {
   "who": "ove",
@@ -1400,7 +1524,8 @@
   "f0": 90.4,
   "cps": 14.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.116
  },
  "0b45a95aef18": {
   "who": "ove",
@@ -1411,7 +1536,8 @@
   "f0": 103.2,
   "cps": 9.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.691
  },
  "2647cf941191": {
   "who": "ove",
@@ -1422,7 +1548,8 @@
   "f0": 103.6,
   "cps": 15.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.586
  },
  "5587f0d6beb2": {
   "who": "ove",
@@ -1433,7 +1560,8 @@
   "f0": 109.4,
   "cps": 12,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.474
  },
  "df9461ae414c": {
   "who": "ove",
@@ -1444,7 +1572,8 @@
   "f0": 109.8,
   "cps": 11.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "0b5fddb84eb3": {
   "who": "ove",
@@ -1455,7 +1584,8 @@
   "f0": 100.1,
   "cps": 10,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.959
  },
  "2655af434958": {
   "who": "ove",
@@ -1466,7 +1596,8 @@
   "f0": 145.7,
   "cps": 13.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.351
  },
  "27e3724db315": {
   "who": "ove",
@@ -1477,7 +1608,8 @@
   "f0": 98.8,
   "cps": 13.5,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "e5e28276da71": {
   "who": "ove",
@@ -1488,7 +1620,8 @@
   "f0": 128.3,
   "cps": 13.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "4eb1ba38f856": {
   "who": "ove",
@@ -1499,7 +1632,8 @@
   "f0": 102.8,
   "cps": 11.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.959
  },
  "6958207607aa": {
   "who": "ove",
@@ -1510,7 +1644,8 @@
   "f0": 116.2,
   "cps": 13.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.881
  },
  "9978daf85cc4": {
   "who": "ove",
@@ -1523,7 +1658,8 @@
   "flags": [
    "pace"
   ],
-  "verdict": "review"
+  "verdict": "review",
+  "dur": 0.836
  },
  "b7faf9d9f257": {
   "who": "ove",
@@ -1534,7 +1670,8 @@
   "f0": 92.3,
   "cps": 7.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.071
  },
  "86e23535dac9": {
   "who": "ove",
@@ -1545,7 +1682,8 @@
   "f0": 115.7,
   "cps": 10.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.724
  },
  "85784aa97eed": {
   "who": "ove",
@@ -1556,7 +1694,8 @@
   "f0": 96.4,
   "cps": 7.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.071
  },
  "3f3739e96f3e": {
   "who": "ove",
@@ -1567,7 +1706,8 @@
   "f0": 165.8,
   "cps": 10.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.646
  },
  "f4c43d059938": {
   "who": "ove",
@@ -1578,7 +1718,8 @@
   "f0": 99.6,
   "cps": 10.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "6d7056614215": {
   "who": "ove",
@@ -1589,7 +1730,8 @@
   "f0": 136.6,
   "cps": 15.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.646
  },
  "de9dafb5b5bc": {
   "who": "ove",
@@ -1600,7 +1742,8 @@
   "f0": 105.6,
   "cps": 6.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "4aba33abfa7e": {
   "who": "ove",
@@ -1611,7 +1754,8 @@
   "f0": 98.1,
   "cps": 7.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.228
  },
  "df9ef5e9c7d3": {
   "who": "ove",
@@ -1624,7 +1768,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.273
  },
  "eab794f13e29": {
   "who": "ove",
@@ -1635,7 +1780,8 @@
   "f0": 92.2,
   "cps": 9.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.239
  },
  "600bcb168c1a": {
   "who": "ove",
@@ -1646,7 +1792,8 @@
   "f0": 116.6,
   "cps": 12.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.553
  },
  "845fb4b8b2c4": {
   "who": "ove",
@@ -1657,7 +1804,8 @@
   "f0": 120.1,
   "cps": 10.3,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.691
  },
  "d273a3e2e61b": {
   "who": "ove",
@@ -1668,7 +1816,8 @@
   "f0": 163.6,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "250a32ab97fd": {
   "who": "ove",
@@ -1679,7 +1828,8 @@
   "f0": 163.3,
   "cps": 13.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 3.082
  },
  "1eaf5a88203b": {
   "who": "ove",
@@ -1690,7 +1840,8 @@
   "f0": 131.9,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.038
  },
  "35eb77b653e1": {
   "who": "ove",
@@ -1701,7 +1852,8 @@
   "f0": 114.2,
   "cps": 13.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.881
  },
  "84813c925cc0": {
   "who": "ove",
@@ -1712,7 +1864,8 @@
   "f0": 104.2,
   "cps": 9.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.411
  },
  "42a205de9e2e": {
   "who": "ove",
@@ -1723,7 +1876,8 @@
   "f0": 104,
   "cps": 8.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.351
  },
  "c828af6a51ce": {
   "who": "ove",
@@ -1736,7 +1890,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.351
  },
  "bc4f4ee82b7f": {
   "who": "ove",
@@ -1747,7 +1902,8 @@
   "f0": 148.7,
   "cps": 11.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "2bc14d278003": {
   "who": "ove",
@@ -1758,7 +1914,8 @@
   "f0": 133.3,
   "cps": 12.1,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.724
  },
  "da7402163784": {
   "who": "ove",
@@ -1769,7 +1926,8 @@
   "f0": 119.2,
   "cps": 9.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.071
  },
  "185f81cc3ae9": {
   "who": "ove",
@@ -1780,7 +1938,8 @@
   "f0": 138.2,
   "cps": 9.2,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.567
  },
  "4db1dd9da524": {
   "who": "ove",
@@ -1791,7 +1950,8 @@
   "f0": 114.6,
   "cps": 9.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.429
  },
  "66640368eb83": {
   "who": "ove",
@@ -1802,7 +1962,8 @@
   "f0": 92.3,
   "cps": 9.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.489
  },
  "2d85016fb9a5": {
   "who": "ove",
@@ -1813,7 +1974,8 @@
   "f0": 102.2,
   "cps": 12.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.429
  },
  "3d335fa69e83": {
   "who": "ove",
@@ -1824,7 +1986,8 @@
   "f0": 106.4,
   "cps": 8.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.881
  },
  "dc302dea5a77": {
   "who": "ove",
@@ -1835,7 +1998,8 @@
   "f0": 139.2,
   "cps": 7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.149
  },
  "9bcd9cb5a041": {
   "who": "ove",
@@ -1846,7 +2010,8 @@
   "f0": 137.9,
   "cps": 10.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.567
  },
  "2693c831281e": {
   "who": "ove",
@@ -1857,7 +2022,8 @@
   "f0": 90.8,
   "cps": 8.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.508
  },
  "fae7100e4d85": {
   "who": "ove",
@@ -1870,7 +2036,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.273
  },
  "cfcf2526f012": {
   "who": "ove",
@@ -1881,7 +2048,8 @@
   "f0": 94.3,
   "cps": 6.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.429
  },
  "034afd91f667": {
   "who": "ove",
@@ -1892,7 +2060,8 @@
   "f0": 104.3,
   "cps": 11.8,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.194
  },
  "ce3cf85bd1f6": {
   "who": "ove",
@@ -1903,7 +2072,8 @@
   "f0": 122.6,
   "cps": 9.9,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.691
  },
  "f006ba5a19b5": {
   "who": "ove",
@@ -1916,7 +2086,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.038
  },
  "72086b19033e": {
   "who": "ove",
@@ -1927,7 +2098,8 @@
   "f0": 109.8,
   "cps": 13.7,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.194
  },
  "019368746d0d": {
   "who": "ove",
@@ -1938,7 +2110,8 @@
   "f0": 123.4,
   "cps": 9.6,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 2.351
  },
  "048009e02004": {
   "who": "ove",
@@ -1951,7 +2124,8 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.351
  },
  "f7782ca5e0e7": {
   "who": "ove",
@@ -1962,7 +2136,8 @@
   "f0": 120.3,
   "cps": 9.4,
   "flags": [],
-  "verdict": "ok"
+  "verdict": "ok",
+  "dur": 1.959
  },
  "c51966556bac": {
   "who": "ove",
@@ -1975,6 +2150,8690 @@
   "flags": [
    "words"
   ],
-  "verdict": "retake"
+  "verdict": "retake",
+  "dur": 2.194
+ },
+ "1cac67d04655": {
+  "who": "ped_f_old_1",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hejdå, gubbe!",
+  "wer": 0,
+  "f0": 256.2,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "51b82c1625bb": {
+  "who": "anita",
+  "text": "Ove, förlåt att jag stör. Elementen är kalla igen, och det klickar i dem.",
+  "take": 0,
+  "heard": "Ove, förlåt att jag stör. Elementen är kalla igen och det klickar i dem.",
+  "wer": 0,
+  "f0": 228.5,
+  "cps": 13.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.407
+ },
+ "27c6de63ef62": {
+  "who": "anita",
+  "text": "Rune gjorde alltid det. Förut. Nu vet jag inte ens var nyckeln ligger.",
+  "take": 0,
+  "heard": "Rune gjorde alltid det, förut. Nu vet jag inte ens var nyckeln ligger.",
+  "wer": 0,
+  "f0": 211.7,
+  "cps": 14,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.146
+ },
+ "a46192369049": {
+  "who": "anita",
+  "text": "Han tycker om när du kommer, Ove. Även om han inte säger det.",
+  "take": 0,
+  "heard": "Han tycker om när du kommer, Ove. Även om han inte säger det.",
+  "wer": 0,
+  "f0": 197.5,
+  "cps": 16,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.971
+ },
+ "00cb7140da55": {
+  "who": "rune",
+  "text": "...Saab.",
+  "take": 0,
+  "heard": "Saab",
+  "wer": 0,
+  "f0": 166.7,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "a5de5b9ee5d4": {
+  "who": "rune",
+  "text": "...Ove.",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 137.1,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "53367ee93727": {
+  "who": "rune",
+  "text": "Hm.",
+  "take": 0,
+  "heard": "Hm.",
+  "wer": 0,
+  "f0": 102.7,
+  "cps": 3.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "41c85a1c5c5c": {
+  "who": "jimmy",
+  "text": "Ove! Töserna undrar om de får äta glass till lunch. De säger att du sa ja.",
+  "take": 0,
+  "heard": "Ove! Töserna undrar om de får äta glass till lunch De säger att du sa ja",
+  "wer": 0,
+  "f0": 167,
+  "cps": 13.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.642
+ },
+ "2e2c89c92878": {
+  "who": "jimmy",
+  "text": "Tjena Ove! Det sitter en katt i snön vid cykelförrådet. Den har suttit där hela natten.",
+  "take": 0,
+  "heard": "Tjena Ove! Det sitter en katt i snön vid cykelförrådet Den har suttit där hela natten",
+  "wer": 0,
+  "f0": 182.1,
+  "cps": 13.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 6.426
+ },
+ "5af9a986c184": {
+  "who": "jimmy",
+  "text": "Den är ingens katt. Det är ju det som är grejen.",
+  "take": 0,
+  "heard": "Den är ingens katt. Det är ju det som är grejen.",
+  "wer": 0,
+  "f0": 157.3,
+  "cps": 14.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.474
+ },
+ "dec86d47cf65": {
+  "who": "adrian",
+  "text": "Ove! Jag har sparat ihop till en bil. Jag ska köpa en Audi!",
+  "take": 0,
+  "heard": "Ove, jag har sparat ihop till en bil. Jag ska köpa en Audi.",
+  "wer": 0,
+  "f0": 227.5,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.598
+ },
+ "f7ce2d6a66a9": {
+  "who": "adrian",
+  "text": "Vänta, vad? Nu? Okej! Okej!",
+  "take": 0,
+  "heard": "Vänta, vad? Nu? Okej! Okej!",
+  "wer": 0,
+  "f0": 185.8,
+  "cps": 6.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.127
+ },
+ "621f055bbe84": {
+  "who": "adrian",
+  "text": "Vi vann! Mot en Audi! I en bil som är äldre än jag!",
+  "take": 0,
+  "heard": "Vi vann mot en Audi, i en bil som är äldre än jag.",
+  "wer": 0,
+  "f0": 223.5,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.519
+ },
+ "6970fcb7d17c": {
+  "who": "anders",
+  "text": "Elementnyckeln? Jaså, den. Den låg i Audin. Varsågod.",
+  "take": 0,
+  "heard": "Elementnyckeln? Jaså, den? Den låg i Audin. Varsågod!",
+  "wer": 0,
+  "f0": 161.2,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.146
+ },
+ "36b7cd513006": {
+  "who": "anders",
+  "text": "Klokt val, Adrian. Tysk ingenjörskonst. Jag kör själv en A6, som bekant.",
+  "take": 0,
+  "heard": "Klokt val, Adrian Tysk ingenjörskonst Jag kör själv en A6, som bekant",
+  "wer": 0,
+  "f0": 121.5,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 7.158
+ },
+ "af7b48ababbd": {
+  "who": "anders",
+  "text": "Säger mannen i en bil från förra årtusendet. Vi kan ju se vem som är först till bilhallen?",
+  "take": 0,
+  "heard": "säger mannen i en bil från förra årtusendet. Vi kan ju se vem som är först till bilhallen!",
+  "wer": 0,
+  "f0": 136.3,
+  "cps": 15.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 6.034
+ },
+ "95fbca2b9853": {
+  "who": "vitskjorta",
+  "text": "Nej, nej, nej. Inte nu, Ove.",
+  "take": 0,
+  "heard": "Nej, nej, nej. Inte nu Ove.",
+  "wer": 0,
+  "f0": 143,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.082
+ },
+ "9ee4308723a0": {
+  "who": "vitskjorta",
+  "text": "Det här kommer att få konsekvenser, Ove!",
+  "take": 0,
+  "heard": "Det här kommer att få konsekvenser, Ove.",
+  "wer": 0,
+  "f0": 144.9,
+  "cps": 14.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "4ea7e5727079": {
+  "who": "vitskjorta",
+  "text": "Det här blir en tjänsteanteckning, Ove! I tre exemplar!",
+  "take": 0,
+  "heard": "Det här blir en tjänsteanteckning Ove, i tre exemplar!",
+  "wer": 0,
+  "f0": 171,
+  "cps": 13.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.206
+ },
+ "59c91578a51d": {
+  "who": "ped_f_young_1",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hejdå, gubbe!",
+  "wer": 0,
+  "f0": 275.7,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "7c29f8d8650e": {
+  "who": "anita",
+  "text": "Ove... det klickar fortfarande i elementen.",
+  "take": 0,
+  "heard": "Ove, det klickar fortfarande i elementen.",
+  "wer": 0,
+  "f0": 210.3,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.866
+ },
+ "2e1576aec84c": {
+  "who": "anita",
+  "text": "Det är varmt i huset igen. Tack, Ove.",
+  "take": 0,
+  "heard": "Det är varmt i huset igen. Tack, Ove!",
+  "wer": 0,
+  "f0": 172.9,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.161
+ },
+ "58851791d273": {
+  "who": "anita",
+  "text": "Han kom ihåg dig. Han kom faktiskt ihåg dig.",
+  "take": 0,
+  "heard": "Han kom ihåg dig. Han kom faktiskt ihåg dig.",
+  "wer": 0,
+  "f0": 259.9,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.474
+ },
+ "9223a4c36d5d": {
+  "who": "rune",
+  "text": "Volvo.",
+  "take": 0,
+  "heard": "Volvo",
+  "wer": 0,
+  "f0": 121.4,
+  "cps": 7.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "2b1f341c4df9": {
+  "who": "rune",
+  "text": "...Ove?",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 123.3,
+  "cps": 9.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "4dfa8b273543": {
+  "who": "rune",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 220.3,
+  "cps": 4.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "0872d76393e8": {
+  "who": "jimmy",
+  "text": "Jag skulle ta den själv, men den springer ifrån mig. Alla katter springer ifrån mig. Och duvor.",
+  "take": 0,
+  "heard": "Jag skulle ta den själv, men den springer ifrån mig Alla katter springer ifrån mig och duvor",
+  "wer": 0,
+  "f0": 185.4,
+  "cps": 14.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 6.531
+ },
+ "3f1778801f56": {
+  "who": "jimmy",
+  "text": "Katten är tillbaka vid cykelförrådet, Ove!",
+  "take": 0,
+  "heard": "Katten är tillbaka vid cykelförrådet, Ove.",
+  "wer": 0,
+  "f0": 211.2,
+  "cps": 16.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.769
+ },
+ "dfd2bb9f2fae": {
+  "who": "jimmy",
+  "text": "Du tog den! Vad ska den heta?",
+  "take": 0,
+  "heard": "Du tog den, vad ska den heta?",
+  "wer": 0,
+  "f0": 204.1,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.508
+ },
+ "c69b0228e392": {
+  "who": "adrian",
+  "text": "En Saab? Den är ju... faktiskt rätt snygg.",
+  "take": 0,
+  "heard": "En Saab, den är ju faktiskt rätt snygg",
+  "wer": 0,
+  "f0": 183.8,
+  "cps": 10.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.049
+ },
+ "a20b879ade06": {
+  "who": "adrian",
+  "text": "Jag köper den! Ove, du får provsitta när du vill.",
+  "take": 0,
+  "heard": "Jag köper den! Ove, du får provsitta när du vill.",
+  "wer": 0,
+  "f0": 187.6,
+  "cps": 12.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.971
+ },
+ "e57e7e079f3a": {
+  "who": "adrian",
+  "text": "Det här är det bästa som har hänt mig!",
+  "take": 0,
+  "heard": "Det här är det bästa som har hänt mig!",
+  "wer": 0,
+  "f0": 211.5,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "7aa73c9ca5e0": {
+  "who": "anders",
+  "text": "En gång till, Ove? Jag har all tid i världen. Och en A6.",
+  "take": 0,
+  "heard": "En gång till Ove! Jag har all tid i världen. Och en A6!",
+  "wer": 0,
+  "f0": 144.6,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.251
+ },
+ "3ff48eeef1b5": {
+  "who": "anders",
+  "text": "Jag lät dig vinna, Ove. Av respekt för de äldre.",
+  "take": 0,
+  "heard": "Jag lät dig vinna, Ove, av respekt för de äldre.",
+  "wer": 0,
+  "f0": 110.8,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.866
+ },
+ "5cd286768760": {
+  "who": "anders",
+  "text": "Vorsprung durch Technik, Ove!",
+  "take": 0,
+  "heard": "Varifrån kommer Tekniken?",
+  "wer": 1,
+  "f0": 138.2,
+  "cps": 14.2,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake",
+  "dur": 2.194
+ },
+ "23cbb1a249fc": {
+  "who": "vitskjorta",
+  "text": "Det här är en kommunal angelägenhet. Ni har ingen som helst rätt att...",
+  "take": 0,
+  "heard": "Det här är en kommunal angelägenhet. Ni har ingen som helst rätt att",
+  "wer": 0,
+  "f0": 153.5,
+  "cps": 14.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.146
+ },
+ "d1a438570807": {
+  "who": "vitskjorta",
+  "text": "Den innehåller sekretessbelagda handlingar. Beslutet är fattat på goda grunder.",
+  "take": 0,
+  "heard": "Den innehåller sekretessbelagda handlingar. Beslutet är fattat på goda grunder.",
+  "wer": 0,
+  "f0": 146.9,
+  "cps": 14,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 5.799
+ },
+ "20eaa57187c1": {
+  "who": "vitskjorta",
+  "text": "...Det här är inte över, Ove. Vi har papper på allt.",
+  "take": 0,
+  "heard": "Det här är inte över Ove. Vi har papper på allt.",
+  "wer": 0,
+  "f0": 135.5,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.441
+ },
+ "e0421fef86c5": {
+  "who": "ped_f_young_1",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 253.1,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "fee3c8f39138": {
+  "who": "ped_f_young_1",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ta det, farbror.",
+  "wer": 0.333,
+  "f0": 233,
+  "cps": 11.3,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake",
+  "dur": 1.567
+ },
+ "32ba61dbfc6e": {
+  "who": "ped_f_young_1",
+  "text": "Jag ska bara...!",
+  "take": 0,
+  "heard": "Jag ska bara",
+  "wer": 0,
+  "f0": 318.7,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "a2c6048200c7": {
+  "who": "ped_f_young_2",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hej då, gubbe!",
+  "wer": 0,
+  "f0": 288.3,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "99851b56b705": {
+  "who": "ped_f_young_2",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 276.9,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "bc28ff9e9e7f": {
+  "who": "ped_f_young_2",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 251.5,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "2b06da658b08": {
+  "who": "ped_f_mid_1",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hej då, gubbe!",
+  "wer": 0,
+  "f0": 203.8,
+  "cps": 8.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "612b9a729909": {
+  "who": "ped_f_mid_1",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 260,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "a050c7226a0a": {
+  "who": "ped_f_mid_1",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 218.1,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "aced61e1675c": {
+  "who": "ped_f_mid_2",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hej då, gubbe!",
+  "wer": 0,
+  "f0": 229,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "6bc69cbe9620": {
+  "who": "ped_f_mid_2",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 257.1,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "82631fb9161d": {
+  "who": "ped_f_mid_2",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det farbror!",
+  "wer": 0,
+  "f0": 159.6,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "23ab39592218": {
+  "who": "ped_f_old_1",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 301.7,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "8a28101991a5": {
+  "who": "ped_f_old_1",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 220.8,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "3fba48f07bd5": {
+  "who": "ped_f_old_1",
+  "text": "Jag ska bara...!",
+  "take": 0,
+  "heard": "Jag ska bara...",
+  "wer": 0,
+  "f0": 307.3,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "c131d7d1f4ea": {
+  "who": "ped_f_old_2",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hejdå, gubbe",
+  "wer": 0,
+  "f0": 228.5,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "5f431fe5c6fd": {
+  "who": "ped_f_old_2",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 261.9,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "4c95858dd402": {
+  "who": "ped_f_old_2",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Hadet, farbror!",
+  "wer": 0,
+  "f0": 261.5,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "361c4211368a": {
+  "who": "ped_m_young_1",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hejdå, gubbe!",
+  "wer": 0,
+  "f0": 227,
+  "cps": 8.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "425bc31280e7": {
+  "who": "ped_m_young_1",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill!",
+  "wer": 0,
+  "f0": 226.2,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "0f70a2feb76f": {
+  "who": "ped_m_young_1",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det farbror!",
+  "wer": 0,
+  "f0": 158.7,
+  "cps": 11.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "1b97a1802246": {
+  "who": "ped_m_young_2",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hej då, gubbe.",
+  "wer": 0,
+  "f0": 208.5,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "bb54dcfe5fc2": {
+  "who": "ped_m_young_2",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 197.7,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "3af7b890b74a": {
+  "who": "ped_m_young_2",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 181.2,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "eae8a832a77b": {
+  "who": "ped_m_mid_1",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hej då, gubbe!",
+  "wer": 0,
+  "f0": 159.3,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "5908b1fc2596": {
+  "who": "ped_m_mid_1",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 160.9,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "d4e0f0a2e6c3": {
+  "who": "ped_m_mid_1",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 111.4,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "76d6ac7bf8d4": {
+  "who": "ped_m_mid_2",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hej då, gubbe!",
+  "wer": 0,
+  "f0": 194.8,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "06c8bbfd1518": {
+  "who": "ped_m_mid_2",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 164,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "4e6e1774c0a0": {
+  "who": "ped_m_mid_2",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 202.3,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "47fc4e125353": {
+  "who": "ped_m_old_1",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hejdå, gubbe!",
+  "wer": 0,
+  "f0": 116.2,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "5fac64fa2d79": {
+  "who": "ped_m_old_1",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 177.1,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "0afb33ae6e33": {
+  "who": "ped_m_old_1",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 83.5,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "6817bbec5bd2": {
+  "who": "ped_m_old_2",
+  "text": "Hej då, gubbe!",
+  "take": 0,
+  "heard": "Hej då, gubbe!",
+  "wer": 0,
+  "f0": 133.4,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "90841c9ce765": {
+  "who": "ped_m_old_2",
+  "text": "Skriv vad du vill!",
+  "take": 0,
+  "heard": "Skriv vad du vill.",
+  "wer": 0,
+  "f0": 196.7,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "83b0b791a133": {
+  "who": "ped_m_old_2",
+  "text": "Ha det, farbror!",
+  "take": 0,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 112.2,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "069233b66fd4": {
+  "who": "anders",
+  "text": "Vorsprung durch Technik, Ove!",
+  "take": 1,
+  "heard": "Forskning inom teknik.",
+  "wer": 1,
+  "f0": 169.4,
+  "cps": 13.7,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake",
+  "dur": 2.273
+ },
+ "702d9259c7cc": {
+  "who": "ped_f_young_1",
+  "text": "Ha det, farbror!",
+  "take": 1,
+  "heard": "Ha det, farbror!",
+  "wer": 0,
+  "f0": 231.4,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "d6ee22744566": {
+  "who": "anders",
+  "text": "Vorsprung durch Technik, Ove!",
+  "take": 2,
+  "heard": "Var finns tekniken, Ove?",
+  "wer": 0.75,
+  "f0": 137.4,
+  "cps": 13.2,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake",
+  "dur": 2.351
+ },
+ "44ec3b7539fa": {
+  "who": "ped_f_mid_1",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå, min bil!",
+  "wer": 0,
+  "f0": 320.5,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "7ada685a6c4c": {
+  "who": "ped_f_mid_2",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå, min bil!",
+  "wer": 0,
+  "f0": 281.2,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "6037356652ed": {
+  "who": "ped_m_young_1",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå! Min bil!",
+  "wer": 0,
+  "f0": 255.7,
+  "cps": 7.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "6319b7d2508e": {
+  "who": "ped_m_young_2",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå! Min bil!",
+  "wer": 0,
+  "f0": 226.8,
+  "cps": 8.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "6c32d677a413": {
+  "who": "ped_m_mid_1",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå, min bil!",
+  "wer": 0,
+  "f0": 214.1,
+  "cps": 7.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "8f629d54bcd7": {
+  "who": "ped_m_mid_2",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå! Min bil!",
+  "wer": 0,
+  "f0": 217,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "881b8d790c3b": {
+  "who": "ped_f_old_1",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå! Min bil!",
+  "wer": 0,
+  "f0": 295.2,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "0c96dcaf399f": {
+  "who": "ped_f_old_2",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå, min bil!",
+  "wer": 0,
+  "f0": 295.2,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "bdd9ef463090": {
+  "who": "ped_m_old_1",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå, min bil!",
+  "wer": 0,
+  "f0": 204,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "54dcf150ee86": {
+  "who": "ped_m_old_2",
+  "text": "Hallå! Min bil!",
+  "take": 0,
+  "heard": "Hallå, min bil!",
+  "wer": 0,
+  "f0": 244.5,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "33f3056597be": {
+  "who": "ped_f_young_1",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 254.7,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "6d5729f0094b": {
+  "who": "ped_f_young_2",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil.",
+  "wer": 0,
+  "f0": 283.6,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "1b0c05b769e3": {
+  "who": "ped_f_mid_1",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 225.4,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "313ed16266c8": {
+  "who": "ped_f_mid_2",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 210.9,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.691
+ },
+ "8e6140bb27cd": {
+  "who": "ped_m_young_1",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 232.4,
+  "cps": 13.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "d7fc86ca8127": {
+  "who": "ped_m_young_2",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 182.1,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "9517d4f1468b": {
+  "who": "ped_m_mid_1",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil.",
+  "wer": 0,
+  "f0": 184.6,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "bc9124e65fdb": {
+  "who": "ped_m_mid_2",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 186.1,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "f82bc7fba3e3": {
+  "who": "ped_f_old_1",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil.",
+  "wer": 0,
+  "f0": 253.1,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "084f46cec105": {
+  "who": "ped_f_old_2",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 256.9,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.429
+ },
+ "0bf888c07ce9": {
+  "who": "ped_m_old_1",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil!",
+  "wer": 0,
+  "f0": 149.2,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "9b42e0ae84c7": {
+  "who": "ped_m_old_2",
+  "text": "Den där gubben tog min bil!",
+  "take": 0,
+  "heard": "Den där gubben tog min bil.",
+  "wer": 0,
+  "f0": 172.1,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "3afb765ea1cf": {
+  "who": "ped_f_young_1",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis, polis!",
+  "wer": 0,
+  "f0": 327.5,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "584b41b9e387": {
+  "who": "ped_f_young_2",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis! Polis!",
+  "wer": 0,
+  "f0": 351.6,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "b8a11851bc3b": {
+  "who": "ped_f_mid_1",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis! Polis!",
+  "wer": 0,
+  "f0": 286.8,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "205627f3ce1c": {
+  "who": "ped_f_mid_2",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "polis",
+  "wer": 0.5,
+  "f0": 269.4,
+  "cps": 7.1,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.959
+ },
+ "cd6347e9bdf1": {
+  "who": "ped_m_young_1",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis, polis!",
+  "wer": 0,
+  "f0": 273.8,
+  "cps": 7.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "1421318925f3": {
+  "who": "ped_m_young_2",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis! Polis!",
+  "wer": 0,
+  "f0": 279.6,
+  "cps": 8.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "817b5650e825": {
+  "who": "ped_m_mid_1",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis! Polis!",
+  "wer": 0,
+  "f0": 253.1,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "88b1e46b243d": {
+  "who": "ped_m_mid_2",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis! Polis!",
+  "wer": 0,
+  "f0": 258.5,
+  "cps": 7.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "93d8bc5484cc": {
+  "who": "ped_f_old_1",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis! Polis!",
+  "wer": 0,
+  "f0": 287.2,
+  "cps": 6.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "d781e7e86564": {
+  "who": "ped_f_old_2",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis. Polis.",
+  "wer": 0,
+  "f0": 285.9,
+  "cps": 6.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "976a1019a0e5": {
+  "who": "ped_m_old_1",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis, polis!",
+  "wer": 0,
+  "f0": 180.5,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "e47122fc41a1": {
+  "who": "ped_m_old_2",
+  "text": "Polis! Polis!",
+  "take": 0,
+  "heard": "Polis! Polis!",
+  "wer": 0,
+  "f0": 239.6,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "860894f6698d": {
+  "who": "ped_f_young_1",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla! Jag ska till jobbet.",
+  "wer": 0,
+  "f0": 295.3,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "b74a28b67798": {
+  "who": "ped_f_young_2",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla, jag ska till jobbet!",
+  "wer": 0,
+  "f0": 302.9,
+  "cps": 12.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.691
+ },
+ "8adef9a92457": {
+  "who": "ped_f_mid_1",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla! Jag ska till jobbet!",
+  "wer": 0,
+  "f0": 256,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "9c38210597d8": {
+  "who": "ped_f_mid_2",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla, jag ska till jobbet!",
+  "wer": 0,
+  "f0": 251.5,
+  "cps": 11.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.004
+ },
+ "20d61af5d2ea": {
+  "who": "ped_m_young_1",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla! Jag ska till jobbet!",
+  "wer": 0,
+  "f0": 222.4,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "5a4f5be5232e": {
+  "who": "ped_m_young_2",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men, snälla! Jag ska till jobbet.",
+  "wer": 0,
+  "f0": 197.6,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "fa010d3342f3": {
+  "who": "ped_m_mid_1",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla, jag ska till jobbet!",
+  "wer": 0,
+  "f0": 203.1,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "c970e48af6c6": {
+  "who": "ped_m_mid_2",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla, jag ska till jobbet!",
+  "wer": 0,
+  "f0": 206.8,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.769
+ },
+ "df8a567e9bc2": {
+  "who": "ped_f_old_1",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla! Jag ska till jobbet.",
+  "wer": 0,
+  "f0": 256.4,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.769
+ },
+ "d85f48597b15": {
+  "who": "ped_f_old_2",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla, jag ska till jobbet.",
+  "wer": 0,
+  "f0": 257.3,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "359046af847f": {
+  "who": "ped_m_old_1",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla, jag ska till jobbet!",
+  "wer": 0,
+  "f0": 151.4,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "03f1de54be06": {
+  "who": "ped_m_old_2",
+  "text": "Men snälla! Jag ska till jobbet!",
+  "take": 0,
+  "heard": "Men snälla, jag ska till jobbet!",
+  "wer": 0,
+  "f0": 174.5,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.769
+ },
+ "5f855025927c": {
+  "who": "ped_f_young_1",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 306.1,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "5d44e79b5e82": {
+  "who": "ped_f_young_2",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 276.6,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.758
+ },
+ "bc74d1a5adee": {
+  "who": "ped_f_mid_1",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 315.5,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "2ce794d8e741": {
+  "who": "ped_f_mid_2",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 239.3,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "4964f5a5ffc2": {
+  "who": "ped_m_young_1",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 209.1,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "b8622f69617e": {
+  "who": "ped_m_young_2",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 185.7,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "2330f5c23bf1": {
+  "who": "ped_m_mid_1",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 210.2,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "60947ef6930d": {
+  "who": "ped_m_mid_2",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 220.9,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "6764757ecf40": {
+  "who": "ped_f_old_1",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 269.1,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.836
+ },
+ "b2d650ab252b": {
+  "who": "ped_f_old_2",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 276.3,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "fe73e8d9b974": {
+  "who": "ped_m_old_1",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 125.3,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "720085dc2d1c": {
+  "who": "ped_m_old_2",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 208.6,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.758
+ },
+ "b33359773d9a": {
+  "who": "patrick",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 293.5,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "a425662527bf": {
+  "who": "parvaneh",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 317.2,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.836
+ },
+ "4c79dbe9c943": {
+  "who": "jimmy",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 262.5,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "0c7a20f010cf": {
+  "who": "adrian",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 231,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "c17acbc426e1": {
+  "who": "anita",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 282.4,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.836
+ },
+ "59ec2fc7fb8a": {
+  "who": "anders",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 190.5,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "a977d4231a8b": {
+  "who": "vitskjorta",
+  "text": "Hallå!",
+  "take": 0,
+  "heard": "Hallå!",
+  "wer": 0,
+  "f0": 178.7,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "05ea6df973d4": {
+  "who": "ped_f_young_1",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 248.1,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "8bc65e9dde7c": {
+  "who": "ped_f_young_2",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 257.9,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "857c8cafcc0f": {
+  "who": "ped_f_mid_1",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 219.9,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "e0a0017bad44": {
+  "who": "ped_f_mid_2",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 222,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "b31bc7500720": {
+  "who": "ped_m_young_1",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 175.1,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "51e4b8e8acba": {
+  "who": "ped_m_young_2",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 185.2,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "7979d954eca8": {
+  "who": "ped_m_mid_1",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 156.4,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "8304f062367b": {
+  "who": "ped_m_mid_2",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 144.7,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "03c9a7f8af73": {
+  "who": "ped_f_old_1",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 213,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "7158b52c208d": {
+  "who": "ped_f_old_2",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 248.2,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "e92a7c1ae24e": {
+  "who": "ped_m_old_1",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 135.1,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "30dff26d764a": {
+  "who": "ped_m_old_2",
+  "text": "Vad gör du?",
+  "take": 0,
+  "heard": "Vad gör du?",
+  "wer": 0,
+  "f0": 128.2,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "310dba5f51c9": {
+  "who": "ped_f_young_1",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig.",
+  "wer": 0,
+  "f0": 214.3,
+  "cps": 8.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "83fef4f7bdca": {
+  "who": "ped_f_young_2",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig",
+  "wer": 0,
+  "f0": 240.8,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "4cbddd0add93": {
+  "who": "ped_f_mid_1",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig.",
+  "wer": 0,
+  "f0": 162.6,
+  "cps": 8.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "cf65c917198f": {
+  "who": "ped_f_mid_2",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig!",
+  "wer": 0,
+  "f0": 233.8,
+  "cps": 7.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "ac9c0069884b": {
+  "who": "ped_m_young_1",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "akta dig.",
+  "wer": 0,
+  "f0": 202.4,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "0828d9c5c191": {
+  "who": "ped_m_young_2",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig!",
+  "wer": 0,
+  "f0": 119.9,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "747a446b502a": {
+  "who": "ped_m_mid_1",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig.",
+  "wer": 0,
+  "f0": 198,
+  "cps": 8.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "7d43a897de11": {
+  "who": "ped_m_mid_2",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig.",
+  "wer": 0,
+  "f0": 145.7,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "9dfbe0359ece": {
+  "who": "ped_f_old_1",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "akta dig",
+  "wer": 0,
+  "f0": 149.8,
+  "cps": 8.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "e9218fbfb197": {
+  "who": "ped_f_old_2",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "ACTA DIGG",
+  "wer": 1,
+  "f0": 209.8,
+  "cps": 7.1,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.411
+ },
+ "72770713097c": {
+  "who": "ped_m_old_1",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "ACTA DIGG",
+  "wer": 1,
+  "f0": 192.9,
+  "cps": 6.7,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.489
+ },
+ "e197f856eb00": {
+  "who": "ped_m_old_2",
+  "text": "Akta dig!",
+  "take": 0,
+  "heard": "Akta dig.",
+  "wer": 0,
+  "f0": 167.4,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "291401bdc2c1": {
+  "who": "ped_f_young_1",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 270.1,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "4027302a3cac": {
+  "who": "ped_f_young_2",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "över",
+  "wer": 1,
+  "f0": 212.8,
+  "cps": 5.7,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.836
+ },
+ "dce71031faba": {
+  "who": "ped_f_mid_1",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 246.2,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "3419acb9887e": {
+  "who": "ped_f_mid_2",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "\"AW\"",
+  "wer": 1,
+  "f0": 217.1,
+  "cps": 5.7,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.836
+ },
+ "19e5a2dca4a3": {
+  "who": "ped_m_young_1",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 256.6,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "0ddc49b34833": {
+  "who": "ped_m_young_2",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 220.7,
+  "cps": 5.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "99676cf8dae5": {
+  "who": "ped_m_mid_1",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 183.9,
+  "cps": 4.3,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.071
+ },
+ "d67422a92026": {
+  "who": "ped_m_mid_2",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 171.4,
+  "cps": 5.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "fd05b2b1c2e7": {
+  "who": "ped_f_old_1",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ave",
+  "wer": 1,
+  "f0": 191.5,
+  "cps": 6.5,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.758
+ },
+ "e1faf649aba4": {
+  "who": "ped_f_old_2",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "OV",
+  "wer": 1,
+  "f0": 263.8,
+  "cps": 4.7,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "db5f440e4a2b": {
+  "who": "ped_m_old_1",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove!",
+  "wer": 0,
+  "f0": 86.7,
+  "cps": 4.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "e54ecc4bd0a0": {
+  "who": "ped_m_old_2",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 202.1,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "0936915f00d3": {
+  "who": "patrick",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove.",
+  "wer": 0,
+  "f0": 238.7,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "70b423aa5583": {
+  "who": "parvaneh",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Av.",
+  "wer": 1,
+  "f0": 293.4,
+  "cps": 6.5,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.758
+ },
+ "ede64ed7057a": {
+  "who": "anita",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove.",
+  "wer": 0,
+  "f0": 248.3,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "0aa38d9581e8": {
+  "who": "jimmy",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 209.5,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "b4aa7ad07bfe": {
+  "who": "adrian",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 258.7,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "ae36a92bb50e": {
+  "who": "anders",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 180,
+  "cps": 5.2,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.914
+ },
+ "720bdd6ddb73": {
+  "who": "vitskjorta",
+  "text": "Ove!",
+  "take": 0,
+  "heard": "Ove",
+  "wer": 0,
+  "f0": 230.2,
+  "cps": 4.7,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "7fb6aa187cbd": {
+  "who": "patrick",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 208.3,
+  "cps": 16.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "050bb95c5d5b": {
+  "who": "parvaneh",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 316,
+  "cps": 16.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "f87c8ea35543": {
+  "who": "anita",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 255,
+  "cps": 15.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "6269d96962b7": {
+  "who": "rune",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 166.3,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "1b5cd4982c96": {
+  "who": "jimmy",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 192.5,
+  "cps": 14.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "66f198729704": {
+  "who": "adrian",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 201.7,
+  "cps": 14.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "e31abbb4d787": {
+  "who": "anders",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 177,
+  "cps": 15.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "29cdee5923f6": {
+  "who": "vitskjorta",
+  "text": "Vad håller du på med?",
+  "take": 0,
+  "heard": "Vad håller du på med?",
+  "wer": 0,
+  "f0": 187.3,
+  "cps": 15.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "d7de70eaf8a0": {
+  "who": "patrick",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Aj, Ove...",
+  "wer": 0,
+  "f0": 223.7,
+  "cps": 4.8,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.802
+ },
+ "d87619430430": {
+  "who": "parvaneh",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Ove!",
+  "wer": 0.5,
+  "f0": 314.1,
+  "cps": 5.3,
+  "flags": [
+   "words",
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.646
+ },
+ "6ac37379ed5c": {
+  "who": "anita",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Aj, Ove.",
+  "wer": 0,
+  "f0": 280.5,
+  "cps": 5.1,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.724
+ },
+ "3ea645e8fed5": {
+  "who": "rune",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Aj, Ove.",
+  "wer": 0,
+  "f0": 172.1,
+  "cps": 5.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "27e5fda7bc84": {
+  "who": "jimmy",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Aj, Ove!",
+  "wer": 0,
+  "f0": 197,
+  "cps": 5.1,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.724
+ },
+ "5338eba783fd": {
+  "who": "adrian",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Aj, Ove",
+  "wer": 0,
+  "f0": 208,
+  "cps": 5.1,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.724
+ },
+ "957609d9936d": {
+  "who": "anders",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Aj, Ove!",
+  "wer": 0,
+  "f0": 174.9,
+  "cps": 4.8,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.802
+ },
+ "3dae519a29d9": {
+  "who": "vitskjorta",
+  "text": "Aj, Ove!",
+  "take": 0,
+  "heard": "Aj, Ove.",
+  "wer": 0,
+  "f0": 156.8,
+  "cps": 4.8,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.802
+ },
+ "13489b7e7769": {
+  "who": "ped_f_young_1",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "akta",
+  "wer": 0,
+  "f0": 234.1,
+  "cps": 5.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "49356e6bc6ea": {
+  "who": "ped_f_young_2",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "akta",
+  "wer": 0,
+  "f0": 240.5,
+  "cps": 5.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "4c324036302e": {
+  "who": "ped_f_mid_1",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 237.9,
+  "cps": 5.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "17fd55c21389": {
+  "who": "ped_f_mid_2",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "akta",
+  "wer": 0,
+  "f0": 233.5,
+  "cps": 6.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "30b3986b3570": {
+  "who": "ped_m_young_1",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 216.9,
+  "cps": 5.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "ccd9694f0686": {
+  "who": "ped_m_young_2",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 360.8,
+  "cps": 7.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.836
+ },
+ "9c51de5434db": {
+  "who": "ped_m_mid_1",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "akta",
+  "wer": 0,
+  "f0": 161,
+  "cps": 5.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "3c29c0a06d25": {
+  "who": "ped_m_mid_2",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 171,
+  "cps": 6.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "06f09753554f": {
+  "who": "ped_f_old_1",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 261.5,
+  "cps": 5.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "ef63d82460e8": {
+  "who": "ped_f_old_2",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "akta",
+  "wer": 0,
+  "f0": 243.9,
+  "cps": 6.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "b389c2b78594": {
+  "who": "ped_m_old_1",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 71.9,
+  "cps": 6.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "051272e515b5": {
+  "who": "ped_m_old_2",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 159.9,
+  "cps": 5.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "7cd9546ce47d": {
+  "who": "patrick",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 421.2,
+  "cps": 5.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "665114033e3f": {
+  "who": "parvaneh",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "ACTA",
+  "wer": 1,
+  "f0": 306.7,
+  "cps": 7.2,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.836
+ },
+ "bf72007e4448": {
+  "who": "jimmy",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 164,
+  "cps": 5.9,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "babc88d7c279": {
+  "who": "adrian",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 171.3,
+  "cps": 5.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "cc1786788aff": {
+  "who": "anita",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "akta",
+  "wer": 0,
+  "f0": 230.4,
+  "cps": 5.9,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "90562f8e585b": {
+  "who": "anders",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "Akta!",
+  "wer": 0,
+  "f0": 139,
+  "cps": 5.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "d7abe1f9df91": {
+  "who": "vitskjorta",
+  "text": "Akta!",
+  "take": 0,
+  "heard": "akta.",
+  "wer": 0,
+  "f0": 175.4,
+  "cps": 5.9,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "290fdeb372cc": {
+  "who": "ped_f_young_1",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Owe, titta dig för!",
+  "wer": 0.25,
+  "f0": 346.4,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "7ccbf164db65": {
+  "who": "ped_f_young_2",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för.",
+  "wer": 0,
+  "f0": 337.6,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "b147311ba1e1": {
+  "who": "ped_f_mid_1",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 312.4,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "058805ab9a8e": {
+  "who": "ped_f_mid_2",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 247.3,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "d97961ce2d83": {
+  "who": "ped_m_young_1",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 275.3,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "22319044227b": {
+  "who": "ped_m_young_2",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 249.6,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "d8a69f7aecdb": {
+  "who": "ped_m_mid_1",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för.",
+  "wer": 0,
+  "f0": 269.6,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "72bdf387fb9b": {
+  "who": "ped_m_mid_2",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 228.8,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "bdfcf03972c9": {
+  "who": "ped_f_old_1",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för.",
+  "wer": 0,
+  "f0": 288.5,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "5c7b9c158f4f": {
+  "who": "ped_f_old_2",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 229.2,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "33a1f46d5015": {
+  "who": "ped_m_old_1",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 206.4,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "d287c05b82e4": {
+  "who": "ped_m_old_2",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 237.6,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "92719811470c": {
+  "who": "patrick",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 296.1,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "b9052306b945": {
+  "who": "parvaneh",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för",
+  "wer": 0,
+  "f0": 313,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "bdba1c0750c1": {
+  "who": "jimmy",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 246.7,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "b88e4af5eb44": {
+  "who": "adrian",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 267.4,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "241ddfa0c86c": {
+  "who": "anita",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för.",
+  "wer": 0,
+  "f0": 315.8,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "a4a612489459": {
+  "who": "anders",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 202.8,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "9a4f412554ea": {
+  "who": "vitskjorta",
+  "text": "Ove! Titta dig för!",
+  "take": 0,
+  "heard": "Ove, titta dig för!",
+  "wer": 0,
+  "f0": 243.7,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "cc1a70a68289": {
+  "who": "ped_f_young_1",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok Ove?",
+  "wer": 0,
+  "f0": 234.6,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "5a168146adf5": {
+  "who": "ped_f_young_2",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 256.2,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "20278080eb5c": {
+  "who": "ped_f_mid_1",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 205.9,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "53e543f0eb28": {
+  "who": "ped_f_mid_2",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 229.8,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "e8e583f0c97a": {
+  "who": "ped_m_young_1",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 208.5,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "b20d368975b7": {
+  "who": "ped_m_young_2",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 189,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "60fddf40adf0": {
+  "who": "ped_m_mid_1",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 171.2,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "bf2f2c488d41": {
+  "who": "ped_m_mid_2",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 168.3,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "977009acd7a8": {
+  "who": "ped_f_old_1",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 210.5,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "2bc35ac3ffa6": {
+  "who": "ped_f_old_2",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 222.7,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "0f9ee3daa65f": {
+  "who": "ped_m_old_1",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 127.9,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "6cf3173ef6c2": {
+  "who": "ped_m_old_2",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 157.8,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "9f50c3876cdc": {
+  "who": "patrick",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 212.6,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "ac442835bcd9": {
+  "who": "parvaneh",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok Ove?",
+  "wer": 0,
+  "f0": 318.9,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "84d132d9493c": {
+  "who": "jimmy",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 194.4,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "6189e189d3d1": {
+  "who": "adrian",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok Ove?",
+  "wer": 0,
+  "f0": 185.2,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "2d9c751c46db": {
+  "who": "anita",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 247.6,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "ed829a63f88a": {
+  "who": "anders",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 137,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "16d42cc15e71": {
+  "who": "vitskjorta",
+  "text": "Är du inte klok, Ove?!",
+  "take": 0,
+  "heard": "Är du inte klok, Ove?",
+  "wer": 0,
+  "f0": 155.5,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "faeb2f360fbe": {
+  "who": "ped_f_young_1",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 319.3,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "437d541fb433": {
+  "who": "ped_f_young_2",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 321.3,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "fdbc46421d46": {
+  "who": "ped_f_mid_1",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 285.1,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "1f62eceef441": {
+  "who": "ped_f_mid_2",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "kör som folk, Ove",
+  "wer": 0,
+  "f0": 278.8,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "21d5275332b8": {
+  "who": "ped_m_young_1",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 215.9,
+  "cps": 11.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "5f8b248d3240": {
+  "who": "ped_m_young_2",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 195.5,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "4b0cfbc8cdf1": {
+  "who": "ped_m_mid_1",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove.",
+  "wer": 0,
+  "f0": 171.1,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "f4e623b82ef5": {
+  "who": "ped_m_mid_2",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 210.7,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "147ad6266a71": {
+  "who": "ped_f_old_1",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 278.6,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "a6166f064dd4": {
+  "who": "ped_f_old_2",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 255.8,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "f6a24bdce7a4": {
+  "who": "ped_m_old_1",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk Ove!",
+  "wer": 0,
+  "f0": 136,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "863213449c7e": {
+  "who": "ped_m_old_2",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 181,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "9496f5bd18c8": {
+  "who": "patrick",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 220.6,
+  "cps": 10.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "c7e8d6494002": {
+  "who": "parvaneh",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk Ove!",
+  "wer": 0,
+  "f0": 351.7,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "a42d95f7685b": {
+  "who": "jimmy",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk Ove",
+  "wer": 0,
+  "f0": 188.2,
+  "cps": 10.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "c28d2f7dc508": {
+  "who": "adrian",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk Ove!",
+  "wer": 0,
+  "f0": 231.8,
+  "cps": 10.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "bf855aa8f4b7": {
+  "who": "anita",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 260.5,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "de475c1d1efc": {
+  "who": "anders",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 182.8,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "ec7606e13770": {
+  "who": "vitskjorta",
+  "text": "Kör som folk, Ove!",
+  "take": 0,
+  "heard": "Kör som folk, Ove!",
+  "wer": 0,
+  "f0": 185.6,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "023b82da6b59": {
+  "who": "ped_f_young_1",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "Oj.",
+  "wer": 0,
+  "f0": 211.3,
+  "cps": 3.5,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "27b87571f44d": {
+  "who": "ped_f_young_2",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "Oj.",
+  "wer": 0,
+  "f0": 254.6,
+  "cps": 3.2,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 1.071
+ },
+ "7bb80b396c64": {
+  "who": "ped_f_mid_1",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "Oj!",
+  "wer": 0,
+  "f0": 174.9,
+  "cps": 3.9,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.914
+ },
+ "917cd07f9f90": {
+  "who": "ped_f_mid_2",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "oj",
+  "wer": 0,
+  "f0": 194.3,
+  "cps": 3.5,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "be62c25396ca": {
+  "who": "ped_m_young_1",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "oj",
+  "wer": 0,
+  "f0": 182.5,
+  "cps": 4.3,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.836
+ },
+ "e33f105cd050": {
+  "who": "ped_m_young_2",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "Oj!",
+  "wer": 0,
+  "f0": 230.6,
+  "cps": 4.3,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.836
+ },
+ "c1a6cd2036e8": {
+  "who": "ped_m_mid_1",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "oj",
+  "wer": 0,
+  "f0": 123.5,
+  "cps": 4.3,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.836
+ },
+ "8f125533cedc": {
+  "who": "ped_m_mid_2",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "Oj.",
+  "wer": 0,
+  "f0": 176.7,
+  "cps": 3.9,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.914
+ },
+ "f088ed86aac3": {
+  "who": "ped_f_old_1",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "oj",
+  "wer": 0,
+  "f0": 216.8,
+  "cps": 3.9,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.914
+ },
+ "9b85ec11d8bd": {
+  "who": "ped_f_old_2",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "oj",
+  "wer": 0,
+  "f0": 197.7,
+  "cps": 3.5,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "6a5a17b57344": {
+  "who": "ped_m_old_1",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "oj",
+  "wer": 0,
+  "f0": 120.8,
+  "cps": 3.5,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "90242c075ddc": {
+  "who": "ped_m_old_2",
+  "text": "Oj!",
+  "take": 0,
+  "heard": "Oj!",
+  "wer": 0,
+  "f0": 109.8,
+  "cps": 4.3,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 0.836
+ },
+ "a0145f1d7df0": {
+  "who": "ped_f_young_1",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 269.6,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "795ae7a2b44a": {
+  "who": "ped_f_young_2",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 308.5,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "bc5fc29db160": {
+  "who": "ped_f_mid_1",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 266,
+  "cps": 5.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "b368e5d36bc4": {
+  "who": "ped_f_mid_2",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 281.5,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "68ac34c03ae6": {
+  "who": "ped_m_young_1",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 260.5,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "8f7b0e3c3fe0": {
+  "who": "ped_m_young_2",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 447.2,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "019cf05acfae": {
+  "who": "ped_m_mid_1",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 192.7,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "01dfa9065a22": {
+  "who": "ped_m_mid_2",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Sätt upp!",
+  "wer": 0.5,
+  "f0": 447,
+  "cps": 5.5,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.411
+ },
+ "3446d54c0e27": {
+  "who": "ped_f_old_1",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Sätt upp!",
+  "wer": 0.5,
+  "f0": 310.1,
+  "cps": 5.5,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.411
+ },
+ "24a26a44453a": {
+  "who": "ped_f_old_2",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "se upp",
+  "wer": 0,
+  "f0": 280.8,
+  "cps": 6.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "d0e82765d7e1": {
+  "who": "ped_m_old_1",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 199.1,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "8136ad79ad81": {
+  "who": "ped_m_old_2",
+  "text": "Se upp!",
+  "take": 0,
+  "heard": "Se upp!",
+  "wer": 0,
+  "f0": 167.1,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "839d939b69ab": {
+  "who": "ped_f_young_1",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "sakta ner",
+  "wer": 0,
+  "f0": 264.7,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "6138caede2a9": {
+  "who": "ped_f_young_2",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner!",
+  "wer": 0,
+  "f0": 308.1,
+  "cps": 7.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "996920294871": {
+  "who": "ped_f_mid_1",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner!",
+  "wer": 0,
+  "f0": 256,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "80da851dd438": {
+  "who": "ped_f_mid_2",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner.",
+  "wer": 0,
+  "f0": 198.9,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "c30b5b4f68ae": {
+  "who": "ped_m_young_1",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "sakta ner",
+  "wer": 0,
+  "f0": 234.3,
+  "cps": 7.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "0d56124f7755": {
+  "who": "ped_m_young_2",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner.",
+  "wer": 0,
+  "f0": 154.2,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "bc07b14ea8f1": {
+  "who": "ped_m_mid_1",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner.",
+  "wer": 0,
+  "f0": 195.8,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "5fad80e42408": {
+  "who": "ped_m_mid_2",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner!",
+  "wer": 0,
+  "f0": 190.5,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "9ccccc78d1c0": {
+  "who": "ped_f_old_1",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "sakta ner",
+  "wer": 0,
+  "f0": 224.1,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "7bd4b06b60db": {
+  "who": "ped_f_old_2",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner.",
+  "wer": 0,
+  "f0": 164.7,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "7f612357c857": {
+  "who": "ped_m_old_1",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner.",
+  "wer": 0,
+  "f0": 112.1,
+  "cps": 7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "bd3cd5b75824": {
+  "who": "ped_m_old_2",
+  "text": "Sakta ner!",
+  "take": 0,
+  "heard": "Sakta ner.",
+  "wer": 0,
+  "f0": 170.3,
+  "cps": 7.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "7f8be6b6c1af": {
+  "who": "ped_f_young_1",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud.",
+  "wer": 0,
+  "f0": 199.5,
+  "cps": 7.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "7b8a083a3a74": {
+  "who": "ped_f_young_2",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 236.1,
+  "cps": 8.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "74c6d5bffa47": {
+  "who": "ped_f_mid_1",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 162,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "979700c8c6fc": {
+  "who": "ped_f_mid_2",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 206.7,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "47fd14d1016f": {
+  "who": "ped_m_young_1",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 158.3,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "da72492bd4a6": {
+  "who": "ped_m_young_2",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 129.4,
+  "cps": 8.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "f489296b68a9": {
+  "who": "ped_m_mid_1",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 123.4,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "904bcfa90f6a": {
+  "who": "ped_m_mid_2",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 153.7,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "753c21e5f1ed": {
+  "who": "ped_f_old_1",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 213.4,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "2055524263cf": {
+  "who": "ped_f_old_2",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 225.7,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "ddb9b0e90215": {
+  "who": "ped_m_old_1",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 105.4,
+  "cps": 7.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "c6654a727eab": {
+  "who": "ped_m_old_2",
+  "text": "Men herregud!",
+  "take": 0,
+  "heard": "Men herregud!",
+  "wer": 0,
+  "f0": 104.5,
+  "cps": 7.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "dd99aaf240fc": {
+  "who": "ped_f_young_1",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 271.6,
+  "cps": 6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "dd98821b48b2": {
+  "who": "ped_f_young_2",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 256.3,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "a6b096e94304": {
+  "who": "ped_f_mid_1",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 256.2,
+  "cps": 6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "3e0ad3658140": {
+  "who": "ped_f_mid_2",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 179.3,
+  "cps": 5.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "69d93a62bb35": {
+  "who": "ped_m_young_1",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 154.9,
+  "cps": 5.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "d3d5574c8c79": {
+  "who": "ped_m_young_2",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 176.8,
+  "cps": 5.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "ae2700d21b80": {
+  "who": "ped_m_mid_1",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 115.9,
+  "cps": 5.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "7a6f58f0b723": {
+  "who": "ped_m_mid_2",
+  "text": "Jösses!",
+  "take": 0,
+  "heard": "Jösses!",
+  "wer": 0,
+  "f0": 153.1,
+  "cps": 6.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "b2c68275376e": {
+  "who": "ped_f_young_1",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag går ju här!",
+  "wer": 0,
+  "f0": 236.3,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "ad9cbea1619f": {
+  "who": "ped_f_young_2",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag går ju här.",
+  "wer": 0,
+  "f0": 256.4,
+  "cps": 10.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "1e3cda062fed": {
+  "who": "ped_f_mid_1",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag går ju här!",
+  "wer": 0,
+  "f0": 237.9,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "7fc892bbce29": {
+  "who": "ped_f_mid_2",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag går ju här.",
+  "wer": 0,
+  "f0": 221.1,
+  "cps": 9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "c947942779de": {
+  "who": "ped_m_young_1",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag GÅR ju här!",
+  "wer": 0,
+  "f0": 192.7,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "8d6bdb4766ed": {
+  "who": "ped_m_young_2",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag går ju här!",
+  "wer": 0,
+  "f0": 169.1,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "e27e41123350": {
+  "who": "ped_m_mid_1",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag går ju här.",
+  "wer": 0,
+  "f0": 152.5,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "27fd26bcfb11": {
+  "who": "ped_m_mid_2",
+  "text": "Jag går ju här!",
+  "take": 0,
+  "heard": "Jag går ju här.",
+  "wer": 0,
+  "f0": 186.2,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "f59e720738b1": {
+  "who": "ped_f_young_1",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan hjärtstopp.",
+  "wer": 0,
+  "f0": 255,
+  "cps": 14.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "b904df5d0439": {
+  "who": "ped_f_young_2",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan hjärtstopp.",
+  "wer": 0,
+  "f0": 249.7,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "6e0c0268e403": {
+  "who": "ped_f_mid_1",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan hjärtstopp!",
+  "wer": 0,
+  "f0": 222.8,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "ad1daeeaba3a": {
+  "who": "ped_f_mid_2",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan hjärtstopp.",
+  "wer": 0,
+  "f0": 229.5,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "80c6be60863f": {
+  "who": "ped_m_young_1",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan jackstopp!",
+  "wer": 0.25,
+  "f0": 187.2,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "baea6ed5271f": {
+  "who": "ped_m_young_2",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan hjärtstopp!",
+  "wer": 0,
+  "f0": 128.6,
+  "cps": 13.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "1a08cee59645": {
+  "who": "ped_m_mid_1",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan hjärtstopp!",
+  "wer": 0,
+  "f0": 153.1,
+  "cps": 13.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "d26fc2defd35": {
+  "who": "ped_m_mid_2",
+  "text": "Jag fick nästan hjärtstopp!",
+  "take": 0,
+  "heard": "Jag fick nästan hjärtstopp!",
+  "wer": 0,
+  "f0": 146.7,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.429
+ },
+ "ae54822e4483": {
+  "who": "ped_f_young_1",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar du för?",
+  "wer": 0,
+  "f0": 322.8,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "4e4ce063ccd6": {
+  "who": "ped_f_young_2",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar du för?",
+  "wer": 0,
+  "f0": 239.7,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "8352d6381786": {
+  "who": "ped_f_mid_1",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar du för?",
+  "wer": 0,
+  "f0": 275.9,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "37665f6fc8e5": {
+  "who": "ped_f_mid_2",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar du för?",
+  "wer": 0,
+  "f0": 208.7,
+  "cps": 11.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "8a952ec6ea73": {
+  "who": "ped_m_young_1",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar vi för?",
+  "wer": 0.25,
+  "f0": 260.1,
+  "cps": 11.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "5c7b800a117b": {
+  "who": "ped_m_young_2",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar du för?",
+  "wer": 0,
+  "f0": 215.2,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "b9852da50f76": {
+  "who": "ped_m_mid_1",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar du för?",
+  "wer": 0,
+  "f0": 165,
+  "cps": 11.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "0249f65b1b9d": {
+  "who": "ped_m_mid_2",
+  "text": "Vad tutar du för?!",
+  "take": 0,
+  "heard": "Vad tutar du för?",
+  "wer": 0,
+  "f0": 255.9,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "f0d1ca182601": {
+  "who": "ped_f_young_1",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här.",
+  "wer": 0,
+  "f0": 247,
+  "cps": 14.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "de03f986d34d": {
+  "who": "ped_f_young_2",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här.",
+  "wer": 0,
+  "f0": 234.4,
+  "cps": 14.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.769
+ },
+ "7524e7430a4d": {
+  "who": "ped_f_mid_1",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här!",
+  "wer": 0,
+  "f0": 261.8,
+  "cps": 14.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.769
+ },
+ "0a1766002f98": {
+  "who": "ped_f_mid_2",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här!",
+  "wer": 0,
+  "f0": 241.7,
+  "cps": 14,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "bcc6c6432ad4": {
+  "who": "ped_m_young_1",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här.",
+  "wer": 0,
+  "f0": 202.3,
+  "cps": 14.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "c12326c9216a": {
+  "who": "ped_m_young_2",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här.",
+  "wer": 0,
+  "f0": 146.2,
+  "cps": 14.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "3151b25e0cd3": {
+  "who": "ped_m_mid_1",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här!",
+  "wer": 0,
+  "f0": 177.4,
+  "cps": 14.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.769
+ },
+ "06315df4bf45": {
+  "who": "ped_m_mid_2",
+  "text": "Hallå, jag har också rätt att vara här!",
+  "take": 0,
+  "heard": "Hallå! Jag har också rätt att vara här.",
+  "wer": 0,
+  "f0": 208.1,
+  "cps": 15.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.691
+ },
+ "786a3624f23a": {
+  "who": "ped_f_young_1",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 279.8,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "443468854a21": {
+  "who": "ped_f_young_2",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 270.4,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "35c0943dace8": {
+  "who": "ped_f_mid_1",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 283,
+  "cps": 11.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "1330f9bafa3a": {
+  "who": "ped_f_mid_2",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 223.6,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "7c38eed740ad": {
+  "who": "ped_m_young_1",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 238.4,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "2acc1ac44864": {
+  "who": "ped_m_young_2",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 211.9,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "e525e01a3b1d": {
+  "who": "ped_m_mid_1",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 186.1,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "d7c58fa0d962": {
+  "who": "ped_m_mid_2",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 224.4,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "919ce76a0790": {
+  "who": "ped_f_old_1",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 261.5,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "c67bc9ee3006": {
+  "who": "ped_f_old_2",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 271.7,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "8a1154794c70": {
+  "who": "ped_m_old_1",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 137.3,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "b94a4c37701e": {
+  "who": "ped_m_old_2",
+  "text": "Det här är en trottoar!",
+  "take": 0,
+  "heard": "Det här är en trottoar.",
+  "wer": 0,
+  "f0": 178.5,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "11157a9ce826": {
+  "who": "ped_f_young_1",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan.",
+  "wer": 0,
+  "f0": 309.1,
+  "cps": 7.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "f406e65f30d1": {
+  "who": "ped_f_young_2",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan.",
+  "wer": 0,
+  "f0": 321.2,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "5c93d503ccd5": {
+  "who": "ped_f_mid_1",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan!",
+  "wer": 0,
+  "f0": 294.2,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "3282dbab5866": {
+  "who": "ped_f_mid_2",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan",
+  "wer": 0,
+  "f0": 277.7,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "a05f92be6585": {
+  "who": "ped_m_young_1",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "KÖR PÅ GATAN",
+  "wer": 0,
+  "f0": 252.9,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "c204d380cf3d": {
+  "who": "ped_m_young_2",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan.",
+  "wer": 0,
+  "f0": 225.6,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "0d389ed1c317": {
+  "who": "ped_m_mid_1",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan.",
+  "wer": 0,
+  "f0": 228.4,
+  "cps": 8.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "6995c43c1cec": {
+  "who": "ped_m_mid_2",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan",
+  "wer": 0,
+  "f0": 202.5,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "2d7e78281143": {
+  "who": "ped_f_old_1",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan",
+  "wer": 0,
+  "f0": 278.5,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "1e05a58917ae": {
+  "who": "ped_f_old_2",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan.",
+  "wer": 0,
+  "f0": 289,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "6c9c84dfe8b8": {
+  "who": "ped_m_old_1",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan!",
+  "wer": 0,
+  "f0": 183.7,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "3822ecd4417f": {
+  "who": "ped_m_old_2",
+  "text": "Kör på gatan!",
+  "take": 0,
+  "heard": "Kör på gatan.",
+  "wer": 0,
+  "f0": 229.4,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "5220fc26c13e": {
+  "who": "ped_f_young_1",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här",
+  "wer": 0,
+  "f0": 238.4,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "d0173c6e4565": {
+  "who": "ped_f_young_2",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 243.2,
+  "cps": 14,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "0a4aa2177b86": {
+  "who": "ped_f_mid_1",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 218.8,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "5a6caf8a2adb": {
+  "who": "ped_f_mid_2",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 212.3,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "31a818a9f2e6": {
+  "who": "ped_m_young_1",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här!",
+  "wer": 0,
+  "f0": 202.2,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "dcc94a1dc725": {
+  "who": "ped_m_young_2",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 164,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "5945f43c4fd0": {
+  "who": "ped_m_mid_1",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 167.2,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "e7d131f5490e": {
+  "who": "ped_m_mid_2",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 166.6,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "4531169a6021": {
+  "who": "ped_f_old_1",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 221.6,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "ae296ba4ce3c": {
+  "who": "ped_f_old_2",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 225.2,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "ebcfe203f673": {
+  "who": "ped_m_old_1",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 121.8,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "7325cfd4331b": {
+  "who": "ped_m_old_2",
+  "text": "Det är bilfritt här!",
+  "take": 0,
+  "heard": "Det är bilfritt här.",
+  "wer": 0,
+  "f0": 163.3,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "5bad0c34a616": {
+  "who": "ped_f_old_1",
+  "text": "Ungdomen nu för tiden!",
+  "take": 0,
+  "heard": "Ungdomen nu för tiden!",
+  "wer": 0,
+  "f0": 169.2,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "7b6db7f19438": {
+  "who": "ped_f_old_2",
+  "text": "Ungdomen nu för tiden!",
+  "take": 0,
+  "heard": "Ungdomen nu för tiden",
+  "wer": 0,
+  "f0": 230.2,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "132f6e0f2c17": {
+  "who": "ped_m_old_1",
+  "text": "Ungdomen nu för tiden!",
+  "take": 0,
+  "heard": "Ungdomen nu för tiden",
+  "wer": 0,
+  "f0": 95.7,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "efc3164336fe": {
+  "who": "ped_m_old_2",
+  "text": "Ungdomen nu för tiden!",
+  "take": 0,
+  "heard": "Ungdomen nu för tiden.",
+  "wer": 0,
+  "f0": 114.8,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "35075a16c91b": {
+  "who": "ped_f_old_1",
+  "text": "Jag har gått här sedan 1962!",
+  "take": 0,
+  "heard": "Jag har gått här sedan 1962",
+  "wer": 0,
+  "f0": 201.1,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.318
+ },
+ "5eb0a9c53d67": {
+  "who": "ped_f_old_2",
+  "text": "Jag har gått här sedan 1962!",
+  "take": 0,
+  "heard": "Jag har gått här sedan 1962.",
+  "wer": 0,
+  "f0": 187.6,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.396
+ },
+ "dc3dff5fdde9": {
+  "who": "ped_m_old_1",
+  "text": "Jag har gått här sedan 1962!",
+  "take": 0,
+  "heard": "Jag har gått här sedan 1962",
+  "wer": 0,
+  "f0": 109.3,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.318
+ },
+ "56f3b3260edb": {
+  "who": "ped_m_old_2",
+  "text": "Jag har gått här sedan 1962!",
+  "take": 0,
+  "heard": "Jag har gått här sedan 1962.",
+  "wer": 0,
+  "f0": 137.8,
+  "cps": 9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.239
+ },
+ "40dc49887791": {
+  "who": "ped_f_old_1",
+  "text": "Mitt hjärta!",
+  "take": 0,
+  "heard": "mitt hjärta",
+  "wer": 0,
+  "f0": 225.7,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "8385cca3994b": {
+  "who": "ped_f_old_2",
+  "text": "Mitt hjärta!",
+  "take": 0,
+  "heard": "Mitt hjärta",
+  "wer": 0,
+  "f0": 233.5,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "7acbdb30d807": {
+  "who": "ped_m_old_1",
+  "text": "Mitt hjärta!",
+  "take": 0,
+  "heard": "Mitt hjärta.",
+  "wer": 0,
+  "f0": 138,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "1440d6cfbe29": {
+  "who": "ped_m_old_2",
+  "text": "Mitt hjärta!",
+  "take": 0,
+  "heard": "Mitt hjärta",
+  "wer": 0,
+  "f0": 149.9,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "062cfe9c4a8e": {
+  "who": "ped_f_old_1",
+  "text": "Jag är inte döv!",
+  "take": 0,
+  "heard": "Jag är inte döv.",
+  "wer": 0,
+  "f0": 261.1,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "98571031024b": {
+  "who": "ped_f_old_2",
+  "text": "Jag är inte döv!",
+  "take": 0,
+  "heard": "Jag är inte döv.",
+  "wer": 0,
+  "f0": 249.6,
+  "cps": 8.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "5f88777e0363": {
+  "who": "ped_m_old_1",
+  "text": "Jag är inte döv!",
+  "take": 0,
+  "heard": "”Jag är inte döv!”",
+  "wer": 0,
+  "f0": 143.3,
+  "cps": 8.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "0df0620f6354": {
+  "who": "ped_m_old_2",
+  "text": "Jag är inte döv!",
+  "take": 0,
+  "heard": "Jag är inte döv.",
+  "wer": 0,
+  "f0": 162.2,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "cc835a1bffc5": {
+  "who": "ped_f_young_1",
+  "text": "Okej, boomer.",
+  "take": 0,
+  "heard": "okej boomer",
+  "wer": 0,
+  "f0": 166.7,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "a5bdf1b32a25": {
+  "who": "ped_f_young_2",
+  "text": "Okej, boomer.",
+  "take": 0,
+  "heard": "Okej, Boomer.",
+  "wer": 0,
+  "f0": 204.4,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "ed7fea359a31": {
+  "who": "ped_m_young_1",
+  "text": "Okej, boomer.",
+  "take": 0,
+  "heard": "Okej, boomer!",
+  "wer": 0,
+  "f0": 148,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "6c0330924655": {
+  "who": "ped_m_young_2",
+  "text": "Okej, boomer.",
+  "take": 0,
+  "heard": "Okej, \"Boomer\"",
+  "wer": 0,
+  "f0": 108.2,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "d292914ea125": {
+  "who": "ped_f_young_1",
+  "text": "Lugna dig, gubbe!",
+  "take": 0,
+  "heard": "Lugna dig, gubbe!",
+  "wer": 0,
+  "f0": 212.7,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "ea1cec037ede": {
+  "who": "ped_f_young_2",
+  "text": "Lugna dig, gubbe!",
+  "take": 0,
+  "heard": "Lugna dig, gubbe!",
+  "wer": 0,
+  "f0": 254.3,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "34ca8052ccad": {
+  "who": "ped_m_young_1",
+  "text": "Lugna dig, gubbe!",
+  "take": 0,
+  "heard": "Lugna dig, gubbe.",
+  "wer": 0,
+  "f0": 181.1,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "d4d251136be0": {
+  "who": "ped_m_young_2",
+  "text": "Lugna dig, gubbe!",
+  "take": 0,
+  "heard": "Lugna dig, gubbe.",
+  "wer": 0,
+  "f0": 201.2,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "121671472132": {
+  "who": "ped_f_young_1",
+  "text": "Chilla!",
+  "take": 0,
+  "heard": "Chilla!",
+  "wer": 0,
+  "f0": 233.9,
+  "cps": 6.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "7885b99cc2c7": {
+  "who": "ped_f_young_2",
+  "text": "Chilla!",
+  "take": 0,
+  "heard": "chelle",
+  "wer": 1,
+  "f0": 262.8,
+  "cps": 8.2,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "accd621a285d": {
+  "who": "ped_m_young_1",
+  "text": "Chilla!",
+  "take": 0,
+  "heard": "Chilla!",
+  "wer": 0,
+  "f0": 224.2,
+  "cps": 6.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "50ac85442fa8": {
+  "who": "ped_m_young_2",
+  "text": "Chilla!",
+  "take": 0,
+  "heard": "Chilla!",
+  "wer": 0,
+  "f0": 258,
+  "cps": 8.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "5189e7314a07": {
+  "who": "ped_f_young_1",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna ner dig!",
+  "wer": 0,
+  "f0": 266.4,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "73db0b216610": {
+  "who": "ped_f_young_2",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna ner dig.",
+  "wer": 0,
+  "f0": 310.6,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "0ad4e3450d4a": {
+  "who": "ped_f_mid_1",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna ner dig!",
+  "wer": 0,
+  "f0": 223.2,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "8bdf18855b4c": {
+  "who": "ped_f_mid_2",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna ner dig!",
+  "wer": 0,
+  "f0": 252.3,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "b9d90a480d5a": {
+  "who": "ped_m_young_1",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna ner dig!",
+  "wer": 0,
+  "f0": 205.6,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "4934d88f533b": {
+  "who": "ped_m_young_2",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna ner dig.",
+  "wer": 0,
+  "f0": 223.2,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "96f14052a06e": {
+  "who": "ped_m_mid_1",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna med dig!",
+  "wer": 0.333,
+  "f0": 164.8,
+  "cps": 10.5,
+  "flags": [
+   "words"
+  ],
+  "verdict": "retake",
+  "dur": 1.489
+ },
+ "5dce1576b895": {
+  "who": "ped_m_mid_2",
+  "text": "Lugna ner dig!",
+  "take": 0,
+  "heard": "Lugna ner dig.",
+  "wer": 0,
+  "f0": 220.8,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "14b1cf4ef4f2": {
+  "who": "ped_f_young_1",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 232.9,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "d879348329f7": {
+  "who": "ped_f_young_2",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 267.9,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "df7ddf664282": {
+  "who": "ped_f_mid_1",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 219,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "d8c5e148eb98": {
+  "who": "ped_f_mid_2",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata",
+  "wer": 0,
+  "f0": 218.7,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "d950b7350967": {
+  "who": "ped_m_young_1",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 234.6,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "810cf0f0a537": {
+  "who": "ped_m_young_2",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 168.7,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "4bef7be4ae2d": {
+  "who": "ped_m_mid_1",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 161.9,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "9880708029d0": {
+  "who": "ped_m_mid_2",
+  "text": "Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 175.2,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "bda0324199a8": {
+  "who": "ped_f_young_1",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja, ja! Vi hör dig!",
+  "wer": 0,
+  "f0": 240,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "00b22c846404": {
+  "who": "ped_f_young_2",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja, ja. Vi hör dig.",
+  "wer": 0,
+  "f0": 277.4,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "e66207ac9406": {
+  "who": "ped_f_mid_1",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja, ja. Vi hör dig.",
+  "wer": 0,
+  "f0": 237.1,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "d21f733149d0": {
+  "who": "ped_f_mid_2",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja, ja, vi hör dig.",
+  "wer": 0,
+  "f0": 240.3,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "da040ca14211": {
+  "who": "ped_m_young_1",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja, ja. Vi hör dig.",
+  "wer": 0,
+  "f0": 193.2,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "cee9257a5779": {
+  "who": "ped_m_young_2",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja, ja! Vi hör dig!",
+  "wer": 0,
+  "f0": 189.9,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "5399d9be9e6b": {
+  "who": "ped_m_mid_1",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja ja, vi hör dig.",
+  "wer": 0,
+  "f0": 145.7,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "422b948ea9d3": {
+  "who": "ped_m_mid_2",
+  "text": "Ja, ja, vi hör dig!",
+  "take": 0,
+  "heard": "Ja, ja. Vi hör dig.",
+  "wer": 0,
+  "f0": 202.3,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "66a77f0e86bb": {
+  "who": "ped_f_young_1",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 228.7,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "4d22dc5da649": {
+  "who": "ped_f_young_2",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 273.8,
+  "cps": 16.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "20ac55f5ba15": {
+  "who": "ped_f_mid_1",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 217,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "a022d31e9049": {
+  "who": "ped_f_mid_2",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 240.8,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "26fa6878d1e8": {
+  "who": "ped_m_young_1",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 199.8,
+  "cps": 16.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "d4fbf26ed327": {
+  "who": "ped_m_young_2",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 189.9,
+  "cps": 15.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "2a277cf8a436": {
+  "who": "ped_m_mid_1",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 177.9,
+  "cps": 15.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "93bcee8e5552": {
+  "who": "ped_m_mid_2",
+  "text": "Vad är det som brinner?",
+  "take": 0,
+  "heard": "Vad är det som brinner?",
+  "wer": 0,
+  "f0": 169.3,
+  "cps": 17,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "407a0c358f3c": {
+  "who": "ped_f_young_1",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror!",
+  "wer": 0,
+  "f0": 206.5,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "22301b5a44a4": {
+  "who": "ped_f_young_2",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror.",
+  "wer": 0,
+  "f0": 252.7,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "8c3555fefa44": {
+  "who": "ped_f_mid_1",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror.",
+  "wer": 0,
+  "f0": 177.2,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "02f83e1c9508": {
+  "who": "ped_f_mid_2",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig! Farbror!",
+  "wer": 0,
+  "f0": 250.9,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "041cf92dcb0a": {
+  "who": "ped_f_old_1",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror!",
+  "wer": 0,
+  "f0": 249.9,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "bebe617601a7": {
+  "who": "ped_f_old_2",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig-farbror",
+  "wer": 0,
+  "f0": 263.4,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "2352df605146": {
+  "who": "ped_m_young_1",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror.",
+  "wer": 0,
+  "f0": 165.8,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "652419ae9563": {
+  "who": "ped_m_young_2",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror!",
+  "wer": 0,
+  "f0": 177.9,
+  "cps": 10.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "c02f613bdebc": {
+  "who": "ped_m_mid_1",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror.",
+  "wer": 0,
+  "f0": 126.6,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "24829333d4d7": {
+  "who": "ped_m_mid_2",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror.",
+  "wer": 0,
+  "f0": 175.6,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "459f38ee2a34": {
+  "who": "ped_m_old_1",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror!",
+  "wer": 0,
+  "f0": 178.5,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "e15d72ef9a43": {
+  "who": "ped_m_old_2",
+  "text": "Lugna dig, farbror!",
+  "take": 0,
+  "heard": "Lugna dig, farbror.",
+  "wer": 0,
+  "f0": 127.6,
+  "cps": 11.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "ead0a389419f": {
+  "who": "ped_f_young_1",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 191.8,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "36e1293750a5": {
+  "who": "ped_f_young_2",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 231.4,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "0defaaca8ce9": {
+  "who": "ped_f_mid_1",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 198.9,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "6b4c22d8feb8": {
+  "who": "ped_f_mid_2",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 253.8,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "4c28fc32e28f": {
+  "who": "ped_f_old_1",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 243.4,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "f70e221e3717": {
+  "who": "ped_f_old_2",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 266.8,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "757c5485e433": {
+  "who": "ped_m_young_1",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 199.9,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "c22ad063576f": {
+  "who": "ped_m_young_2",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 199.7,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "24ff4f8652da": {
+  "who": "ped_m_mid_1",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 206.1,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "9c490969e2e6": {
+  "who": "ped_m_mid_2",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 208.9,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "8b42890aeca7": {
+  "who": "ped_m_old_1",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 107,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "67c244919cf3": {
+  "who": "ped_m_old_2",
+  "text": "Själv då!",
+  "take": 0,
+  "heard": "Själv då?",
+  "wer": 0,
+  "f0": 203.4,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.836
+ },
+ "61e7005635ba": {
+  "who": "ped_f_young_1",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 239.1,
+  "cps": 11.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "40965af9095f": {
+  "who": "ped_f_young_2",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 270.8,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "7c10d4023cb0": {
+  "who": "ped_f_mid_1",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 232.9,
+  "cps": 11.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "976df0f457a8": {
+  "who": "ped_f_mid_2",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 219.5,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "e10e7beaf790": {
+  "who": "ped_f_old_1",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 225.1,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "e97688721aa3": {
+  "who": "ped_f_old_2",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 240.9,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "9dcddcf07120": {
+  "who": "ped_m_young_1",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 201.1,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "658d1161449e": {
+  "who": "ped_m_young_2",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 166,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "ef06bf250fd5": {
+  "who": "ped_m_mid_1",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 163.8,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "7f8ddb46e26e": {
+  "who": "ped_m_mid_2",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 166.2,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "ccd66ecb3f56": {
+  "who": "ped_m_old_1",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 143,
+  "cps": 13.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "3f3948089529": {
+  "who": "ped_m_old_2",
+  "text": "Vad är problemet?",
+  "take": 0,
+  "heard": "Vad är problemet?",
+  "wer": 0,
+  "f0": 155.2,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "d04a89f8cfaa": {
+  "who": "ped_f_young_1",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer",
+  "wer": 0,
+  "f0": 269.8,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "f47d334b76e7": {
+  "who": "ped_f_young_2",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer",
+  "wer": 0,
+  "f0": 263.1,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "713e6c77e06b": {
+  "who": "ped_f_mid_1",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer",
+  "wer": 0,
+  "f0": 259.4,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "73979c77618c": {
+  "who": "ped_f_mid_2",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer",
+  "wer": 0,
+  "f0": 240.7,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "fc8e45387ac7": {
+  "who": "ped_f_old_1",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer",
+  "wer": 0,
+  "f0": 216,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "220b827d1ef9": {
+  "who": "ped_f_old_2",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "pensionära",
+  "wer": 1,
+  "f0": 268.1,
+  "cps": 8.4,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.567
+ },
+ "4823f8b9ffd7": {
+  "who": "ped_m_young_1",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer.",
+  "wer": 0,
+  "f0": 223.6,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "922c427360fb": {
+  "who": "ped_m_young_2",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionära.",
+  "wer": 1,
+  "f0": 173.2,
+  "cps": 10.3,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.306
+ },
+ "fba95785d742": {
+  "who": "ped_m_mid_1",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer.",
+  "wer": 0,
+  "f0": 184.7,
+  "cps": 10.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "8aa8240e90c0": {
+  "who": "ped_m_mid_2",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer.",
+  "wer": 0,
+  "f0": 157.4,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "457f18e67134": {
+  "who": "ped_m_old_1",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "pensionera",
+  "wer": 1,
+  "f0": 135.4,
+  "cps": 10.3,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.306
+ },
+ "9471f48572b8": {
+  "who": "ped_m_old_2",
+  "text": "Pensionärer!",
+  "take": 0,
+  "heard": "Pensionärer.",
+  "wer": 0,
+  "f0": 168.1,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "bd9429da22bb": {
+  "who": "ped_f_young_1",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om då.",
+  "wer": 0,
+  "f0": 303.6,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "be20c975861b": {
+  "who": "ped_f_young_2",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om, då!",
+  "wer": 0,
+  "f0": 301.8,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "1c9fc51dcc8a": {
+  "who": "ped_f_mid_1",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om, då.",
+  "wer": 0,
+  "f0": 308,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "d1b37b048079": {
+  "who": "ped_f_mid_2",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om då!",
+  "wer": 0,
+  "f0": 296.7,
+  "cps": 7.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "93686720bfe3": {
+  "who": "ped_f_old_1",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om, då!",
+  "wer": 0,
+  "f0": 310.4,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "f8e4c2ccbd5a": {
+  "who": "ped_f_old_2",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om, då!",
+  "wer": 0,
+  "f0": 277.9,
+  "cps": 7.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "45cb55b21b77": {
+  "who": "ped_m_young_1",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om då!",
+  "wer": 0,
+  "f0": 216.9,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "e32f8b2484db": {
+  "who": "ped_m_young_2",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om, då!",
+  "wer": 0,
+  "f0": 261.1,
+  "cps": 7.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "6528b3350b46": {
+  "who": "ped_m_mid_1",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om, då!",
+  "wer": 0,
+  "f0": 221.4,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.149
+ },
+ "9e598e8187c4": {
+  "who": "ped_m_mid_2",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om då!",
+  "wer": 0,
+  "f0": 214.8,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "3cc89fb92a7f": {
+  "who": "ped_m_old_1",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om då!",
+  "wer": 0,
+  "f0": 192.2,
+  "cps": 7.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "f1b0918da169": {
+  "who": "ped_m_old_2",
+  "text": "Kör om då!",
+  "take": 0,
+  "heard": "Kör om, då.",
+  "wer": 0,
+  "f0": 185.2,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.914
+ },
+ "0086e10456f4": {
+  "who": "ped_f_young_1",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig då!",
+  "wer": 0,
+  "f0": 185.4,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "ee827fbfa5d9": {
+  "who": "ped_f_young_2",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig idag!",
+  "wer": 0.25,
+  "f0": 197,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "e36331990583": {
+  "who": "ped_f_mid_1",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig då!",
+  "wer": 0,
+  "f0": 141.5,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "8dcb89aef049": {
+  "who": "ped_f_mid_2",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig då!",
+  "wer": 0,
+  "f0": 256.2,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "5acb15c7b837": {
+  "who": "ped_f_old_1",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig idag!",
+  "wer": 0.25,
+  "f0": 174.2,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "347867be3dd2": {
+  "who": "ped_f_old_2",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig då!",
+  "wer": 0,
+  "f0": 187.8,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "3e71e0b50e2e": {
+  "who": "ped_m_young_1",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "FLYTTA PÅ DIG DÅ!",
+  "wer": 0,
+  "f0": 174.3,
+  "cps": 11.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "7fedd72a1d4b": {
+  "who": "ped_m_young_2",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig, då!",
+  "wer": 0,
+  "f0": 219.1,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "8a06488c2065": {
+  "who": "ped_m_mid_1",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig, då!",
+  "wer": 0,
+  "f0": 124.2,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "5ea5eb491a4c": {
+  "who": "ped_m_mid_2",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig då!",
+  "wer": 0,
+  "f0": 154.1,
+  "cps": 13.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "3c4d6091013f": {
+  "who": "ped_m_old_1",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig då!",
+  "wer": 0,
+  "f0": 167.8,
+  "cps": 11.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "193800cab854": {
+  "who": "ped_m_old_2",
+  "text": "Flytta på dig då!",
+  "take": 0,
+  "heard": "Flytta på dig, då!",
+  "wer": 0,
+  "f0": 129.2,
+  "cps": 11.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "f80d399544d7": {
+  "who": "ped_f_young_1",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 231.1,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "29d22556f905": {
+  "who": "ped_f_young_2",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 253.1,
+  "cps": 13.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "b3abd49868a4": {
+  "who": "ped_f_mid_1",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 220.4,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "2008273f18c4": {
+  "who": "ped_f_mid_2",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 226.8,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.429
+ },
+ "ed994f2b2de4": {
+  "who": "ped_f_old_1",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen!",
+  "wer": 0,
+  "f0": 225.1,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "a921d1fcef55": {
+  "who": "ped_f_old_2",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 230.8,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "1d566cec0429": {
+  "who": "ped_m_young_1",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 207,
+  "cps": 13.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "b007aaf09232": {
+  "who": "ped_m_young_2",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen!",
+  "wer": 0,
+  "f0": 168.4,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "be6fed60e19b": {
+  "who": "ped_m_mid_1",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 145.3,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "0b28dbf6fd3b": {
+  "who": "ped_m_mid_2",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen!",
+  "wer": 0,
+  "f0": 158.3,
+  "cps": 13.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "97c566baaf17": {
+  "who": "ped_m_old_1",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 138.9,
+  "cps": 13.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "88a6d7caa954": {
+  "who": "ped_m_old_2",
+  "text": "Det är du som står i vägen!",
+  "take": 0,
+  "heard": "Det är du som står i vägen.",
+  "wer": 0,
+  "f0": 150.8,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "4661bb957b4e": {
+  "who": "ped_f_young_1",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 262.9,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "42d5e4fcc1ab": {
+  "who": "ped_f_young_2",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 240.5,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "2bb44fef43a3": {
+  "who": "ped_f_mid_1",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 216.8,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "f3bc26aa15b3": {
+  "who": "ped_f_mid_2",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 235.2,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "1461d1a4340b": {
+  "who": "ped_f_old_1",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 176.5,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "87f774a53ada": {
+  "who": "ped_f_old_2",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 242.9,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "3c4332a11b43": {
+  "who": "ped_m_young_1",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 209.8,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "8d37684aa10d": {
+  "who": "ped_m_young_2",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Byssen har företräde.",
+  "wer": 0,
+  "f0": 195.7,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "1278fecfab9c": {
+  "who": "ped_m_mid_1",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 182.7,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "e68034b8f6c8": {
+  "who": "ped_m_mid_2",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 196.8,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "98bd8a1eb577": {
+  "who": "ped_m_old_1",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 127.6,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "457840518515": {
+  "who": "ped_m_old_2",
+  "text": "Bussen har företräde!",
+  "take": 0,
+  "heard": "Bussen har företräde.",
+  "wer": 0,
+  "f0": 179.5,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "8f8a18ffafa4": {
+  "who": "ped_f_young_1",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 226.7,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "1f111030fbf0": {
+  "who": "ped_f_young_2",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 292.4,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "6268dccf59e3": {
+  "who": "ped_f_mid_1",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell",
+  "wer": 0,
+  "f0": 217.2,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "cac7484a6ee4": {
+  "who": "ped_f_mid_2",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 211.9,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "d629d4d9c10c": {
+  "who": "ped_f_old_1",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 222.9,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "0f2b597bfdc9": {
+  "who": "ped_f_old_2",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 220.5,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "34bab948a890": {
+  "who": "ped_m_young_1",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 220.1,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "59b13a4da5cf": {
+  "who": "ped_m_young_2",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 208.6,
+  "cps": 13.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "d38f2e0eb84c": {
+  "who": "ped_m_mid_1",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 145.6,
+  "cps": 11.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "1d5ec8f22872": {
+  "who": "ped_m_mid_2",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 190,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "0561367e002a": {
+  "who": "ped_m_old_1",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell!",
+  "wer": 0,
+  "f0": 117,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "7637c854069c": {
+  "who": "ped_m_old_2",
+  "text": "Jag har en tidtabell!",
+  "take": 0,
+  "heard": "Jag har en tidtabell.",
+  "wer": 0,
+  "f0": 145.5,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "a700e57a24e0": {
+  "who": "ped_f_young_1",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning!",
+  "wer": 0,
+  "f0": 297.1,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "d81f9d4401d5": {
+  "who": "ped_f_young_2",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 299.4,
+  "cps": 14.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "c476b1e2cedf": {
+  "who": "ped_f_mid_1",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 252.1,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "514ac3b4454a": {
+  "who": "ped_f_mid_2",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 251.4,
+  "cps": 11.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "e6145aaccfb5": {
+  "who": "ped_f_old_1",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 273.6,
+  "cps": 14.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "6009da5a9c01": {
+  "who": "ped_f_old_2",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning!",
+  "wer": 0,
+  "f0": 281,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "8a3d5c76c787": {
+  "who": "ped_m_young_1",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 248.4,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "81bcf2c9c9af": {
+  "who": "ped_m_young_2",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 218.5,
+  "cps": 14.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "7cda397e450c": {
+  "who": "ped_m_mid_1",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 197.2,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "d0dd0d0b71f4": {
+  "who": "ped_m_mid_2",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 220,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "f8728c954b89": {
+  "who": "ped_m_old_1",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning!",
+  "wer": 0,
+  "f0": 173.7,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "a70e83984852": {
+  "who": "ped_m_old_2",
+  "text": "Jag har en körning!",
+  "take": 0,
+  "heard": "Jag har en körning.",
+  "wer": 0,
+  "f0": 204.2,
+  "cps": 13.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "04dcff9990c6": {
+  "who": "ped_f_young_1",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här!",
+  "wer": 0,
+  "f0": 257.2,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "68facabdce6d": {
+  "who": "ped_f_young_2",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här.",
+  "wer": 0,
+  "f0": 266.4,
+  "cps": 12,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "79a07f3d39e3": {
+  "who": "ped_f_mid_1",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här!",
+  "wer": 0,
+  "f0": 278.1,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "5cd302b7aa44": {
+  "who": "ped_f_mid_2",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här!",
+  "wer": 0,
+  "f0": 221.9,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "cf07b46c6f1a": {
+  "who": "ped_f_old_1",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här!",
+  "wer": 0,
+  "f0": 239.1,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "fb8f2aa64833": {
+  "who": "ped_f_old_2",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här.",
+  "wer": 0,
+  "f0": 250.2,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "ba4f00e614e8": {
+  "who": "ped_m_young_1",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här!",
+  "wer": 0,
+  "f0": 193,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "23475e4b1e38": {
+  "who": "ped_m_young_2",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här.",
+  "wer": 0,
+  "f0": 199.3,
+  "cps": 10.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "6b5218e43916": {
+  "who": "ped_m_mid_1",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här.",
+  "wer": 0,
+  "f0": 160.4,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "4af43a3ed405": {
+  "who": "ped_m_mid_2",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här.",
+  "wer": 0,
+  "f0": 170.6,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "d11573935ccb": {
+  "who": "ped_m_old_1",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här!",
+  "wer": 0,
+  "f0": 139.9,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "b939a70f10b7": {
+  "who": "ped_m_old_2",
+  "text": "Vi jobbar här!",
+  "take": 0,
+  "heard": "Vi jobbar här.",
+  "wer": 0,
+  "f0": 149.7,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "5ce8af5d4b45": {
+  "who": "ped_f_young_1",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 307.8,
+  "cps": 7.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "e850b3844b30": {
+  "who": "ped_f_young_2",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 222.3,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "f67d7ea8bce3": {
+  "who": "ped_f_mid_1",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 284.8,
+  "cps": 7.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "eedb49413a6f": {
+  "who": "ped_f_mid_2",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 283.3,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "754ca56db107": {
+  "who": "ped_f_old_1",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 296.1,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "4ded92db2cb1": {
+  "who": "ped_f_old_2",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "\"Tjena, Saab!\"",
+  "wer": 0,
+  "f0": 290,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "bd08036b1546": {
+  "who": "ped_m_young_1",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 247.3,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "be04b5b64b1a": {
+  "who": "ped_m_young_2",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 247.2,
+  "cps": 8.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "c958c1d940eb": {
+  "who": "ped_m_mid_1",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 222.9,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "adbf4c4bff03": {
+  "who": "ped_m_mid_2",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 241.3,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "b375c73da503": {
+  "who": "ped_m_old_1",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, SAB!",
+  "wer": 0.5,
+  "f0": 79.5,
+  "cps": 8.4,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.567
+ },
+ "10281b678d24": {
+  "who": "ped_m_old_2",
+  "text": "Tjena, Saab!",
+  "take": 0,
+  "heard": "Tjena, Saab!",
+  "wer": 0,
+  "f0": 227.6,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "f6a6fefe8153": {
+  "who": "ped_f_young_1",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "SLUTA TUTA",
+  "wer": 0,
+  "f0": 279.3,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "ce20a1d655f3": {
+  "who": "ped_f_young_2",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "SLUTA TUTA",
+  "wer": 0,
+  "f0": 301.3,
+  "cps": 7.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "8c19375a7221": {
+  "who": "ped_f_mid_1",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "SLUTA TUTA",
+  "wer": 0,
+  "f0": 264.8,
+  "cps": 6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "5f00016719f0": {
+  "who": "ped_f_mid_2",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "Sluta tuta!",
+  "wer": 0,
+  "f0": 305.9,
+  "cps": 7.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "0da3a1032c39": {
+  "who": "ped_f_old_1",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "Sluta tuta",
+  "wer": 0,
+  "f0": 280,
+  "cps": 6.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "d8b3fffb46e1": {
+  "who": "ped_f_old_2",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "Slutatuta.",
+  "wer": 0,
+  "f0": 254,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "658440a08245": {
+  "who": "ped_m_young_1",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "SLUTA TUTA!",
+  "wer": 0,
+  "f0": 249.1,
+  "cps": 6.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "e23db5da1d7f": {
+  "who": "ped_m_young_2",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "SLUTA TUTA",
+  "wer": 0,
+  "f0": 237.7,
+  "cps": 7.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "06f3002e5fd7": {
+  "who": "ped_m_mid_1",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "Sluta tuta!",
+  "wer": 0,
+  "f0": 209,
+  "cps": 6.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "c9ac8f81fba6": {
+  "who": "ped_m_mid_2",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "Sluta tuta!",
+  "wer": 0,
+  "f0": 204.3,
+  "cps": 7.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "bc8850e8f7b0": {
+  "who": "ped_m_old_1",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "Sluta tuta!",
+  "wer": 0,
+  "f0": 168.7,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "f8e22156311c": {
+  "who": "ped_m_old_2",
+  "text": "Sluta tuta!",
+  "take": 0,
+  "heard": "SLUTA TUTA",
+  "wer": 0,
+  "f0": 205.9,
+  "cps": 6.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "1cca228dd40b": {
+  "who": "ped_f_young_1",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 261.7,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "3370d72a7656": {
+  "who": "ped_f_young_2",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 261.9,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "479d7d0c5081": {
+  "who": "ped_f_mid_1",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 257.6,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "9ce1cab5b948": {
+  "who": "ped_f_mid_2",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 245.9,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.508
+ },
+ "80116df06bea": {
+  "who": "ped_f_old_1",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 253.7,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "7197a436ef0f": {
+  "who": "ped_f_old_2",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 248.8,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "a1e6a653c0fa": {
+  "who": "ped_m_young_1",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 205.4,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "6dc82c73c681": {
+  "who": "ped_m_young_2",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig. Jag hör dig.",
+  "wer": 0,
+  "f0": 179.6,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "bca0e76ccbb8": {
+  "who": "ped_m_mid_1",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 178.6,
+  "cps": 12.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "bdafa1f0458c": {
+  "who": "ped_m_mid_2",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 172.2,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "762ea37ca3bc": {
+  "who": "ped_m_old_1",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 140.7,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "9fd91d24ef8f": {
+  "who": "ped_m_old_2",
+  "text": "Jag hör dig, jag hör dig!",
+  "take": 0,
+  "heard": "Jag hör dig! Jag hör dig!",
+  "wer": 0,
+  "f0": 207.8,
+  "cps": 13.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "ccfad9f3ee5c": {
+  "who": "ped_f_young_1",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan!",
+  "wer": 0,
+  "f0": 237.4,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "8d46357a36d0": {
+  "who": "ped_f_young_2",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan.",
+  "wer": 0,
+  "f0": 259.5,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "0df41f9c40f6": {
+  "who": "ped_f_mid_1",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan!",
+  "wer": 0,
+  "f0": 216.2,
+  "cps": 8.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "9a55fed2d40e": {
+  "who": "ped_f_mid_2",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan!",
+  "wer": 0,
+  "f0": 240.1,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "6dd0efa26bdf": {
+  "who": "ped_f_old_1",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan",
+  "wer": 0,
+  "f0": 251.6,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "b4231d32a8ff": {
+  "who": "ped_f_old_2",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "lägg av med tutan",
+  "wer": 0,
+  "f0": 258.6,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "417dfb85d71d": {
+  "who": "ped_m_young_1",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "LÄGG AV MED TUTAN",
+  "wer": 0,
+  "f0": 211.1,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "00847e753afd": {
+  "who": "ped_m_young_2",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan.",
+  "wer": 0,
+  "f0": 176.4,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "8be4ea5c619a": {
+  "who": "ped_m_mid_1",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan!",
+  "wer": 0,
+  "f0": 166.8,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "cab1c8585165": {
+  "who": "ped_m_mid_2",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan!",
+  "wer": 0,
+  "f0": 180.2,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "7b6f8ab76d0f": {
+  "who": "ped_m_old_1",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan!",
+  "wer": 0,
+  "f0": 166.8,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "e15cda59ceb3": {
+  "who": "ped_m_old_2",
+  "text": "Lägg av med tutan!",
+  "take": 0,
+  "heard": "Lägg av med tutan.",
+  "wer": 0,
+  "f0": 194.7,
+  "cps": 9.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "670a53575c04": {
+  "who": "ped_f_mid_1",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "Tyst där ute.",
+  "wer": 0,
+  "f0": 172.1,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "cc1ddebd4acc": {
+  "who": "ped_f_mid_2",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "Tyst, Darute!",
+  "wer": 0,
+  "f0": 245.8,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "2818d75fa533": {
+  "who": "ped_f_old_1",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "Tyst är ute.",
+  "wer": 1,
+  "f0": 239.6,
+  "cps": 8.4,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 1.567
+ },
+ "5558ff767dc6": {
+  "who": "ped_f_old_2",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "tyst där ute",
+  "wer": 0,
+  "f0": 272.6,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "e697dc430864": {
+  "who": "ped_m_mid_1",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "Tyst där ute!",
+  "wer": 0,
+  "f0": 123.2,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "6de55306a2ed": {
+  "who": "ped_m_mid_2",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "Tyst där ute.",
+  "wer": 0,
+  "f0": 189.1,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "52127b9ee577": {
+  "who": "ped_m_old_1",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "Tyst där ute.",
+  "wer": 0,
+  "f0": 138.7,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "7f8cc816628d": {
+  "who": "ped_m_old_2",
+  "text": "Tyst därute!",
+  "take": 0,
+  "heard": "Tyst där ute.",
+  "wer": 0,
+  "f0": 130.9,
+  "cps": 11,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.228
+ },
+ "dc01e2c8cadf": {
+  "who": "ped_f_mid_1",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover.",
+  "wer": 0,
+  "f0": 286.5,
+  "cps": 7.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "31ffe15e4d37": {
+  "who": "ped_f_mid_2",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover.",
+  "wer": 0,
+  "f0": 268.3,
+  "cps": 6.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "e0066c9b2621": {
+  "who": "ped_f_old_1",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover.",
+  "wer": 0,
+  "f0": 254.4,
+  "cps": 8.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.489
+ },
+ "134bd8f6eac0": {
+  "who": "ped_f_old_2",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover.",
+  "wer": 0,
+  "f0": 289.9,
+  "cps": 7.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "8ed250eea896": {
+  "who": "ped_m_mid_1",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover.",
+  "wer": 0,
+  "f0": 176.9,
+  "cps": 7.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "991bfd452777": {
+  "who": "ped_m_mid_2",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover.",
+  "wer": 0,
+  "f0": 186.5,
+  "cps": 7.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "60283ef118ae": {
+  "who": "ped_m_old_1",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover!",
+  "wer": 0,
+  "f0": 178.2,
+  "cps": 7.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.567
+ },
+ "ebec776eb8a7": {
+  "who": "ped_m_old_2",
+  "text": "Folk sover!",
+  "take": 0,
+  "heard": "Folk sover!",
+  "wer": 0,
+  "f0": 186.3,
+  "cps": 8.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.411
+ },
+ "b064a608995d": {
+  "who": "ped_f_mid_1",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här!",
+  "wer": 0,
+  "f0": 250.4,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "aa089e9c27e6": {
+  "who": "ped_f_mid_2",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här.",
+  "wer": 0,
+  "f0": 243.3,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "710b9b12df83": {
+  "who": "ped_f_old_1",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här!",
+  "wer": 0,
+  "f0": 268,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "6b9b4af606b5": {
+  "who": "ped_f_old_2",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här.",
+  "wer": 0,
+  "f0": 245.6,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "233556da8d43": {
+  "who": "ped_m_mid_1",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här!",
+  "wer": 0,
+  "f0": 174,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "4216dc5330d8": {
+  "who": "ped_m_mid_2",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här.",
+  "wer": 0,
+  "f0": 172,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "84a25edab610": {
+  "who": "ped_m_old_1",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här!",
+  "wer": 0,
+  "f0": 116.2,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "03e95aedc022": {
+  "who": "ped_m_old_2",
+  "text": "Vi har ett spädbarn här!",
+  "take": 0,
+  "heard": "Vi har ett spädbarn här!",
+  "wer": 0,
+  "f0": 173.3,
+  "cps": 13.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "50c800efcbfd": {
+  "who": "ped_f_mid_1",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet",
+  "wer": 0,
+  "f0": 238.8,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "0184f42fee0d": {
+  "who": "ped_f_mid_2",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet!",
+  "wer": 0,
+  "f0": 245.3,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "aaa5cd749ede": {
+  "who": "ped_f_old_1",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet.",
+  "wer": 0,
+  "f0": 251.5,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "d7c27128368c": {
+  "who": "ped_f_old_2",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet.",
+  "wer": 0,
+  "f0": 249,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "0ddafd29cd6f": {
+  "who": "ped_m_mid_1",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet.",
+  "wer": 0,
+  "f0": 196.6,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "891517fb616f": {
+  "who": "ped_m_mid_2",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet.",
+  "wer": 0,
+  "f0": 189,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "d15199531bdd": {
+  "who": "ped_m_old_1",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet!",
+  "wer": 0,
+  "f0": 161.7,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "f20ac49ed688": {
+  "who": "ped_m_old_2",
+  "text": "Lägg av med tutandet!",
+  "take": 0,
+  "heard": "Lägg av med tutandet!",
+  "wer": 0,
+  "f0": 208.2,
+  "cps": 10.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.194
+ },
+ "be86ebf110c5": {
+  "who": "anders",
+  "text": "Ove! Ljudsignal får bara användas för att avvärja fara!",
+  "take": 0,
+  "heard": "Ove, ljudsignal får bara användas för att avvärja fara.",
+  "wer": 0,
+  "f0": 164.5,
+  "cps": 12.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.598
+ },
+ "d2e05107c333": {
+  "who": "anders",
+  "text": "Onödig tutning, Ove! Det tar jag upp på årsmötet!",
+  "take": 0,
+  "heard": "Onödig tutning Ove, det tar jag upp på årsmötet.",
+  "wer": 0,
+  "f0": 149,
+  "cps": 12.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 4.206
+ },
+ "e706a5ef36d6": {
+  "who": "parvaneh",
+  "text": "Ove! Jag är gravid, inte döv!",
+  "take": 0,
+  "heard": "ove! Jag är gravid, inte döv",
+  "wer": 0,
+  "f0": 297.9,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.161
+ },
+ "ddc56dae404b": {
+  "who": "parvaneh",
+  "text": "Ove! Pojken sover!",
+  "take": 0,
+  "heard": "Ove, pojken sover",
+  "wer": 0,
+  "f0": 363.4,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "4e51801c78ab": {
+  "who": "parvaneh",
+  "text": "Hallå! Vi har precis flyttat in!",
+  "take": 0,
+  "heard": "Hallå! Vi har precis flyttat in!",
+  "wer": 0,
+  "f0": 345.1,
+  "cps": 13.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.586
+ },
+ "cfd9a5458f85": {
+  "who": "patrick",
+  "text": "Oj! Förlåt! Står jag i vägen?",
+  "take": 0,
+  "heard": "Oj, förlåt! Står jag i vägen?",
+  "wer": 0,
+  "f0": 213.4,
+  "cps": 10.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.847
+ },
+ "1b7698a2cd79": {
+  "who": "patrick",
+  "text": "Jag flyttar på mig! Jag flyttar på mig!",
+  "take": 0,
+  "heard": "\"'Jag flyttar på mig! Jag flyttar på mig!'\"",
+  "wer": 0,
+  "f0": 224.2,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.161
+ },
+ "2ab542c66c65": {
+  "who": "patrick",
+  "text": "Akta armen, Ove!",
+  "take": 0,
+  "heard": "Akta armen, Ove!",
+  "wer": 0,
+  "f0": 215.2,
+  "cps": 9.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "7ec106231283": {
+  "who": "jimmy",
+  "text": "Tjena Ove! Tut tut!",
+  "take": 0,
+  "heard": "Tjena Ove! Tut tut!",
+  "wer": 0,
+  "f0": 263.7,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "5ab68590f3c1": {
+  "who": "jimmy",
+  "text": "Ove! Mannen! Tutar på mig!",
+  "take": 0,
+  "heard": "Ove, mannen tutar på mig.",
+  "wer": 0,
+  "f0": 210.9,
+  "cps": 9.3,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "32e5edbe1c70": {
+  "who": "adrian",
+  "text": "Fet tuta, Ove!",
+  "take": 0,
+  "heard": "FET TUTA, OVE",
+  "wer": 0,
+  "f0": 183.3,
+  "cps": 8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.881
+ },
+ "142896cf8173": {
+  "who": "adrian",
+  "text": "Är det originaltutan?",
+  "take": 0,
+  "heard": "Är det originaltutan?",
+  "wer": 0,
+  "f0": 163.1,
+  "cps": 11.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "ce347a86d272": {
+  "who": "adrian",
+  "text": "Min Saab har exakt samma tuta!",
+  "take": 0,
+  "heard": "Min Saab har exakt samma tuta!",
+  "wer": 0,
+  "f0": 210.6,
+  "cps": 10.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.004
+ },
+ "8eafd38e7f61": {
+  "who": "anita",
+  "text": "Ove, Rune sover.",
+  "take": 0,
+  "heard": "Ove, Rune sover.",
+  "wer": 0,
+  "f0": 209.4,
+  "cps": 8.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "49f6e735573b": {
+  "who": "anita",
+  "text": "Inte så högt, Ove.",
+  "take": 0,
+  "heard": "Inte så högt, Ove.",
+  "wer": 0,
+  "f0": 224.8,
+  "cps": 9.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.959
+ },
+ "9309a95770dc": {
+  "who": "anders",
+  "text": "Ove! Det är en bostadsgata!",
+  "take": 0,
+  "heard": "Ove! Det är en bostadsgata.",
+  "wer": 0,
+  "f0": 167,
+  "cps": 9.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.926
+ },
+ "79934ac55578": {
+  "who": "anders",
+  "text": "Jag tar upp det på årsmötet, Ove!",
+  "take": 0,
+  "heard": "Jag tar upp det på årsmötet, Ove.",
+  "wer": 0,
+  "f0": 128.4,
+  "cps": 14.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "d61e91fc4f8c": {
+  "who": "vitskjorta",
+  "text": "Det där noteras.",
+  "take": 0,
+  "heard": "Det där noteras.",
+  "wer": 0,
+  "f0": 164.4,
+  "cps": 10.1,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "8a159a47b8d2": {
+  "who": "vitskjorta",
+  "text": "Vi har en blankett för sådant.",
+  "take": 0,
+  "heard": "Vi har en blankett för sådant.",
+  "wer": 0,
+  "f0": 177.5,
+  "cps": 15.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "aab6b4eb8022": {
+  "who": "rune",
+  "text": "...Volvo.",
+  "take": 0,
+  "heard": "Volvo",
+  "wer": 0,
+  "f0": 123.1,
+  "cps": 10.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 0.993
+ },
+ "20a0da32df76": {
+  "who": "rune",
+  "text": "...BMW.",
+  "take": 0,
+  "heard": "BMW",
+  "wer": 0,
+  "f0": 122.2,
+  "cps": 3.4,
+  "flags": [
+   "pace"
+  ],
+  "verdict": "review",
+  "dur": 2.194
+ },
+ "bc5fe3f3b503": {
+  "who": "rune",
+  "text": "...Hm.",
+  "take": 0,
+  "heard": "mm.",
+  "wer": 1,
+  "f0": 107.3,
+  "cps": 7,
+  "flags": [
+   "words"
+  ],
+  "verdict": "review",
+  "dur": 0.993
+ },
+ "e4193774cb6e": {
+  "who": "anita",
+  "text": "Han känner igen tutan, Ove.",
+  "take": 0,
+  "heard": "Han känner igen tutan, Ove.",
+  "wer": 0,
+  "f0": 253.8,
+  "cps": 12.2,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "b69c9687db55": {
+  "who": "parvaneh",
+  "text": "Ove! Inte i mitt öra!",
+  "take": 0,
+  "heard": "Av, inte i mitt öra",
+  "wer": 0.2,
+  "f0": 335.2,
+  "cps": 8.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.586
+ },
+ "3154ad151958": {
+  "who": "parvaneh",
+  "text": "Måste du, Ove?",
+  "take": 0,
+  "heard": "Måste du? Ove?",
+  "wer": 0,
+  "f0": 263.5,
+  "cps": 8.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "e315528d3706": {
+  "who": "patrick",
+  "text": "Oj! Jag hoppade till.",
+  "take": 0,
+  "heard": "Oj! Jag hoppade till.",
+  "wer": 0,
+  "f0": 206.8,
+  "cps": 9.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.273
+ },
+ "1c12b20cca63": {
+  "who": "anita",
+  "text": "Ove, Rune blir rädd.",
+  "take": 0,
+  "heard": "Ove, Rune blir rädd.",
+  "wer": 0,
+  "f0": 224.9,
+  "cps": 9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "f3b96726645f": {
+  "who": "jimmy",
+  "text": "Tuta igen, Ove!",
+  "take": 0,
+  "heard": "Tuta igen Ove",
+  "wer": 0,
+  "f0": 174.2,
+  "cps": 9.5,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.724
+ },
+ "9569f8e66618": {
+  "who": "adrian",
+  "text": "Får jag också tuta?",
+  "take": 0,
+  "heard": "Får jag också tuta?",
+  "wer": 0,
+  "f0": 252.1,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.646
+ },
+ "a67717d1bde5": {
+  "who": "anders",
+  "text": "Onödig tutning, Ove.",
+  "take": 0,
+  "heard": "Onödig tutning, Ove!",
+  "wer": 0,
+  "f0": 131,
+  "cps": 9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.351
+ },
+ "824a1fdc1f34": {
+  "who": "parvaneh",
+  "text": "Jag kommer!",
+  "take": 0,
+  "heard": "Jag kommer!",
+  "wer": 0,
+  "f0": 325.4,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "b684abcd5fec": {
+  "who": "adrian",
+  "text": "Jag kommer!",
+  "take": 0,
+  "heard": "Jag kommer!",
+  "wer": 0,
+  "f0": 237.6,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "2b7e988ab500": {
+  "who": "jimmy",
+  "text": "Jag kommer!",
+  "take": 0,
+  "heard": "jag kommer!",
+  "wer": 0,
+  "f0": 218.8,
+  "cps": 11.8,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.071
+ },
+ "1b020c2de8fa": {
+  "who": "parvaneh",
+  "text": "Ja, ja, jag kommer!",
+  "take": 0,
+  "heard": "Ja, ja! Jag kommer!",
+  "wer": 0,
+  "f0": 348.1,
+  "cps": 9.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.116
+ },
+ "67ebdd76d53b": {
+  "who": "adrian",
+  "text": "Ja, ja, jag kommer!",
+  "take": 0,
+  "heard": "Ja, ja. Jag kommer.",
+  "wer": 0,
+  "f0": 214.3,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "39ec55754477": {
+  "who": "jimmy",
+  "text": "Ja, ja, jag kommer!",
+  "take": 0,
+  "heard": "ja ja, jag kommer",
+  "wer": 0,
+  "f0": 180.4,
+  "cps": 10,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 2.038
+ },
+ "a45376f72267": {
+  "who": "parvaneh",
+  "text": "En sekund bara!",
+  "take": 0,
+  "heard": "En sekund, bara.",
+  "wer": 0,
+  "f0": 333.5,
+  "cps": 9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.802
+ },
+ "d9685814fd7e": {
+  "who": "adrian",
+  "text": "En sekund bara!",
+  "take": 0,
+  "heard": "En sekund bara!",
+  "wer": 0,
+  "f0": 181.6,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "5d101fc62852": {
+  "who": "jimmy",
+  "text": "En sekund bara!",
+  "take": 0,
+  "heard": "En sekund bara.",
+  "wer": 0,
+  "f0": 223.2,
+  "cps": 12.9,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.306
+ },
+ "f2d398270502": {
+  "who": "vitskjorta",
+  "text": "Jag skickar ett brev, Ove! Rekommenderat!",
+  "take": 0,
+  "heard": "Jag skickar ett brev, Ove, rekommenderat.",
+  "wer": 0,
+  "f0": 224.4,
+  "cps": 12.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.396
+ },
+ "84029118cd15": {
+  "who": "ped_m_mid_1",
+  "text": "Lugna ner dig!",
+  "take": 1,
+  "heard": "Lugna ner dig!",
+  "wer": 0,
+  "f0": 169.3,
+  "cps": 9.4,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.632
  }
 }

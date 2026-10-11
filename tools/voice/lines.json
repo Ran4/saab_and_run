@@ -32,5 +32,23 @@
    "retake": 2,
    "auto": true
   }
+ },
+ "anders": {
+  "Vorsprung durch Technik, Ove!": {
+   "retake": 2,
+   "auto": true
+  }
+ },
+ "ped_f_young_1": {
+  "Ha det, farbror!": {
+   "retake": 1,
+   "auto": true
+  }
+ },
+ "ped_m_mid_1": {
+  "Lugna ner dig!": {
+   "retake": 1,
+   "auto": true
+  }
  }
 }
