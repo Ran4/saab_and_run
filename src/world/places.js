@@ -704,8 +704,17 @@ export function dealerBlock(bf0, r) {
   bf.use('concrete', { snow: 0 }).box(0xd4d0c8, sx0 + SW_ / 2, CURB, sz0 + ID / 2, SW_ - 0.4, 0.03, ID);
   bf.use('light', { snow: 0 });
   for (let k = 0; k < 4; k++) for (const z of [2.0, 5.0]) bf.box(glow(0xfff4e6, 1.4), sx0 + 3.5 + k * 6.3, CURB + SH - 0.06, sz0 + z, 2.6, 0.04, 0.5);
-  bf.use('painted', { snow: 0 }).box(0x2a3a5a, sx0 + SW_ / 2, CURB + 2.6, sz0 + ID - 0.02, 8, 1.2, 0.04);
-  bf.sign(textFace('Välkommen till Bilhallen', 7.6, 0.9, { bg: '#2a3a5a', fg: '#f2f0e8', ppm: 120, weight: '700', scale: 0.62, glow: true }), sx0 + SW_ / 2, CURB + 3.2, sz0 + ID - 0.05, 7.6, 0.9, Math.PI);
+  // The welcome sign hangs from the ceiling just inside the glass, centred in one bay (phase 4 r2b:
+  // 7.6 m wide on the back wall, 7.5 m behind the 3.25 m mullion grid, a mullion always cut through
+  // its text - "Välkom|men till Bil..."). 0.3 m behind the glass and 2.6 m wide in the 3.1 m pane,
+  // no mullion reaches its edge from up to ~45 degrees off the glass's normal.
+  {
+    const x = sx0 + 4.5 * 3.25, z = sz0 + 0.3, y0 = CURB + 3.0, top = CURB + SH - 0.02;
+    bf.use('painted', { snow: 0 }).box(0x2a3a5a, x, y0, z + 0.02, 2.6, 0.95, 0.04);
+    bf.use('metal', { snow: 0 });
+    for (const dx of [-1.0, 1.0]) bf.cyl(0x9a9da0, x + dx, (y0 + 0.95 + top) / 2, z + 0.02, 0.008, top - y0 - 0.95, 5);
+    bf.sign(textFace('Välkommen till\nBilhallen', 2.5, 0.85, { bg: '#2a3a5a', fg: '#f2f0e8', ppm: 220, weight: '700', scale: 0.8, glow: true }), x, y0 + 0.475, z - 0.005, 2.5, 0.85, Math.PI);
+  }
   bf.use('wood', { snow: 0 }).box(0xe8e4da, sx0 + 19.5, CURB, sz0 + 5.6, 2.4, 1.05, 0.8);
   bf.car('volvo740', sx0 + 6.5, sz0 + 3.8, Math.PI / 2 + 0.5, { color: 0x8a1e1e, indoor: true });
   bf.car('saab900', sx0 + 13.5, sz0 + 3.6, Math.PI / 2 - 0.45, { color: 0x1e3a2a, indoor: true });

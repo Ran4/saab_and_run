@@ -98,7 +98,7 @@ face the road. Boxes: yaw = heading of a correctly parked car.
 
 | name | type | where |
 |---|---|---|
-| saab | `saab900`, colour 0x34506e (phase 4 r2: slate-blue metallic; was 0x1c2a44) | at `saabSpot` |
+| saab | `saab900`, colour 0x2c5596 (phase 4 r2b: mid-blue metallic; r2 0x34506e, before 0x1c2a44) | at `saabSpot` |
 | patrickCar | `kombi`, `trailer: true`, colour 0x5a6670 | crooked on the main walkway at (−17.2, 3.55), yaw π/2 + 0.2 — trailer will extend west (~to x −24), walkway is clear to x −31 |
 | runeVolvo | `volvo240`, 0x7a1e1e | in front of garage 4 |
 | andersAudi | `audi`, 0xd8d8d4 | Anders' reserved bay ("Reserverad – Ordförande") at (−29.2, −16.9) |
@@ -712,6 +712,46 @@ colour). town.js / batch.js are the rendering fixer's (props.js uses `StaticBatc
   `wprops ok`); `cam()` also hides the title card; wviews has `p4_*` poses (kneel at Sonja's grave,
   the thuja, Parvaneh's hedge, a garden spruce at eye level / against the light, the reindeer, Ove's
   door plate, the Saab in the shade).
+
+## Phase 4, round 2b (final verification polish) — what changed
+
+- **Ove's Saab** (ove.js): 0x2c5596, a bluer, more saturated mid-blue metallic (r2's 0x34506e, HSL
+  209/36/32, still read near-black navy from the chase camera). Cause: the 13° sun throws long shadows
+  over most streets, so from behind the car is usually in shade or driving into the sun, and a dark,
+  greyish blue lands in the grade's soft black point and shadow desaturation (gfx.js `black`,
+  `sdesat`): the rear panel measured 18,27,49 (sRGB) in a building's shadow. Now 25,35,75 there,
+  31,44,83 driving into the sun; the sunlit flank 99,157,213 (HSL L 0.61 S 0.58: a clear mid blue, not
+  pastel; r2's colour was a greyish 107,147,176 there). Solid (non-metallic) paint of the same colour
+  measured almost the same, so it stays metallic. The car's sun / shade contrast itself is the
+  lighting's (sun 6.0 vs sky 0.62) and car.js's metallic base (its tinted sheen near the
+  retro-reflection direction is what makes any blue light in full sun from behind); not changed.
+- **Bilhallen's welcome sign** (places.js dealerBlock): it was 7.6 m wide on the showroom's back wall,
+  7.5 m behind the glass front's 3.25 m mullion grid, so from anywhere on the forecourt one or two
+  mullions crossed its text ("Välkom|men till Bil..." in the day-5 outro). It now hangs from the ceiling
+  on two rods 0.3 m inside the glass, two lines "Välkommen till / Bilhallen" on a 2.6 × 0.95 m board
+  centred in one 3.1 m pane (local x = sx0 + 4.5 × 3.25): no mullion reaches its text from up to 45°
+  off the glass's normal. The back-wall band is gone (plain plaster behind the cars).
+- **Spruce tops** (kit.js `spruce`, near trees only; the forest belt's lite trees are unchanged): the
+  wide (foot) ring's droop was a fixed 0.33 s, so up the crown, where a tier is ~0.3 m across, its
+  pleated rim hung like a pagoda's eaves; it now shrinks to 0.3 × that towards the top
+  (1 − 0.7 sstep(0.45, 0.95, t)). Up the crown (sstep(0.45, 0.9, t)) the branches reach up to 35 %
+  further past the inner mass and their side cards hang up to 60 % longer, so the top third's outline
+  is hanging combs rather than the mass's tiers. No new cards, no extra r() draws (every tree,
+  car and prop placed after a spruce is where it was). Better against the light, not gone: from 5 m
+  the top metre is still the dark inner column, and a young spruce still reads tiered (as real ones do).
+  Tried and dropped: widening the upper inner mass (+0.3 R) — a smooth, faceted black obelisk.
+- **Tools** (world.mjs): `wsaab` (the Saab from the chase camera with Ove at the wheel: sun behind,
+  into the sun, sun from the side, in a building's shadow — spots found by marching the collision
+  footprints and tree crowns towards the sun — plus its sunlit flank and its bay; WSAAB_COLS=hex,...
+  swaps the paint live for A/B, a trailing `s` = solid paint; checks out of the sun the rear panel
+  reads blue (B ≥ 62, B − R ≥ 35) and the sunlit flank is not pastel (S ≥ 0.4, L ≤ 0.65), measured from
+  the screenshot in the page; '[t] wsaab ok'); `wsign` (raycasts from 15 forecourt / street
+  viewpoints to the sign's text against the glass front's triangles; the old back-wall sign fails 4 of
+  them; '[t] wsign ok'); views `r2b_spruce_top`, `r2b_spruce_sun`, `r2b_sign`.
+- **Checks** (GAME b96422f + these files): story ends `#7 idle`, no errors (the day-5 outro's first
+  shot shows the sign whole); start 60 fps, no errors; validate 0 problems (135 spots, 22 zones, 53
+  landmarks, 1467 trees); title no errors; `wsaab ok` (rear panel in the shade 25,35,75, into the sun
+  31,44,83, flank in sun L 0.61 S 0.58); `wsign ok`; wviews (r2b, p4 spruce, start, dealer) no errors.
 
 ## For main.js / camera.js / the systems agent
 

@@ -720,7 +720,9 @@ function spruce(G, x, z, s, r, y0 = CURB) {
       // (round 5: near trees' mass is slimmer, a dark core; the branches' frond cards make the tiers)
       // (phase 4 r2: near trees' wide rings droop a third further and are a little wider up the crown,
       // where the small tiers stood apart: a pagoda against the light)
-      if (k > 0) ring(below - (lite ? 0 : 0.1) * s, (lite ? 0.66 : 0.44 + 0.14 * w.t) * w.R, k * 2, 0.34, (lite ? 0.25 : 0.33) * s);
+      // (phase 4 r2b: the droop is a fixed 0.33 s, so up the crown, where a tier is only ~0.3 m across,
+      // its pleated rim hung like a pagoda's eaves: there it shrinks with the tier)
+      if (k > 0) ring(below - (lite ? 0 : 0.1) * s, (lite ? 0.66 : 0.44 + 0.14 * w.t) * w.R, k * 2, 0.34, (lite ? 0.25 : 0.33 * (1 - 0.7 * sstep(0.45, 0.95, w.t))) * s);
       // (phase 4 r2: near trees' waists widen up the crown, so the small upper tiers merge into a cone)
       ring(w.cy + 0.04 * s, (lite ? 0.26 : 0.26 + 0.3 * w.t * w.t) * w.R + 0.06 * s, k * 2 + 1, 0.15);
     }
@@ -746,11 +748,14 @@ function spruce(G, x, z, s, r, y0 = CURB) {
         const a = a0 + (b / nb) * TAU + (r() - 0.5) * (TAU / nb) * 0.5;
         // (phase 4 r2: near trees' upper branches rise instead of drooping, as a spruce's do: flat
         // plates of fronds up the crown were a pagoda against the light)
-        const Rj = R * (0.75 + r() * 0.3) * (1 + fk * Math.cos(a - fa)), dl = 0.36 + 0.22 * (1 - t) + r() * 0.12 - (lite ? 0 : 0.85 * sstep(0.5, 1, t));
+        // (phase 4 r2b: up the crown the branches reach a little further past the inner mass and their
+        // combs hang longer, so the top third's outline is needles rather than the mass's tiers)
+        const up = lite ? 0 : sstep(0.45, 0.9, t);
+        const Rj = R * (0.75 + r() * 0.3) * (1 + fk * Math.cos(a - fa)) * (1 + 0.35 * up), dl = 0.36 + 0.22 * (1 - t) + r() * 0.12 - (lite ? 0 : 0.85 * sstep(0.5, 1, t));
         const ca = Math.cos(a), sa = Math.sin(a);
         const rho0 = 0.4 * Rj, rho1 = 1.04 * Rj;
         const yAt = (rho) => cy + 0.03 - Math.tan(dl) * rho * (0.55 + 0.45 * rho / Rj);
-        const h = ((0.5 + 0.28 * r()) * s * (0.6 + 0.6 * (1 - t)) + 0.1 * Rj) * (lite ? 1.25 : 1);
+        const h = ((0.5 + 0.28 * r()) * s * (0.6 + 0.6 * (1 - t)) + 0.1 * Rj) * (lite ? 1.25 : 1 + 0.6 * up);
         // the side card: its top edge 0.13 h above the branch line
         const P0 = [x + ca * rho0, yAt(rho0), z + sa * rho0], P1 = [x + ca * rho1, yAt(rho1), z + sa * rho1];
         const cx = (P0[0] + P1[0]) / 2, cyc = (P0[1] + P1[1]) / 2 + 0.13 * h - h / 2, cz = (P0[2] + P1[2]) / 2;

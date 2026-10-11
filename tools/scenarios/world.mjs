@@ -5,6 +5,8 @@
 //   wviews    - screenshots from fixed camera poses (WVIEWS=name1,name2 to pick a subset)
 //   meshstats - triangles / draw groups per world mesh
 //   atlas     - dumps the sign atlas pages to out/atlas_*.png
+//   wsaab     - (phase 4 r2b) Ove's Saab from the chase camera in sun / shade: its paint must read blue
+//   wsign     - (phase 4 r2b) Bilhallen's welcome sign: no mullion between the forecourt and its text
 export default ({ page, ev, shot, frames, sleep, fps, tap, OUT }) => {
   // Freeze the camera rig and place the camera ourselves (no gameplay camera, no HUD).
   const cam = (at, look, fov = 55) => ev((at, look, fov) => {
@@ -105,6 +107,11 @@ export default ({ page, ev, shot, frames, sleep, fps, tap, OUT }) => {
     p4_reindeer: [[9.6, 1.4, 2.6], [11.6, 0.8, -1.9], 50],
     p4_plate: [[-5.9, 1.5, 6.4], [-6.1, 1.45, 8.2], 30],
     p4_saab: [[3.5, 1.4, -27.5], [6.8, 0.8, -23.1], 45],
+    // (phase 4 r2b) the garden spruce's top third against the light and in sun, Bilhallen's welcome
+    // sign through the glass front (wsign checks it from 15 viewpoints)
+    r2b_spruce_top: [[1.5, 4.5, 38], [7, 6, 29.3], 40],
+    r2b_spruce_sun: [[14.5, 4, 19.5], [7, 5.5, 29.3], 45],
+    r2b_sign: [[212, 1.7, 79.4], [236.3, 3.4, 79.4], 40],
   };
 
   const viewShot = async (name, prefix = 'w_') => {
@@ -161,6 +168,181 @@ export default ({ page, ev, shot, frames, sleep, fps, tap, OUT }) => {
         await frames(s.frames || 14);
         await shot('wp_' + s.name);
       }
+    },
+
+    // (phase 4 r2b) Ove's Saab from the gameplay chase camera, Ove at the wheel, on a street: in full
+    // sun with the sun behind the camera (rear lit), driving into the sun (the rear in its own shade),
+    // the sun from the side, and in a building's shadow (the low sun's long shadows cover much of
+    // every street). Spots are found by marching towards the sun through the collision footprints
+    // (trees by their crowns). WSAAB_COLS = hex paint colours to compare (the material's colour is
+    // swapped live; default: the one the town gives it). Shots out/wsaab_<pose>_<hex>.png. Checks: out
+    // of the sun the rear panel reads blue, in the sun the flank stays a saturated (not pastel) blue;
+    // the last line is '[t] wsaab ok' or FAIL.
+    async wsaab() {
+      const cols = (process.env.WSAAB_COLS || '').split(',').filter(Boolean);
+      const setup = await ev(async () => {
+        const g = window.__game, c = g.named.saab;
+        const C = await import('/src/world/collision.js');
+        const s = g.freeSpot(c.x + 2, c.z, 0, 1); g.player.teleport(s.x, s.z, 0);
+        const sun = (await import('/src/gfx.js')).LIGHTING.sunDir;
+        const hl = Math.hypot(sun.x, sun.z), away = Math.atan2(-sun.x, -sun.z), out = [];
+        // 1 = a building / wall between the point (at height h) and the sun, 2 = a tree crown only, 0 = sun
+        const shadeAt = (x, z, h) => {
+          let tree = false;
+          for (let d = 0.5; d < 70; d += 0.5) {
+            const px = x + sun.x / hl * d, pz = z + sun.z / hl * d, y = h + sun.y / hl * d;
+            C.queryBlocks(px - 7, pz - 7, px + 7, pz + 7, out);
+            for (const b of out) {
+              if (b.kind === 'bound') continue;
+              if (b.kind === 'tree') { if (b.crownR && Math.hypot(px - b.x, pz - b.z) < b.crownR && y > b.crownBottom && y < b.crownTop) tree = true; continue; }
+              if (C.contains(b, px, pz) && C.topAt(b, px, pz) > y) return 1;
+            }
+          }
+          return tree ? 2 : 0;
+        };
+        // the whole car (5 points along it, sill and roof height) in sun (want 0) / in a building's shadow (1)
+        const all = (x, z, yaw, want) => [-2.2, -1.1, 0, 1.1, 2.2].every((t) => [0.5, 1.3].every((h) => shadeAt(x + Math.sin(yaw) * t, z + Math.cos(yaw) * t, h) === want));
+        const spots = [];
+        for (let i = -3; i <= 2; i++) for (let t = -196; t <= 196; t += 4) for (const lane of [2.75, -2.75]) {
+          if (Math.abs(((t % 80) + 80) % 80 - 40) < 14) continue;   // not near a junction
+          const r = 40 + i * 80 + lane;
+          spots.push({ x: r, z: t, yaw: lane < 0 ? 0 : Math.PI }, { x: t, z: r, yaw: lane < 0 ? Math.PI / 2 : -Math.PI / 2 });
+        }
+        const find = (yawOf, want) => { for (const p of spots) { const yaw = yawOf(p); if (g.spotFree(p.x, p.z) && all(p.x, p.z, yaw, want)) return { x: p.x, z: p.z, yaw }; } return null; };
+        return {
+          sun: [sun.x, sun.y, sun.z],
+          spots: { sunback: find(() => away, 0), contra: find(() => away + Math.PI, 0), side: find(() => away + Math.PI / 2, 0), shade: find((p) => p.yaw, 1) },
+        };
+      });
+      console.log('[t] wsaab spots', JSON.stringify(setup.spots));
+      await frames(5);
+      await tap('KeyE');
+      await frames(10);
+      await ev(() => { document.getElementById('hud').style.display = 'none'; });
+      // '0x2c5596' = metallic (the Saab's paint), '0x2c5596s' = the same colour as solid paint (look-dev)
+      const setPaint = (h) => ev((h) => {
+        const c = window.__game.named.saab, solid = h.endsWith('s');
+        for (const b of [c.body, c.bodyLod]) {
+          const m = b?.userData.surfaceMats?.paint;
+          if (m) { m.color.set(parseInt(h, 16)); m.metalness = solid ? 0 : 0.3; m.roughness = solid ? 0.4 : 0.45; }
+        }
+      }, h);
+      // Mean sRGB of a w x h pixel box round the screen point of a point given in the Saab body's own
+      // frame as fractions of its bounding box (fx, fy, fz: 0..1 from min to max; the rear is z = 0):
+      // the screenshot is decoded in the page.
+      const sample = async (fx, fy, fz, w = 24, h = 6) => {
+        const p = await ev(([fx, fy, fz]) => {
+          const c = window.__game.named.saab, b = c.body, g = b.geometry;
+          if (!g.boundingBox) g.computeBoundingBox();
+          const bb = g.boundingBox, V = c.root.position.constructor;
+          const v = new V(bb.min.x + fx * (bb.max.x - bb.min.x), bb.min.y + fy * (bb.max.y - bb.min.y), bb.min.z + fz * (bb.max.z - bb.min.z));
+          b.updateMatrixWorld(true);
+          v.applyMatrix4(b.matrixWorld).project(window.__game.cam.cam);
+          return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight];
+        }, [fx, fy, fz]);
+        const b64 = await page.screenshot({ clip: { x: Math.round(p[0] - w / 2), y: Math.round(p[1] - h / 2), width: w, height: h }, encoding: 'base64' });
+        const rgb = await ev(async (b64) => {
+          const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+          const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+          const x = cv.getContext('2d'); x.drawImage(img, 0, 0);
+          const d = x.getImageData(0, 0, cv.width, cv.height).data; let r = 0, g = 0, bl = 0;
+          for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; bl += d[i + 2]; }
+          const n = d.length / 4; return [r / n, g / n, bl / n].map(Math.round);
+        }, b64);
+        return { at: p.map(Math.round), rgb };
+      };
+      const hsl = ([r, g, b]) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; return [l, d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))]; };
+      const poses = Object.entries(setup.spots).filter(([, p]) => p), fails = [];
+      for (const col of cols.length ? cols : [null]) {
+        if (col) await setPaint(col);
+        const tag = col ? col.replace('0x', '') : 'cur';
+        for (const [n, { x, z, yaw }] of poses) {
+          await ev(({ x, z, yaw }) => { const g = window.__game, c = g.playerCar; c.place(x, z, yaw); g.cam.yaw = yaw; g.cam.pitch = 0.2; g.cam.snapNext = true; }, { x, z, yaw });
+          await frames(40);
+          await shot(`wsaab_${n}_${tag}`);
+          // the rear panel above the lamps; out of the sun it must read blue, above the grade's black crush
+          // (0x34506e: 18,27,49 in the shade; 0x2c5596: 25,35,75)
+          const lid = await sample(0.5, 0.62, 0.0), [R, , B] = lid.rgb;
+          const okP = n === 'sunback' || (B >= 62 && B - R >= 35);
+          if (!okP) fails.push(`${n} ${tag}`);
+          console.log('[t] wsaab', n, tag, 'rear panel', JSON.stringify(lid), okP ? 'ok' : 'FAIL (near-black in the shade)');
+        }
+      }
+      // parked: its sunlit flank from 7 m on the sun's side (as on the title: must not read pastel), and
+      // in its bay in the lot (in the shade of the buildings across the street)
+      const sb = setup.spots.sunback;
+      await ev(() => { const g = window.__game; g.exitCar(true); g.player.teleport(g.player.x + 30, g.player.z, 0); });
+      for (const col of cols.length ? cols : [null]) {
+        if (col) await setPaint(col);
+        const tag = col ? col.replace('0x', '') : 'cur';
+        if (sb) {
+          const yaw = Math.atan2(-setup.sun[0], -setup.sun[2]) + Math.PI / 2 + 0.5;
+          await ev(({ x, z, yaw }) => window.__game.named.saab.place(x, z, yaw), { x: sb.x, z: sb.z, yaw });
+          const a = Math.atan2(setup.sun[0], setup.sun[2]) + 0.35;
+          await cam([sb.x + Math.sin(a) * 7, 1.5, sb.z + Math.cos(a) * 7], [sb.x, 0.7, sb.z], 45);
+          await frames(14);
+          await shot(`wsaab_flank_${tag}`);
+          // the sunlit flank must stay a saturated mid blue, not pastel (0x2c5596: 87,145,206)
+          // (front and rear door: the brighter one, should a lamp post's shadow cross the other)
+          const f1 = await sample(0.5, 0.45, 0.27), f2 = await sample(0.5, 0.45, 0.73);
+          const fl = hsl(f1.rgb)[0] > hsl(f2.rgb)[0] ? f1 : f2, [L, S] = hsl(fl.rgb), okF = S >= 0.4 && L <= 0.65;
+          if (!okF) fails.push(`flank ${tag}`);
+          console.log('[t] wsaab flank', tag, JSON.stringify(fl), 'L', L.toFixed(2), 'S', S.toFixed(2), okF ? 'ok' : 'FAIL (pastel in the sun)');
+        }
+        const m = await ev(() => { const m = window.__lm('saabSpot'); window.__game.named.saab.place(m.x, m.z, m.yaw); return m; });
+        await cam([m.x + 5.5, 1.5, m.z - 5.5], [m.x, 0.7, m.z], 50);
+        await frames(14);
+        await shot(`wsaab_lot_${tag}`);
+      }
+      console.log('[t] wsaab', poses.length < 4 ? 'FAIL (a spot was not found)' : fails.length ? 'FAIL ' + fails.join(', ') : 'ok');
+    },
+
+    // (phase 4 r2b) Bilhallen's welcome sign (places.js dealerBlock: it hangs 0.3 m inside the glass,
+    // centred in one bay): from 15 viewpoints on the forecourt and the street (0 / +-30 / +-45 degrees
+    // off the glass's normal, 6 / 15 / 30 m away, eye height) rays to 10 points on its text must not
+    // hit the showroom's glass-front frame (the mullions: every triangle of the static batches within
+    // 0.6 m of the glass plane). Shots out/wsign_*.png; prints '[t] wsign ok' or FAIL.
+    async wsign() {
+      const views = await ev(async () => {
+        const { THREE } = await import('/src/gfx.js');
+        const m = window.__lm('dealer'), c = Math.cos(m.yaw), s = Math.sin(m.yaw);
+        // dealerBlock's frame from its 'dealer' mark (local -1, -7.2); the glass front is local z = -4
+        const ox = m.x - (-1 * c + -7.2 * s), oz = m.z - (1 * s + -7.2 * c), CURB = 0.15, GZ = -4;
+        const W = (lx, y, lz) => new THREE.Vector3(ox + lx * c + lz * s, y, oz - lx * s + lz * c);
+        const L = (v) => { const dx = v.x - ox, dz = v.z - oz; return [c * dx - s * dz, s * dx + c * dz]; };
+        const tris = [], v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+        window.__game.player.root.parent.traverse((o) => {
+          if (!o.isMesh || !/^(batch:|block)/.test(o.name || '')) return;
+          o.updateMatrixWorld(true);
+          const P = o.geometry.attributes.position, I = o.geometry.index, n = I ? I.count : P.count;
+          for (let t = 0; t < n; t += 3) {
+            for (let k = 0; k < 3; k++) v[k].fromBufferAttribute(P, I ? I.getX(t + k) : t + k).applyMatrix4(o.matrixWorld);
+            const cy = (v[0].y + v[1].y + v[2].y) / 3;
+            if (cy < CURB || cy > CURB + 6.5) continue;
+            const [lx, lz] = L(new THREE.Vector3((v[0].x + v[1].x + v[2].x) / 3, 0, (v[0].z + v[1].z + v[2].z) / 3));
+            if (Math.abs(lz - GZ) < 0.6 && lx > -14.6 && lx < 12.6) for (const q of v) tris.push(q.x, q.y, q.z);
+          }
+        });
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(tris, 3));
+        const front = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+        const rc = new THREE.Raycaster(), out = [];
+        const sx = -14 + 4.5 * 3.25, sy = CURB + 3.475, sz = GZ + 0.295;   // the sign's face
+        for (const deg of [0, 30, -30, 45, -45]) for (const D of [6, 15, 30]) {
+          const a = deg * Math.PI / 180, eye = W(sx + Math.sin(a) * D, CURB + 1.6, sz - Math.cos(a) * D);
+          let hit = 0;
+          for (const u of [-1, -0.5, 0, 0.5, 1]) for (const vv of [-0.2, 0.2]) {
+            const p = W(sx + u * 1.0, sy + vv, sz), d = p.clone().sub(eye), len = d.length();
+            rc.set(eye, d.normalize()); rc.far = len - 0.02;
+            if (rc.intersectObject(front, false).length) hit++;
+          }
+          out.push({ deg, D, hit, eye: [eye.x, eye.y, eye.z].map((q) => +q.toFixed(2)), look: [W(sx, sy, sz).x, sy, W(sx, sy, sz).z].map((q) => +q.toFixed(2)) });
+        }
+        return { frontTris: tris.length / 9, out };
+      });
+      let bad = 0;
+      for (const o of views.out) { if (o.hit) bad++; console.log('[t] wsign', `${o.deg}deg ${o.D}m`, o.hit ? `FAIL ${o.hit}/10 rays cut by the glass front` : 'clear'); }
+      for (const o of views.out.filter((o) => o.D === 15)) { await cam(o.eye, o.look, 40); await frames(14); await shot(`wsign_${o.deg}`); }
+      console.log('[t] wsign', views.frontTris < 50 ? 'FAIL (the glass front was not found)' : bad ? `FAIL ${bad} viewpoints` : 'ok', `(front ${views.frontTris} tris)`);
     },
 
     async wviews() {

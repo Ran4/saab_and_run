@@ -67,8 +67,10 @@ export function oveBlock(bf) {
   area.garageFrame.sign(textFace('OVE', 0.42, 0.13, { bg: '#f2f0e8', fg: '#1a1a1a', ppm: 300, weight: '700' }), 3.05 / 2 + 0.6, CURB + 2.36, -0.065, 0.42, 0.13, Math.PI);
 
   // ----- Named cars.
-  // (phase 4 r2: a mid slate-blue metallic, 0x1c2a44 was a black silhouette in the shade)
-  bf.car('saab900', 6.75, -23.1, 0, { name: 'saab', color: 0x34506e });
+  // (phase 4 r2: a mid slate-blue metallic, 0x1c2a44 was a black silhouette in the shade; r2b: a
+  // bluer, more saturated mid blue - the low sun's long shadows put the car in shade most of the time,
+  // and 0x34506e's rear landed in the grade's black crush there (tools: world.mjs wsaab))
+  bf.car('saab900', 6.75, -23.1, 0, { name: 'saab', color: 0x2c5596 });
   bf.car('kombi', -17.2, 3.55, Math.PI / 2 + 0.2, { name: 'patrickCar', color: 0x5a6670, trailer: true });
   bf.car('volvo240', 3.5 + 3.05 * 3.5, -23.2, 0, { name: 'runeVolvo', color: 0x7a1e1e });
   bf.car('audi', -29.2, -16.9, 0, { name: 'andersAudi', color: 0xd8d8d4 });
