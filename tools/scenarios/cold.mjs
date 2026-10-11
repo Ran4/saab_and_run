@@ -209,6 +209,61 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, errors }) => 
       await shot('coldwall');
     },
 
+    // The waking scene, beat by beat (held with __wake.pauseAt for a screenshot each), then on to the
+    // end: at his door. WAKECAT=1: on day 5 (the cat lives at Ove's: it sits on the bed). WAKELINE=n:
+    // that line of WAKE.
+    async coldbed() {
+      if (process.env.WAKECAT) await ev(() => { const g = __game; g.missions.index = 4; g.storyWorld(); });
+      // straight to the death where he stands, out at the cold's edge
+      await ev(() => { const g = __game; g.player.teleport(-120, -350, Math.PI); g.cam.yaw = Math.PI; g.cam.snapNext = true; });
+      await frames(10);
+      if (process.env.WAKELINE) await ev((n) => import('/src/game/script.js').then((m) => { window.__wakeLine = m.WAKE[n]; }), +process.env.WAKELINE);
+      await ev(() => { window.__cold.v = 1; });
+      await until(() => window.__wake && window.__wake.built, 30000);
+      if (process.env.WAKELINE) await ev(() => { window.__wake.line = window.__wakeLine; });
+      const beats = [[0.9, 'room'], [2.6, 'asleep'], [3.15, 'gasp'], [4.2, 'across'], [6.2, 'line']];
+      for (const [t, n] of beats) {
+        await ev((t) => { window.__wake.pauseAt = t; }, t);
+        await until((t) => window.__wake && window.__wake.t >= t - 1e-3, 30000, t);
+        await frames(12);
+        await shot('wake_' + n);
+      }
+      const info = await ev(() => ({ line: window.__wake.line, ms: window.__wake.buildMs, cat: !!window.__wake.cat, oveShown: __game.player.root.visible, offstage: __game.player.offstage, pane: window.__lm && (async () => 0)() && null }));
+      console.log('[t] coldbed', JSON.stringify(info));
+      check(!info.oveShown && info.offstage, 'coldbed: the real Ove off the stage during the scene');
+      await ev(() => { window.__wake.pauseAt = null; });
+      const t0 = Date.now();
+      await until(() => !window.__cold.dying, 40000);
+      const secs = (Date.now() - t0) / 1000;
+      const d = await ev(async () => {
+        const g = __game, s = window.__lm('oveStart'), p = g.player, { interiors } = await import('/src/world/data.js');
+        return { d: Math.hypot(p.x - s.x, p.z - s.z), shown: p.root.visible, offstage: !!p.offstage, pane: interiors.ove.paneMesh?.visible, set: !!g.scene.getObjectByName('interior:ove'), letterbox: document.getElementById('letterbox').classList.contains('on'), curtain: document.getElementById('curtain').classList.contains('on'), dialog: document.getElementById('dialog').classList.contains('show'), inDialog: g.inDialog, cine: !!g.cam.cine };
+      });
+      console.log('[t] coldbed after', secs.toFixed(1), 's', JSON.stringify(d));
+      check(d.d < 2.5 && d.shown && !d.offstage && d.pane === true && !d.set && !d.letterbox && !d.curtain && !d.dialog && !d.inDialog && !d.cine, 'coldbed: out at his door, nothing of the scene left');
+      await frames(20);
+      await shot('wake_door');
+      // never the same line twice running
+      const rep = await ev(async () => { const { pickWake } = await import('/src/game/waking.js'); let prev = null, same = 0; const seen = new Set(); for (let i = 0; i < 200; i++) { const l = pickWake(); if (l === prev) same++; prev = l; seen.add(l); } return { same, seen: seen.size }; });
+      check(rep.same === 0 && rep.seen === 5, `coldbed: 200 wakings, never the same line twice running, all five used (${JSON.stringify(rep)})`);
+    },
+
+    // Skipping the waking scene: Space a second into it, out at the door within ~2.5 s.
+    async coldbedskip() {
+      await ev(() => { const g = __game; g.player.teleport(-120, -350, Math.PI); window.__cold.v = 1; });
+      await until(() => window.__wake && window.__wake.t > 1.6, 30000);
+      const t0 = Date.now();
+      await tap('Space');
+      await until(() => !window.__cold.dying, 20000);
+      const secs = (Date.now() - t0) / 1000;
+      const d = await ev(() => ({ inDialog: __game.inDialog, dialog: document.getElementById('dialog').classList.contains('show'), set: !!__game.scene.getObjectByName('interior:ove') }));
+      console.log('[t] coldbedskip out after', secs.toFixed(1), 's', JSON.stringify(d));
+      check(secs < 3 && !d.set, `coldbedskip: out ${secs.toFixed(1)} s after the skip`);
+      await sleep(800);
+      const d2 = await ev(() => ({ dialog: document.getElementById('dialog').classList.contains('show') }));
+      check(!d2.dialog, 'coldbedskip: no dialogue box left over');
+    },
+
     // A/B with the cars and the people hidden (their counts vary run to run): draw calls and
     // triangles per pass and renderFrame's CPU at the rendering poses, the outer road looking out and
     // a spot out on the hills. Runs on an old checkout too (copy this file into its tools/scenarios).

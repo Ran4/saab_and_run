@@ -146,8 +146,9 @@ export function radhusRow(f, n, o = {}) {
       f.use(roofS).boxC(roofC, X(2.9), Ye + dzh + 0.07, dz0 + 0.85, 2.85, 0.1, 2.3, 0, -0.12);
       win(f, X(2.9), Ye + 0.35, dz0, 1.3, 1.0, Math.PI, { trim });
     }
-    // Back: living-room window, patio door, upstairs windows, deck, privacy screen.
-    win(f, X(1.6), Y0 + 0.55, D, 1.9, 1.45, 0, { trim, panes: 3 });
+    // Back: living-room window, patio door, upstairs windows, deck, privacy screen. (pre.backGlass: a
+    // builder for the big window's panes - Ove's bedroom looks out of it: world/interior.js)
+    win(f, X(1.6), Y0 + 0.55, D, 1.9, 1.45, 0, { trim, panes: 3, glassG: pre.backGlass });
     win(f, X(4.15), Y0 + 0.02, D, 0.92, 2.05, 0, { trim, panes: 1, sill: false });
     if (two) { win(f, X(1.35), Y0 + 3.55, D, 1.15, 1.1, 0, { trim }); win(f, X(4.1), Y0 + 3.55, D, 1.15, 1.1, 0, { trim }); }
     f.use('wood').box(0x6a5a4a, X(UW / 2), CURB, D + 1.3, UW - 0.12, 0.13, 2.6);

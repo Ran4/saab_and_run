@@ -122,7 +122,8 @@ function emblemGeo() {
 }
 
 let photoTex = null;
-function sonjaPhotoTexture() {
+// (also the framed one on her nightstand: world/interior.js buildBedroom, game/waking.js)
+export function sonjaPhotoTexture() {
   if (photoTex) return photoTex;
   const c = document.createElement('canvas');
   c.width = 192; c.height = 256;

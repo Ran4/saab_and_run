@@ -24,6 +24,9 @@ export function oveBlock(bf) {
   // Anita and Rune's kitchen window gets a pane of its own (town.js makes the mesh): day 3's
   // radiator scene looks out of it from inside (world/interior.js, game/luftning.js).
   const runePane = new GeoBuilder();
+  // ... and so does Ove's back window: the scene where he wakes up in his bed looks out of it
+  // (features/avgrunden.md, game/waking.js).
+  const ovePane = new GeoBuilder();
   const area = radhusArea(bf, {
     r,
     walls: [C.ochre, C.offwhite, C.falu, C.greygreen],
@@ -31,7 +34,7 @@ export function oveBlock(bf) {
     roofs: ['tile', 'metalroof', 'tile', 'tile'],
     fronts: ['green', 'fence', 'bare', 'fence'],
     frontFn: (row, k) => (row === 'S1a' && k === 4 ? 'square' : null),
-    pre: (row, k) => (row === 'N1a' && k === 4 ? { doorC: 0x2a2c2e, noCanopy: true } : row === 'S1b' && k === 0 ? { kitchenGlass: runePane } : null),
+    pre: (row, k) => (row === 'N1a' && k === 4 ? { doorC: 0x2a2c2e, noCanopy: true } : row === 'S1b' && k === 0 ? { kitchenGlass: runePane } : row === 'S1a' && k === 4 ? { backGlass: ovePane } : null),
     garageWall: C.brown, garageDoor: 0x5a4632,
     openGarage: 0, movingGarage: true, advent: 0.35,
     unit: (row, k, info) => {
@@ -52,6 +55,7 @@ export function oveBlock(bf) {
   // Rune's door has the wheelchair ramp in front of it: stand at its foot, out on the walkway.
   { const u = units.rune, [x, z] = u.f.W(u.a0 + u.dA, -3.7); L('runeHouse', { x, z, yaw: wrapYaw(u.f.yaw + Math.PI) }); }
   (interiors.rune ||= {}).pane = runePane;
+  (interiors.ove ||= {}).pane = ovePane;
   L('jimmyHouse', at('jimmy', Math.PI));
   L('andersHouse', at('anders', Math.PI));
   // Garage 1 (open) is Ove's: the row starts at local (3.5, -19.5), garages 3.05 m wide.
@@ -150,6 +154,8 @@ function decorate(key, u, r) {
     // (beside the door it stood half inside his shed's wall)
     f.sign(textFace('Ove & Sonja', 0.3, 0.075, { bg: '#f2f0e8', fg: '#1a1a1a', ppm: 420, weight: '600', scale: 0.74 }), X(dA - 0.24), Y0 + 1.22, -0.072, 0.3, 0.075, Math.PI);
     u.clearPath = true;   // his walkway edge is shovelled clear (radhusArea leaves a wide gap)
+    // His bedroom inside (world/interior.js builds it when he wakes up after freezing to death).
+    Object.assign(interiors.ove ||= {}, { ox: f.ox, oz: f.oz, yaw: f.yaw, a0: u.a0, y0: Y0 });
     // "Ingen reklam tack" on the door, a big thermometer by the kitchen window, a kicksled, a shovel.
     f.sign(textFace('Ingen reklam\ntack', 0.2, 0.09, { bg: '#f4f2ea', fg: '#b01e1e', ppm: 400, scale: 0.8 }), X(dA + 0.15), Y0 + 1.3, -0.07, 0.2, 0.09, Math.PI);
     f.use('painted').box(0xf0eee8, X(5.15), Y0 + 1.0, -0.04, 0.16, 0.62, 0.03);

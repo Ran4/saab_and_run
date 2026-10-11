@@ -59,11 +59,11 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 const sstep = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
 const lerp = (a, b, u) => a + (b - a) * u;
 const _v = new THREE.Vector3(), _c = new THREE.Color();
-let lastSub = -1;
+const lastSub = new Map();
 function pickSub(list) {
   let i = Math.floor(Math.random() * list.length);
-  if (list.length > 1 && list === SUBS && i === lastSub) i = (i + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length;
-  if (list === SUBS) lastSub = i;
+  if (list.length > 1 && i === lastSub.get(list)) i = (i + 1 + Math.floor(Math.random() * (list.length - 1))) % list.length;
+  lastSub.set(list, i);
   return list[i];
 }
 const skyDome = () => scene.children.find((o) => o.material?.uniforms?.uWhite);
@@ -287,6 +287,8 @@ export class Cold {
       g.cam.cine.pos.set(f.x + (C.dx / l) * back, f.y + lerp(C.y0, 9, u), f.z + (C.dz / l) * back);
       g.cam.cine.look.set(f.x, f.y + lerp(0.8, 0.2, u), f.z);
     }
+    // (from the banner on, the skip keys go straight to the black)
+    if (t > 2.4 && t < 5.3 && g.input.pressed('skip')) D.t = 5.39;
     if (at(2.2)) { audio.jingle('fail'); hud.showBanner('Ove dog av frost', D.sub, 'frost', 0, `−${Math.round(48 + Math.random() * 3)} °C`); }
     if (at(5.4)) { hud.hideBanner(); hud.curtain(true, ''); hud.deathHud(false); }
     if (at(6.1)) { this.aftermath(); D.wake = wakeScene(g, { deaths: this.deaths }); }
