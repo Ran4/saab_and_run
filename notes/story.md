@@ -449,3 +449,24 @@ beats in `T` (s from the press):
   walkway, no set, pane, people and curtain as before), `luftskip`, `luftcam` (started with the
   camera at Anita, then at Rune: nobody hidden after), `luftsound`; `story` plays it; `vcut`
   with `LUFTSKIP=s` has the reader skip it with Enter.
+
+## Dying of frost during a day (feature avgrunden, 2026-10-11)
+
+If Ove freezes to death out beyond the forest while a day runs (game/cold.js), the day fails
+("Ove frös ihjäl.") behind the black at the end of the death, with its banner held until he has woken
+up in his bed (`fail(reason, { later: true })`, `showFailed()`): then E tries again and Q gives up,
+as after any failure. Whoever rode or walked with him has gone home, the cat he carried is back where
+it came from, the Saab (or Patrick's car with the trailer) is at home. Intro, outro and the day's
+own scenes can't be interrupted by it (the meter holds while `inDialog`). The race and the chase
+can't lead there by accident: the opponent and the Škoda stop where the walls stood.
+
+**Waking up** (game/waking.js, ~12 s, skippable): his bedroom (world/interior.js `buildBedroom`, in
+the back half of his real row house; its window is the house's back window, panes hidden: his back
+garden and bird table outside), Ove asleep on his back on his half of the double bed, the duvet to
+his chin, the alarm clock showing the game's time; her half made up and empty, her pillow plumped,
+her photograph and reading glasses on her nightstand; from day 4 the cat sits at the foot of the bed.
+2.9 s: a gasp, he sits bolt upright (models.js' downPose held: lying until `downLeft` 1.3, sitting at
+0.845), the duvet thrown down to his waist, the cat starts; he looks across at her half; 4.6 s: one of
+script.js `WAKE` in the dialogue box (said in his voice; `pickWake()` never repeats the last), a sigh,
+black, out at his door. The real Ove is `offstage` meanwhile (the fixa_outro_anita lesson: back as his
+state says, never a snapshot).

@@ -663,3 +663,9 @@ full lock at 60: no squeal, 0.57 rad/s); trailer reversing 2.2 m/s, 0 light flip
 carcost: start view 488 calls with cars vs 393 without, aerial 502 vs 462, 60-61 fps; draw calls per
 near car unchanged.
 
+## Off the grid (feature avgrunden, 2026-10-11)
+
+Ove can drive out onto the hills now. The ground there is the hills' mesh (layout.terrain); `sync`
+pitches the car as before and, beyond |x| or |z| 320 only, rolls it too (`groundRoll` from the ground
+under its left and right sides, damped; the wheels follow it in `writeWheels`). In town nothing
+changes (groundRoll stays 0). Its AI cars stop at BOUND (main.js keepCarsInside).

@@ -842,3 +842,17 @@ motion was rebuilt around them. `locomotion()` in models.js, for everybody:
   (`jump feet`: dip below the ground, lift before the push, slip, m), `sound` renders Ove's four
   grunts and 'uff's next to `ouch` / `talk` into `out/gait_sounds.wav` + a spectrogram, `eval
   <file.js>` runs a script in the page.
+
+## The cold (feature avgrunden, 2026-10-11)
+
+- `anim.shiver` (0..1, game/cold.js): `shiverPose` after the upper-body overlays: the back rounded,
+  the head drawn down, and a fine fast tremble (47 / 31 / 39 Hz sines) through the chest, spine, neck
+  and head in fits; the jaw chatters (after the talk jaw, unless talking). cold.js also sets
+  `style.pockets` while he is cold on foot (and clears only what it set).
+- Character state `'frozen'` (Ove dying of frost): `step` does nothing, `sync` poses nothing (the
+  last pose stays) and sets the root's rotation (0, yaw, `topple`): he goes over sideways about his
+  feet like a plank. `fling` refuses a frozen character.
+- The waking scene's puppet (game/waking.js): pale blue pyjamas (a buttoned cardigan + slacks in the
+  same blue), `down` held at `downLeft` 9 (lying, eyes shut) and then 1.3 → 0.845 in 0.32 s (downPose's
+  lie → sit: eyes open, up); the legs straightened, the feet pointed and shrunk (under the duvet), the
+  arms by his sides while asleep, the neck turned by hand (downPose ignores `look`).

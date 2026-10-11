@@ -732,3 +732,41 @@ before: with a human reader in vcut, one run in two.
 - story.mjs `reverseInto` (day 1's trailer) checks the stage in the same call it reads `stage.b` in:
   the box could be reached in a frame between two calls (vstory under load: "reading 'yaw'").
 
+## Feature avgrunden: the cold beyond the town (2026-10-11) — what changed
+
+No invisible walls (features/implemented/avgrunden.md). Ove walks and drives out past `BOUND`; the
+cold (game/cold.js) kills him further out, and he wakes up in his bed (game/waking.js).
+- **Who still stops at BOUND**: main.js `keepCarsInside()` (after `collideAll`, every fixed step:
+  every car with an AI, a driver or a driver bust except Ove's; pushed back to BOUND - min(radius,
+  2.6), its outward speed × -0.2, as the old wall boxes did) and `keepPeopleInside()` (pedestrians and
+  the neighbours, not seated or hidden). So the traffic, chases, the race, smitare and anyone walking
+  with Ove stay in; a parked car Ove shoves out goes out. A named car left beyond BOUND is `rehome`d
+  (recycleTraffic, once nobody sees it).
+- **The cold** (`game.cold`, created after the MissionRunner): `update(dt)` once per frame after
+  `syncAll` (before the camera: its death crane is a `cam.cine`); `busy` while Ove dies and wakes:
+  then `missions.update/updateFailed`, `tickGarage`, `interrupts.update` and `patrol.update` are
+  skipped (nothing completes, fails, rings or drains behind the death). The meter holds during
+  `inDialog`, `freezeCar`, intro/outro/failed and a hidden player. `beforeRender()` /
+  `afterRender()` wrap `renderFrame()` in `loop` (the blizzard: fog, sky, sun for the frame only).
+  `musicDuck` multiplies the music's duck in `updateAudio`; `engineOff` (dying at the wheel) keeps
+  `audio.engine` off.
+- **The death** (`die()`, `updateDeath`): `inDialog` on, prompts / bubbles / toasts / voices cleared;
+  0.9 s: on foot `player.state = 'frozen'` (character.js: no physics, no new pose, `topple` rolls the
+  root about his feet), 1.5-2.1 s the topple, a 'poff' and snow; at the wheel the engine stalls
+  (main.js brakes the car while `inDialog`); 0.8 s on the camera rises over him (`cam.cine`, following
+  a car still rolling), the HUD chrome fades (`hud.deathHud`); 2.2 s the banner; skip keys from 2.4 s
+  go to 5.4 s: the curtain. 6.1 s `aftermath()` behind the black: `missions.fail('Ove frös ihjäl.',
+  { later: true })` if running (missions.js: `failHeld` keeps `updateFailed` and its banner until
+  `showFailed()`), `interrupts.abort()`, `patrol.dropPursuit()` / `cancelWriting()`, every companion
+  `sendHome`, `setCarrying(null)`, `exitCar(true)` and `homeNamedCar(name)` for a named car, the player
+  thawed and unfrozen, `spawnPlayer()`; then `wakeScene(g)` until it returns true; `woken()`: `inDialog`
+  off, the held fail banner shown, `save()`.
+- **Fairness**: nothing is charged (no kr, no Ordning; an errand dropped by a death costs nothing, as
+  `abort()` always did). A day failed by it is retried as any failure (E: from its retry point; a
+  `def.retry` day gets into the named car, which is at home by then).
+- Tests (tools/scenarios/cold.mjs): `coldwalk` (W + Shift out the north track: dies at ~430 m after
+  ~15 s in the cold, wakes at the door), `colddrive` (the Saab at ~100 km/h: dies at ~545 m, the Saab
+  back in its bay), `coldback`, `coldrate` (44.4 / 11.2 / 5.0 s at 0 / 70 / 140 m), `coldmission` (day
+  2 under way: failed after waking, E retries), `coldwall` (a car at full throttle, a pedestrian and
+  Anders stop at BOUND, Ove walks on), `coldbed`, `coldbedskip`, `coldsound`, `coldperf`, `coldlook`.
+  story (#7 idle, no errors), m5race (won) and m7chase (5 m in 12 s) unchanged.

@@ -17,11 +17,11 @@ built; DESIGN.md §6 is the contract it implements. Everything is PBR via the §
 | `rowhouse.js` | 1970s radhus: `radhusRow`, `garageRow` (`moving`: the open garage gets door tracks instead of a door tipped up under the ceiling), `garageInterior`, `radhusArea` (whole area: lot, garages, soprum, 4 rows, walkways, bike shed, playground; `movingGarage`) |
 | `ove.js` | Ove's block = `radhusArea` + named units, his garage and its door (`GarageDoor`, into `doors`), signs, landmarks, violation spots |
 | `garagedoor.js` | **(feature oppna_garaget)** `GarageDoor`: Ove's up-and-over garage door, the one world mesh that moves (see *Ove's garage door* below) |
-| `interior.js` | **(feature luftning_borde_vara_en_scen)** `buildKitchen(info)`: Anita and Rune's kitchen, the set of day 3's radiator scene, built inside their real house only while the scene runs (see *Rooms inside the houses* below) |
+| `interior.js` | **(feature luftning_borde_vara_en_scen)** `buildKitchen(info)`: Anita and Rune's kitchen, the set of day 3's radiator scene, built inside their real house only while the scene runs (see *Rooms inside the houses* below); **(feature avgrunden)** `buildBedroom(info, { photo, clock })`: Ove's bedroom, where he wakes after freezing to death |
 | `buildings.js` | `gableHouse`, `flatBuilding`, `lamellhus`, `hipGeo`, `flagpole`; blocks `villaBlock`, `apartmentsBlock`, `radhusBlock` |
 | `places.js` | blocks `centrumBlock hospitalBlock churchBlock cemeteryBlock dealerBlock preschoolBlock kommunBlock gasBlock parkBlock fieldBlock forestBlock`, `mound` (sledding hill) |
 | `streets.js` | slabs, kerbs, sidewalks, markings, zebras (`CROSSINGS`), bus stops (`BUS_STOPS`), lamps, road signs, snow banks, street violation spots, ped loops |
-| `outskirts.js` | forest belt, noise heightfield hills (`hillHeight(x, z)`), instanced spruce silhouettes, a barn/cottage/roundpole fence, BOUND walls |
+| `outskirts.js` | forest belt (every trunk solid), noise heightfield hills (`hillHeight(x, z)`; `layout.terrain.at` = the mesh's own height), the forest tracks' gaps, the near hills' spruces and boulders (`tickWild`), silhouettes beyond 740 m. **(feature avgrunden)** no walls, no barn, cottage or fence |
 | `props.js` | Swedish breakables (same API as before); phase 4 r2: baked into one run-culled static batch per surface (`props:<surface>`, batch.js `StaticBatch`), `?nobatch` / `&propinst` = round 5's instanced meshes per type and 200 m cell (`props:<type>:<cell>`) |
 
 ## MAP (j = 0 is −z, i = 0 is −x; block (3,3) is centred on the origin. Since phase 4 the maps draw north = +z, so j = 0 is the SOUTH row and i = 0 the EAST column)
@@ -798,7 +798,7 @@ colour). town.js / batch.js are the rendering fixer's (props.js uses `StaticBatc
   `if (b.kind === 'tree' && b.crownR && ey > b.crownBottom - 0.3 && ey < b.crownTop) reach =
   Math.max(reach, b.crownR * (b.species === 'spruce' || b.species === 'thuja' ? 0.9 : 0.55));`
   (spruces are opaque to the tips; a birch crown is a see-through haze you can sit just inside).
-  Trees in the forest belt (outskirts) have no colliders.
+  Trees in the forest belt (outskirts) have no colliders. (Since feature avgrunden they all do.)
 - **New landmarks (round 5)** for the story (all in `landmarks`, see the table): `dealerFinish`
   (race finish, street in front of Bilhallen), `adrianBay` (box; empty bay for Adrian's Saab: put the
   named car there with `yaw` = the box yaw, nose to the kerb), `graveFlowers` (`{x, y, z, yaw}` on
@@ -900,3 +900,45 @@ unchanged).
 - **camBlocks**: the open panel is an overhang box (2.15-2.45 m) while it is fully open, so the
   camera stays under it (the old static door was not one); far below the ground otherwise.
 
+## Beyond the town and Ove's bedroom (feature avgrunden, 2026-10-11)
+
+The invisible walls are gone (Ove goes on past BOUND; main.js stops everyone else there) and the
+cold kills him further out (game/cold.js). What the world does for it:
+- **Ground**: `layout.terrain = { at, from: 330 }`; outskirts.js sets `at(x, z)` to the hills' mesh's
+  height, triangle by triangle (the cell's two triangles a c b / b c d, the coords' binary search),
+  and `baseGround` returns max(CURB, it) beyond 330 m (the flat snow at CURB reaches 420 m; the
+  smooth `hillHeight` differs from the mesh by up to ~0.3 m between vertices). So characters, cars,
+  the camera and `groundAt` follow the hills.
+- **Forest tracks** (`layout.TRACKS`, `onTrack(x, z, w)`): x = -120 north, x = 120 south, z = 120
+  west, z = -120 east, from the outer road out: no belt tree within 6 m (a tree there is still made,
+  into a scrap builder with `noCards` - kit.js placeTemplate places no cards for it - so the rest of
+  the belt and the street dressing come out as before), no verge birch (streets.js), the plowed bank
+  open at the mouth, no wild tree within 8 m. Every belt tree has its trunk collider now.
+- **The near hills** (350-760 m, `buildWilderness`, its own random stream): ~900 spruces in stands
+  (an fbm mask, denser by the belt so the forest frays out) as instances of one ~200-triangle spruce
+  (ten narrow, offset tiers in 'spruce'; no twig cards: those live in the sign pages and can't be
+  instanced), four quadrant meshes, a trunk collider and crown each; plus the same places as the far
+  silhouette (76 triangles), shown instead while the camera is in the town (`tickWild(cx, cz, cy)`,
+  main.js every frame and on the title: detail beyond 268 m and below 70 m altitude, then in the AO
+  pre-pass; shadows beyond 285 m, the boulders' too). ~70 snow-capped faceted boulders (one mesh,
+  'concrete', rock colliders). The far silhouettes start at 740 m (1920 of them now).
+- **No buildings out there**: the red barn, the cottage and the roundpole fence are gone.
+- **'hillside'** (gfx.js): its painted spruce stands and bare patches fade in from 70-170 m away, so
+  under Ove's boots it is plain snow.
+- **Cost** (cold.mjs `coldperf`: cars and people hidden, 90 frames a pose, RTX 4070, high) against
+  HEAD before: draw calls the same ±2 everywhere in town, main-pass triangles +1-3 % (start 1.97 →
+  2.00 M, drone_nw 2.29 → 2.35 M, aerial 4.89 → 4.93 M), AO and shadow passes unchanged in town; at
+  the outer road looking out (ring_out) +0.16 M shadow and +0.1 M main triangles (the detailed spruces
+  and their shadows). renderFrame CPU unchanged within the noise. rperf `start`: 390 vs 490 calls
+  (traffic differs per run), 60 fps.
+- **Ove's bedroom** (`buildBedroom(info, { photo, clock })`, interior.js): as the kitchen, inside his
+  real house (S1a unit 4: `interiors.ove`, ove.js) in the back half of the ground floor (x 0.12-3.35,
+  z 4.55-8.26): its window is the house's back window (rowhouse.js `pre.backGlass`: those panes are
+  `pane:ove`, hidden by the scene; outside: his back garden and bird table). Pale grey-green paper
+  with a thin stripe, a pine floor, a double bed (pine, his half rumpled, hers made up flat with the
+  sheet folded back and her pillow plumped), her nightstand (her photograph: pickups.js
+  `sonjaPhotoTexture`, framed; her reading glasses on her book; her lamp), his (a red twin-bell alarm
+  clock showing the game's time, a glass of water, his watch), his clothes folded on the chair under
+  the window with the jacket over its back, a white wardrobe, a rag rug, a Saab calendar by the door
+  with November crossed out up to the 23rd, the door to the hall, a globe lamp (off). One GeoBuilder
+  + three textured planes (photo, calendar); ~25 ms to build, behind the curtain.

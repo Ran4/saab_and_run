@@ -441,3 +441,20 @@ Round 1:
   page leaves 1.7 s later, so nobody needs to read under it.
 - The title shot (phase 4) is fixed relative to the Saab's home spot and the sun's azimuth; if either
   moves, re-check it with `PORT=88xx node tools/shot.mjs titlecam` (`TCRAW=1` hides the cards).
+
+## The cold (feature avgrunden, 2026-10-11)
+
+- **Cold meter** `#cold` (hud.setCold(v, { show, temp, note, warm, danger })): a card in the pursuit
+  card's slot under the Ordning meter (below the pursuit card when both show, `body.pursuit #cold`; the
+  toasts move down with `body.coldhud`), an ice-blue left edge, "❄ Kyla", the cold Ove feels (−8° to
+  −48°), a bar (blue to white), a line under it (Kallt / Ove fryser / Ove känner inte tårna / Vänd
+  om, Ove; amber "Det tinar" going down); `danger` (over 75 % and rising) pulses. Hidden in scenes and
+  under the curtain.
+- **Frost** `#frost` (hud.setFrost(f), 0..1.6): a canvas made once at load (ice ferns grown in from the
+  edges, drawn blurred under sharp, over a rime thickest at the edges), masked by a radial gradient
+  whose clear middle shrinks with f, and a white wash from f 1.12 on. Over the world and its tags,
+  under the HUD cards and the curtain. Quantised to 1 % (the full-screen mask is repainted only then).
+- **"Ove dog av frost"**: `showBanner(…, 'frost')`: no dark band (it sits on the frost's white), a
+  big dark ice-blue headline with a white halo, blurring in; the kicker is the temperature (−48 °C or
+  so), the sub a dry line from cold.js `SUBS` / `SUBS_CAR` (shown, not voiced). `hud.deathHud(on)`
+  fades the HUD's chrome meanwhile. Toast class `cold` (an ice-blue edge) for the cold's two toasts.

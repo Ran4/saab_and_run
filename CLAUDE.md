@@ -28,7 +28,11 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   uitoasts uiabort uifavicon titlegone uipause` (the pause card at 15 window sizes: run it after
   touching the pause menu or its rows), render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
   (round 2: `wheelfaces trailersleep`; the slides: `handling drift driftshot speedslide`), people.mjs
-  (round 2: `pplanim pplcine`), world.mjs (round 2: `wsame wcalls wvram wprops`).
+  (round 2: `pplanim pplcine`), world.mjs (round 2: `wsame wcalls wvram wprops`), cold.mjs (the cold
+  beyond the town, features/implemented/avgrunden.md: `coldwalk colddrive coldback` with real keys,
+  `coldrate coldmission coldwall coldbed coldbedskip`, `coldlook coldsound coldperf` (an A/B of draw
+  calls and triangles with the cars and people hidden; copy cold.mjs into an old checkout); run
+  `coldwalk colddrive coldbed` after touching the cold, the death or the waking scene).
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -51,8 +55,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
   take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 16 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
-  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (490 lines, 15 114 chars on
-  2026-10-11; with the pool 1 295 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (495 lines, 15 488 chars on
+  2026-10-11 with the five WAKE lines; with the pool 1 300 lines, 1 236 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
   retry: < 5 % cut off, no two voices at once; `TO=7` all seven days; `LUFTSKIP=s`: the
   reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line). Every headless tool
@@ -68,6 +72,12 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - Yaw: forward = (sin yaw, cos yaw), matching three's `rotation.y` on +Z-facing models.
   Right = (-cos yaw, sin yaw) = local -X. Positive steer turns right, which *decreases* yaw (and
   *increases* it while reversing). Drivers sit on the car's left (+X local). +z is north on the map (the minimap and big map draw N = +z since phase 4, so the low sun reads as south-west); +x is west.
+- There are no invisible walls (features/implemented/avgrunden.md): Ove and his car go on past
+  `BOUND` (where they stood); everyone else (traffic, chases, the race, pedestrians, neighbours)
+  stops there (main.js `keepCarsInside` / `keepPeopleInside`). Outside the grid the ground follows
+  the hills' mesh (`layout.terrain.at`, used by `baseGround`); four forest tracks (`layout.TRACKS`)
+  lead out; from `COLD` (BOUND + 30, square distance `edgeDist`) game/cold.js's meter rises and
+  kills Ove (45 s at the edge). Nothing may spawn or be placed beyond BOUND.
 - Everything off the asphalt is at `CURB` (0.15). Solids are footprints with a top height:
   a wall if `top > y + step`, a floor otherwise (characters step 0.45, cars 0.6). Ramps are
   oriented boxes whose top rises along their yaw. Snow banks have no collision.
@@ -125,6 +135,13 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   and Rune's kitchen (game/luftning.js, holdAt's `scene`; notes/story.md).
   `game.storyWorld()` applies what the story changed (Patrick's cast after day 2, the cat by Ove's
   door after day 4, Adrian's Saab in the lot after day 5) at load and after each day.
+- **Cold** (`game.cold`, cold.js): the meter (`v`), the blizzard (`zone`: fog, sky and sun changed
+  around the frame only, `beforeRender` / `afterRender`), and the death by frost. While Ove dies and
+  wakes (`cold.busy`) missions, errands, the patrol and the garage don't update; at the black the day's
+  mission fails with its banner held (`missions.fail(reason, { later: true })`, `showFailed()` after
+  he wakes), errands abort, companions go home, a named car goes home; then game/waking.js plays his
+  bedroom (world/interior.js `buildBedroom`, the line from script.js `WAKE`) and lets him out at
+  his door.
 - **Horn** (`game.horn`, horn.js): T / H (pad L3 / RB) in a car. People in front leap aside (`anim.fright`,
   then `anim.fist` / `cheer`), neighbours answer in character, drivers honk back with their make's
   horn (audio.js `HORNS`), smitare are spooked or pressed, needless honking costs Ordning. People's

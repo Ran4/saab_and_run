@@ -401,3 +401,17 @@ compiled in the background).
 - The dynamic scale cannot tell GPU- from CPU-bound up front; it tries a step and undoes it.
 - Props cast and take AO as before; on low they still cost ~40 shadow calls.
 - GPU timings are from a desktop RTX 4070 shared with other agents; laptop numbers are estimates.
+
+## The cold's blizzard (feature avgrunden, 2026-10-11)
+
+- `fx.blizzard(amount, wx, wz, now)`: the snowfall's flakes (`uCount` = max(snowfall, blizzard)) on a
+  wind: `uWind` (m/s, the streaks) and `uWindOff` (how far it has carried them, accumulated in JS and
+  wrapped at 560 m, a multiple of both boxes, so a change of wind never makes the flakes jump).
+- The whiteout is applied around the frame by game/cold.js (`beforeRender` / `afterRender` in
+  main.js' loop): `scene.fog.density` × (1 + 11 zone²), its colour towards a cool white, the sky
+  dome's `uFog` the same and its new `uWhite` (the sky mixed into the haze, the sun clamped to 1.5× the
+  haze), `sun.intensity` × (1 - 0.6 zone); everything put back after `renderFrame`, so `dusk()` (day
+  7) still reads and restores the real values. `zone` = how far out the camera / Ove is (0 inside
+  BOUND - 26, 1 at COLD + 170).
+- 'hillside': the spruce-stand and bare-patch terms × smoothstep(70, 170, gDist).
+- The frost on the picture is HUD (a canvas under a CSS mask, notes/ui.md), not a pass.

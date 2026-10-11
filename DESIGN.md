@@ -257,6 +257,30 @@ the Saab's 405/498 Hz, a Golf's peep, the bus's air horn). It changes the world,
 None of it while a scene plays (`inDialog`). Reactions are timed in game time (nothing happens behind
 the pause menu).
 
+### 4.8 The cold beyond the town (`src/game/cold.js`, `src/game/waking.js`, feature avgrunden)
+No invisible walls: Ove (on foot or in his car) can leave the town, through the forest belt (four
+forest tracks, `layout.TRACKS`, carry streets out as snowy gaps) and onto the hills, where there is
+nothing but nature (spruces in stands, boulders, snow). Everyone else still stops at `BOUND`, where
+the walls stood (main.js `keepCarsInside` / `keepPeopleInside`): the traffic, chases, the race,
+pedestrians, neighbours walking with Ove. From `COLD` = BOUND + 30 (square distance) a cold meter
+(HUD, under the Ordning meter: a bar, the cold he feels in °C, a line: Kallt / Ove fryser / Ove
+känner inte tårna / Vänd om, Ove; thawing: Det tinar) rises: 45 s from nothing to dead right at the
+edge, the rate × (1 + d/70)² for d m further out (70 m: 11 s, 140 m: 5 s); inside it thaws in 18 s
+(9 s in a car: the heater). It holds while Ove isn't his own (a scene, a cut, a failed mission).
+Shown and heard: frost creeping in from the picture's edges, Ove's breath, hands in his pockets and
+a shiver (`anim.shiver`), chattering teeth, his heart at the end, the wind; out there a blizzard
+(snow on the wind, the haze thicker and whiter, the sky white, the sun dimmed) - the town behind him
+goes white, then everything does. At 100 %: he stiffens where he stands and topples over sideways
+like a plank (at the wheel the engine dies and the car rolls to a stop), the camera rises over him,
+"Ove dog av frost" (and a dry line under it), black. Then he wakes with a gasp in his own bed beside
+Sonja's made-up, empty half, says one of five lines (script.js `WAKE`, voiced; never the same twice
+running) and is let out on the walkway at his door. Fair and unbroken: a running mission has failed
+("Ove frös ihjäl."; the banner, with E / Q, after he wakes), an errand or a call is dropped without
+blame, a smitare chase dropped, companions and the cat he carried go home; a named car (the Saab, a
+neighbour's, its trailer too) is back at home, a borrowed one stays out there (the traffic takes it
+later); no kronor, no Ordning, the clock and the day unchanged. The skip keys go to the black from
+the banner on, and through the bedroom.
+
 ## 5. Story — seven days (`src/game/missions.js`)
 
 Each day: a giver NPC at a landmark (amber marker over the head, E to talk), intro dialogue in the
@@ -420,6 +444,13 @@ for a car + trailer, garage row, parking lot with guest parking and a handicap b
 Jimmy's and Anders' houses are all here), `radhus` (other row-house areas), `villa`,
 `apartments`, `centrum`, `hospital`, `church`, `cemetery`, `dealer` (bilhandlare), `preschool`,
 `kommun`, `gas`, `park`, `field`, `forest` (edges).
+
+Beyond the grid (`outskirts.js`, feature avgrunden): the forest belt (every trunk solid), four forest
+tracks out of it (`layout.TRACKS`, `onTrack`), the hills as ground (`layout.terrain.at` is the hills'
+mesh, triangle by triangle; `baseGround` = max(CURB, it) beyond 330 m), spruces in stands and boulders
+on the near hills (to ~760 m: instanced, a silhouette LOD and no AO / shadows while the camera is in
+the town, `tickWild`), silhouettes beyond. No buildings out there. Nothing is spawned or placed
+beyond `BOUND` (HALF + 34); `COLD` = BOUND + 30, `edgeDist(x, z)` = max(|x|, |z|).
 
 `town.js` must export (in addition to the existing `parkedCars`, `pedLoops`, `animated`,
 `lamps`, `bouncers`, and `doors`: the doors that move, Ove's garage door `name: 'oveGarage'`,
@@ -881,6 +912,14 @@ Unknown names fall back to `plain`. `SURFACES` (exported) holds the table (scale
 - **Snowfall:** `fx.snowfall(on, intensity = 0.6)` - small flakes (~1 cm, at least a pixel; smaller
   ones fade rather than shrink) with a short motion streak along their fall, in a 40 m box around the
   camera plus a denser 14 m box close to it, eased in/out over a few seconds (finale).
+  `fx.blizzard(amount, wx, wz, now)` (game/cold.js): the same flakes, as many as a snowfall of
+  `amount` (whichever is more), carried on a wind of (wx, wz) m/s (their streaks along it).
+- **Blizzard / whiteout** (game/cold.js `beforeRender` / `afterRender`, around `renderFrame`): the exp2
+  haze up to 12× and whiter, the sky dome's haze colour the same white and its `uWhite` (0..1) mixing
+  the whole sky into it (the sun no more than a pale brightness), the sun dimmed by up to 60 %; put
+  back after the frame, so `dusk()` and the rest only ever see the real values. The 'hillside'
+  surface's spruce stands and bare patches show only from beyond ~100 m (fading in 70-170 m): close
+  by, where Ove can walk now, it is plain snow.
 
 ### 10.6 Particles (`src/game/fx.js`)
 Same API as before; all lit by the sun/sky, soft (fade where they touch geometry), fogged:
