@@ -15325,5 +15325,29 @@
   "flags": [],
   "verdict": "ok",
   "dur": 6.516
+ },
+ "1f6d46ea86c7": {
+  "who": "ove",
+  "text": "Saab byggde flygplan först. Det märks.",
+  "take": 0,
+  "heard": "Saab byggde flygplan först, det märks",
+  "wer": 0,
+  "f0": 113,
+  "cps": 11.7,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 3.382
+ },
+ "53f6103227ff": {
+  "who": "ove",
+  "text": "Det är inte min bil.",
+  "take": 0,
+  "heard": "Det är inte min bil.",
+  "wer": 0,
+  "f0": 116.6,
+  "cps": 11.6,
+  "flags": [],
+  "verdict": "ok",
+  "dur": 1.867
  }
 }

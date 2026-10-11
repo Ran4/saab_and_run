@@ -35,7 +35,7 @@
 //   ANSWER, DONE     Ove picks up the phone / has done an errand
 //   CHATTER[who]     small talk (POOL of text | WHEN)   CHATTER_FIRST[who]  before day 1's scene
 //   CHATTER_AFTER[who] = [days done, POOL, replace]     CHATTER_FALLBACK  when nothing else fits
-//   OVE_REPLY, TYRE, SLID, GARAGE_DOOR, OVE_START    Ove's own reactions
+//   OVE_REPLY, TYRE, SLID, OVE_HOPP, GARAGE_DOOR, OVE_START    Ove's own reactions
 //   OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID, PANIC   people hit, kicked,
 //                    shoved, carjacked, nearly run over
 //   FLEE_LINES, CAUGHT_LINES, PATROL   the patrol (smitare, the Ordning meter's events)
@@ -414,6 +414,9 @@ export const SLID = {
   default: ['Det där såg ingen.', 'Kommunen har inte sandat här.', 'Det var meningen.'],
   donut: ['Kollar bara mönsterdjupet.', 'Det där såg ingen.'],
 };
+// After a long flight off the hoppbacke (game/hoppbacke.js, feature snöhög): in his own Saab, landed
+// well (Saab made aeroplanes first); in a car that isn't his. (Otherwise SLID, TYRE and OVE_REPLY.)
+export const OVE_HOPP = { saab: 'Saab byggde flygplan först. Det märks.', notMine: 'Det är inte min bil.' };
 // His garage door: what is in its way (a line each), shut and tugged (sometimes), a car into it.
 export const GARAGE_DOOR = {
   saabInWay: 'Saaben står i vägen.',
@@ -634,7 +637,7 @@ export function allLines() {
     pool(e.who, [e.thanks, e.fail, e.busy || ERRAND_BUSY], 'errands');
   }
   pool('ove', [...ANSWER, ...DONE], 'calls');
-  pool('ove', [...OVE_REPLY, ...Object.values(TYRE).flat(), ...Object.values(SLID).flat(), ...Object.values(GARAGE_DOOR).flat(), ...OVE_START], 'reactions');
+  pool('ove', [...OVE_REPLY, ...Object.values(TYRE).flat(), ...Object.values(SLID).flat(), ...Object.values(OVE_HOPP), ...Object.values(GARAGE_DOOR).flat(), ...OVE_START], 'reactions');
   pool('ove', WAKE, 'waking');
   pool('driver', [...FLEE_LINES, ...CAUGHT_LINES], 'patrol');
   for (const l of Object.values(PATROL)) add(l[0], l[1], 'patrol');
