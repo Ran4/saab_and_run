@@ -48,7 +48,7 @@ som förut.
   engelsk brytning. Voice Library har 61 röster med svenska som modersmål och dialektetiketter
   (standard, Stockholm, Göteborg, Skåne, Norrland), så rollerna togs därifrån.
 - **Voice Design** hann provas två gånger innan beslutet:
-  - en provkörning för Ove, med tre kandidater som ligger kvar i `.cache` men aldrig sparades
+  - en provkörning för Ove, med tre kandidater som aldrig sparades (de gick inte att spara)
   - ett försök med Sara, som API:t vägrade (se Barnen nedan)
 
   Inget av det används. `make voice-cast DESIGN=1` finns kvar i verktyget, men kräver en ledig
