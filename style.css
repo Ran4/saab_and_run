@@ -426,25 +426,33 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
 #title.gone.ctl .title-controls { visibility: hidden; transition: visibility 0s 0.8s; }
 #title.gone.now .title-controls { transition: none; }
 .tc-head { font: 600 12px/1 var(--cond); letter-spacing: 0.24em; text-transform: uppercase; color: #6d727a; margin-bottom: 10px; }
-.controls { width: 100%; border-collapse: collapse; font: 400 13.5px/1.25 var(--body); color: var(--ink); white-space: nowrap; }
+/* The long cells wrap: unwrapped the table is ~640 px wide, more than its 548 px column, and ran
+   off the pause card and off the title screen's right edge. The keys never wrap. */
+.controls { width: 100%; border-collapse: collapse; font: 400 13.5px/1.25 var(--body); color: var(--ink); }
 .controls th { text-align: left; font: 600 11px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: #6d727a; padding: 0 0 7px; border-bottom: 1px solid rgba(27, 31, 36, 0.25); }
 .controls td { padding: 5px 8px 5px 0; border-bottom: 1px solid rgba(27, 31, 36, 0.09); vertical-align: middle; }
 .controls td:first-child { white-space: nowrap; padding-right: 12px; }
 .controls td.na { color: #a0a5ab; }
 .controls .or, .controls .hold { color: #7a7f86; font-size: 12px; }
+.controls .hold { white-space: nowrap; }   /* a note wraps as a whole, onto the next line */
 .controls kbd { font-size: 13px; background: #fff; box-shadow: inset 0 -2px 0 rgba(27, 31, 36, 0.22), 0 0 0 1px rgba(27, 31, 36, 0.18); }
 .controls tr.span td { border-bottom: 0; }
 
 #pause { display: none; background: rgba(16, 19, 23, 0.5); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); color: var(--ink); }
 #pause.show { display: flex; }
 /* A fixed two-column card: the menu, and one cell that holds both the notebook page and the
-   controls (stacked, one of them hidden), so toggling "Kontroller" never moves the menu. */
-.pause-card { display: grid; grid-template-columns: 300px 548px; align-items: stretch; max-width: calc(94vw / var(--ui)); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45); }
-.pause-card > #pause-log, .pause-card > #pause-controls { grid-area: 1 / 2; min-width: 0; }
-#pause .pause-controls { width: auto; border-top: 0; box-shadow: none; background: rgba(244, 242, 236, 0.97); padding: 26px 22px 22px; visibility: hidden; }
+   controls (stacked, one of them hidden), so toggling "Kontroller" never moves the menu.
+   The menu's rows set the card's height and the notebook page is exactly as tall: its entries
+   never size it (contain: size), it scrolls instead. It used to stop at 560 px, short of the menu
+   once Röster and Röstvolym came. In a window too low for the menu the row is held to the window
+   (minmax(0, 1fr) under the card's max-height) and the menu scrolls as a last resort. */
+.pause-card { display: grid; grid-template-columns: 300px 548px; grid-template-rows: minmax(0, 1fr); align-items: stretch; max-width: calc(94vw / var(--ui)); max-height: calc(96vh / var(--ui)); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45); }
+.pause-card > #pause-log, .pause-card > #pause-controls { grid-area: 1 / 2; min-width: 0; min-height: 0; }
+.pause-card > #pause-log { contain: size; }
+#pause .pause-controls { width: auto; border-top: 0; box-shadow: none; background: rgba(244, 242, 236, 0.97); padding: 26px 22px 22px; visibility: hidden; overflow: hidden auto; }
 #pause.ctl .pause-controls { visibility: visible; }
 #pause.ctl #pause-log { visibility: hidden; }
-.pause-menu { width: 300px; background: rgba(244, 242, 236, 0.97); padding: 28px 30px 24px; border-top: 3px solid var(--ink); display: flex; flex-direction: column; }
+.pause-menu { width: 300px; background: rgba(244, 242, 236, 0.97); padding: 28px 30px 24px; border-top: 3px solid var(--ink); display: flex; flex-direction: column; overflow: hidden auto; scrollbar-width: thin; }
 .pm-kicker { font: 600 12px/1 var(--cond); letter-spacing: 0.26em; text-transform: uppercase; color: #6d727a; }
 .pause-menu h2 { margin: 6px 0 22px; font: 700 54px/0.9 var(--cond); letter-spacing: 0.02em; color: var(--ink); }
 .pause-menu .btn.primary { width: 100%; }
@@ -461,7 +469,9 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
 .pm-keys kbd { background: #fff; box-shadow: inset 0 -2px 0 rgba(27, 31, 36, 0.22), 0 0 0 1px rgba(27, 31, 36, 0.18); }
 .pm-keys kbd:not(:first-child) { margin-left: 10px; }
 
-.log-page { width: auto; max-height: min(560px, calc(86vh / var(--ui))); overflow: hidden auto; padding: 26px 26px 30px 62px; --rule-off: 20px; scrollbar-width: thin; scrollbar-color: rgba(52, 56, 63, 0.3) transparent; }
+/* The rules scroll with the entries (local), so every entry sits on its line whatever the page's
+   height and scroll position. */
+.log-page { width: auto; overflow: hidden auto; padding: 26px 26px 30px 62px; --rule-off: 20px; background-attachment: local; scrollbar-width: thin; scrollbar-color: rgba(52, 56, 63, 0.3) transparent; }
 .log-head { font: 700 34px/1 var(--hand); color: #2c3036; height: 60px; padding-top: 24px; }
 .log-sub { font: 600 11px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: #8a8f96; height: 30px; padding-top: 13px; }
 .log-entry { display: grid; grid-template-columns: 46px 88px minmax(0, 1fr) 20px; align-items: baseline; height: 30px; font: 600 21px/30px var(--hand); color: #34383f; white-space: nowrap; }
@@ -484,10 +494,25 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
   .title-shade { background: rgba(240, 241, 238, 0.88); }
   h1 { font-size: min(132px, calc(13vw / var(--ui))); }
 }
+/* Low windows: --ui stops at 0.8, so under ~540 px the card gets less height than the menu (with
+   "Avbryt dagens uppdrag") needs. The menu closes up and stays whole down to ~465 px; under that
+   the key hint goes, which keeps it whole to ~435 px. Lower still it scrolls (see .pause-card). */
+@media (max-height: 540px) and (min-width: 861px) {
+  .pause-menu { padding-top: 20px; padding-bottom: 18px; }
+  .pause-menu h2 { margin: 4px 0 14px; font-size: 46px; }
+  .pm-opts { margin: 12px 0; }
+  .pause-menu .opt { padding: 9px 2px 8px; }
+  .pm-keys { padding-top: 12px; }
+}
+@media (max-height: 464px) and (min-width: 861px) {
+  .pm-keys { display: none; }
+}
 @media (max-width: 860px) {
-  .pause-card { grid-template-columns: min(430px, calc(94vw / var(--ui))); max-height: calc(94vh / var(--ui)); overflow: auto; }
+  .pause-card { grid-template-columns: min(430px, calc(94vw / var(--ui))); grid-template-rows: auto auto; max-height: calc(94vh / var(--ui)); overflow: auto; }
   .pause-card > #pause-log, .pause-card > #pause-controls { grid-area: 2 / 1; }
-  .pause-menu { width: auto; }
+  .pause-card > #pause-log { contain: none; max-height: min(560px, calc(86vh / var(--ui))); }
+  .pause-menu { width: auto; overflow: visible; }
+  #pause .controls .hold { white-space: normal; }   /* the narrow column has no room for a whole note */
 }
 @media (max-width: 760px) {
   #meter, #pursuit { width: 230px; }

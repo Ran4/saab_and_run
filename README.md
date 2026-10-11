@@ -194,6 +194,7 @@ FROM=4 PORT=8791 node tools/shot.mjs story  # berättelsen från dag 5
 PORT=8791 node tools/shot.mjs titlecheck quality tabhide gamepad corruptsave   # titel, grafikval, paus, handkontroll, sparfiler
 PORT=8791 node tools/shot.mjs titlekeys reloadday r2checks smalltalk dilation    # titeln med tangenter, omladdning, klockan, småprat, tid under 30 fps
 PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausmenyns Avbryt dagens uppdrag, notiser under scener
+PORT=8791 node tools/shot.mjs uipause                      # pausmenyn i 15 fönsterstorlekar: anteckningsboken lika hög som menyn, inget utanför
 PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
 PORT=8791 node tools/shot.mjs voice vcut                   # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt
 ```

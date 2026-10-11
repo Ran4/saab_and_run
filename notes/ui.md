@@ -53,6 +53,16 @@ with no errors; `story` was run against it).
   with either version, so `uifavicon` checks that no favicon / 4xx request happens and draws the icon.
 - **Controls table** Q row: "ge upp (håll medan ett uppdrag pågår, tryck när det misslyckats)", to
   match gameplay_story's hold-Q give-up (the pause menu's copy is cloned from it).
+- **Pause card layout** (features/implemented/anteckningsbok_renderingsbugg.md, 2026-10-11): the
+  menu's rows set the card's height and the notebook page is exactly as tall (`contain: size` on
+  `#pause-log`, so its entries never size the card; it scrolls). It used to stop at 560 px, short of
+  the menu (~600 px, ~640 px with Avbryt dagens uppdrag) once Röster and Röstvolym came. The page's
+  rules scroll with the entries (`background-attachment: local`), so each entry stays on its line.
+  The row is `minmax(0, 1fr)` under `max-height: 96vh`: in windows under ~540 px high (where `--ui`
+  stops at 0.8) the menu closes up, under ~465 px the key hint goes, under ~435 px the menu scrolls.
+  The controls table's long cells wrap (a `.hold` note as a whole): unwrapped it was ~640 px wide
+  in its 548 px column and ran off the pause card and off the title screen's right edge. The narrow
+  layout (≤ 860 px wide: menu over the page, the card scrolls) is unchanged. Test: `uipause`.
 - Tests in `tools/scenarios/ui.mjs` (new): `uiportraits` (sheet at full, dialogue 84x100 and
   round 58/38 px sizes, the numbers above, `PL='{json}'` overrides PORTRAIT, several named sets side
   by side, `PLDBG=1` draws the sample box), `uitoasts` (clearToasts, letterbox / curtain / held shot

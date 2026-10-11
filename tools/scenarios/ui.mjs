@@ -11,6 +11,10 @@
 //   uiabort      the pause menu's "Avbryt dagens uppdrag" in a real (non-test) game: hidden in free
 //                roam, shown while day 1 runs, two clicks -> idle, unpaused, day 1 given up.
 //   uifavicon    a non-test load must request no /favicon.ico (no 404 in the console).
+//   uipause      the pause card at several window sizes (SIZES='1280x720,800x600' overrides) with a
+//                full notebook, with and without "Avbryt dagens uppdrag", and with Kontroller open:
+//                the notebook page and the controls exactly as tall as the menu, nothing in the menu
+//                clipped, the card inside the window. Shots uipause_<w>x<h>[_abort|_ctl|_empty].
 export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT, OUT }) => {
   const log = (...a) => console.log('[t]', ...a);
   const bad = (...a) => { console.log('[t] CHECK FAILED', ...a); errors.push('check failed: ' + a.join(' ')); };
@@ -288,6 +292,100 @@ export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT
       expect('pad: aborted and unpaused', !o.paused && !o.menu && o.state === 'idle', o);
       const jumped = await ev(() => __game.player.y - __game.groundAt(__game.player.x, __game.player.z));
       log('pad: height over ground after the resume', jumped.toFixed(2));
+    },
+
+    async uipause() {
+      const sizes = (process.env.SIZES || '1280x720,1366x768,1920x1080,1920x950,2560x1440,3840x2160,1280x600,1024x600,1366x500,1366x480,1280x440,1280x400,1000x700,800x600,600x800')
+        .split(',').map((s) => s.split('x').map(Number));
+      // 27 entries as in the bug report (a few caught, two struck through), oldest first.
+      const kinds = ['sidewalk', 'sidewalk', 'sidewalk', 'garbage', 'carfree', 'sidewalk', 'corner', 'sidewalk', 'garbage', 'handicap', 'guest24', 'crosswalk', 'sidewalk', 'crosswalk', 'firelane', 'loading', 'busstop', 'lawn', 'corner', 'garbage', 'sidewalk', 'handicap', 'crosswalk', 'lawn', 'busstop', 'loading', 'carfree'];
+      const entries = kinds.map((kind, i) => ({ plate: `${'DMAGROMNHMNNKOS'.substr(i % 13, 3)} ${100 + (i * 37) % 900}`, kind, time: `${String(6 + (i >> 3)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}`, caught: i % 5 === 3 || undefined, escaped: i % 13 === 6 || undefined }));
+      const open = (list, abort, ctl) => ev(async ({ list, abort, ctl }) => {
+        const { hud } = await import('./src/game/hud.js');
+        const p = document.getElementById('pause');
+        p.classList.remove('show', 'ctl');
+        await new Promise((r) => setTimeout(r, 30));
+        hud.renderLog(list);
+        p.classList.add('show');
+        await new Promise((r) => setTimeout(r, 30));   // the menu's observer (syncMenu hides the abort button)
+        document.getElementById('opt-abort').hidden = !abort;
+        if (ctl) document.getElementById('opt-controls').click();
+        hud.renderLog(list);                          // as main.js does once shown (fits and scrolls the page)
+      }, { list, abort, ctl });
+      const measure = () => ev(() => {
+        const r = (e) => { const b = e.getBoundingClientRect(); return { t: b.top, b: b.bottom, l: b.left, r: b.right }; };
+        const card = document.querySelector('.pause-card'), menu = document.querySelector('.pause-menu');
+        const log = document.getElementById('pause-log'), ctl = document.getElementById('pause-controls');
+        const btns = [...menu.querySelectorAll('button, .pm-keys')].filter((e) => !e.hidden && e.offsetParent);
+        const C = r(card), M = r(menu);
+        const outside = btns.filter((e) => { const b = r(e); return b.t < M.t - 0.5 || b.b > M.b + 0.5 || b.l < M.l - 0.5 || b.r > M.r + 0.5; }).map((e) => e.id || e.className);
+        const last = log.querySelector('.log-entry:last-child'), table = ctl.querySelector('table');
+        return {
+          vw: innerWidth, vh: innerHeight, ui: +getComputedStyle(document.documentElement).getPropertyValue('--ui'),
+          card: C, menu: M, log: r(log), ctl: r(ctl), table: table ? r(table) : null,
+          menuClip: menu.scrollHeight - menu.clientHeight, menuScrolls: getComputedStyle(menu).overflowY === 'auto', cardClip: card.scrollHeight - card.clientHeight,
+          ctlClip: ctl.scrollHeight - ctl.clientHeight, ctlWide: table ? table.scrollWidth - (ctl.clientWidth - 44) : 0,
+          logScroll: log.scrollHeight - log.clientHeight, logAt: log.scrollTop,
+          lastIn: last ? r(last).b <= r(log).b + 0.5 && r(last).t >= r(log).t - 0.5 : null,
+          outside,
+        };
+      });
+      const near = (a, b) => Math.abs(a - b) <= 1;
+      // stacked: the narrow layout (menu over the notebook, the card scrolls); low: a window too low
+      // even for the closed-up menu without its key hint (under ~435 px): the menu may scroll there.
+      const check = (tag, m, stacked, low) => {
+        const f = [];
+        if (m.card.t < -0.5 || m.card.l < -0.5 || m.card.b > m.vh + 0.5 || m.card.r > m.vw + 0.5) f.push('card outside the window');
+        if (!stacked && m.menuClip > 1 && !(low && m.menuScrolls)) f.push(`menu content clipped by ${m.menuClip}px`);
+        if (m.outside.length && !(low && m.menuScrolls)) f.push('menu items outside the menu: ' + m.outside.join(' '));
+        if (!stacked) {
+          if (!near(m.log.t, m.menu.t) || !near(m.log.b, m.menu.b)) f.push(`notebook ${Math.round(m.log.t)}..${Math.round(m.log.b)} vs menu ${Math.round(m.menu.t)}..${Math.round(m.menu.b)}`);
+          if (!near(m.ctl.t, m.menu.t) || !near(m.ctl.b, m.menu.b)) f.push(`controls ${Math.round(m.ctl.t)}..${Math.round(m.ctl.b)} vs menu ${Math.round(m.menu.t)}..${Math.round(m.menu.b)}`);
+          if (m.log.r > m.card.r + 0.5) f.push('notebook wider than the card');
+          if (m.lastIn === false) f.push('the newest entry is not in view');
+        }
+        if (/ctl/.test(tag)) {
+          if (m.ctlClip > 1 && !low) f.push(`controls table clipped by ${m.ctlClip}px`);
+          if (m.ctlWide > 1 || m.table.r > m.ctl.r + 0.5) f.push(`controls table ${m.ctlWide}px wider than its panel`);
+        }
+        log(tag, f.length ? 'FAIL' : 'ok', JSON.stringify({ ui: m.ui, card: [Math.round(m.card.r - m.card.l), Math.round(m.card.b - m.card.t)], menuH: Math.round(m.menu.b - m.menu.t), logH: Math.round(m.log.b - m.log.t), top: Math.round(m.card.t), menuClip: m.menuClip, cardClip: m.cardClip, ctlClip: m.ctlClip, logScroll: m.logScroll, logAt: Math.round(m.logAt) }), f.join('; '));
+        for (const x of f) bad(tag, x);
+      };
+      for (const [w, h] of sizes) {
+        await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
+        await sleep(300);
+        // Narrow windows stack the menu over the notebook (style.css, max-width 860px).
+        const stacked = w <= 860, low = !stacked && h < 435;
+        for (const [suffix, abort, ctl, list] of [['', false, false, entries], ['_abort', true, false, entries], ['_ctl', true, true, entries], ['_empty', false, false, []]]) {
+          if (suffix === '_empty' && w !== 1280) continue;
+          await open(list, abort, ctl);
+          await sleep(150);
+          check(`${w}x${h}${suffix}`, await measure(), stacked, low);
+          await shot(`uipause_${w}x${h}${suffix}`);
+        }
+        // The title screen's copy of the controls table (the pause menu clones it) stays in its panel.
+        if (w > 980 && !low) {
+          const t = await ev(() => {
+            const p = document.querySelector('#title .title-controls'), tb = p.querySelector('table');
+            const P = p.getBoundingClientRect(), T = tb.getBoundingClientRect();
+            return { right: Math.round(T.right), panelRight: Math.round(P.right), vw: innerWidth };
+          });
+          if (t.right > t.panelRight + 0.5 || t.right > t.vw) bad(`${w}x${h} title controls table runs out of its panel`, JSON.stringify(t));
+        }
+      }
+      await ev(() => { const p = document.getElementById('pause'); p.classList.remove('show', 'ctl'); });
+      await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+      // The real pause (P in a real game, main.js pause -> renderLog): the newest entry in view.
+      await realGame();
+      await ev((list) => { __game.patrol.log = list.map((e) => ({ ...e })); }, entries);
+      await tap('KeyP'); await sleep(400);
+      const m = await measure();
+      const shown = await ev(() => __game.paused && document.getElementById('pause').classList.contains('show'));
+      check('real game, P', m, false, false);
+      if (!shown) bad('real game: P did not open the pause menu');
+      if (m.logAt < m.logScroll - 1) bad('real game: the notebook is not scrolled to the newest entry', JSON.stringify({ at: m.logAt, max: m.logScroll }));
+      await shot('uipause_real');
+      await tap('KeyP'); await sleep(300);
     },
 
     async uifavicon() {

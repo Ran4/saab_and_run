@@ -12,3 +12,4 @@ features/implemented/roligare_bilkorning.md
 features/implemented/tuta_med_bilen.md
 features/implemented/a_fully_voiced_game.md
 features/implemented/fixa_bilen.md
+features/implemented/anteckningsbok_renderingsbugg.md
