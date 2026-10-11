@@ -65,11 +65,14 @@ function apiKey() {
 export class ApiError extends Error {}
 export async function api(p, body, { method = 'POST', accept = 'application/json' } = {}) {
   let r;
-  for (let tries = 0; ; tries++) {
+  for (let tries = 0, busy = 0; ; tries++) {
     try {
       r = await fetch(API + p, { method, body: body && JSON.stringify(body), headers: { 'xi-api-key': apiKey(), 'Content-Type': 'application/json', Accept: accept } });
-      break;
-    } catch (e) { if (tries) throw e; await new Promise((ok) => setTimeout(ok, 3000)); }   // a network blip: once more
+    } catch (e) { if (tries) throw e; await new Promise((ok) => setTimeout(ok, 3000)); continue; }   // a network blip: once more
+    // A Voice Library voice is added to the account by its first request: two at once for the same
+    // new voice get 409 already_running (nothing made, nothing charged). Wait and ask again.
+    if (r.status === 409 && busy < 3) { const t = await r.clone().text(); if (/already_running/.test(t)) { busy++; await new Promise((ok) => setTimeout(ok, 2500 * busy)); continue; } }
+    break;
   }
   if (!r.ok) {
     let msg = await r.text();
@@ -107,15 +110,62 @@ const LEX = (() => {
   return [...fs.readFileSync(f, 'utf8').matchAll(/<lexeme>\s*<grapheme>([^<]+)<\/grapheme>\s*<alias>([^<]+)<\/alias>\s*<\/lexeme>/g)].map(([, g, a]) => [new RegExp(`(?<![\\p{L}])${g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}])`, 'gu'), a]);
 })();
 const alias = (t) => LEX.reduce((s, [re, a]) => s.replace(re, a), t);
+
+// The shared tables' speakers. allLines() gives a shared table's line once, with its pseudo-speaker
+// ('ped', 'driver', 'cast', ...); script.js's `// @voice ...` tag above the table says who can say
+// it. Each line is made for every voice those tags name: a pool voice (cast.json roles with a
+// "pool": { sex, age }) or a neighbour. The game picks the pool voice from the person (voice.js
+// voiceFor: sex, age, their own seed), so every voice a person can have needs the line.
+//   ped       adults 19-64: the pool's young (19-34; teens too) and mid (35-64) voices
+//   ped_teen  13-18: the young voices          ped_old   65+: the old voices
+//   ped_kid   children: no voices (they murmur and giggle, 4.4 c)
+//   driver    anyone at a wheel (randomPed: any age): every pool voice
+//   window    someone in a house: the mid and old voices
+//   cast      every neighbour (not Ove; not the extras' roles: "extra": true); a role key: that role
+export const POOL_AGES = { ped: ['young', 'mid'], ped_teen: ['young'], ped_old: ['old'], ped_kid: [], driver: ['young', 'mid', 'old'], window: ['mid', 'old'] };
+function tagsOf(script, src) {
+  const by = new Map();
+  // (the tagged tables are plain pools of text: no WHEN tags in them)
+  const strings = (v, out) => { if (typeof v === 'string') out.push(v); else if (v && typeof v === 'object') for (const x of Object.values(v)) strings(x, out); return out; };
+  for (const [, tags, name] of src.matchAll(/^\/\/ @voice ([^\n]+)\nexport const (\w+)/gm)) {
+    for (const t of strings(script[name], [])) { const s = by.get(t) || new Set(); for (const k of tags.trim().split(/\s+/)) s.add(k); by.set(t, s); }
+  }
+  return by;
+}
+export function speakersFor(who, text, tags) {
+  if (conf.roles[who] && !conf.roles[who].pool) return [who];
+  const pool = Object.entries(conf.roles).filter(([, r]) => r.pool);
+  const cast = Object.keys(conf.roles).filter((k) => k !== 'ove' && !conf.roles[k].pool && !conf.roles[k].extra);
+  const out = new Set();
+  for (const t of tags.get(text) || [who]) {
+    if (t === 'cast') cast.forEach((k) => out.add(k));
+    else if (conf.roles[t]) out.add(t);   // (a role: a neighbour, or 'ped_kid', mumbled)
+    else if (POOL_AGES[t]) for (const [k, r] of pool) { if (POOL_AGES[t].includes(r.pool.age)) out.add(k); }
+  }
+  return [...out];
+}
+// The pool as the game reads it (index.json _pool): { 'f_young': [keys], ... }.
+export function poolGroups() {
+  const g = {};
+  for (const [k, r] of Object.entries(conf.roles)) if (r.pool && r.voice_id) (g[`${r.pool.sex}_${r.pool.age}`] ||= []).push(k);
+  return g;
+}
+
 export async function plan() {
-  const { allLines } = await import(pathToFileURL(path.join(ROOT, 'src/game/script.js')).href + '?t=' + Date.now());
-  return allLines().map(([who, text, part]) => {
+  const file = path.join(ROOT, 'src/game/script.js');
+  const script = await import(pathToFileURL(file).href + '?t=' + Date.now());
+  const tags = tagsOf(script, fs.readFileSync(file, 'utf8'));
+  const seen = new Set(), expanded = [];
+  for (const [who, text, part] of script.allLines()) {
+    for (const k of speakersFor(who, text, tags)) { const key = k + '\0' + text; if (!seen.has(key)) { seen.add(key); expanded.push([k, text, part, who]); } }
+  }
+  return expanded.map(([who, text, part, from]) => {
     const role = conf.roles[who] || null, d = direction[who]?.[text] || {};
     const spoken = alias(d.tts || text), id = role?.voice_id || null, take = d.retake || 0;
     const inScope = !conf.scope || conf.scope.who.includes(who) || conf.scope.parts.includes(part);
     const hash = d.locked && d.hash ? d.hash : id && sayable(spoken) ? sha([who, spoken, id, conf.model, JSON.stringify(settingsOf(who)), ...(take ? [take] : [])].join('\0')).slice(0, 12) : null;
     const file = hash && `${who}/${hash}.mp3`;
-    return { who, text, part, spoken, id, take, hash, file, inScope, mumble: !!role?.mumble, have: !!file && fs.existsSync(path.join(OUT, file)), flags: humanFlags(text, spoken) };
+    return { who, text, part, from, spoken, id, take, hash, file, inScope, mumble: !!role?.mumble, have: !!file && fs.existsSync(path.join(OUT, file)), flags: humanFlags(text, spoken) };
   });
 }
 
@@ -249,6 +299,7 @@ function writeManifest(lines) {
   m._tempo = {};
   for (const [who, r] of Object.entries(rate)) { r.sort((x, y) => x - y); m._tempo[who] = Math.round(r[r.length >> 1] * 10) / 10; }
   m._fps = FPS;
+  m._pool = poolGroups();
   fs.mkdirSync(OUT, { recursive: true });
   fs.writeFileSync(MANIFEST, JSON.stringify(m) + '\n');
   return m;
@@ -297,10 +348,9 @@ async function generate() {
   const total = lines.reduce((s, l) => s + l.spoken.length, 0);
   console.log(`script.js: ${lines.length} lines, ${total} chars; clips on disk ${lines.filter((l) => l.have).length}`);
   const scoped = lines.filter((l) => all || l.inScope), outside = lines.filter((l) => !all && !l.inScope);
-  console.log(`in scope (${all ? 'everything: --all' : `who ${conf.scope.who.join(',')} or part ${conf.scope.parts.join(',')}`}):`);
+  console.log(`in scope (${all || !conf.scope ? 'everything' : `who ${conf.scope.who.join(',')} or part ${conf.scope.parts.join(',')}`}):`);
   table(scoped, false);
-  console.log('outside the scope (mumbled until the scope grows):');
-  table(outside, false);
+  if (outside.length) { console.log('outside the scope (mumbled until the scope grows):'); table(outside, false); }
   const noVoice = scoped.filter((l) => !l.id && !l.mumble && sayable(l.spoken));
   if (noVoice.length) { console.log('in scope but the role has no voice yet (make voice-cast):'); table(noVoice, false); }
   const mumbled = scoped.filter((l) => l.mumble);

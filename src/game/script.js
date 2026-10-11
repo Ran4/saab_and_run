@@ -104,7 +104,7 @@ export const STORY = {
     // Parvaneh gets in at the lot; the radio on the drive; Jimmy phones; she gets out at Akuten.
     hello: ['parvaneh', 'Kör, Ove!'],
     drive: [['parvaneh', 'Ove, du kör som en pensionär!'], ['ove', 'Jag kör som det står på skyltarna.'], ['parvaneh', 'Varför blinkar du? Det är ingen där!'], ['ove', 'Man blinkar. Alltid.'], ['parvaneh', 'En stjärna, Ove. Han skulle sätta upp EN stjärna.']],
-    calls: [['jimmy', 'Ove! Flickorna undrar om de får äta glass till lunch. De säger att du sa ja.', 'Nej.']],
+    calls: [['jimmy', 'Ove! Töserna undrar om de får äta glass till lunch. De säger att du sa ja.', 'Nej.']],
     bye: ['parvaneh', 'Tack, Ove! Parkera, jag kommer ut sen!'],
   },
   // ---------------------------------------------------------------------------------------------

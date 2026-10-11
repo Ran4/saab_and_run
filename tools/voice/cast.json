@@ -9,15 +9,6 @@
     "similarity_boost": 0.75
   },
   "lufs": -20,
-  "scope": {
-    "who": [
-      "ove"
-    ],
-    "parts": [
-      "day1",
-      "chatterFirst"
-    ]
-  },
   "roles": {
     "ove": {
       "voice_id": "nEJYXtiAMFuP7hh9yoi4",
@@ -228,9 +219,9 @@
       "design": "A Swedish toddler girl, 3 years old: single excited words, a tiny high voice, giggly. Natural, close conversational recording."
     },
     "anita": {
-      "voice_id": null,
-      "name": null,
-      "source": null,
+      "voice_id": "2z4pujvcLHrr5ilDhLnD",
+      "name": "Karin - Steady and grounded",
+      "source": "library",
       "design": "A Swedish woman in her mid-70s from northern Sweden, speaking Swedish with a mild norrländska accent. Soft and warm, a little tremble, apologetic and kind. Natural, close conversational recording.",
       "library": {
         "gender": "female",
@@ -239,12 +230,58 @@
           "middle_aged"
         ],
         "accent": "norrland"
-      }
+      },
+      "candidates": [
+        {
+          "voice_id": "nUyEO72Kt4m7OfaEnvI7",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Signe - Warm and inviting",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A soft, approachable voice of a Swedish female"
+        },
+        {
+          "voice_id": "2z4pujvcLHrr5ilDhLnD",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Karin - Steady and grounded",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A calm, balanced voice of a Swedish female with a consistent rhythm, clear articulation, and a soft, reliable tone."
+        },
+        {
+          "voice_id": "QouzJLH7fheAS14WUlAd",
+          "owner": "7e2e9b52a190932a667758712d8b7578a3c3df31c1d4f324dad942a8ac07f309",
+          "name": "Marie",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Calm and Friendly."
+        },
+        {
+          "voice_id": "cO6h9P4dtHr7hXjE8ofa",
+          "owner": "ef4de3cfa0848fd6ab9cf3f0b78bba21b38cbf9531f5724a0c85b8d65b24e1a0",
+          "name": "Maria",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 365,
+          "about": "Warm, confident Swedish female voice."
+        }
+      ]
     },
     "rune": {
-      "voice_id": null,
-      "name": null,
-      "source": null,
+      "voice_id": "Cu8zBLZATMEvxva2xzc3",
+      "name": "Robert - Mature, Calm",
+      "source": "library",
       "design": "A Swedish man in his mid-70s from Gothenburg, speaking Swedish with a göteborgska accent. Weak, hoarse and slow, mostly single words, a once-strong voice. Natural, close conversational recording.",
       "library": {
         "gender": "male",
@@ -253,12 +290,58 @@
         ],
         "accent": "gothenburg"
       },
-      "previewText": "...Saab. Hm. ...Ove. Volvo. Jag har kört Volvo i hela mitt liv. ...Saab. Hm. Det var länge sedan nu. ...Ove? Ja. Volvo."
+      "previewText": "...Saab. Hm. ...Ove. Volvo. Jag har kört Volvo i hela mitt liv. ...Saab. Hm. Det var länge sedan nu. ...Ove? Ja. Volvo.",
+      "candidates": [
+        {
+          "voice_id": "Cu8zBLZATMEvxva2xzc3",
+          "owner": "cc49b043c2026f65d8e91f6d381e799c8b4798f4254147178db630bcfd167912",
+          "name": "Robert - Mature, Calm",
+          "lang": "sv",
+          "accent": "scanian",
+          "age": "old",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Mature, Calm, Trustful voice."
+        },
+        {
+          "voice_id": "1uZ0SLDbZd88cfCPzFQo",
+          "owner": "62a172f17a5645418cab4217f84e0efaa6bf24f7d484901d167e290ca49744db",
+          "name": "Mathias - Strong and Charismatic",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 180,
+          "about": "strong, charismatic, and energetic male voice."
+        },
+        {
+          "voice_id": "8vE32fWOR99kGIH4Vg1s",
+          "owner": "1e3ce114e7e1772367b4ab21c979e2187c7d8f06d5f14f90838b5e293f1c5511",
+          "name": "Paul Axel - Deep & calm",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 365,
+          "about": "Deep, calm professional male voice."
+        },
+        {
+          "voice_id": "D0uDQmfJ5m6E0Fcfubxr",
+          "owner": "460d6d8a39424c57691b0c25ada4b7f5871ca21445d27deabeeb4bdf34860faa",
+          "name": "Sovn - Deep",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "A male voice from Halland county in Sweden"
+        }
+      ]
     },
     "jimmy": {
-      "voice_id": null,
-      "name": null,
-      "source": null,
+      "voice_id": "oJEeOXECH9V31Oci9WHK",
+      "name": "Peter - Natural and Engaging",
+      "source": "library",
       "design": "A Swedish man, 25, from Skåne, speaking Swedish with a skånska accent. Happy, round and relaxed, a light friendly voice, always hungry. Natural, close conversational recording.",
       "library": {
         "gender": "male",
@@ -266,12 +349,58 @@
           "young"
         ],
         "accent": "scanian"
-      }
+      },
+      "candidates": [
+        {
+          "voice_id": "oJEeOXECH9V31Oci9WHK",
+          "owner": "738c9616a3ef9d1e65402326cd5cae9c235e202545822ef92475ab3c18014e70",
+          "name": "Peter - Natural and Engaging",
+          "lang": "sv",
+          "accent": "scanian",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Middle-aged male voice. Suitable for commercials/Ads, podcast, social media, E-learning and much more"
+        },
+        {
+          "voice_id": "CuaAIFbkzX2kaNH5EtHZ",
+          "owner": "5210afc8d4483e6e8e209eebd39a4058f54f28737f679fa9e933dae0e7053f5f",
+          "name": "Martin - Warm, Confident and Relatable",
+          "lang": "sv",
+          "accent": "scanian",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 180,
+          "about": "A warm, confident middle-aged male voice with a distinct Helsingborg Scanian accent – grounded, relatable, and effortlessly versatile for most situations."
+        },
+        {
+          "voice_id": "4r815lcewEwv1BQ1Jize",
+          "owner": "07e8102f0af0a87694cdd09db562bc56e612df83ccbf816542850d98be3ca52a",
+          "name": "Niels Joaquin",
+          "lang": "sv",
+          "accent": "scanian",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "This is a natural voice for storytelling, meditation, and speech."
+        },
+        {
+          "voice_id": "zA8eaG1JhG82rhuCip6v",
+          "owner": "0d9cdb52e4caa5da8982884c5118f0b3df792554ccca6bedfa79fa2167b27ad9",
+          "name": "Andreas - Natural",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Natural Swedish voice with a warm, clear tone and relaxed delivery. Perfect for social media, commercials, ads, podcasts, and voiceover work. A true all-round voice that sounds authentic and present -"
+        }
+      ]
     },
     "adrian": {
-      "voice_id": null,
-      "name": null,
-      "source": null,
+      "voice_id": "UzJFCns81AYkRdrnw0ql",
+      "name": "David",
+      "source": "library",
       "design": "A Swedish young man, 19, from Stockholm, speaking Swedish with a young Stockholm accent. A little unsure and mumbly, eager when it comes to cars. Natural, close conversational recording.",
       "library": {
         "gender": "male",
@@ -279,12 +408,58 @@
           "young"
         ],
         "accent": "stockholm"
-      }
+      },
+      "candidates": [
+        {
+          "voice_id": "UzJFCns81AYkRdrnw0ql",
+          "owner": "c3c4514d261590d430cb424f90decce97a293e6d2a87a455b8177610ccff55f3",
+          "name": "David",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Confident male voice."
+        },
+        {
+          "voice_id": "9ambBcBMpHAeeFp1uJUB",
+          "owner": "a58e416ae2c387579de340681fdbb3f53e040246ee8f117d13ad66538d6192ce",
+          "name": "Simon",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Pedagogical voice for educational content on social media. Västra Götaland dialect."
+        },
+        {
+          "voice_id": "Ughw9ouHSYmmbRa0am9u",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Rami - Friendly and Easygoing",
+          "lang": "ar",
+          "accent": "ar native; sv sv-gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A warm, approachable male voice with a natural Levantine accent. His relaxed, conversational tone feels genuine and inviting, perfect for casual narration or customer engagement."
+        },
+        {
+          "voice_id": "ckGEQg6YnSVooU5uDRsF",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Tarek - Pleasant and Professional",
+          "lang": "ar",
+          "accent": "ar native; sv sv-standard",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A young Egyptian male voice with a polished, approachable tone and natural warmth, perfect for professional narration and customer-facing content."
+        }
+      ]
     },
     "anders": {
-      "voice_id": null,
-      "name": null,
-      "source": null,
+      "voice_id": "6eknYWL7D5Z4nRkDy15t",
+      "name": "Tommy Thunstroem - Warm and Informative",
+      "source": "library",
       "design": "A Swedish man in his mid-40s from Östermalm in Stockholm, speaking Swedish with a posh Stockholm accent. Polished and smug, a salesman's friendliness. Natural, close conversational recording.",
       "library": {
         "gender": "male",
@@ -292,12 +467,58 @@
           "middle_aged"
         ],
         "accent": "stockholm"
-      }
+      },
+      "candidates": [
+        {
+          "voice_id": "6eknYWL7D5Z4nRkDy15t",
+          "owner": "b8c5af6e0a7c2b5582c893796595129e67f0a3bdabd315f8b7e01b8d46f91040",
+          "name": "Tommy Thunstroem - Warm and Informative",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Pleasant and informative Swedish narrator, middle-aged man with a warm and deep voice that is Stockholm-esque. Perfect for e-learning and conveying knowledge."
+        },
+        {
+          "voice_id": "x0u3EW21dbrORJzOq1m9",
+          "owner": "e3470d888d1ee2ed0d0c0ac223b8eb1ac417f8e4b8b6833373ad17f95fac46e0",
+          "name": "Adam Composer - Resonant and Smooth",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 365,
+          "about": "Middle-aged Swedish male with a deep, resonant, smooth, pleasant and rich voice. Voice is calm and suitable for Narrations."
+        },
+        {
+          "voice_id": "CpPiT1LUZxBP5fFkxF9r",
+          "owner": "744debe76a4db951dca5c76da1fc89b2678b2cef2fc44b004101cd8228f342c9",
+          "name": "Christer",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 180,
+          "about": "A clear, engaging voice ideal for book reading and educational content, delivering information with warmth, clarity, and a natural storytelling style."
+        },
+        {
+          "voice_id": "Z1ccg5tzsZwHwwOgNW6U",
+          "owner": "d11fe20165a183f458b632176e84935a1699fdf9833beddf728b5d4e659022e8",
+          "name": "Zébulon",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Deep, warm, articulate, and expressive professional Swedish male voice-over artist. "
+        }
+      ]
     },
     "vitskjorta": {
-      "voice_id": null,
-      "name": null,
-      "source": null,
+      "voice_id": "OK5EmHXWwHrd5FnZlPcs",
+      "name": "Stefan - Calm & Instructive",
+      "source": "library",
       "design": "A Swedish municipal official in his late 40s, speaking flat, correct standard Swedish. Polite, cold and bureaucratic. Natural, close conversational recording.",
       "library": {
         "gender": "male",
@@ -305,6 +526,600 @@
           "middle_aged"
         ],
         "accent": "standard"
+      },
+      "candidates": [
+        {
+          "voice_id": "OK5EmHXWwHrd5FnZlPcs",
+          "owner": "7e2a5d70c27c3ca2e8bd50a79f8afce2cbeb7190a77af3f8519a520e7c0644f1",
+          "name": "Stefan - Calm & Instructive",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Calm and Instructive."
+        },
+        {
+          "voice_id": "SrEXuatZsaPiMUKtNYnc",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Henrik - Calm and composed",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A quiet, reassuring voice of a Swedish male with a controlled, steady pace, soft articulation, and an even tone."
+        },
+        {
+          "voice_id": "bV7jikEEhdB4L9kKI5lU",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Sven - Deep and steady",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A steady, grounded voice of a Swedish male with a clean, light accent, balanced cadence, and a smooth, relaxed resonance."
+        },
+        {
+          "voice_id": "LJGqDlSQqFnmhbStEO8I",
+          "owner": "8e47a2b5b20c6351092d443c1a87e821c345b9565cca08309ba3c37f020a3efa",
+          "name": "David",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": null,
+          "about": "Calm, pleasant, and trustworthy voice."
+        }
+      ]
+    },
+    "ped_kid": {
+      "voice_id": null,
+      "name": null,
+      "source": null,
+      "mumble": true,
+      "extra": true,
+      "note": "Barnstatisterna (under 13). Voice Library har inga barnröster: mummel + fniss (4.4 c), som Sara och Nasanin."
+    },
+    "ped_f_young_1": {
+      "voice_id": "tPrL2xYfkQnwJhHMMdRM",
+      "name": "Saga - Content & Ads",
+      "source": "library",
+      "pool": {
+        "sex": "f",
+        "age": "young"
+      },
+      "candidates": [
+        {
+          "voice_id": "tPrL2xYfkQnwJhHMMdRM",
+          "owner": "c4d1f34c61453bb58126b5868521de9fdc49bb8cd19cb9deb62fdfea4c91d301",
+          "name": "Saga - Content & Ads",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "young",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Relatable, bright, and energetic Swedish female voice (early-to-mid 20s tone) with a natural Stockholm accent. Perfect for social media campaigns, lifestyle vlogs, and commercial storytelling. Clear, "
+        },
+        {
+          "voice_id": "cLAH1kXlkAivJHxCW601",
+          "owner": "17f3d10a30c42fdac07a6f26feda26b7892eea50287931c0727fcf66ceb0fd46",
+          "name": "Olivia - Bright, Youthful and Engaging",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "young",
+          "gender": "female",
+          "notice_days": 90,
+          "about": "Olivia’s voice is bright, youthful, and engaging — bringing a natural warmth that makes every interaction feel genuine. Her clear Swedish diction and lively tone create an approachable and modern soun"
+        },
+        {
+          "voice_id": "ycdKCM2Fj0Us7dTwCGoM",
+          "owner": "52bf44915e767893ee3b6b5f0ed2af1d2122cc810f8e5abee7a783af568ff191",
+          "name": "Lisa - Friendly Customer Service Agent",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "young",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Warm, trustworthy Swedish voice with a natural Stockholm accent - ideal for customer service and realistic conversations."
+        }
+      ]
+    },
+    "ped_f_young_2": {
+      "voice_id": "hxVLXZtpLMZepthqBUI4",
+      "name": "Leila - Silky and Warm",
+      "source": "library",
+      "pool": {
+        "sex": "f",
+        "age": "young"
+      },
+      "candidates": [
+        {
+          "voice_id": "hxVLXZtpLMZepthqBUI4",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Leila - Silky and Warm",
+          "lang": "ar",
+          "accent": "ar (modersmål); sv other",
+          "age": "young",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A smooth, pleasant young female voice with a gentle Levantine accent, perfect for narration and guided experiences."
+        },
+        {
+          "voice_id": "xPcC3nehhziQaOrIeAwv",
+          "owner": "7398804d9eaf2f463899a907587c33a390591775784f87857b6d0e1e4e3e66f6",
+          "name": "Ghozlan - Soft Clear Conversational",
+          "lang": "ar",
+          "accent": "ar (modersmål); sv sv-gothenburg",
+          "age": "young",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Gentle, Husky & naturally flowing. Ghozlan brings a soft Egyptian Arabic voice that makes every conversation feel calm and effortless. Her clear, unhurried delivery works across companion apps, casual"
+        },
+        {
+          "voice_id": "C8ZVSJxcymeT86xT429O",
+          "owner": "0418196995161f1c34051a09a915ed43e3f612046021fcf7d23ce4df3508c121",
+          "name": "Luiza - Crisp, Rich & Expressive",
+          "lang": "pl",
+          "accent": "pl (modersmål); sv sv-standard",
+          "age": "young",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Most voices are smooth. Luiza sounds human. A native Polish narrator with natural dynamic range - the kind of subtle shifts in tone and rhythm that make listeners forget they're hearing a synthesized "
+        }
+      ]
+    },
+    "ped_f_mid_1": {
+      "voice_id": "QLfvbukvQvrPOx9HXQ3x",
+      "name": "Louise - Warm and Friendly",
+      "source": "library",
+      "pool": {
+        "sex": "f",
+        "age": "mid"
+      },
+      "candidates": [
+        {
+          "voice_id": "QLfvbukvQvrPOx9HXQ3x",
+          "owner": "17f3d10a30c42fdac07a6f26feda26b7892eea50287931c0727fcf66ceb0fd46",
+          "name": "Louise - Warm and Friendly",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 90,
+          "about": "Louise’s voice is warm and approachable, with a friendly tone that instantly puts listeners at ease. Her clear articulation and balanced pacing make her perfect for customer service bots, onboarding g"
+        },
+        {
+          "voice_id": "nUyEO72Kt4m7OfaEnvI7",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Signe - Warm and inviting",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A soft, approachable voice of a Swedish female"
+        },
+        {
+          "voice_id": "qR801wfGbt4yozOoeFIY",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Elin - Assured and poised",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A distinct, self-assured voice of a Swedish female with clear articulation, a steady rhythm, and a warm, assertive tone."
+        }
+      ]
+    },
+    "ped_f_mid_2": {
+      "voice_id": "JDYfAX20MbYfJGIjPTZz",
+      "name": "Ivana - Calm, Slow & Friendly",
+      "source": "library",
+      "pool": {
+        "sex": "f",
+        "age": "mid"
+      },
+      "candidates": [
+        {
+          "voice_id": "JDYfAX20MbYfJGIjPTZz",
+          "owner": "2c85e5ed9379b83fb2c648a2ba6fd929b67bc573ff907596d771052c73fee298",
+          "name": "Ivana - Calm, Slow & Friendly",
+          "lang": "hr",
+          "accent": "hr (modersmål); sv sv-standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": null,
+          "about": "Great voice for Social Media."
+        },
+        {
+          "voice_id": "8X97zFR9k9pK2xyFI7Nr",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Sini - Energetic and spirited",
+          "lang": "fi",
+          "accent": "fi (modersmål); sv sv-stockholm",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A lively, high-spirited voice of a Finnish female. She speaks with a bright, fast-paced cadence and a playful Nordic accent that feels exceptionally vibrant, positive, and full of infectious enthusias"
+        },
+        {
+          "voice_id": "RaelJk8tltOJ5KMrKjDu",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Layla - Elegant and articulate",
+          "lang": "ar",
+          "accent": "ar (modersmål); sv sv-stockholm",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A smooth, expressive voice of an Arabic female with a clear and engaging delivery, perfect for storytelling, commercial voiceovers, and documentary narrations."
+        }
+      ]
+    },
+    "ped_f_old_1": {
+      "voice_id": "2Yg0KQ858zsEJOsoPmT2",
+      "name": "Kaisa - Strong and authoritative",
+      "source": "library",
+      "pool": {
+        "sex": "f",
+        "age": "old"
+      },
+      "candidates": [
+        {
+          "voice_id": "QouzJLH7fheAS14WUlAd",
+          "owner": "7e2e9b52a190932a667758712d8b7578a3c3df31c1d4f324dad942a8ac07f309",
+          "name": "Marie",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Calm and Friendly."
+        },
+        {
+          "voice_id": "a2RZfOPKpyNO38vDv3DD",
+          "owner": "e181a15b3037c298a789d271e5bf04ad2872b6f030ed4476d670327a6f3cfa63",
+          "name": "Annie - Deep and Serious",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Swedish calm serious voice that is well suited for audiobooks or advertising."
+        },
+        {
+          "voice_id": "2Yg0KQ858zsEJOsoPmT2",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Kaisa - Strong and authoritative",
+          "lang": "fi",
+          "accent": "fi (modersmål); sv sv-stockholm",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A powerful, resonant voice of a middle-aged Finnish woman. She speaks with a commanding, steady presence and a mature Nordic accent that conveys deep confidence, experience, and grounded strength."
+        }
+      ],
+      "settings": {
+        "speed": 0.92
+      }
+    },
+    "ped_f_old_2": {
+      "voice_id": "r0DBxdmWULSkPhMsgKav",
+      "name": "Beatrycze - Calm & Mature",
+      "source": "library",
+      "pool": {
+        "sex": "f",
+        "age": "old"
+      },
+      "candidates": [
+        {
+          "voice_id": "r0DBxdmWULSkPhMsgKav",
+          "owner": "cb54983f93622b39ec803b164039771f9e2229baaa0ded20a25ead16bd75e8a6",
+          "name": "Beatrycze - Calm & Mature",
+          "lang": "pl",
+          "accent": "pl (modersmål); sv sv-standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "A calm, mature Polish female voice, perfect for soothing narrations, audiobooks, and professional e-learning content."
+        },
+        {
+          "voice_id": "gKeccbJ6jkUi4aYA91nS",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Yasmin - Enchanting and Delicate",
+          "lang": "ar",
+          "accent": "ar (modersmål); sv sv-standard",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 4015,
+          "about": "A calm, delicate Tunisian female voice with a soft, enchanting quality. Her gentle tone carries a subtle warmth and elegance, perfect for meditation guides, storytelling, or intimate narration."
+        },
+        {
+          "voice_id": "d26eMDXtCFizSzBVHFFS",
+          "owner": "0714f632cb51a7da56e9e4f5e34ee13ba0d712fe45f0ccc2e7b6f7148a7cea60",
+          "name": "Lena - Velvety & Trustworthy",
+          "lang": "pl",
+          "accent": "pl (modersmål); sv sv-stockholm",
+          "age": "middle_aged",
+          "gender": "female",
+          "notice_days": 730,
+          "about": "Deep, calm and velvety Polish female voice with an elegant, trustworthy and naturally sensual tone. Perfect for premium commercials, beauty and wellness brands, real estate, lifestyle content, long-fo"
+        }
+      ],
+      "settings": {
+        "speed": 0.92
+      }
+    },
+    "ped_m_young_1": {
+      "voice_id": "9ambBcBMpHAeeFp1uJUB",
+      "name": "Simon",
+      "source": "library",
+      "pool": {
+        "sex": "m",
+        "age": "young"
+      },
+      "candidates": [
+        {
+          "voice_id": "9ambBcBMpHAeeFp1uJUB",
+          "owner": "a58e416ae2c387579de340681fdbb3f53e040246ee8f117d13ad66538d6192ce",
+          "name": "Simon",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Pedagogical voice for educational content on social media. Västra Götaland dialect."
+        },
+        {
+          "voice_id": "zA8eaG1JhG82rhuCip6v",
+          "owner": "0d9cdb52e4caa5da8982884c5118f0b3df792554ccca6bedfa79fa2167b27ad9",
+          "name": "Andreas - Natural",
+          "lang": "sv",
+          "accent": "gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Natural Swedish voice with a warm, clear tone and relaxed delivery. Perfect for social media, commercials, ads, podcasts, and voiceover work. A true all-round voice that sounds authentic and present -"
+        },
+        {
+          "voice_id": "DSL3PSQNPbkOavwmnYl1",
+          "owner": "5bef9583ed80e9300f3cb1fbdcad0e849f658837038f9625845d8aaa06c5c8ec",
+          "name": "Anders - Direct, Clear and Warm",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 180,
+          "about": "Anders's voice is deep and even-toned, often delivered with a warm, steady timber that lends it an air of intelligent composure. His distinct, almost musical Scandinavian rhythm and clear pronunciatio"
+        }
+      ]
+    },
+    "ped_m_young_2": {
+      "voice_id": "Ughw9ouHSYmmbRa0am9u",
+      "name": "Rami - Friendly and Easygoing",
+      "source": "library",
+      "pool": {
+        "sex": "m",
+        "age": "young"
+      },
+      "candidates": [
+        {
+          "voice_id": "Ughw9ouHSYmmbRa0am9u",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Rami - Friendly and Easygoing",
+          "lang": "ar",
+          "accent": "ar (modersmål); sv sv-gothenburg",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A warm, approachable male voice with a natural Levantine accent. His relaxed, conversational tone feels genuine and inviting, perfect for casual narration or customer engagement."
+        },
+        {
+          "voice_id": "lOPf5yCKGVCTYSpGXgQr",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Matias - Kind and youthful",
+          "lang": "fi",
+          "accent": "fi (modersmål); sv sv-stockholm",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A pleasant, bright voice of a young Finnish male. He has a naturally polite, easygoing tone and a gentle Nordic accent that feels remarkably sincere, modern, and easy to listen to."
+        },
+        {
+          "voice_id": "ckGEQg6YnSVooU5uDRsF",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Tarek - Pleasant and Professional",
+          "lang": "ar",
+          "accent": "ar (modersmål); sv sv-standard",
+          "age": "young",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A young Egyptian male voice with a polished, approachable tone and natural warmth, perfect for professional narration and customer-facing content."
+        }
+      ]
+    },
+    "ped_m_mid_1": {
+      "voice_id": "SrEXuatZsaPiMUKtNYnc",
+      "name": "Henrik - Calm and composed",
+      "source": "library",
+      "pool": {
+        "sex": "m",
+        "age": "mid"
+      },
+      "candidates": [
+        {
+          "voice_id": "SrEXuatZsaPiMUKtNYnc",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Henrik - Calm and composed",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A quiet, reassuring voice of a Swedish male with a controlled, steady pace, soft articulation, and an even tone."
+        },
+        {
+          "voice_id": "CuaAIFbkzX2kaNH5EtHZ",
+          "owner": "5210afc8d4483e6e8e209eebd39a4058f54f28737f679fa9e933dae0e7053f5f",
+          "name": "Martin - Warm, Confident and Relatable",
+          "lang": "sv",
+          "accent": "scanian",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 180,
+          "about": "A warm, confident middle-aged male voice with a distinct Helsingborg Scanian accent – grounded, relatable, and effortlessly versatile for most situations."
+        },
+        {
+          "voice_id": "bV7jikEEhdB4L9kKI5lU",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Sven - Deep and steady",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A steady, grounded voice of a Swedish male with a clean, light accent, balanced cadence, and a smooth, relaxed resonance."
+        }
+      ]
+    },
+    "ped_m_mid_2": {
+      "voice_id": "ESapivUCtGNuYKDCwzcI",
+      "name": "Aapo - Friendly and approachable",
+      "source": "library",
+      "pool": {
+        "sex": "m",
+        "age": "mid"
+      },
+      "candidates": [
+        {
+          "voice_id": "ESapivUCtGNuYKDCwzcI",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Aapo - Friendly and approachable",
+          "lang": "fi",
+          "accent": "fi (modersmål); sv sv-stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A warm, down-to-earth voice of a Finnish male. He speaks with a gentle, welcoming cadence and a charming Nordic accent that feels trustworthy, inviting, and naturally conversational."
+        },
+        {
+          "voice_id": "x2bzUhGNyEnNbV8lRrVX",
+          "owner": "86fcb6c4633ceb2ef866a06ccec4f0a3c9a6dcf6795bd27da7464be3a1c9e4a5",
+          "name": "Helal",
+          "lang": "ar",
+          "accent": "ar (modersmål); sv sv-standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "A calm, clear voice with a formal, objective tone and a moderate pace, characterized by precise pronunciation and brief pauses between ideas, without exaggerated emotion. "
+        },
+        {
+          "voice_id": "GRCSWm7RbZK1krJbYsOq",
+          "owner": "64cbc624eb5aab4e95a968e1f41d75402277cca6e549036ed17e56ea33bbbc9e",
+          "name": "Esko - Energetic and bright",
+          "lang": "fi",
+          "accent": "fi (modersmål); sv sv-stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 4015,
+          "about": "A vibrant, high-energy voice of a Finnish male. He speaks with an enthusiastic, upbeat rhythm and an authentic Nordic accent that feels engaging, dynamic, and genuinely friendly."
+        }
+      ]
+    },
+    "ped_m_old_1": {
+      "voice_id": "xsSg7GkDPDhaGZpbKOLn",
+      "name": "Tomasz Z - Expressive and Deep",
+      "source": "library",
+      "pool": {
+        "sex": "m",
+        "age": "old"
+      },
+      "candidates": [
+        {
+          "voice_id": "xsSg7GkDPDhaGZpbKOLn",
+          "owner": "0fbf2be06aaed98859dc03ae9c6976e8779eb1fcb9bc9cf9b18a972f5a3c51f1",
+          "name": "Tomasz Z - Expressive and Deep",
+          "lang": "pl",
+          "accent": "pl (modersmål); sv norrland",
+          "age": "old",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "The deep and expressive voice of the man from children's fairy tales"
+        },
+        {
+          "voice_id": "8vE32fWOR99kGIH4Vg1s",
+          "owner": "1e3ce114e7e1772367b4ab21c979e2187c7d8f06d5f14f90838b5e293f1c5511",
+          "name": "Paul Axel - Deep & calm",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 365,
+          "about": "Deep, calm professional male voice."
+        },
+        {
+          "voice_id": "7UMEOkIJdI4hjmR2SWNq",
+          "owner": "031753de1a629b1c5ee02a362309bb453858a012fc8d719782feb64eac985245",
+          "name": "Ola Paulakoski - Deep, Soft and Engaging",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Swedish male voice best for Childrens tales or storytelling."
+        }
+      ],
+      "settings": {
+        "speed": 0.92
+      }
+    },
+    "ped_m_old_2": {
+      "voice_id": "TIMFVcMCO4bdy7J79GWF",
+      "name": "Andreas -Swedish, Deep, manly, calm",
+      "source": "library",
+      "pool": {
+        "sex": "m",
+        "age": "old"
+      },
+      "candidates": [
+        {
+          "voice_id": "TIMFVcMCO4bdy7J79GWF",
+          "owner": "04353e9aec2715b0fb17a04b56318a3d57e6f427fcb6a4d69c0ac9aa767d1c25",
+          "name": "Andreas -Swedish, Deep, manly, calm",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Deep, swedish, manly and calm. Professional actor with good articulation"
+        },
+        {
+          "voice_id": "kkwvaJeTPw4KK0sBdyvD",
+          "owner": "2c908625c571a943074711177164438e13a0a7ea0e42e362d207159cfae1e560",
+          "name": "Bengt - Calm and Soft",
+          "lang": "sv",
+          "accent": "stockholm",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": 730,
+          "about": "Middle-aged Swedish male with a calm tone. Works well for audiobook narration."
+        },
+        {
+          "voice_id": "LJGqDlSQqFnmhbStEO8I",
+          "owner": "8e47a2b5b20c6351092d443c1a87e821c345b9565cca08309ba3c37f020a3efa",
+          "name": "David",
+          "lang": "sv",
+          "accent": "standard",
+          "age": "middle_aged",
+          "gender": "male",
+          "notice_days": null,
+          "about": "Calm, pleasant, and trustworthy voice."
+        }
+      ],
+      "settings": {
+        "speed": 0.92
       }
     }
   }

@@ -45,7 +45,8 @@ async function state() {
     for (const g of groups) { const ls = (g.lines || [g]).flatMap(flat); ls.forEach((l) => seen.add(l.who + '\0' + l.text)); scenes.push({ part: 'day' + m.day, title: `Dag ${m.day} (${id}) · ${g.scene || ''}`, lines: ls }); }
   }
   const rest = {};
-  for (const l of lines) if (!seen.has(l.who + '\0' + l.text)) (rest[l.part] ||= []).push(view(l));
+  // (the pool's lines one voice at a time: a dozen voices say the same tables)
+  for (const l of lines) if (!seen.has(l.who + '\0' + l.text)) (rest[cast.roles?.[l.who]?.pool ? `${l.part} · ${l.who}` : l.part] ||= []).push(view(l));
   for (const [part, ls] of Object.entries(rest)) scenes.push({ part, title: part, lines: ls });
   const roles = {};
   for (const [who, r] of Object.entries(cast.roles || {})) roles[who] = { ...r, auditions: read(`.cache/voice/cast/${who}/index.json`, []) };
@@ -98,7 +99,7 @@ function render() {
   tabs();
   const M = document.getElementById('main');
   if (tab === 'roller') {
-    M.innerHTML = Object.entries(S.roles).map(([who, r]) => '<div class="card"><h2>' + esc(who) + ' <span class="mute">' + esc(r.name || (r.mumble ? 'mummel' : 'ingen röst än')) + '</span></h2>' + (r.note ? '<p class="mute">' + esc(r.note) + '</p>' : '') +
+    M.innerHTML = Object.entries(S.roles).map(([who, r]) => '<div class="card"><h2>' + esc(who) + ' <span class="mute">' + esc(r.name || (r.mumble ? 'mummel' : 'ingen röst än')) + (r.pool ? ' · statist: ' + (r.pool.sex === 'f' ? 'kvinna' : 'man') + ', ' + ({ young: '13–34 år', mid: '35–64 år', old: '65+' }[r.pool.age] || r.pool.age) : '') + '</span></h2>' + (r.note ? '<p class="mute">' + esc(r.note) + '</p>' : '') +
       (r.auditions.length ? '<table><tr><th>kandidat</th><th>prov</th><th>tonhöjd</th><th>tempo</th><th>taligenkänning</th><th></th></tr>' + r.auditions.map((a) => '<tr class="' + (a.id === r.voice_id ? 'chosen' : '') + '"><td>' + esc(a.name) + '<br><span class="mute">' + esc([a.kind, a.lang, a.accent, a.age].filter(Boolean).join(' · ')) + '</span></td><td>' + au(a.file) + '</td><td>' + a.f0 + ' Hz<br><span class="mute">' + a.f0lo + '–' + a.f0hi + '</span></td><td>' + a.cps + ' tecken/s</td><td>WER ' + a.wer + '<br><span class="mute">' + esc(a.heard) + '</span></td><td>' + (a.id === r.voice_id ? '<b>vald</b>' : '<button class="small" data-act="choose" data-who="' + who + '" data-id="' + a.id + '">Välj</button>') + '</td></tr>').join('') + '</table>' : '<p class="mute">Inga provinspelningar. make voice-cast WHO=' + esc(who) + '</p>') + '</div>').join('');
   } else if (tab === 'granskning') {
     M.innerHTML = '<div class="card"><p class="mute">Tagningar som kontrollen lade åt sidan: korta repliker och interjektioner (underkänns aldrig automatiskt) och tagningar som underkändes tre gånger. Lyssna, och gör om med regi om det behövs.</p><table>' + S.review.map(lineRow).join('') + '</table></div>';

@@ -11,6 +11,8 @@
 //           once (> 0.3 s; goal 0), fail lines cut (goal 0), radio toasts gone before their clip
 //           (goal 0), and lines said that aren't in script.js (goal 0).
 //   vstory  the whole story with the voices on (FROM=n works): `story` + the vcut numbers.
+//   vpool   the passers-by's pool voices (the real manifest): sex, age band, the same voice every
+//           time, children murmur, drivers, windows, the neighbours' shared lines; a clip for each.
 //   music   the score: the patrol's cue on day 1, an errand's loop, back to the patrol.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -229,6 +231,64 @@ export default (H) => {
       try { await story.retry(); } catch (e) { bad('vcut: retry failed: ' + e.message); }
       const b = await measure('fail + retry');
       void a; void b;
+    },
+
+    // The passers-by's pool (index.json _pool): each person gets a voice of their sex and age band
+    // from their own seed (the same one every time), children murmur, a car speaks with its bust's
+    // voice, a window with a mid or old one, and every line that person can say has a clip in it.
+    async vpool() {
+      await load('&voice');
+      const r = await ev(async () => {
+        const g = __game, V = window.__voice, S = await import('./src/game/script.js');
+        const P = V.manifest._pool || {}, M = V.manifest, out = { bad: [], tally: {}, n: 0, kids: 0, cars: 0, windows: 0, said: 0 };
+        const band = (age) => (age < 35 ? 'young' : age < 65 ? 'mid' : 'old');
+        const lacks = (key, list) => list.filter((t) => !M[key]?.[t]);
+        const adult = [...S.OUCH, ...S.GETUP, ...S.CARJACK, ...S.KICKED, ...S.SHOVED, ...S.PANIC, ...S.HONK_SIDEWALK, ...S.HONK_CARFREE];
+        const drive = [...S.FLEE_LINES, ...S.CAUGHT_LINES, ...Object.values(S.HONK_BACK).flat(), ...S.SAAB_GREET, ...S.HONK_SMITARE];
+        const person = (def, key, what) => {
+          const age = def.age ?? 30;
+          if (def.kind === 'kid' || age < 13) { out.kids++; if (key !== 'ped_kid') out.bad.push(`${what}: a child (${age}) got ${key}`); return; }
+          const want = `${def.sex === 'f' ? 'f' : 'm'}_${band(age)}`;
+          if (!P[want]?.includes(key)) out.bad.push(`${what}: ${def.sex} ${age} got ${key}, not one of ${want}`);
+          out.tally[key] = (out.tally[key] || 0) + 1;
+          const need = what === 'car' ? drive : [...adult, ...(age < 19 ? S.HONK_TEEN : age >= 65 ? S.HONK_OLD : [...S.HONK_SCARED, ...S.HONK_HEARD])];
+          const miss = lacks(key, need);
+          if (miss.length) out.bad.push(`${key} (${what}, ${age}) has no clip for ${miss.length}: ${miss.slice(0, 3).join(' | ')}`);
+        };
+        for (const p of g.peds) {
+          const k = V.voiceFor(p.char);
+          if (V.voiceFor(p.char) !== k) out.bad.push('a passer-by changed voice');
+          person(p.char.def, k, 'ped'); out.n++;
+        }
+        for (const c of g.cars) {
+          const def = c.driverBust?.userData?.def;
+          if (!def || c.driver) continue;
+          const k = V.voiceFor(c);
+          if (def.name === 'ped') { person(def, k, 'car'); out.cars++; }
+        }
+        // a window: a point on a house wall (horn.js nearHouse)
+        for (const w of [{ x: 10, y: 2.2, z: 40, height: 1 }, { x: -60, y: 2.2, z: 5, height: 1 }, { x: 33, y: 2.2, z: -70, height: 1 }]) {
+          const k = V.voiceFor(w); out.windows++;
+          if (![...(P.f_mid || []), ...(P.m_mid || []), ...(P.f_old || []), ...(P.m_old || [])].includes(k)) out.bad.push(`a window got ${k}`);
+          const miss = lacks(k, S.HONK_WINDOW);
+          if (miss.length) out.bad.push(`${k} (window) has no clip for ${miss.join(' | ')}`);
+        }
+        // the neighbours: their shared lines (SHOVED, KICKED_NEIGHBOUR; COMING for those who wait)
+        for (const k of ['patrick', 'parvaneh', 'jimmy', 'adrian', 'anita', 'anders', 'vitskjorta']) {
+          const miss = lacks(k, [...S.SHOVED, ...S.KICKED_NEIGHBOUR]);
+          if (miss.length) out.bad.push(`${k} has no clip for ${miss.join(' | ')}`);
+        }
+        for (const k of ['parvaneh', 'adrian', 'jimmy']) { const miss = lacks(k, S.COMING); if (miss.length) out.bad.push(`${k} has no clip for ${miss.join(' | ')}`); }
+        // said out loud: a passer-by's line is a clip (not a murmur)
+        V.log.length = 0;
+        const grown = g.peds.find((p) => p.char.def.kind !== 'kid' && (p.char.def.age ?? 30) >= 19 && (p.char.def.age ?? 30) < 65);
+        if (grown) { g.say(grown.char, S.OUCH[1], 1.8); await V.waitQuiet(0.3, 6); out.said = V.log.filter((x) => x.clip && x.t0 != null).length; out.saidWho = V.log[0]?.who; }
+        return out;
+      });
+      log(`pool: ${r.n} passers-by (${r.kids} children murmur), ${r.cars} traffic drivers, ${r.windows} windows; voices used: ${JSON.stringify(r.tally)}; a passer-by's OUCH said as a clip: ${r.said} (${r.saidWho})`);
+      for (const b of r.bad.slice(0, 20)) bad(b);
+      if (!r.said) bad('a passer-by\'s line was not said with a clip');
+      if (Object.keys(r.tally).length < 6) bad(`only ${Object.keys(r.tally).length} pool voices in use`);
     },
 
     async vstory() {

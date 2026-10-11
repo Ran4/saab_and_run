@@ -26,7 +26,8 @@
 //   voice.quiet()                     nobody is talking and nothing waits
 //   voice.waitQuiet(min, max)         Promise: quiet, waiting at least min and at most max s
 //   voice.prefetch(lines)             [[who, text], ...]: fetch and decode now
-//   voice.voiceFor(ch)                the role key a character speaks with (or null)
+//   voice.voiceFor(ch)                the role key a character (or a car, a window) speaks with:
+//                                     a neighbour's, or a pool voice (poolVoice: sex, age, seed)
 //   voice.stop(slot), voice.hush()    stop a slot / everything and drop what waits
 //   voice.update(game)                main.js, every frame: the queue, positions, mouths
 import { audio } from './audio.js';
@@ -111,7 +112,27 @@ export const voice = {
     if (!ch) return null;
     if (ch.key && CHARS[ch.key]) return ch.key;          // the neighbours and Ove
     if (ch.driver) return this.voiceFor(ch.driver);      // a car speaks with its driver's voice
-    return ch.def?.kind === 'kid' ? 'ped_kid' : 'ped';
+    if ('driver' in ch) {                                // ...or its seated bust's (traffic, smitare)
+      const def = ch.driverBust?.userData?.def;
+      return (def && Object.keys(CHARS).find((k) => CHARS[k] === def)) || this.poolVoice(def, ch);
+    }
+    return this.poolVoice(ch.def, ch);                   // a passer-by; no def: a window (horn.js)
+  },
+  // A passer-by's voice from the pool (index.json _pool, tools/voice/voice.mjs): by sex and age
+  // (13-34 young, 35-64 mid, 65+ old; children murmur), one voice per person from their own
+  // random pitch, so the same person always sounds the same. No def (a window, a car nobody sits
+  // in): an adult from where it is (a window: a mid or old voice).
+  poolVoice(def, at) {
+    const P = this.manifest?._pool;
+    const age = def?.age ?? 50;
+    if (def && (def.kind === 'kid' || age < 13)) return 'ped_kid';
+    if (!P) return 'ped';
+    const band = age < 35 ? 'young' : age < 65 ? 'mid' : 'old';
+    const list = def ? P[`${def.sex === 'f' ? 'f' : 'm'}_${band}`] : [...(P.f_mid || []), ...(P.m_mid || []), ...(P.f_old || []), ...(P.m_old || [])];
+    if (!list?.length) return 'ped';
+    const seed = def ? def.voice ?? def.height ?? 0 : Math.round(at?.x ?? 0) * 31 + Math.round(at?.z ?? 0);
+    const h = Math.abs(Math.sin(seed * 12.9898 + 78.233) * 43758.5453) % 1;
+    return list[Math.floor(h * list.length)];
   },
   quiet() { return !this.playing.main && !this.playing.bubble && !this.queue.length; },
   // Quiet, waiting at least min s (a beat after the last line) and at most max s.
@@ -314,8 +335,10 @@ export const voice = {
         if (!u.src && s > u.dur + 0.3) this._finish(u, 0);   // (a clip that never decoded)
       } else {
         // mumbled: a murmur per word start, the mouth open on each
-        while (u.murmurs && u.mi < u.murmurs.length && s >= u.murmurs[u.mi]) { audio.talk(CHARS[u.who]?.voice || 300); u.lastMurmur = s; u.mi++; }
-        if (u.giggle != null && s >= u.giggle) { audio.giggle?.((CHARS[u.who]?.voice || 520) * 0.8); u.giggle = null; }
+        // (a passer-by murmurs at their own pitch)
+        const pitch = CHARS[u.who]?.voice || u.ch?.def?.voice;
+        while (u.murmurs && u.mi < u.murmurs.length && s >= u.murmurs[u.mi]) { audio.talk(pitch || 300); u.lastMurmur = s; u.mi++; }
+        if (u.giggle != null && s >= u.giggle) { audio.giggle?.((pitch || 520) * 0.8); u.giggle = null; }
         const since = u.lastMurmur == null ? 1 : s - u.lastMurmur;
         u.mouthV = since < 0.18 ? 0.7 * (1 - since / 0.18) + 0.1 : 0.05;
         if (s >= u.dur) this._finish(u, 0);
