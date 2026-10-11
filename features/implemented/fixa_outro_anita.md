@@ -88,4 +88,8 @@ igenom, liksom `story` och `vstory`.
 - I dag 6:s avslutning med `LUFTSKIP=1` stod Anita och Rune redan intill Ove när dagen tog slut
   (Anita vid dörren, Rune i rullstolen till höger). `placeCast` låter den som redan står bra stå
   kvar, och kameran för tagningen med alla tre hamnade då 1,4 m från Runes huvud, som sticker in i
-  bildens hörn. Det har med kamerans bildval att göra, inte med synligheten.
+  bildens hörn. Det har med kamerans bildval att göra, inte med synligheten. För att kontrollera
+  det ställdes Anita och Rune på exakt de platserna under UPPDRAG KLART på dag 6 (`FROM=5 TO=6`,
+  två gånger), både i HEAD före rättningen och med rättningen. Resultatet blev detsamma i båda,
+  med samma platser och samma kamera, och utan fel. Felet kom inte tillbaka, så bildvalet beror på
+  mer än var de står. Det är inte rättat här och får bli en egen sak om det dyker upp igen.
