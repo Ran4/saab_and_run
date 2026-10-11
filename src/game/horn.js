@@ -27,6 +27,7 @@
 import { audio } from '../audio.js';
 import { hud } from './hud.js';
 import { CHARS } from '../actors/models.js';
+import { JUMP } from '../actors/character.js';
 import { queryBlocks, BOX } from '../world/collision.js';
 import { isCarFree } from '../world/layout.js';
 import {
@@ -293,8 +294,8 @@ export class Horn {
     if (s.phase === 0) {
       s.phase = 1;
       if (s.yelp) audio.yelp(c.def.voice || 300, this.vol(c) * (s.kind === 'leap' ? 1 : 0.6));
-      if (s.kind === 'leap' && s.jumpV > 0) c.jump(s.jumpV);
-      else if (s.hop) c.jump(s.hop);
+      if (s.kind === 'leap' && s.jumpV > 0) c.jump(s.jumpV, JUMP.leap);
+      else if (s.hop) c.jump(s.hop, JUMP.leap);
     }
     if (s.phase === 1) {
       let done;

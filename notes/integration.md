@@ -53,7 +53,10 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   "Småprata med X" (a line and an Ove grunt), name tags within 9 m, teal dots on the minimap. The
   current mission giver stands at the mission's spot with the amber marker and waves.
 - **On foot**: walk 3.2, spring (run, Shift) 5.5, pushing Rune 3.0 (3.6 with Shift), one jump (apex
-  0.55 m, no double jump), J/click kicks: a tyre (thunk, the car rocks, an opinion by make: "Bra
+  0.55 m, no double jump; half a second's wind-up standing, the grunt at the push, a press never
+  lost: a tap jumps, one in the air is kept 0.25 s and acted on at the landing, a dialogue or a car
+  ends the wind-up; no kick while winding up; features/implemented/fixa_hoppet.md, scenario `hopp`
+  in gameplay.mjs: 11 checks with real key presses), J/click kicks: a tyre (thunk, the car rocks, an opinion by make: "Bra
   däck." / "Plast och elektronik." / "Sommardäck. I november."), the nearest prop (breaks, Ove pays; one
   per kick), a person (they object; nobody is knocked over by Ove's boot). Footsteps from the walk
   cycle (`audio.step` with the world's `surfaceAt`). Poses: `carry` with the cat (at

@@ -225,7 +225,7 @@ measurements), **`headP`** (head parameters), `d` (normalised def), `squash`, `p
 |---|---|
 | `speed` (m/s) | idle (breathing, weight shift, glances; pregnant characters now and then rest a hand on the bump) → walk → brisk walk → run. Walk or run is a **switch with hysteresis** (a run from 4.1 m/s, a walk again below 3.6, cross-faded over ~0.2 s), not a blend. **Feet are planted** (see *Gait* below). |
 | `air`, `vy` | a fall or a bounce: a mild air pose |
-| `jumpWind`, `jumping`, `landT`, `jumpV` | a jump (Character sets them, see *Gait*): the wind-up (0..1: knees bend, trunk folds, arms back, lids squint, jaw clenched), the flight (`vy / jumpV`: stretched on the way up, a small tuck and the arms out over the top, legs reaching for the ground; on the move a leap, the left leg leading), the landing (s since: the knees take it in ~70 ms, up again by ~0.4 s) |
+| `jumpWind`, `jumping`, `landT`, `jumpV` | a jump (Character sets them, see *Gait*): the wind-up (0..1: he sinks, knees forward and seat back, trunk folds, arms back, lids squint, jaw clenched; from 0.7 the push off, the jaw open on the grunt, up on his toes), the flight (`vy / jumpV`: stretched on the way up, a small tuck and the arms out over the top, legs reaching for the ground; on the move a leap, the left leg leading), the landing (s since: the knees take it in ~70 ms, up again by ~0.4 s) |
 | `kick` (1 → 0) | tyre kick with the right foot |
 | `talk` | head nods and slow tilts; both hands up in front of the waist, the leading one making continuous small beats (the palm turning up and over), the other lower and quieter, swapping every few seconds; jaw moves a few mm |
 | `wave` | left hand raised, open, waving |
@@ -814,11 +814,21 @@ motion was rebuilt around them. `locomotion()` in models.js, for everybody:
   behind the legs, the hands coming in on the forward swing; running bent ~85°, the upper arm swinging
   mostly behind the body. Thorax counter-rotates against the pelvis (0.7 of it). Jaw a little open
   running.
-- **Jump** (Character.jump, `JUMP` in character.js): a wind-up (0.22 s standing, 0.1 s on the move),
-  then off the ground (`game.onJump`: `audio.grunt`, a strained 'hnngh'), a flight under 14 m/s²
-  (0.55 m, ~0.56 s, was 0.45 s under 24), a landing (`game.onJumpLand`: footstep, thud, `audio.oof`
-  seven times out of ten, a little snow) after which his speed is capped at 45 % rising back over
-  0.42 s. Presses during the wind-up are ignored (still no double jump).
+- **Jump** (Character.jump, `JUMP` in character.js; feature `features/implemented/fixa_hoppet.md`):
+  a wind-up of 0.5 s standing, ~0.33 s walking, 0.2 s running (`JUMP.wind`): he sinks (to 0.6 of
+  it: knees forward, seat back over the feet, trunk forward, arms back), gathers himself (to
+  `JUMP_PUSH` = 0.7: `game.onJumpPush`, `audio.grunt`, one of Ove's four grunts in turn) and pushes
+  off (legs straight, arms through forward and up, the heels up for the last 0.1 s: he leaves the
+  ground from his toes); `jumpWindPose` in models.js. Then off the ground (`game.onJump`: coat and
+  boots), a flight under 14 m/s² (0.55 m, ~0.56 s, was 0.45 s under 24), a landing
+  (`game.onJumpLand`: footstep, thud, `audio.oof` seven times out of ten, his four 'uff's in turn, a
+  little snow) after which his speed is capped at 45 % rising back over 0.42 s. Standing, through the
+  wind-up and the landing both feet stay on the ground where they are (`evenLegs`: the idle stance's
+  soft knee goes; `soleGap`: the lower sole on the ground; the jump's air pose, not the fall's, lets
+  go after the landing, the feet coming down under him). A second press in the wind-up is the same
+  jump (no double jump); one he can't act on yet is kept 0.25 s (main.js `JUMP_BUFFER`); walked off
+  an edge in the wind-up he pushes off at once (`JUMP.coyote` 0.15 s); a dialogue or a car seat ends
+  the wind-up. The horn's leaps keep the old quick wind-up (`JUMP.leap`).
 - Numbers (`tools/gait.mjs metrics`, Ove): cadence 112 / 160 / 211 / 209 steps per minute at 1.4 /
   2.2 / 3.2 / 5.5 m/s, step 0.75 / 0.83 / 0.91 / 1.58 m, pelvis bob 6 / 8 / 10 / 9 cm (3.2 m/s with a
   0.9 m step: the leg's arc, not a choice), foot slip on the ground 0.04–0.18 m/s (was 0.37–0.95 by
@@ -828,5 +838,7 @@ motion was rebuilt around them. `locomotion()` in models.js, for everybody:
 - Look-dev: `PORT=88xx node tools/gait.mjs [walk run walkback runback walkfront jump walkjump runjump
   clip metrics sound]` films a real Character on `tools/gait.html` (fixed 60 Hz steps, a tape mark
   every 0.5 m) into `out/gait_<take>.png` contact sheets (`VIDEO=1`/`clip`: an mp4, `CAM=back`),
-  `metrics` prints the numbers above, `sound` renders the jump's voice next to `ouch` / `talk` into
-  `out/gait_sounds.wav` + a spectrogram, `eval <file.js>` runs a script in the page.
+  `metrics` prints the numbers above, `jump` also the feet through the wind-up and the landing
+  (`jump feet`: dip below the ground, lift before the push, slip, m), `sound` renders Ove's four
+  grunts and 'uff's next to `ouch` / `talk` into `out/gait_sounds.wav` + a spectrogram, `eval
+  <file.js>` runs a script in the page.

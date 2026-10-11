@@ -178,6 +178,8 @@ tools/music/               musiken: music.mjs och cues.json
 assets/voice/, assets/music/   de färdiga klippen och styckena (index.json: manifesten)
 tools/shot.mjs             headless-testkörning (scenarier i tools/scenarios/)
 tools/gait.mjs             Oves gång, löpning och hopp filmade bild för bild, med mätvärden
+tools/sfx/                 Oves hoppstön: grunts.mjs (ElevenLabs, en logg över kostnaden) och grunts.py (mätningarna)
+assets/sfx/                stönen och landningarnas "uff" (fyra av varje, i tur och ordning)
 ```
 
 ## Headless-tester

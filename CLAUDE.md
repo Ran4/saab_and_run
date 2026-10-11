@@ -18,7 +18,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   titlecheck quality recycle smalltalk tagmerge companion p4ui titlecam` and round 2's `dilation errandprog
   r2checks reloadday titlekeys collcull titlepose bouquet` and round 2b's `camroof` (the chase cam
   under low roofs) and `garage` (Ove's garage door, E from both sides) and `horn` (the horn with real
-  T presses: 19 checks; `hornlook` = close-ups, `WHO=adult|kid|old|patrick`) (notes/integration.md),
+  T presses: 19 checks; `hornlook` = close-ups, `WHO=adult|kid|old|patrick`) and `hopp` (the jump
+  with real key presses: a tap, the wind-up, a kept press, a 0.85 m block climbed: 11 checks)
+  (notes/integration.md),
   story.mjs `story m1..m7 gate aftermath` plus the no-warp checks `m5race m7chase m4cat lotwalk
   hospdrive retry` and round 2's `giveup outrosmet flowercalls dusk camwall` and `luft luftskip
   luftsound` (day 3's radiator scene: a shot per beat, the skip, its sounds offline), ui.mjs `uiportraits
@@ -76,7 +78,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - Look-dev without gameplay: `PORT=88xx node tools/look.mjs <name> '<json camera shots>'`.
   Gait (walk, run, jump, their numbers and the jump's sounds): `PORT=88xx node tools/gait.mjs
   [walk run jump clip metrics sound ...]` (notes/people.md, *Gait*). Run `metrics` after touching
-  `locomotion()`: no foot below the ground, slip on the ground under ~0.2 m/s.
+  `locomotion()`: no foot below the ground, slip on the ground under ~0.2 m/s; `jump` after touching
+  the jump (`jump feet`: no dip, no lift before the push). Ove's jump grunts are made by
+  `tools/sfx/grunts.mjs` (not the voice tool; `ledger.json` = what they cost).
 - A scene inside a house (day 3's kitchen, `world/interior.js`): the set is built inside the real
   house only while the scene runs (houses are closed boxes, invisible from inside), the window it
   looks out of has its pane as a mesh of its own (data.js `interiors`), the people are puppets

@@ -3696,8 +3696,10 @@ export function animateCharacter(m, st, dt) {
   const seatT = st.seated ? 1 : 0;
   const wSeat = smoothW(m, 'seat', seatT, 14, dt);
   const wAir = smoothW(m, 'air', st.air && !st.flung && !st.down ? 1 : 0, st.jumping ? 16 : 10, dt);
-  // a jump's wind-up: the crouch follows the wind-up and lets go quickly once he is off the ground
-  m.windC = st.jumpWind > 0 ? sstep(0, 0.85, st.jumpWind) : (m.windC || 0) * (dt > 0 ? Math.exp(-14 * dt) : 0);
+  // a jump's wind-up (st.jumpWind 0..1, jumpWindPose): he sinks, gathers himself and pushes off; once
+  // he is off the ground what is left of it lets go quickly. windC: how far down he is (lids, jaw).
+  if (st.jumpWind > 0) { m.windU = st.jumpWind; m.windK = 1; } else m.windK = (m.windK || 0) * (dt > 0 ? Math.exp(-14 * dt) : 0);
+  m.windC = m.windK > 0.001 ? m.windK * windCrouch(m.windU) : 0;
   // the landing: the knees give in ~70 ms, he is up again by ~0.4 s
   const lt = st.landT ?? 9, wLand = lt < 0.45 && !st.air ? (lt < 0.07 ? sstep(0, 0.07, lt) : 1 - sstep(0.1, 0.42, lt)) : 0;
   const wFlung = smoothW(m, 'flung', st.flung ? 1 : 0, 14, dt);
@@ -3736,12 +3738,18 @@ export function animateCharacter(m, st, dt) {
   if (wWork > 0.001 && !wheel) { workPose(m, st, P, Q, t); lerpPose(P, Q, wWork); }
   if (wKneel > 0.001 && !wheel) { kneelPose(m, st, P, Q, t); lerpPose(P, Q, wKneel); }
   if (wSeat > 0.001) { seatPose(m, st, Q, t); lerpPose(P, Q, wSeat); }
-  if (m.windC > 0.001 && !st.seated) jumpGather(m, P, m.windC, sstep(0.5, 3, st.speed || 0));
+  if (m.windK > 0.001 && !st.seated) jumpWindPose(m, P, m.windU, m.windK, sstep(0.5, 3, st.speed || 0));
   if (wAir > 0.001) {
-    if (st.jumping) { jumpAirPose(m, st, P, Q, t); lerpPose(P, Q, wAir); }
+    // (a jump's air pose lets go after the landing too, from its legs reaching for the ground)
+    if (st.jumping || lt < 0.6) { jumpAirPose(m, st, P, Q, t); lerpPose(P, Q, wAir); }
     else { airPose(m, st, P, Q); lerpPose(P, Q, wAir * 0.8, 0, OFF); }
   }
+  // (standing, through the wind-up and the landing: both feet on the ground, whatever the poses above
+  // did to the legs; on the move the stride has its own feet)
+  const plant = st.seated || st.air ? 0 : Math.max(m.windK, 1 - sstep(0.45, 0.6, lt)) * (1 - sstep(0.5, 3, st.speed || 0));
+  if (lt < 0.6) evenLegs(P, plant);
   if (wLand > 0.001 && !st.seated) jumpLand(m, P, wLand, sstep(0.5, 3, st.speed || 0), sty.old || 0);
+  if (plant > 0.001) P[OFF + 1] -= soleGap(m, P) * plant;
   // (after the jump's poses: a fright's leap keeps its hands up)
   if (wFright > 0.001) frightPose(m, P, Q, t, wFright);
   if (wFist > 0.001) fistPose(m, P, Q, t, wFist);
@@ -3755,7 +3763,8 @@ export function animateCharacter(m, st, dt) {
   // (a jump: clenched while gathering, open on the grunt as he pushes off and on the 'uff' as he
   // lands; running hard: breathing through the mouth)
   const jr = st.jumping ? clamp((st.vy || 0) / Math.max(1, st.jumpV || 4), -1, 1) : -1;
-  P[B.jaw * 3] = st.talk ? jawT : Math.max(jawT * (1 - m.windC), 0.075 * sstep(0.35, 0.75, jr), 0.06 * wLand, (0.025 + 0.02 * Math.sin(t * 9)) * (m.gaitRun || 0) * sstep(0.5, 3, st.speed || 0));
+  const jp = m.windK > 0.001 ? 0.055 * m.windK * sstep(JUMP_PUSH, JUMP_PUSH + 0.12, m.windU) : 0;
+  P[B.jaw * 3] = st.talk ? jawT : Math.max(jawT * (1 - m.windC), jp, 0.075 * sstep(0.35, 0.75, jr), 0.06 * wLand, (0.025 + 0.02 * Math.sin(t * 9)) * (m.gaitRun || 0) * sstep(0.5, 3, st.speed || 0));
   P[B.jaw * 3 + 1] = 0; P[B.jaw * 3 + 2] = 0;
   // look
   P[B.neck * 3 + 1] += (st.look || 0) * (1 - wDown);
@@ -3763,7 +3772,7 @@ export function animateCharacter(m, st, dt) {
   const bones = m.bones;
   for (let b = 0; b < NB; b++) bones[b].rotation.set(P[b * 3], P[b * 3 + 1], P[b * 3 + 2]);
   // hands that went into pockets come back out for anything else
-  const busy = Math.min(1, Math.max(wPhone, wWrite, wPush, wCheer, wWave, wTalk, wSeat, wFlung, wDown, wAir, wCarry, wWork, wKneel, wFright, wFist));
+  const busy = Math.min(1, Math.max(wPhone, wWrite, wPush, wCheer, wWave, wTalk, wSeat, wFlung, wDown, wAir, wCarry, wWork, wKneel, wFright, wFist, m.windK ? m.windK * sstep(0, 0.25, m.windU) : 0));
   for (const i of [0, 1]) {
     m.hands[i].scale.setScalar(lerp(m.handScale[i], 1, busy));
     m.fings[i].scale.setScalar(lerp(m.fingScale[i], 1, busy));
@@ -4560,19 +4569,80 @@ function squatAdd(m, P, dk, lean) {
   P[OFF + 1] -= L * (1 - Math.cos(dk * 0.5));
   P[B.spine * 3] += lean; P[B.chest * 3] += lean * 0.25; P[B.neck * 3] -= lean * 0.7;
 }
-// The wind-up (c 0..1: knees bending, the trunk folding forward, the arms swinging back, the head
-// down a little, gathering himself), and the landing (c 0..1: the knees take it, the trunk goes
-// forward, the arms come forward and out to catch the balance).
-function jumpGather(m, P, c, moving) {
-  const k = c * lerp(1, 0.5, moving);
-  squatAdd(m, P, 0.95 * k, 0.36 * k);
-  P[B.neck * 3] += 0.12 * k;
+// The wind-up (u 0..1 of it; w its weight: 1 until he leaves the ground, then letting go). He sinks
+// (to u = WIND.sink): the knees go forward and the seat back over the feet, the trunk folds forward,
+// the arms swing back, the head goes down a little; gathers himself (to JUMP_PUSH, where
+// character.js has him push: the grunt); and pushes off: the legs straighten, the arms swing through
+// forward and up, and at the end the heels come off the ground, so he leaves it from his toes,
+// stretched, where the air pose takes over. Standing, the feet stay where they are (the seat goes back
+// as the knees come forward; up on the toes he rolls forward over them). On the move (mv) a shallower
+// dip on top of the stride, whose feet are its own.
+export const JUMP_PUSH = 0.7;
+const WIND = { sink: 0.6, thigh: 0.74, shin: 0.5, lean: 0.44, heel: 0.5, armBack: 0.62 };
+function windCrouch(u) { return sstep(0, WIND.sink, u) * (1 + 0.05 * sstep(WIND.sink, JUMP_PUSH, u)) * (1 - sstep(JUMP_PUSH, 0.97, u)); }
+function jumpWindPose(m, P, u, w, mv) {
+  const D = m.D, thighL = D.hipY - D.kneeY, shinL = D.kneeY - D.ankleY, toe = 0.76 * D.footLen;
+  const k = lerp(1, 0.45, mv), c = windCrouch(u) * w * k;
+  // (the arms swing through a little ahead of the legs)
+  const fwd = sstep(JUMP_PUSH - 0.08, 0.97, u), back = sstep(0.05, WIND.sink, u) * (1 - fwd) * w * k, up = fwd * w * lerp(1, 0.5, mv);
+  const hr = WIND.heel * sstep(0.8, 1, u) * w * (1 - mv);
+  // legs: the thigh forward by a more and the shin back by b (the knee bent a + b more), the sole as it
+  // was (then up on the toes by hr). The pelvis goes back so the toe tips stay where they were (the
+  // seat over the heels; on the toes he rolls forward over them); down: animateCharacter's plant step.
+  // (h: the hip's flexion, k the knee's, p the foot's pitch, toes down, in the body)
+  const a = WIND.thigh * c, b = WIND.shin * c;
+  // (standing, both feet take his weight as he gathers himself: neither leaves the ground)
+  evenLegs(P, w * (1 - mv) * sstep(0, 0.25, u));
+  const tip = (h, k, p) => thighL * Math.sin(h) + shinL * Math.sin(h - k) - D.ankleY * Math.sin(p) + toe * Math.cos(p);
+  let dz = 0;
+  for (const i of [0, 1]) {
+    const th = i ? B.thighL : B.thighR, sh = i ? B.shinL : B.shinR, ft = i ? B.footL : B.footR;
+    const h = -P[th * 3], kn = P[sh * 3], p = P[th * 3] + kn + P[ft * 3];
+    dz += (tip(h + a, kn + a + b, p + hr) - tip(h, kn, p)) / 2;
+    P[th * 3] -= a; P[sh * 3] += a + b; P[ft * 3] += hr - b;
+  }
+  P[OFF + 2] -= dz * (1 - mv);
+  // the trunk folds forward over the knees (the eyes stay on where he is going), upright again as he pushes
+  const lean = WIND.lean * c;
+  P[B.spine * 3] += lean * 0.75; P[B.chest * 3] += lean * 0.25; P[B.neck * 3] += 0.1 * c - lean * 0.62;
+  P[B.head * 3] += 0.04 * c - 0.05 * up;
   for (const i of [0, 1]) {
     const side = i ? 1 : -1, arm = i ? B.armL : B.armR, fore = i ? B.foreL : B.foreR;
-    P[arm * 3] = lerp(P[arm * 3], 0.62, k); P[arm * 3 + 2] = lerp(P[arm * 3 + 2], side * 0.16, k);
-    P[fore * 3] = lerp(P[fore * 3], -0.35, k);
+    P[arm * 3] = lerp(P[arm * 3], WIND.armBack, back); P[arm * 3 + 2] = lerp(P[arm * 3 + 2], side * 0.17, back);
+    P[fore * 3] = lerp(P[fore * 3], -0.3, back);
+    P[arm * 3] = lerp(P[arm * 3], -1.0, up); P[arm * 3 + 2] = lerp(P[arm * 3 + 2], side * 0.12, up);
+    P[fore * 3] = lerp(P[fore * 3], -0.45, up);
   }
 }
+// Both legs bent alike (w 0..1): standing still, one knee is soft (locomotion's idle), and bending
+// both by the same amount on top of that lifts that foot off the ground (~2 cm in a deep crouch). The
+// same hip and knee flexion in both, each sole's pitch kept; the legs' turn and spread stay (they hold
+// the feet under the tilted pelvis).
+function evenLegs(P, w) {
+  if (!(w > 0.001)) return;
+  const hm = (P[B.thighR * 3] + P[B.thighL * 3]) / 2, km = (P[B.shinR * 3] + P[B.shinL * 3]) / 2;
+  for (const i of [0, 1]) {
+    const th = i ? B.thighL : B.thighR, sh = i ? B.shinL : B.shinR, ft = i ? B.footL : B.footR;
+    const p = P[th * 3] + P[sh * 3] + P[ft * 3];
+    P[th * 3] = lerp(P[th * 3], hm, w); P[sh * 3] = lerp(P[sh * 3], km, w);
+    P[ft * 3] = p - P[th * 3] - P[sh * 3];
+  }
+}
+// How far the lower sole is above the ground under the root (m), from the legs as they are posed, in
+// their own plane: the hip's flexion h = -thigh x, the knee's k = shin x, the foot's pitch (toes down)
+// the sum of the three; from the hip joint down to the lowest of the sole's heel and toe.
+function soleGap(m, P) {
+  const D = m.D, thighL = D.hipY - D.kneeY, shinL = D.kneeY - D.ankleY, F = D.footLen;
+  let e = 0;
+  for (const i of [0, 1]) {
+    const th = i ? B.thighL : B.thighR, sh = i ? B.shinL : B.shinR, ft = i ? B.footL : B.footR;
+    const h = -P[th * 3], k = P[sh * 3], p = P[th * 3] + k + P[ft * 3];
+    e = Math.max(e, thighL * Math.cos(h) + shinL * Math.cos(h - k) + D.ankleY * Math.cos(p) + Math.max(-0.24 * F * Math.sin(p), 0.76 * F * Math.sin(p)));
+  }
+  return D.hipY + P[OFF + 1] - e;
+}
+// The landing (c 0..1: the knees take it, the trunk goes forward, the arms come forward and out to
+// catch the balance).
 function jumpLand(m, P, c, moving, old) {
   const k = c * lerp(1, 0.55, moving);
   squatAdd(m, P, 1.1 * k * (1 + 0.15 * old), 0.42 * k);
@@ -4582,15 +4652,16 @@ function jumpLand(m, P, c, moving, old) {
     P[fore * 3] = lerp(P[fore * 3], -0.75, k);
   }
 }
-// In the air (r: vertical speed over take-off speed, 1 -> -1). Standing: pushed off and stretched on
-// the way up (toes pointed, the arms swung forward and up), the knees coming up a little over the top
-// (an old body hardly tucks) with the arms going out to the sides for balance, a little flailing, the
-// legs reaching down for the ground before it comes. On the move, a leap: the left leg reaching ahead,
-// the right folded behind, the right arm forward and the left back and out, both legs coming forward
-// to land.
+// In the air (r: vertical speed over take-off speed, 1 -> -1; -1 once down). Standing: pushed off and
+// stretched on the way up (toes pointed, the arms swung forward and up), the knees coming up a little
+// over the top (an old body hardly tucks) with the arms going out to the sides for balance, a little
+// flailing, the legs reaching down for the ground before it comes, the knees soft and the feet under
+// him (where he will stand: they don't slide back in once he is down). On the move, a leap: the left
+// leg reaching ahead, the right folded behind, the right arm forward and the left back and out, both
+// legs coming forward to land.
 function jumpAirPose(m, st, P, Q, t) {
   Q.set(P);
-  const old = m.style.old || 0, r = clamp((st.vy || 0) / Math.max(1, st.jumpV || 4), -1, 1);
+  const old = m.style.old || 0, r = st.jumping ? clamp((st.vy || 0) / Math.max(1, st.jumpV || 4), -1, 1) : -1;
   const up = sstep(0, 1, r), dn = sstep(0, 1, -r), mid = 1 - up - dn;
   const mv = sstep(0.5, 3, st.speed || 0), tuck = 1 - 0.3 * old;
   for (const i of [0, 1]) {
@@ -4598,17 +4669,18 @@ function jumpAirPose(m, st, P, Q, t) {
     const thigh = i ? B.thighL : B.thighR, shin = i ? B.shinL : B.shinR, foot = i ? B.footL : B.footR;
     const arm = i ? B.armL : B.armR, fore = i ? B.foreL : B.foreR;
     // standing
-    let h = 0.1 * up + 0.42 * tuck * mid + 0.24 * dn + (i ? 0.07 : -0.03) * (1 - up);
-    let k = 0.2 * up + 0.55 * tuck * mid + 0.24 * dn + (i ? 0.1 : 0) * mid;
+    let h = 0.1 * up + 0.42 * tuck * mid + 0.22 * dn + (i ? 0.07 : -0.03) * mid;
+    let k = 0.2 * up + 0.55 * tuck * mid + 0.44 * dn + (i ? 0.1 : 0) * mid;
     let ax = -(1.0 * up + 0.3 * mid + 0.3 * dn), az = 0.12 * up + 0.66 * mid + 0.52 * dn, fx = -(0.45 * up + 0.35 * mid + 0.4 * dn);
     // on the move (i = 1, the left, leads)
     const hM = i ? 0.42 + 0.18 * mid + 0.1 * dn : -0.32 * (1 - dn) + 0.05 * dn, kM = i ? 0.22 + 0.25 * mid - 0.05 * dn : 0.95 * (1 - dn) + 0.45 * dn;
     const axM = i ? 0.45 : -0.7, azM = i ? 0.42 : 0.22, fxM = -1.0;
     h = lerp(h, hM, mv); k = lerp(k, kM, mv); ax = lerp(ax, axM, mv); az = lerp(az, azM, mv); fx = lerp(fx, fxM, mv);
     const fp = -0.5 * up * (1 - 0.6 * mv) - 0.08 * mid + 0.12 * dn;
-    Q[thigh * 3] = -h; Q[thigh * 3 + 1] = 0; Q[thigh * 3 + 2] = side * 0.05;
+    // (reaching for the ground, the legs come in to the stance's own width and turn)
+    Q[thigh * 3] = -h; Q[thigh * 3 + 1] = lerp(0, P[thigh * 3 + 1], dn); Q[thigh * 3 + 2] = lerp(side * 0.05, P[thigh * 3 + 2], dn);
     Q[shin * 3] = k; Q[shin * 3 + 1] = 0; Q[shin * 3 + 2] = 0;
-    Q[foot * 3] = h - k - fp; Q[foot * 3 + 1] = side * 0.12 * old; Q[foot * 3 + 2] = 0;
+    Q[foot * 3] = h - k - fp; Q[foot * 3 + 1] = lerp(side * 0.12 * old, P[foot * 3 + 1], dn); Q[foot * 3 + 2] = lerp(0, P[foot * 3 + 2], dn);
     Q[arm * 3] = ax; Q[arm * 3 + 1] = 0;
     Q[arm * 3 + 2] = side * (az + 0.07 * old * mid * Math.sin(t * 13 + i * 2));
     Q[fore * 3] = fx; Q[fore * 3 + 1] = -side * 0.3;

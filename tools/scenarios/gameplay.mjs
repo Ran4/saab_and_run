@@ -17,7 +17,9 @@
 // titlekeys (Enter / Space / pad on the title, Patrick on a continued day 2), titlepose, bouquet
 // (look-dev). Their failed checks count as errors. Round 2b: camroof (the chase camera under bus
 // shelters, the Akut canopy, in Ove's garage). Feature oppna_garaget: garage (Ove's garage door: shut and
-// open from both sides with E, the tugs, colliders, the in-car hint, the save, day 3).
+// open from both sides with E, the tugs, colliders, the in-car hint, the save, day 3). Feature
+// fixa_hoppet: hopp (the jump with real key presses: a tap, a press in the wind-up, a press just before
+// the landing, a dialogue in the wind-up, a 0.85 m block climbed standing, walking and running).
 
 export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, standBy, fresh, fps, PORT, errors = [] }) => {
   // A failed check of the phase-4 round-2 scenarios ends the run with 'N errors' (like the story's).
@@ -2147,6 +2149,128 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
         b = await said();
         ok('the cat jumps; Ove apologises to it', ct.cats === 1 && ct.maxY > 0.2 && b.includes('Förlåt, katten.'), { ...cat, ...ct, b });
       } else ok('the cat is home after day 4', false);
+    },
+
+    // Feature fixa_hoppet: the jump with real key presses, on a clear stretch of the street at z = -40
+    // (as in `horn`). A tap jumps: half a second's wind-up standing, the grunt at the push (0.7 of it),
+    // off the ground, ~0.55 m up. A second press during the wind-up is the same jump (no double jump);
+    // a press just before the landing is kept and he jumps again as he lands; a dialogue that starts
+    // in the wind-up stops it. And a 0.85 m block (higher than a step, 0.45 m) is climbed standing in
+    // front of it, walking up to it and running at it, as before; without a jump it is not.
+    async hopp() {
+      const ok = (label, cond, info) => console.log('[t] hopp', label, verdict('hopp ' + label, !!cond), info === undefined ? '' : JSON.stringify(info));
+      // Ove on foot at x heading +x, nobody near; his pushes, take-offs and landings (game time) and
+      // his highest point over where he started
+      const setup = (x = -95) => ev((x) => {
+        const g = __game;
+        if (g.playerCar) g.exitCar(true);
+        for (const c of g.cars.slice()) if ((c.traffic || c.violation) && Math.abs(c.x - x) < 90 && Math.abs(c.z + 40) < 40) { if (c.violation) g.patrol.remove(c); else g.removeCar(c); }
+        g.player.teleport(x, -37.25, Math.PI / 2);
+        g.cam.yaw = Math.PI / 2; g.cam.pitch = 0.2; g.cam.snapNext = true;
+        const L = window.__hl ||= { ev: [], top: 0 };
+        if (!L.hooked) {
+          L.hooked = true;
+          for (const k of ['onJumpPush', 'onJump', 'onJumpLand']) { const f = g[k].bind(g); g[k] = (ch, ...a) => { if (ch === g.player) L.ev.push([k, +g.time.toFixed(3)]); return f(ch, ...a); }; }
+          g.onFrame(() => {
+            const p = g.player, b = window.__hb;
+            L.top = Math.max(L.top, p.y - L.y0);
+            if (b && !b.dead && p.onGround && Math.abs(p.y - b.top) < 0.02) L.onBlock = true;
+          });
+        }
+        L.ev.length = 0; L.top = 0; L.y0 = g.player.y; L.onBlock = false;
+        return true;
+      }, x);
+      const evs = () => ev(() => window.__hl.ev.slice());
+      const count = (e, k) => e.filter((x) => x[0] === k).length;
+      const now = () => ev(() => __game.time);
+      const press = async () => { await page.keyboard.down('Space'); await frames(1); await page.keyboard.up('Space'); };
+      const raf = (fn, arg, timeout = 20000) => page.waitForFunction(fn, { polling: 'raf', timeout }, arg);
+      await ev(() => { __game.patrol.pause(true); });
+
+      // 1. a tap
+      await setup(); await frames(10);
+      const t0 = await now();
+      await press();
+      await raf(() => window.__hl.ev.some((e) => e[0] === 'onJumpLand'));
+      await frames(10);
+      let e = await evs();
+      const push = e.find((x) => x[0] === 'onJumpPush')?.[1], off = e.find((x) => x[0] === 'onJump')?.[1];
+      const top = await ev(() => window.__hl.top);
+      ok('a tap jumps once', count(e, 'onJump') === 1 && count(e, 'onJumpPush') === 1, e);
+      ok('half a second before he leaves the ground', off - t0 > 0.4 && off - t0 < 0.62, { wind: +(off - t0).toFixed(3) });
+      ok('the grunt at the push, before he is off', off - push > 0.08 && off - push < 0.2, { lead: +(off - push).toFixed(3) });
+      ok('as high as before (~0.55 m)', top > 0.5 && top < 0.6, { top: +top.toFixed(3) });
+
+      // 2. a second press during the wind-up: the same jump
+      await setup(); await frames(10);
+      await press(); await frames(5);
+      const winding = await ev(() => __game.player.windT >= 0);
+      await press();
+      await raf(() => window.__hl.ev.some((e) => e[0] === 'onJumpLand'));
+      await frames(70);
+      e = await evs();
+      ok('a press in the wind-up: still one jump', winding && count(e, 'onJump') === 1, { winding, e });
+
+      // 3. a press just before he lands: kept, and he jumps again from the landing
+      await setup(); await frames(10);
+      await press();
+      await raf(() => { const p = __game.player; return p.jumping && p.vy < -1.5 && p.y - window.__hl.y0 < 0.3; });
+      await press();
+      await raf(() => window.__hl.ev.filter((e) => e[0] === 'onJumpLand').length >= 2);
+      e = await evs();
+      const land1 = e.find((x) => x[0] === 'onJumpLand')[1], wind2 = e.filter((x) => x[0] === 'onJumpPush')[1]?.[1];
+      ok('a press just before the landing is kept', count(e, 'onJump') === 2 && wind2 - land1 < 0.5, e);
+
+      // 4. a dialogue that starts in the wind-up stops it
+      await setup(); await frames(10);
+      await press(); await frames(3);
+      await ev(() => { __game.inDialog = true; });
+      await frames(60);
+      await ev(() => { __game.inDialog = false; });
+      await frames(30);
+      e = await evs();
+      ok('a dialogue in the wind-up: no jump', count(e, 'onJump') === 0 && await ev(() => __game.player.windT < 0), e);
+
+      // 5. up onto a 0.85 m block (x -93.8 .. -92.3, 2.5 m wide): standing in front of it, walking up
+      // to it, running at it; and not without a jump
+      const g0 = await ev(async () => {
+        const { box } = await import('./src/world/collision.js');
+        const g = __game, y = g.groundAt(-93, -37.25);
+        window.__hb = box(-93.8, -38.5, -92.3, -36.0, y + 0.85, 'solid');
+        return +y.toFixed(3);
+      });
+      // (stood on it at some point: holding W he walks on over it and off the far side)
+      const onTop = () => ev(() => { const p = __game.player, L = window.__hl; return { top: +L.top.toFixed(3), x: +p.x.toFixed(2), on: L.onBlock }; });
+      // no jump: he walks into it and stays down
+      await setup(-95.5); await frames(5);
+      await hold(['KeyW'], 1200);
+      let r = await onTop();
+      ok('without a jump he does not get up', !r.on && r.top < 0.05, r);
+      // standing against it: Space and W together, W held
+      await setup(-94.3); await frames(5);
+      await page.keyboard.down('KeyW'); await press(); await sleep(1600); await page.keyboard.up('KeyW');
+      await frames(10);
+      r = await onTop();
+      ok('up from standing in front of it', r.on, r);
+      // walking up to it: Space 1.2 m before the wall
+      await setup(-99); await frames(5);
+      await page.keyboard.down('KeyW');
+      await raf(() => __game.player.x > -93.8 - 0.34 - 1.2);
+      await press(); await sleep(1500); await page.keyboard.up('KeyW');
+      await frames(10);
+      r = await onTop();
+      ok('up walking', r.on, r);
+      // running at it: Space 1.6 m before the wall
+      await setup(-104); await frames(5);
+      await page.keyboard.down('ShiftLeft'); await page.keyboard.down('KeyW');
+      await raf(() => __game.player.x > -93.8 - 0.34 - 1.6);
+      await press(); await sleep(1200); await page.keyboard.up('KeyW'); await page.keyboard.up('ShiftLeft');
+      await frames(10);
+      r = await onTop();
+      ok('up running', r.on, r);
+      await shot('hopp_on_block');
+      await ev(() => { window.__hb.dead = true; __game.patrol.pause(false); });
+      console.log('[t] hopp ground', g0);
     },
   };
 };

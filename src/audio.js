@@ -1,4 +1,5 @@
-// Everything you hear is synthesised, no samples: a Saab four-cylinder with fake gear changes,
+// Everything you hear is synthesised (but the voices and the composed score, voice.js and the
+// director below, and Ove's own jump grunts, EFFORTS): a Saab four-cylinder with fake gear changes,
 // tyre hiss and snow crunch, a dual-tone horn per make, an old Swedish landline ring, a carpenter's pencil
 // on paper, a rubber stamp, a doorbell, a cat, footsteps in snow - and a sparse, melancholic
 // piano-and-strings score in A minor (generative, so it never loops the same bars).
@@ -353,6 +354,7 @@ export const audio = {
     if (!AC) return;
     ctx = new AC();
     S = setup(ctx);
+    loadEfforts();
     if (this.musicOn) startMusic();
     // (a state set before the first gesture plays now)
     if (director.raw) { const st = director.raw; director.state = null; director.set(st, {}); }
@@ -643,18 +645,20 @@ export const audio = {
     o.connect(f1).connect(g); o.connect(f2).connect(g); g.connect(S.sfx);
     o.start(t); o.stop(t + 0.3);
   },
-  // Ove pushing off for a jump: a short, strained, half-swallowed 'hnngh' (the mouth opening from a
-  // nasal murmur onto an 'uh'), the pitch squeezed up and falling off, a breath out after it.
-  // pitch: the CHARS voice (Ove 150 -> ~95 Hz).
+  // Ove pushing off for a jump: one of his own four grunts, in turn (EFFORTS). Until they are loaded
+  // (or if they can't be) a synthesised one: a short, strained, half-swallowed 'hnngh' (the mouth
+  // opening from a nasal murmur onto an 'uh'), the pitch squeezed up and falling off, a breath out
+  // after it. pitch: the CHARS voice (Ove 150 -> ~95 Hz).
   grunt(pitch = 150) {
-    if (!S) return;
+    if (!S || playEffort('hopp')) return;
     const t = now(), f0 = clamp(pitch * 0.63, 80, 220) * rnd(0.94, 1.06), dur = rnd(0.24, 0.32), j = rnd(0.94, 1.06);
     vocal(t, dur, [f0 * 0.9, f0 * rnd(1.15, 1.28), f0 * 0.8], [270 * j, 1000 * j, 2350], [rnd(540, 620) * j, 1150 * j, 2500], 0.12, { at: 0.3, open: rnd(0.08, 0.13), creak: 55, press: 1 });
     burst(t + dur * 0.62, 0.16, 0.014, 1500, 'bandpass', 0.7, { attack: 0.03 });
   },
-  // ...and landing: a breath knocked out of him and a low, short 'uff' closing to an 'oo'.
+  // ...and landing: one of his four 'uff's, in turn; synthesised until then: a breath knocked out of
+  // him and a low, short 'uff' closing to an 'oo'.
   oof(pitch = 150) {
-    if (!S) return;
+    if (!S || playEffort('land')) return;
     const t = now() + 0.02, f0 = clamp(pitch * 0.6, 75, 210) * rnd(0.94, 1.06), dur = rnd(0.15, 0.2), j = rnd(0.94, 1.06);
     burst(t - 0.02, 0.07, 0.02, 1100, 'bandpass', 0.8, { attack: 0.005 });
     vocal(t, dur, [f0 * 1.06, f0, f0 * 0.72], [520 * j, 950 * j, 2300], [340 * j, 760 * j, 2200], 0.09, { at: 0.15, open: dur * 0.8, creak: 35, delayOpen: 0 });
@@ -948,6 +952,10 @@ export const audio = {
   // before the first gesture (no context yet).
   synth(fn) { return S ? fn({ ctx, sfx: S.sfx, now, osc, burst, vocal, verbSend, noise: S.noise }) : null; },
 
+  // Ove's effort sounds, fetched and decoded (tests: before an offline render); resolves when done.
+  loadEfforts() { return loadEfforts(); },
+  get effortsReady() { return EFFORTS.ready; },
+
   // Test hook: render `fn(audio, offlineCtx)` into an OfflineAudioContext of `secs` seconds and
   // return the AudioBuffer (the live graph is untouched). `fn` may await offlineCtx.suspend(t).
   async _offline(secs, fn, sr = 44100) {
@@ -964,6 +972,35 @@ export const audio = {
     return buf;
   },
 };
+
+// Ove's own effort sounds (feature fixa_hoppet): four grunts as he pushes off for a jump
+// (assets/sfx/ove_hopp_<n>.mp3) and four 'uff's as he lands (ove_land_<n>.mp3), in his ElevenLabs
+// voice (tools/sfx/grunts.mjs, all at the same loudness), each kind played in turn (1, 2, 3, 4, 1, ...)
+// dry and centred through the voices' bus, so the voice level covers them. Fetched once the context
+// exists (decoded by a context of their own: an AudioBuffer plays in any context, the tests' offline
+// ones too); a sound that isn't there yet leaves its turn to the synthesised one.
+const EFFORTS = { hopp: [], land: [], n: 4, turn: { hopp: 0, land: 0 }, ready: false, loading: null };
+function loadEfforts() {
+  if (EFFORTS.loading) return EFFORTS.loading;
+  const dec = new OfflineAudioContext(1, 1, 44100);
+  const one = (kind, i) => fetch(new URL(`../assets/sfx/ove_${kind}_${i + 1}.mp3`, import.meta.url))
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    .then((b) => dec.decodeAudioData(b)).then((buf) => { EFFORTS[kind][i] = buf; }).catch(() => {});
+  const all = [];
+  for (const kind of ['hopp', 'land']) for (let i = 0; i < EFFORTS.n; i++) all.push(one(kind, i));
+  return (EFFORTS.loading = Promise.all(all).then(() => { EFFORTS.ready = true; }));
+}
+function playEffort(kind) {
+  const i = EFFORTS.turn[kind], buf = EFFORTS[kind][i];
+  EFFORTS.turn[kind] = (i + 1) % EFFORTS.n;
+  if (!buf) return false;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(S.voiceBus);
+  verbSend(src, 0.04);
+  src.start(now());
+  return true;
+}
 
 // A short wordless effort sound (grunts, groans): a voice (a sawtooth, its pitch jittered by low
 // noise: creak) through three formants gliding from vowel v0 to v1 ([F1, F2, F3] Hz) over `open` s,

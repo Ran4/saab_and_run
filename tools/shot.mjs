@@ -149,16 +149,17 @@ const SCENARIOS = {
     console.log('[t] brisk speed', await ev(() => __game.player.speed.toFixed(2)));
     await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW');
     await frames(20);
+    // (the jump: a tap, half a second's wind-up, ~0.56 s in the air)
     let top = 0;
     await page.keyboard.down('Space'); await frames(2); await page.keyboard.up('Space');
-    for (let k = 0; k < 30; k++) { await frames(1); top = Math.max(top, await ev(() => __game.player.y)); }
+    for (let k = 0; k < 75; k++) { await frames(1); top = Math.max(top, await ev(() => __game.player.y)); }
     console.log('[t] jump apex above ground', (top - y0).toFixed(2));
-    // Double jump must not exist.
+    // Double jump must not exist: a second press during the wind-up is the same jump.
     await page.keyboard.down('Space'); await frames(2); await page.keyboard.up('Space');
     await frames(4);
     await page.keyboard.down('Space'); await frames(2); await page.keyboard.up('Space');
     let top2 = 0;
-    for (let k = 0; k < 40; k++) { await frames(1); top2 = Math.max(top2, await ev(() => __game.player.y)); }
+    for (let k = 0; k < 90; k++) { await frames(1); top2 = Math.max(top2, await ev(() => __game.player.y)); }
     console.log('[t] jump+jump apex', (top2 - y0).toFixed(2));
     // A tyre: stand by the Saab's front wheel and kick it.
     await ev(() => {

@@ -32,5 +32,8 @@ required; it is given here anyway. Textures were downloaded at 1K and repacked b
 Licence texts: Poly Haven – https://polyhaven.com/license ; ambientCG – https://docs.ambientcg.com/license/
 (both CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/).
 
+`sfx/` (Ove's jump grunts and landings) is made with ElevenLabs (text to speech in Ove's voice) by
+`tools/sfx/grunts.mjs`, as `voice/` and `music/` are (features/implemented/a_fully_voiced_game.md).
+
 Procedural (no texture files): foliage, skin, hair, car paint, chrome, painted surfaces, rubber,
 plastic, glass, lights, water, ice, particles, markers.

@@ -84,6 +84,9 @@ const TAKES = {
     const y0 = tr[0].y; let top = 0, air = 0;
     for (const s of tr) { top = Math.max(top, s.y - y0); }
     console.log('[t] jump', JSON.stringify({ apex: +top.toFixed(2), log: await ev(() => __log()) }));
+    // the feet through the wind-up and the landing: no foot below the ground (dip), none lifting before
+    // the push (lift), no sliding (slip), all in m
+    console.log('[t] jump feet', JSON.stringify(await ev(() => __jumpFeet())));
     return tr;
   },
   runjump: () => take('runjump', [[150, RUN, { brisk: true }], [90, RUN, { brisk: true, jump: true, cap: true }]], { every: 3, camOpts: { d: 4.5 } }),
@@ -101,7 +104,7 @@ TAKES.sound = async () => {
   const wav = path.join(OUT, 'gait_sounds.wav');
   fs.writeFileSync(wav, Buffer.concat([hdr, pcm]));
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', wav, '-lavfi', 'showspectrumpic=s=1600x600:legend=1:fscale=lin:stop=4000', path.join(OUT, 'gait_sounds.png')]);
-  console.log('[t] sounds [at, peak, rms] (grunt, oof, grunt, oof, ouch, talk x3)', JSON.stringify(r.stats));
+  console.log('[t] sounds [at, peak, rms] (grunt, oof) x4 (Ove\'s own: assets/sfx), ouch, talk x3', JSON.stringify(r.stats));
   console.log('saved', path.relative(ROOT, wav));
   return [];
 };

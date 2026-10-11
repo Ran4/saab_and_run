@@ -1,0 +1,561 @@
+[
+ {
+  "kind": "tts",
+  "name": "t1a",
+  "text": "[grunts with effort] Hnngh!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:33:48.258Z",
+  "cost": 4,
+  "bytes": 36824
+ },
+ {
+  "kind": "sfx",
+  "name": "s1",
+  "text": "A single short strained grunt of effort from a heavy 60-year-old man as he jumps up, 'hnngh!', close-miked, dry, no music, no footsteps",
+  "dur": 1,
+  "infl": 0.6,
+  "at": "2026-10-11T15:33:54.103Z",
+  "cost": 10,
+  "bytes": 17180
+ },
+ {
+  "kind": "tts",
+  "name": "t1b",
+  "text": "[grunts with effort] Hnngh!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:12.122Z",
+  "cost": 4,
+  "bytes": 38078
+ },
+ {
+  "kind": "tts",
+  "name": "t2a",
+  "text": "[strained grunt] Hmmf!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:12.914Z",
+  "cost": 3,
+  "bytes": 25539
+ },
+ {
+  "kind": "tts",
+  "name": "t2b",
+  "text": "[strained grunt] Hmmf!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:13.570Z",
+  "cost": 3,
+  "bytes": 24285
+ },
+ {
+  "kind": "tts",
+  "name": "t3a",
+  "text": "[effortful grunt] Uhh!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:14.444Z",
+  "cost": 3,
+  "bytes": 34316
+ },
+ {
+  "kind": "tts",
+  "name": "t3b",
+  "text": "[effortful grunt] Uhh!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:15.324Z",
+  "cost": 3,
+  "bytes": 35570
+ },
+ {
+  "kind": "tts",
+  "name": "t4a",
+  "text": "[grunts] Hupp!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:16.121Z",
+  "cost": 2,
+  "bytes": 25539
+ },
+ {
+  "kind": "tts",
+  "name": "t4b",
+  "text": "[grunts] Hupp!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:16.904Z",
+  "cost": 2,
+  "bytes": 28047
+ },
+ {
+  "kind": "tts",
+  "name": "t5a",
+  "text": "[grunts] ...",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:17.596Z",
+  "cost": 2,
+  "bytes": 21359
+ },
+ {
+  "kind": "tts",
+  "name": "t5b",
+  "text": "[grunts] ...",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:18.296Z",
+  "cost": 2,
+  "bytes": 18852
+ },
+ {
+  "kind": "tts",
+  "name": "t6a",
+  "text": "[exhales sharply with effort] Hah!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:19.261Z",
+  "cost": 4,
+  "bytes": 44765
+ },
+ {
+  "kind": "tts",
+  "name": "t6b",
+  "text": "[exhales sharply with effort] Hah!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:20.149Z",
+  "cost": 4,
+  "bytes": 38078
+ },
+ {
+  "kind": "tts",
+  "name": "t7a",
+  "text": "[old man grunting as he jumps] Hoh!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:21.243Z",
+  "cost": 5,
+  "bytes": 48527
+ },
+ {
+  "kind": "tts",
+  "name": "t7b",
+  "text": "[old man grunting as he jumps] Hoh!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:22.256Z",
+  "cost": 5,
+  "bytes": 40586
+ },
+ {
+  "kind": "tts",
+  "name": "t8a",
+  "text": "[short grunt of effort] Ugh!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:23.151Z",
+  "cost": 4,
+  "bytes": 39332
+ },
+ {
+  "kind": "tts",
+  "name": "t8b",
+  "text": "[short grunt of effort] Ugh!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:34:23.851Z",
+  "cost": 4,
+  "bytes": 24285
+ },
+ {
+  "kind": "sfx",
+  "name": "s2",
+  "text": "Elderly man's effort grunt, a short pressed 'ungh' through clenched teeth as he pushes off to jump, close mic, dry room",
+  "dur": 1,
+  "infl": 0.6,
+  "at": "2026-10-11T15:34:25.204Z",
+  "cost": 10,
+  "bytes": 17180
+ },
+ {
+  "kind": "sfx",
+  "name": "s3",
+  "text": "A grumpy old man grunts once as he hops up, a low gravelly 'hmph-uh', short, close and dry",
+  "dur": 1,
+  "infl": 0.6,
+  "at": "2026-10-11T15:34:26.802Z",
+  "cost": 10,
+  "bytes": 17180
+ },
+ {
+  "kind": "sfx",
+  "name": "s4",
+  "text": "Male effort vocalization, older man, a single short grunt 'hup!' as he jumps, no reverb",
+  "dur": 1,
+  "infl": 0.6,
+  "at": "2026-10-11T15:34:28.536Z",
+  "cost": 10,
+  "bytes": 17180
+ },
+ {
+  "kind": "sfx",
+  "name": "s5",
+  "text": "Heavy middle-aged man straining to jump, one short low grunt with a breath out after it, close mic",
+  "dur": 1,
+  "infl": 0.6,
+  "at": "2026-10-11T15:34:30.285Z",
+  "cost": 10,
+  "bytes": 17180
+ },
+ {
+  "kind": "sfx",
+  "name": "s6",
+  "text": "One deep, gravelly grunt of exertion from an old man, 'nngh', very short, dry studio recording",
+  "dur": 1,
+  "infl": 0.6,
+  "at": "2026-10-11T15:34:31.996Z",
+  "cost": 10,
+  "bytes": 17180
+ },
+ {
+  "kind": "sts",
+  "name": "v6",
+  "from": "s6",
+  "secs": 1.04,
+  "at": "2026-10-11T15:40:15.029Z",
+  "cost": 17,
+  "bytes": 17598
+ },
+ {
+  "kind": "tts",
+  "name": "g1a",
+  "text": "[grunts] ...",
+  "seed": 37,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:25.314Z",
+  "cost": 2,
+  "bytes": 18852
+ },
+ {
+  "kind": "tts",
+  "name": "g1b",
+  "text": "[grunts] ...",
+  "seed": 41,
+  "stab": 0.3,
+  "at": "2026-10-11T15:40:26.086Z",
+  "cost": 2,
+  "bytes": 18852
+ },
+ {
+  "kind": "tts",
+  "name": "g1c",
+  "text": "[grunts] ...",
+  "seed": 53,
+  "stab": 0.3,
+  "at": "2026-10-11T15:40:26.783Z",
+  "cost": 2,
+  "bytes": 20106
+ },
+ {
+  "kind": "tts",
+  "name": "g2a",
+  "text": "[strained grunt] ...",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:27.393Z",
+  "cost": 3,
+  "bytes": 17598
+ },
+ {
+  "kind": "tts",
+  "name": "g2b",
+  "text": "[strained grunt] ...",
+  "seed": 23,
+  "stab": 0.3,
+  "at": "2026-10-11T15:40:28.168Z",
+  "cost": 3,
+  "bytes": 20106
+ },
+ {
+  "kind": "tts",
+  "name": "g2c",
+  "text": "[strained grunt] ...",
+  "seed": 37,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:28.914Z",
+  "cost": 3,
+  "bytes": 20106
+ },
+ {
+  "kind": "tts",
+  "name": "g3a",
+  "text": "[grunts with effort] ...",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:29.588Z",
+  "cost": 3,
+  "bytes": 25539
+ },
+ {
+  "kind": "tts",
+  "name": "g3b",
+  "text": "[grunts with effort] ...",
+  "seed": 23,
+  "stab": 0.3,
+  "at": "2026-10-11T15:40:30.301Z",
+  "cost": 3,
+  "bytes": 31808
+ },
+ {
+  "kind": "tts",
+  "name": "g3c",
+  "text": "[grunts with effort] ...",
+  "seed": 37,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:31.047Z",
+  "cost": 3,
+  "bytes": 24285
+ },
+ {
+  "kind": "tts",
+  "name": "g4a",
+  "text": "[short effort grunt] ...",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:31.787Z",
+  "cost": 3,
+  "bytes": 23031
+ },
+ {
+  "kind": "tts",
+  "name": "g4b",
+  "text": "[short effort grunt] ...",
+  "seed": 23,
+  "stab": 0.3,
+  "at": "2026-10-11T15:40:32.432Z",
+  "cost": 3,
+  "bytes": 16344
+ },
+ {
+  "kind": "tts",
+  "name": "g5a",
+  "text": "[groans] ...",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:33.106Z",
+  "cost": 2,
+  "bytes": 25539
+ },
+ {
+  "kind": "tts",
+  "name": "g5b",
+  "text": "[groans] ...",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:33.838Z",
+  "cost": 2,
+  "bytes": 24285
+ },
+ {
+  "kind": "tts",
+  "name": "g6a",
+  "text": "[grunts] Hmpf.",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:40:34.558Z",
+  "cost": 2,
+  "bytes": 25539
+ },
+ {
+  "kind": "tts",
+  "name": "g6b",
+  "text": "[grunts] Hmpf.",
+  "seed": 23,
+  "stab": 0.3,
+  "at": "2026-10-11T15:40:35.316Z",
+  "cost": 2,
+  "bytes": 24285
+ },
+ {
+  "kind": "tts",
+  "name": "h1a",
+  "text": "[strained grunt] Hmmf!",
+  "seed": 37,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:46.308Z",
+  "cost": 3,
+  "bytes": 24285
+ },
+ {
+  "kind": "tts",
+  "name": "h1b",
+  "text": "[strained grunt] Hmmf!",
+  "seed": 41,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:47.250Z",
+  "cost": 3,
+  "bytes": 26793
+ },
+ {
+  "kind": "tts",
+  "name": "h1c",
+  "text": "[strained grunt] Hmmf!",
+  "seed": 53,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:48.018Z",
+  "cost": 3,
+  "bytes": 25539
+ },
+ {
+  "kind": "tts",
+  "name": "h1d",
+  "text": "[strained grunt] Hmmf!",
+  "seed": 59,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:48.805Z",
+  "cost": 3,
+  "bytes": 24285
+ },
+ {
+  "kind": "tts",
+  "name": "h2a",
+  "text": "[grunts with effort] Hnngh!",
+  "seed": 37,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:49.644Z",
+  "cost": 4,
+  "bytes": 31808
+ },
+ {
+  "kind": "tts",
+  "name": "h2b",
+  "text": "[grunts with effort] Hnngh!",
+  "seed": 41,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:50.731Z",
+  "cost": 4,
+  "bytes": 41839
+ },
+ {
+  "kind": "tts",
+  "name": "h2c",
+  "text": "[grunts with effort] Hnngh!",
+  "seed": 53,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:51.616Z",
+  "cost": 4,
+  "bytes": 34316
+ },
+ {
+  "kind": "tts",
+  "name": "h3a",
+  "text": "[strained grunt] Hnngh!",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:52.401Z",
+  "cost": 3,
+  "bytes": 30555
+ },
+ {
+  "kind": "tts",
+  "name": "h3b",
+  "text": "[strained grunt] Hnngh!",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:53.183Z",
+  "cost": 3,
+  "bytes": 18852
+ },
+ {
+  "kind": "tts",
+  "name": "h4a",
+  "text": "[grunts] ...",
+  "seed": 59,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:53.852Z",
+  "cost": 2,
+  "bytes": 20106
+ },
+ {
+  "kind": "tts",
+  "name": "h4b",
+  "text": "[grunts] ...",
+  "seed": 61,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:54.457Z",
+  "cost": 2,
+  "bytes": 17598
+ },
+ {
+  "kind": "tts",
+  "name": "h4c",
+  "text": "[grunts] ...",
+  "seed": 67,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:55.194Z",
+  "cost": 2,
+  "bytes": 20106
+ },
+ {
+  "kind": "tts",
+  "name": "l1a",
+  "text": "[exhales] Uff.",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:56.035Z",
+  "cost": 2,
+  "bytes": 33062
+ },
+ {
+  "kind": "tts",
+  "name": "l1b",
+  "text": "[exhales] Uff.",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:56.971Z",
+  "cost": 2,
+  "bytes": 31808
+ },
+ {
+  "kind": "tts",
+  "name": "l2a",
+  "text": "[grunts] Uff.",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:57.741Z",
+  "cost": 2,
+  "bytes": 33062
+ },
+ {
+  "kind": "tts",
+  "name": "l2b",
+  "text": "[grunts] Uff.",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:58.532Z",
+  "cost": 2,
+  "bytes": 31808
+ },
+ {
+  "kind": "tts",
+  "name": "l3a",
+  "text": "[winded] Oof.",
+  "seed": 11,
+  "stab": 0.5,
+  "at": "2026-10-11T15:57:59.321Z",
+  "cost": 2,
+  "bytes": 18852
+ },
+ {
+  "kind": "tts",
+  "name": "l3b",
+  "text": "[winded] Oof.",
+  "seed": 23,
+  "stab": 0.5,
+  "at": "2026-10-11T15:58:00.061Z",
+  "cost": 2,
+  "bytes": 21359
+ }
+]

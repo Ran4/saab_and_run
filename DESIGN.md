@@ -170,9 +170,11 @@ stage kinds as missions):
 
 ### 4.4 On foot
 Walk 3.2 m/s (a determined power walk), Shift 5.5 m/s (an older man running hard), one small jump
-(no double jump, no stomp): a grown man's, with a wind-up, a grunt as he pushes off, ~0.56 s in the
-air for 0.55 m, and a landing his knees take (an 'uff', a moment before he is up to speed again);
-see notes/people.md, *Gait*. People walking
+(no double jump, no stomp): a grown man's, with a wind-up (half a second standing: he sinks, gathers
+himself and pushes off from his toes; shorter on the move), a grunt as he pushes off (one of four in
+his own voice, in turn: assets/sfx), ~0.56 s in the air for 0.55 m, and a landing his knees take (an
+'uff', his own too, a moment before he is up to speed again). A press is never lost: a tap is a jump,
+one he can't act on yet is kept 0.25 s; see notes/people.md, *Gait*. People walking
 with Ove (errands) follow his trail (a point every 0.6 m) round fences and hedges, and are still
 "with him" until they have been more than 20 m behind for 2 s (beyond 35 m they give up). Children
 (cast and pedestrians) and the neighbours are never knocked over by cars; they are shoved aside,

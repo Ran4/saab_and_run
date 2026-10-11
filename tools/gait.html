@@ -126,17 +126,64 @@
         width: +(2 * avg(width)).toFixed(3), toeOut: +avg(toeOut).toFixed(1), handSwing: +(Math.max(...hx) - Math.min(...hx)).toFixed(3),
       };
     };
+    // A standing jump's feet, from the press to 0.5 s after the landing: the lowest of each foot's heel
+    // and toe (dip: below the ground, m), how far the soles lift before the push (lift: the lower of
+    // heel and toe while both should be down, m), and the contact point's slide over the ground (slip:
+    // the heel and toe while they are down, the toe tip once the heel is up, m from where it was),
+    // through the wind-up (wind) and after the landing (land); the wind-up's length and when he left.
+    window.__jumpFeet = (o = {}) => {
+      __reset();
+      const m = ove.model, D = m.D, F = D.footLen, B = m.bi;
+      const pt = (b, x, y, z) => { _v.set(x, y, z); m.bones[b].localToWorld(_v); return [_v.x, _v.y - y0, _v.z]; };
+      const feet = () => { ove.root.updateMatrixWorld(true); return [B.footR, B.footL].map((f) => ({ h: pt(f, 0, -D.ankleY, -0.24 * F), t: pt(f, 0, -D.ankleY, 0.76 * F) })); };
+      for (let k = 0; k < 40; k++) { ove.wishX = 0; ove.wishZ = 0; ove.step(H, fakeGame); ove.sync(H); }
+      // (idle: the same standing still, before the press: one knee is soft)
+      const r = { idle: +Math.max(...feet().map((f) => Math.min(f.h[1], f.t[1]))).toFixed(3), wind: { dip: 0, lift: 0, slip: 0 }, land: { dip: 0, slip: 0 }, windS: 0, pushAt: null, offAt: null, landAt: null };
+      const game = { ...fakeGame, onJumpPush: () => { r.pushAt = +(k * H).toFixed(3); }, onJump: () => { r.offAt = +(k * H).toFixed(3); }, onJumpLand: () => { r.landAt = +(k * H).toFixed(3); } };
+      let k = 0, ref = null, lref = null;
+      ove.jump(o.v ?? 3.95);
+      for (; k < 120; k++) {
+        ove.wishX = 0; ove.wishZ = 0;
+        const wind = ove.windT >= 0, u = wind ? ove.windT / ove.windDur : 1;
+        ove.step(H, game); ove.sync(H);
+        const f = feet();
+        if (wind && ove.onGround && r.offAt == null) {
+          r.windS = +((k + 1) * H).toFixed(3);
+          ref ??= f;
+          for (let i = 0; i < 2; i++) {
+            const lo = Math.min(f[i].h[1], f[i].t[1]);
+            r.wind.dip = Math.min(r.wind.dip, f[i].h[1], f[i].t[1]);
+            if (u < 0.8) r.wind.lift = Math.max(r.wind.lift, lo);
+            // (the toe tip carries him once the heel is up; before that heel and toe are both down)
+            for (const p of u < 0.8 ? ['h', 't'] : ['t']) r.wind.slip = Math.max(r.wind.slip, Math.hypot(f[i][p][0] - ref[i][p][0], f[i][p][2] - ref[i][p][2]));
+          }
+        }
+        if (r.landAt != null && ove.landT < 0.5) {
+          lref ??= f;
+          for (let i = 0; i < 2; i++) {
+            r.land.dip = Math.min(r.land.dip, f[i].h[1], f[i].t[1]);
+            for (const p of ['h', 't']) if (f[i][p][1] < 0.012) r.land.slip = Math.max(r.land.slip, Math.hypot(f[i][p][0] - lref[i][p][0], f[i][p][2] - lref[i][p][2]));
+          }
+        }
+      }
+      for (const g of [r.wind, r.land]) for (const k2 in g) g[k2] = +g[k2].toFixed(3);
+      return r;
+    };
     // render a few frames first (the materials, the face texture and the shadows settle)
     window.__warm = (n = 30) => { for (let i = 0; i < n; i++) renderFrame(); return true; };
     window.__log = () => log.slice();
     window.__ove = () => ove;
     window.THREE = THREE; window.__GAIT = GAIT;
-    // Ove's jump sounds next to two old ones for level (rendered offline): grunt, oof, ouch, talk x3;
-    // 16-bit PCM, base64, and each one's peak / RMS
+    // Ove's jump sounds next to two old ones for level (rendered offline): his four grunts and four
+    // landings in turn (grunt, oof, grunt, oof, ...), ouch, talk x3; 16-bit PCM, base64, and each
+    // one's peak / RMS
     window.__sounds = async () => {
-      const sr = 44100, plan = [[0.1, (a) => a.grunt(150)], [0.75, (a) => a.oof(150)], [1.3, (a) => a.grunt(150)], [1.9, (a) => a.oof(150)], [2.5, (a) => a.ouch()], [3.1, (a) => a.talk(150)], [3.35, (a) => a.talk(150)], [3.6, (a) => a.talk(150)]];
-      const buf = await audio._offline(4, async (a, oc) => { for (const [at, f] of plan) { await oc.suspend(at); f(a); oc.resume(); } });
-      const d = buf.getChannelData(0), stats = plan.map(([at], i) => { const e = (plan[i + 1]?.[0] ?? 4) - 0.05; let pk = 0, ss = 0, n = 0; for (let k = Math.floor(at * sr); k < e * sr; k++) { pk = Math.max(pk, Math.abs(d[k])); ss += d[k] * d[k]; n++; } return [at, +pk.toFixed(3), +Math.sqrt(ss / n).toFixed(4)]; });
+      await audio.loadEfforts();
+      const sr = 44100, plan = [], T = 7.4;
+      for (let k = 0; k < 4; k++) plan.push([0.1 + k * 1.3, (a) => a.grunt(150)], [0.75 + k * 1.3, (a) => a.oof(150)]);
+      plan.push([5.4, (a) => a.ouch()], [6.1, (a) => a.talk(150)], [6.35, (a) => a.talk(150)], [6.6, (a) => a.talk(150)]);
+      const buf = await audio._offline(T, async (a, oc) => { for (const [at, f] of plan) { await oc.suspend(at); f(a); oc.resume(); } });
+      const d = buf.getChannelData(0), stats = plan.map(([at], i) => { const e = (plan[i + 1]?.[0] ?? T) - 0.05; let pk = 0, ss = 0, n = 0; for (let k = Math.floor(at * sr); k < e * sr; k++) { pk = Math.max(pk, Math.abs(d[k])); ss += d[k] * d[k]; n++; } return [at, +pk.toFixed(3), +Math.sqrt(ss / n).toFixed(4)]; });
       const pcm = new Int16Array(d.length); for (let k = 0; k < d.length; k++) pcm[k] = Math.max(-1, Math.min(1, d[k])) * 32767;
       let bin = ''; const u8 = new Uint8Array(pcm.buffer); for (let k = 0; k < u8.length; k += 0x8000) bin += String.fromCharCode(...u8.subarray(k, k + 0x8000));
       return { stats, b64: btoa(bin) };

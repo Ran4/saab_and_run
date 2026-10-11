@@ -45,8 +45,10 @@ const TEST = params.has('test');
 
 // On foot (DESIGN 4.4): walk, run (Shift, "spring"), one small jump, kick a tyre.
 // Pushing Rune's wheelchair: 3.0, or 3.6 with Shift (2.2 made the errand a 50 s crawl).
-// The jump: 3.95 m/s under character.js' JUMP.grav is 0.55 m up and ~0.56 s in the air, after a wind-up.
-const WALK = 3.2, BRISK = 5.5, PUSH = 3.0, PUSH_BRISK = 3.6, JUMP_V = 3.95;
+// The jump: 3.95 m/s under character.js' JUMP.grav is 0.55 m up and ~0.56 s in the air, after a
+// wind-up (half a second standing). A press he can't act on yet (still in the air, just landing) is
+// kept JUMP_BUFFER s and acted on as soon as he can.
+const WALK = 3.2, BRISK = 5.5, PUSH = 3.0, PUSH_BRISK = 3.6, JUMP_V = 3.95, JUMP_BUFFER = 0.25;
 const CLOCK_RATE = 0.25;   // in-game minutes per real second: an hour every four minutes
 // The clock stops at the end of the day while nothing is going on: the days end at 14:30 ("Dagen är
 // slut", missions.js DAY_END) and the light never changes, so before day 1, between two days and while
@@ -121,6 +123,7 @@ class Game {
     this.playerCar = null;
     this.kickT = 0;
     this.kickHitT = -1;
+    this.jumpAsk = -9;    // when jump was last pressed (this.time) and not yet acted on
     this.freezeCar = false;
     this.inDialog = false;
     this.talker = null;
@@ -952,9 +955,10 @@ class Game {
   onBodyBounce(ch) { if (dist(ch.x, ch.z, this.focus().x, this.focus().z) < 40) audio.thud(); }
   onBounce() {}
   onLand(ch) { if (ch === this.player) FX.dust(ch.x, ch.z, 3, ch.y + 0.1); }
-  // Ove's jump: he pushes off with a grunt, and lands with an 'uff' (not every time) and a little
-  // snow kicked up.
-  onJump(ch) { if (ch === this.player) { audio.jump(); audio.grunt(ch.def.voice); } }
+  // Ove's jump: he grunts as he pushes off (one of his four, in turn), his coat and boots as he leaves
+  // the ground, an 'uff' as he lands (not every time) and a little snow kicked up.
+  onJumpPush(ch) { if (ch === this.player) audio.grunt(ch.def.voice); }
+  onJump(ch) { if (ch === this.player) audio.jump(); }
   onJumpLand(ch, v) {
     if (ch !== this.player) return;
     audio.step(this.surfaceAt(ch.x, ch.z)); audio.thud(0.6);
@@ -1366,17 +1370,18 @@ class Game {
     if (input.pressed('mute')) { audio.setMuted(!audio.muted); hud.toast(audio.muted ? 'Ljudet av' : 'Ljudet på'); }
     if (input.pressed('map')) { this.bigMap = !this.bigMap; hud.toggleBigMap(this.bigMap, this); }
     if (input.pressed('pause') && !TEST) { this.pause(true); return; }
-    if (this.inDialog || this.missions.state === 'failed') return;
-    if (input.pressed('reset')) { this.resetToRoad(); return; }
     const p = this.player;
+    if (input.pressed('jump') && !this.playerCar) this.jumpAsk = this.time;   // (in a car Space is the handbrake)
+    if (this.inDialog || this.missions.state === 'failed') { p.cancelJump(); this.jumpAsk = -9; return; }
+    if (input.pressed('reset')) { this.resetToRoad(); return; }
     const sp = this.stagePrompt();
     if (this.playerCar) {
       if (input.pressed('interact') && !sp?.takesE) this.exitCar();
       return;
     }
     if (p.state !== 'normal' || this.doorOp?.lock) return;
-    if (input.pressed('jump') && p.onGround && !this.pushedNpc()) p.jump(JUMP_V);
-    if (input.pressed('attack') && this.kickT <= 0 && p.onGround && !this.pushedNpc()) {
+    if (this.time - this.jumpAsk < JUMP_BUFFER && !this.pushedNpc() && p.jump(JUMP_V)) this.jumpAsk = -9;
+    if (input.pressed('attack') && this.kickT <= 0 && p.onGround && p.windT < 0 && !this.pushedNpc()) {
       p.anim.kick = 1; this.kickT = 0.5; this.kickHitT = 0.14;
     }
     if (input.pressed('interact') && this.doorOp) this.endDoorOp();

@@ -1,15 +1,19 @@
-import { buildCharacter, animateCharacter, LOD_DIST, CHARS } from './models.js';
+import { buildCharacter, animateCharacter, LOD_DIST, CHARS, JUMP_PUSH } from './models.js';
 import { THREE, camera, gfxStats } from '../gfx.js';
 import { queryBlocks, circleVsBlock, groundAt, groundInfo, topAt, RAMP } from '../world/collision.js';
 import { dampAngle, yawTo } from '../util.js';
 
 export const STEP = 0.45;
 const GRAV = 24;
-// A grown man's jump (Ove is 59): a wind-up of `wind` s standing (`windRun` on the move) before he
-// leaves the ground, a flight under `grav` (gentler than a fall, so the jump takes its time:
-// ~0.56 s in the air for 0.55 m, against 0.45 s), and for `slow` s after the landing his legs take
-// him on at no more than `slowMin` of the speed asked for, rising back to all of it.
-export const JUMP = { wind: 0.22, windRun: 0.1, grav: 14, slow: 0.42, slowMin: 0.45 };
+// A grown man's jump (Ove is 59). First the wind-up: `wind` = [s standing, s at speed, the speed
+// (m/s) where it is shortest]: he sinks and gathers himself, and from `push` of it on he pushes off
+// (game.onJumpPush: his grunt) until he leaves the ground (game.onJump). Then a flight under `grav`
+// (gentler than a fall, so the jump takes its time: ~0.56 s in the air for 0.55 m, against 0.45 s),
+// and for `slow` s after the landing his legs take him on at no more than `slowMin` of the speed
+// asked for, rising back to all of it. A wind-up that runs off an edge pushes off at once if he left
+// the ground less than `coyote` s ago (otherwise there is nothing to push off from). `leap`: someone
+// jumping out of the way (the horn: game/horn.js), a quick crouch and off.
+export const JUMP = { wind: [0.5, 0.2, 5.5], push: JUMP_PUSH, grav: 14, slow: 0.42, slowMin: 0.45, coyote: 0.15, leap: [0.22, 0.1, 3] };
 const lerp = (a, b, t) => a + (b - a) * t;
 const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const _blocks = [], _hit = {};
@@ -67,8 +71,9 @@ export class Character {
     this.downT = 0; this.flungT = 0;
     this.wishX = 0; this.wishZ = 0;
     this.faceWish = true;
-    // a jump: winding up (windT >= 0), in the air (jumping), landed landT s ago
-    this.windT = -1; this.windDur = JUMP.wind; this.jumpV = 0; this.jumping = false; this.landT = 9;
+    // a jump: winding up (windT >= 0; pushing off once pushed), in the air (jumping), landed landT s
+    // ago; offT: s since his feet left the ground (0 on it)
+    this.windT = -1; this.windDur = JUMP.wind[0]; this.pushed = false; this.jumpV = 0; this.jumping = false; this.landT = 9; this.offT = 0;
     this.anim = {
       speed: 0, air: false, vy: 0, kick: 0, talk: false, seated: false, driving: false, flung: false, down: false,
       mouth: null,                                     // while a voice clip plays: its loudness, 0..1 (voice.js)
@@ -99,18 +104,21 @@ export class Character {
     this.x = x; this.z = z; this.yaw = yaw;
     this.y = groundAt(x, z, 0.2, 0.6);
     this.vx = this.vz = this.vy = 0;
-    this.onGround = true;
+    this.onGround = true; this.offT = 0;
     this.windT = -1; this.jumping = false; this.landT = 9;
   }
 
-  // Starts a jump: the wind-up first, then the push off the ground at v m/s (game.onJump), the
-  // landing (game.onJumpLand). False if he can't (busy, in the air, already winding up).
-  jump(v = 8.2) {
+  // Starts a jump: the wind-up first (wind: see JUMP), the push off (game.onJumpPush), off the
+  // ground at v m/s (game.onJump), the landing (game.onJumpLand). False if he can't (busy, in the
+  // air, already winding up): the jump that is coming is the one he gets.
+  jump(v = 8.2, wind = JUMP.wind) {
     if (this.state !== 'normal' || this.wheelchair || this.windT >= 0 || this.jumping || !this.onGround) return false;
-    this.windT = 0; this.jumpV = v;
-    this.windDur = lerp(JUMP.wind, JUMP.windRun, Math.min(1, this.speed / 3));
+    this.windT = 0; this.jumpV = v; this.pushed = false;
+    this.windDur = lerp(wind[0], wind[1], Math.min(1, this.speed / wind[2]));
     return true;
   }
+  // Not jumping after all (he is no longer his own: a dialogue, a car seat).
+  cancelJump() { this.windT = -1; this.pushed = false; }
 
   // Knocked over by a car: thrown along (vx, vz), falls over backwards (facing what hit them),
   // turns a little in the air, lands on the back, lies there, gets up.
@@ -128,7 +136,7 @@ export class Character {
   }
 
   step(dt, game) {
-    if (this.state === 'seated' || this.state === 'hidden') return;
+    if (this.state === 'seated' || this.state === 'hidden') { this.windT = -1; return; }
     if (this.state === 'down') {
       this.timer -= dt;
       this.downT += dt;
@@ -158,9 +166,12 @@ export class Character {
     }
     if (this.windT >= 0) {
       this.windT += dt;
-      if (this.windT >= this.windDur) {
-        this.windT = -1;
-        if (this.onGround) { this.vy = this.jumpV; this.onGround = false; this.jumping = true; game?.onJump?.(this); }
+      // (walked off an edge while winding up: he pushes off at once, if the ground was there a moment ago)
+      const off = !this.onGround;
+      if (off && this.offT >= JUMP.coyote) this.windT = -1;
+      else {
+        if (!this.pushed && (off || this.windT >= this.windDur * JUMP.push)) { this.pushed = true; game?.onJumpPush?.(this); }
+        if (off || this.windT >= this.windDur) { this.windT = -1; this.vy = this.jumpV; this.onGround = false; this.jumping = true; game?.onJump?.(this); }
       }
     }
     if (this.landT < 9) this.landT += dt;
@@ -194,6 +205,7 @@ export class Character {
     } else {
       this.onGround = false;
     }
+    this.offT = this.onGround ? 0 : this.offT + dt;
     if (this.standingOn && this.onGround) {
       this.x += this.standingOn.vx * dt; this.z += this.standingOn.vz * dt;
     }
