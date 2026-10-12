@@ -12,6 +12,7 @@ features/snöspår.md
 features/snubbla_vid_hopp.md
 features/p-skiva.md
 features/gungorna_saknar_linor.md
+features/bussen_ar_inte_en_bil.md
 
 # Vänta med dessa tills spelaren säger till
 
