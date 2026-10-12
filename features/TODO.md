@@ -1,6 +1,17 @@
 # Gör dessa grejer (flytta filen till features/implemented/ och uppdatera den när du är klar, och
 # flytta den till "färdiga features"-sektionen nedan
-
+features/ben_i_marken_vid_bilkorning.md
+features/ljudbugg_vid_kold.md
+features/roligare_runeuppdrag.md
+features/fixa_kameran_vid_rorelse.md
+features/sno_pa_bilar.md
+features/barnroster.md
+features/snotraktor.md
+features/se_pa_trinkets.md
+features/snöspår.md
+features/snubbla_vid_hopp.md
+features/p-skiva.md
+features/gungorna_saknar_linor.md
 
 # Vänta med dessa tills spelaren säger till
 
