@@ -15,6 +15,8 @@
 //   coldmission  a day's mission running when he dies: failed, its banner after he wakes, E retries
 //   coldwall   the traffic, the pedestrians and a neighbour still stop where the walls stood
 //   coldsound  the cold's sounds rendered offline (nothing played): levels, no clipping
+//   coldwind   a death on foot and in the Saab: no wind made behind the black, the bedroom quiet; the
+//              wind's stop() offline (features/implemented/ljudbugg_vid_kold.md: a roar in Firefox)
 // Checks that fail are pushed to the run's errors ('N errors').
 export default ({ page, ev, shot, frames, sleep, hold, tap, until, errors }) => {
   const fail = (msg) => { console.log('CHECK FAILED', msg); errors.push('check: ' + msg); };
@@ -425,6 +427,87 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, errors }) => 
         console.log(`[t] coldperf ${n.padEnd(12)} calls sh/ao/main ${r.calls.join('/')}  Mtris ${r.tris.join('/')}  rf p50 ${r.rf} ms`);
       }
       console.log('[t] coldperfjson', JSON.stringify(out));
+    },
+
+    // features/implemented/ljudbugg_vid_kold.md: the wind went on being made, and stopped the same
+    // frame, every frame from the black through the whole bedroom (~600 a death). Chrome kept each one
+    // silent; Firefox threw each one's gain back to its default of 1 when its automation was cancelled,
+    // a roar of noise over the waking scene (-14 dB RMS, the line itself is ~-18). Checked here: one
+    // death on foot and one in the Saab, the winds made from the death until he is up at his door (at
+    // most the one he died in), what the effects bus carries through the bedroom before the line, and
+    // offline: the wind never cancels its gain's automation (what Firefox gets wrong), a wind stopped
+    // the moment it is made is silent, one stopped after playing fades out. (And no car door slams
+    // behind the black as he is taken out of the car he died in.)
+    async coldwind() {
+      const die = async (car) => {
+        const r = await ev(async (car) => {
+          const g = __game, { audio } = await import('/src/audio.js'), C = await import('/src/game/cold.js');
+          if (g.playerCar) g.exitCar(true);
+          if (car) { const c = g.named.saab; c.place(-120, -360, Math.PI); g.enterCar(c); } else g.player.teleport(-120, -350, Math.PI);
+          g.cam.yaw = Math.PI; g.cam.snapNext = true;
+          await new Promise((r) => setTimeout(r, 1000));
+          const wind = C.SOUNDS.wind, door = audio.door, R = { made: [], sfx: [], doors: 0 };
+          C.SOUNDS.wind = (A, a) => { R.made.push(window.__cold.dying ? +window.__cold.dying.t.toFixed(2) : -1); return wind(A, a); };
+          audio.door = function (...a) { if (window.__cold.dying) R.doors++; return door.apply(this, a); };
+          window.__cold.v = 1;
+          await new Promise((res) => {
+            const tick = () => {
+              const D = window.__cold.dying, w = window.__wake;
+              if (D?.wake && w && w.t > 1.2 && w.t < 4.5) R.sfx.push(audio.levels().sfx);
+              if (R.started && !D) { res(); return; }
+              if (D) R.started = true;
+              setTimeout(tick, 100);
+            };
+            tick();
+          });
+          C.SOUNDS.wind = wind; audio.door = door;
+          return { made: R.made, sfx: R.sfx.length ? Math.max(...R.sfx) : null, n: R.sfx.length, wind: !!window.__cold.wind, doors: R.doors };
+        }, car);
+        const label = car ? 'in the Saab' : 'on foot';
+        const at = `${JSON.stringify(r.made.slice(0, 5))}${r.made.length > 5 ? '...' : ''}`;
+        console.log(`[t] coldwind ${label}`, JSON.stringify({ ...r, made: r.made.length }), at);
+        const behind = r.made.filter((t) => t > 0).length;
+        check(behind <= 1 && !r.made.some((t) => t > 5.6), `coldwind ${label}: no wind made behind the black (${r.made.length} made from the death on, at ${at})`);
+        check(!r.wind, `coldwind ${label}: no wind left once he is up`);
+        check(r.doors === 0, `coldwind ${label}: no car door behind the black (${r.doors})`);
+        // (the bedroom before the line: the alarm clock, the gasp and the bed, at most ~-40 dB on the
+        // effects bus over 0.7 s; the full wind as he dies is ~-28)
+        check(r.n > 5 && r.sfx < -36, `coldwind ${label}: the bedroom quiet on the effects bus (loudest ${r.sfx} dB over 0.7 s)`);
+      };
+      await die(false);
+      await die(true);
+      // (offline contexts of its own, with only the wind in them: audio._offline swaps the game's
+      // context, and whatever the running game plays meanwhile lands in the render)
+      const off = await ev(async () => {
+        const C = await import('/src/game/cold.js');
+        const P = AudioParam.prototype, cancel = P.cancelScheduledValues;
+        let cancels = 0;
+        P.cancelScheduledValues = function (...a) { cancels++; return cancel.apply(this, a); };
+        const render = async (secs, fn) => {
+          const oc = new OfflineAudioContext(1, Math.ceil(secs * 44100), 44100), noise = oc.createBuffer(1, 88200, 44100);
+          const nd = noise.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+          const A = { ctx: oc, sfx: oc.destination, now: () => oc.currentTime, noise };
+          const run = fn(() => C.SOUNDS.wind(A), oc), buf = oc.startRendering();
+          await run;
+          return buf;
+        };
+        const level = (buf, a, b) => { const d = buf.getChannelData(0), i0 = Math.floor(a * buf.sampleRate), i1 = Math.floor(b * buf.sampleRate); let pk = 0; for (let i = i0; i < i1; i++) pk = Math.max(pk, Math.abs(d[i])); return +pk.toFixed(4); };
+        try {
+          // made, set and stopped at once (each frame of the old bedroom)
+          const once = await render(1.5, async (wind) => { const w = wind(); w.set(0.2, 0.9, 1); w.stop(); });
+          // one played 1 s at full, then stopped (its default 0.6 s fade)
+          const played = await render(3, async (wind, oc) => {
+            const w = wind();
+            w.set(0.2, 0.9, 1);
+            await oc.suspend(1); w.stop(); oc.resume();
+          });
+          return { cancels, once: level(once, 0, 1.5), playing: level(played, 0.5, 1), after: level(played, 2.2, 3) };
+        } finally { P.cancelScheduledValues = cancel; }
+      });
+      console.log('[t] coldwind offline', JSON.stringify(off));
+      check(off.cancels === 0, `coldwind: the wind never cancels its gain's automation (${off.cancels} calls)`);
+      check(off.once < 0.001 && off.once < off.playing * 0.01, `coldwind: a wind stopped as it is made is silent (peak ${off.once}; playing ${off.playing})`);
+      check(off.playing > 0.02 && off.after < off.playing * 0.05, `coldwind: a wind stopped after playing fades out (${off.playing} -> ${off.after})`);
     },
 
     async coldsound() {

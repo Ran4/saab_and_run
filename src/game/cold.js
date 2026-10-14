@@ -179,14 +179,16 @@ export class Cold {
   }
 
   sounds(dt, zone, v, shiver) {
-    // the wind: a loop while there is any of it (and a while after)
-    if (zone > 0.01 || this.dying) {
+    // the wind: a loop while there is any of it (and a while after); gone at the black, and not made
+    // again behind it (it was, every frame through the bedroom, each one stopped as it was made: in
+    // Firefox each of those was a burst of noise at full level, a roar over the waking scene)
+    if (this.dying && this.dying.t > 5.6) { this.wind?.stop(); this.wind = null; }
+    else if (zone > 0.01 || this.dying) {
       this.windIdle = 0;
       this.wind ||= this.sfx('wind');
       this.wind?.set(this.dying ? 0.2 : 0.18 * zone ** 0.8, this.gust, zone);
     } else if (this.wind && (this.windIdle += dt) > 3) { this.wind.stop(); this.wind = null; }
     else this.wind?.set(0, this.gust, 0);
-    if (this.dying && this.dying.t > 5.6) { this.wind?.stop(); this.wind = null; }
     // teeth, in fits
     if (shiver > 0.35 && !this.g.playerCar && (!this.dying || this.dying.t < 0.9)) {
       this.chatterT -= dt;
@@ -310,7 +312,7 @@ export class Cold {
     for (const ch of [...g.companions.keys()]) g.sendHome(ch);
     g.setCarrying(null);
     const car = g.playerCar;
-    if (car) g.exitCar(true);
+    if (car) g.exitCar(true, true);
     if (car?.name) g.homeNamedCar(car.name);
     this.engineOff = false;
     p.state = 'normal'; p.topple = 0; p.anim.shiver = 0;
@@ -345,6 +347,9 @@ const bus = (A, gain = 1, verb = 0.05) => { const o = A.ctx.createGain(); o.gain
 export const SOUNDS = {
   // The wind out there, kept running: a low roar and a whistling band over it, two decorrelated
   // noises. set(level, gust 0..1, whistle 0..1) eases to it; stop() fades it out.
+  // (stop() cancels nothing: in Firefox cancelScheduledValues(now) on a gain with nothing scheduled
+  // before now throws it back to its default of 1, so a wind stopped the moment it was made was a
+  // burst of noise at five times its loudest. A fall to 0 scheduled now overrides a rise set now.)
   wind(A) {
     const { ctx } = A, t = A.now(), out = bus(A, 1, 0.02);
     const g = ctx.createGain(); g.gain.value = 0.0001; g.connect(out);
@@ -370,7 +375,7 @@ export const SOUNDS = {
         if (gone) return;
         gone = true;
         const tn = ctx.currentTime;
-        g.gain.cancelScheduledValues(tn); g.gain.setTargetAtTime(0, tn, fade / 3);
+        g.gain.setTargetAtTime(0, tn, fade / 3);
         for (const s of [s1, s2]) { try { s.stop(tn + fade * 2); } catch (e) { /* stopped */ } }
       },
     };

@@ -758,7 +758,7 @@ cold (game/cold.js) kills him further out, and he wakes up in his bed (game/waki
   go to 5.4 s: the curtain. 6.1 s `aftermath()` behind the black: `missions.fail('Ove frös ihjäl.',
   { later: true })` if running (missions.js: `failHeld` keeps `updateFailed` and its banner until
   `showFailed()`), `interrupts.abort()`, `patrol.dropPursuit()` / `cancelWriting()`, every companion
-  `sendHome`, `setCarrying(null)`, `exitCar(true)` and `homeNamedCar(name)` for a named car, the player
+  `sendHome`, `setCarrying(null)`, `exitCar(true, true)` (quiet: no door) and `homeNamedCar(name)` for a named car, the player
   thawed and unfrozen, `spawnPlayer()`; then `wakeScene(g)` until it returns true; `woken()`: `inDialog`
   off, the held fail banner shown, `save()`.
 - **Fairness**: nothing is charged (no kr, no Ordning; an errand dropped by a death costs nothing, as
@@ -836,3 +836,19 @@ of a flight:
 - Scenarios (tools/scenarios/snohog.mjs): `snohog` (real keys, six runs: Saab 13.5 m/s and flat out
   from the street, Volvo 240 12, Audi flat out, van 14, Volvo 740 with a trailer 12.5; `RUNS=`,
   `FILM=1`), `snohogsim` (deterministic, 64 runs), `snohogwalk`, `snohogsound`.
+
+## Fix ljudbugg_vid_kold: a roar over the waking scene, in Firefox (2026-10-14)
+
+features/implemented/ljudbugg_vid_kold.md. game/cold.js `sounds()` made the wind (`zone > 0.01 ||
+this.dying`) before it stopped it (`dying.t > 5.6`), so from the black on, through the whole bedroom,
+a new wind was made and stopped every frame (~580 a death). Its `stop()` was
+`cancelScheduledValues(now)` + a fall: silent in Chrome, a full-gain burst in Firefox (the param back
+to its default 1; notes/ui.md *audio API*), 60 a second: −14 dB RMS of noise over the scene.
+- `sounds()`: the stop first; nothing made after 5.6 s into the death.
+- `SOUNDS.wind.stop()`: the fall scheduled at now, nothing cancelled.
+- main.js `exitCar(force, quiet)`: `aftermath()` takes Ove out of the car he died in without the
+  door's clunk (it came under the black, just before the bedroom).
+- cold.mjs `coldwind`: a death on foot and in the Saab (winds made from the death on: 0, were
+  576 / 571; none left; no door; the effects bus ≤ −36 dB in the bedroom before the line) and
+  offline (the wind never cancels; stopped as made: silent; played then stopped: fades out).
+

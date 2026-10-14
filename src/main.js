@@ -638,7 +638,8 @@ class Game {
     for (const [ch] of this.companions) if (!ch.car && dist(ch.x, ch.z, car.x, car.z) < 10) this.boardCompanion(ch, car);
   }
 
-  exitCar(force = false) {
+  // (quiet: no door, for an exit nobody sees: the cold's tidying up behind the black)
+  exitCar(force = false, quiet = false) {
     const car = this.playerCar;
     if (!car) return;
     const fast = car.speed > 7 && !force;
@@ -649,7 +650,7 @@ class Game {
     car.leftAt = this.time;
     car.ctrl.park = true;
     car.ctrl.throttle = 0;
-    audio.door();
+    if (!quiet) audio.door();
     audio.engine(false, 0, 0);
     audio.skid(0);
     audio.horn(false);

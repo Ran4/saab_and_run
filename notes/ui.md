@@ -385,7 +385,17 @@ New:
 - Test hook: `await audio._offline(secs, fn)` renders `fn(audio, offlineCtx, helpers)` into an
   OfflineAudioContext and returns the AudioBuffer (helpers: `scheduleMusic(t0, t1)`,
   `scheduleRing(t1)`, `schedulePen(t1)`; `await offlineCtx.suspend(t)` + `resume()` to drive the
-  engine over time). Don't run it while the player is in a car (it swaps the live graph out).
+  engine over time). Don't run it while the player is in a car (it swaps the live graph out), and
+  mind that whatever the running game plays meanwhile lands in the render (a clean measure of one
+  sound wants an OfflineAudioContext of its own: cold.mjs `coldwind`).
+- **Firefox** (the developer's default browser; the tools run Chrome): `cancelScheduledValues(t)` that
+  leaves nothing scheduled before t throws the param back to its *default* (a gain to 1), and there
+  `gain.value = x` is itself an event of that moment. A sound stopped the moment it is made (cancel,
+  then a fall) is a blast at full gain in Firefox, silent in Chrome. Stop by scheduling the fall at t
+  without cancelling (an event at the same time overrides a rise `set` there): cold.js `SOUNDS.wind`
+  (features/implemented/ljudbugg_vid_kold.md: ~580 such winds a frost death, a −14 dB roar over the
+  waking scene). Still cancel-then-fall, harmless while the sound has played a while first:
+  `horn(false)`, `hoppLand`'s wind, luftning.js `hiss.stop`.
 
 ## How it was tested (in the UI copy)
 

@@ -1,6 +1,5 @@
 # Gör dessa grejer (flytta filen till features/implemented/ och uppdatera den när du är klar, och
 # flytta den till "färdiga features"-sektionen nedan
-features/ljudbugg_vid_kold.md
 features/roligare_runeuppdrag.md
 features/fixa_kameran_vid_rorelse.md
 features/sno_pa_bilar.md
@@ -18,6 +17,7 @@ features/bussen_ar_inte_en_bil.md
 features/nya_satt_att_interagera_med_omgivningen.md
 
 # Färdiga features
+features/implemented/ljudbugg_vid_kold.md
 features/implemented/oves_ganganimation.md
 features/implemented/oppna_garaget.md
 features/implemented/roligare_bilkorning.md

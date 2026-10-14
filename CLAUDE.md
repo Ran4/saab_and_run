@@ -33,8 +33,10 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   seated pose or a car's seats), world.mjs (round 2: `wsame wcalls wvram wprops`), cold.mjs (the cold
   beyond the town, features/implemented/avgrunden.md: `coldwalk colddrive coldback` with real keys,
   `coldrate coldmission coldwall coldbed coldbedskip`, `coldlook coldsound coldperf` (an A/B of draw
-  calls and triangles with the cars and people hidden; copy cold.mjs into an old checkout); run
-  `coldwalk colddrive coldbed` after touching the cold, the death or the waking scene), snohog.mjs (the
+  calls and triangles with the cars and people hidden; copy cold.mjs into an old checkout), `coldwind`
+  (no wind made behind the black, a quiet bedroom, the wind's stop() offline: features/implemented/
+  ljudbugg_vid_kold.md); run `coldwalk colddrive coldbed coldwind` after touching the cold, the death
+  or the waking scene), snohog.mjs (the
   hoppbacke in the park, features/implemented/snöhög.md: `snohog` = six jumps with real keys, several
   cars and speeds, a trailer, `RUNS=`, `FILM=1` keeps the frames; `snohogsim` = 64 deterministic runs
   over the real hill; `snohogwalk snohogsound`); run `snohogsim snohog` after touching car or trailer
@@ -112,6 +114,12 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   roofs; landmarks must not sit inside a building footprint. `car.place()` resets a trailer.
 - The module `fx` (particles) is easy to shadow with a local `const fx = Math.sin(...)`.
   car.js and stages.js import it as `FX` for that reason.
+- The developer plays in Firefox (the desktop's default browser); every headless tool runs Chrome,
+  and their Web Audio differs. In Firefox `param.cancelScheduledValues(t)` that leaves nothing
+  scheduled before t throws the param back to its default (a gain to 1, even after `gain.value = x`
+  in the same moment): a sound stopped the moment it was made blasts at full level. Stop by
+  scheduling the fall at t (an event at the same time overrides a rise set there), not by cancelling
+  (cold.js wind; features/implemented/ljudbugg_vid_kold.md, notes/ui.md *audio API*).
 - The frame dt is clamped to two fixed steps (2/60 s): below 30 fps the whole game slows down with
   the physics, so timers, `g.time` and the clock always match the cars and people they time.
 - One-shot inputs (jump, kick, E) are handled once per frame in `handleOneShots`, continuous

@@ -235,6 +235,7 @@ PORT=8791 node tools/shot.mjs voice vcut vpool             # rösterna: turordni
 PORT=8791 node tools/shot.mjs coldwalk colddrive coldback  # kylan med riktiga tangenter: ut till fots och med Saaben (takten mätt på vägen), och in igen när Ove tänker på Sonja
 PORT=8791 node tools/shot.mjs coldrate coldmission coldwall coldbed coldbedskip   # 112 s vid kanten, ett uppdrag som misslyckas, väggen för alla andra, sängscenen
 PORT=8791 node tools/shot.mjs coldlook coldsound coldperf  # bilder därute, ljuden offline, ritanrop och trianglar (A/B)
+PORT=8791 node tools/shot.mjs coldwind                     # ingen vind bakom svart, ett tyst sovrum, vindens stopp offline (ljudbuggen i Firefox)
 PORT=8791 node tools/shot.mjs snohog snohogsim             # hoppbacken: sex hopp med riktiga tangenter (bilar, farter, släp; FILM=1), och 64 uträknade
 PORT=8791 node tools/shot.mjs snohogwalk snohogsound       # Ove går över hoppbacken; hoppets ljud offline
 ```
