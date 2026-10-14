@@ -544,6 +544,11 @@ tall`). Every `Car` gets:
   about the tow ball (`trailer.pitch`), bouncing on a hard landing (`game.onTrailerBounce`).
 - Driver visibility: closed cabin, tinted glass; drivers/passengers seated inside are visible
   through it.
+- Snow (feature sno_pa_bilar, `src/actors/carsnow.js`): a snowed-in car (`opts.snow`) that is driven
+  away sheds its snow - slabs that the car's acceleration, the wind, a jolt or a jump break loose slide
+  off and tumble to the road, powder blows off at speed, the wipers clear the windscreen, the paint's
+  frost fades - until it is an ordinary clean car (`car.snowy` false). main.js calls
+  `tickCarSnow(dt, game)` every frame. Details in notes/cars.md.
 
 ## 8. Character contract (`src/actors/models.js`, `src/actors/character.js`)
 

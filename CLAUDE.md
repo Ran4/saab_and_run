@@ -45,7 +45,13 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `runecar runecold` (killed by a car / the cold, E tries again, Q gives up, a reload keeps him dead),
   `runewidow` (`?runedead`: Anita grieving, no errand of his), `runelook` (close-ups); run them after
   touching the escort stage, game/rune.js, the errands' retry or Anita, and `QUERY='&runedead' story`
-  after touching days 3, 6 or 7).
+  after touching days 3, 6 or 7), bilsno.mjs (snow on cars, features/implemented/sno_pa_bilar.md:
+  `bilsnosim` = the shedding stepped by hand, every model at 30-90 km/h, a hard stop, a hard turn;
+  `bilsnochecks` = a parked car rammed (real keys), a shedding car far away, a car with all of it gone;
+  `bilsnohopp` = a snowy car over the hoppbacke; `bilsnoperf` = its cost, no shader compiled;
+  `bilsnodrive bilsnolook bilsnopass` = screenshots: the chase camera, close-ups with the wipers, the
+  roadside; `TYPE=` a model); run `bilsnosim bilsnochecks bilsnoperf` after touching carsnow.js, the
+  snow caps or the cars' materials.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has

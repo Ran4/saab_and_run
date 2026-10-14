@@ -112,6 +112,13 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   släpkärra (släpet dinglar efter, och studsar efter en hård landning). Ove antecknar lufttiden och
   längden, och det längsta hoppet är hans rekord. Efter ett riktigt hopp har han en åsikt, liksom
   passagerarna, folk som såg det och grannarna. Till fots går det att gå upp på högen.
+- **Snön på bilarna.** De parkerade bilarna har stått ute i nysnön. Tar du en och kör iväg går
+  vindrutetorkarna först, och sedan börjar snön lossna: i fartvinden ryker snön från taket, och
+  flak släpper och glider av och slår i vägen bakom bilen i ett stänk av snö (i 30 km/h ligger det
+  mesta kvar, i 70-90 km/h är taket rent på en halv minut). Gasa hårt och snön blir kvar efter,
+  tvärbromsa och den åker fram över rutan, sväng skarpt och den glider av åt sidan. Ett hopp i
+  hoppbacken eller en smäll mot en parkerad bil skakar loss mycket; bakluckan, i lä bakom taket,
+  behåller sin snö längst. Snöklumparna ligger kvar en stund på vägen.
 - **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket
@@ -192,6 +199,8 @@ src/world/                 stadsplan och vägnät (layout), kollision, kvarteren
                            och stenblocken (outskirts); snöhögar att köra och gå på, hoppbacken i
                            parken (snowhill)
 src/actors/car.js          bilarna: fysik, lampor, registreringsskyltar (carmodels.js: modellerna)
+src/actors/carsnow.js      snön på de parkerade bilarna: flak som lossnar och yr av när någon kör
+                           iväg, snörök i fartvinden, vindrutetorkarna
 src/actors/trailer.js      släpkärran
 src/actors/drivers.js      AI-förare: trafik, rutt, jakt, flykt, stanna vid kanten
 src/actors/models.js       människorna (och katten); character.js: fysik till fots; peds.js: fotgängare

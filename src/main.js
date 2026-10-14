@@ -13,6 +13,7 @@ import { lm, landmarks, routeAim, N, LANE, RHW, SW, nodeX, nodeZ, neighbors, BOU
 import { tickWild } from './world/outskirts.js';
 import { groundAt, queryBlocks, contains, circleVsObb, circleVsBlock, obbVsBlock } from './world/collision.js';
 import { Car, collideCars, warmCars } from './actors/car.js';
+import { tickCarSnow } from './actors/carsnow.js';
 import { Character } from './actors/character.js';
 import { CHARS, buildBust, randomPed, buildCat, carryPoint } from './actors/models.js';
 import { AIDriver } from './actors/drivers.js';
@@ -1332,6 +1333,7 @@ class Game {
     tickSky(this.time, camera.position);
     tickWild(camera.position.x, camera.position.z, camera.position.y);
     this.syncAll(dt, true);
+    tickCarSnow(dt, this);
     FX.tick(dt);
   }
 
@@ -1378,6 +1380,7 @@ class Game {
     this.tickPickups(dt);
     const f = this.focus();
     tickProps(dt, f.x, f.z);
+    tickCarSnow(dt, this);
     FX.tick(dt);
     tickTown(this.time);
     this.updateMarkers();

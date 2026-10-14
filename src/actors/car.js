@@ -9,6 +9,7 @@ import { clamp, damp, pick, angleDiff } from '../util.js';
 import { fx as FX } from '../game/fx.js';
 import { carModel, snowCapGeometry, trackWheels, lightMaterial, glowMaterial, randomPlate, claimPlate, releasePlate, allocPlate, freePlate, plateGeometry, setWheelMaterials, CH, carsChanged, addRenderHook, makeWheelPools, MODEL_KEYS } from './carmodels.js';
 import { Trailer } from './trailer.js';
+import { CarSnow, snowMeshes, snowLayout } from './carsnow.js';
 
 // Physics/spec per type. Speeds in m/s, accelerations in m/s². maxSpeed/accel are what AI and
 // parked-then-driven cars get; the player's car gets PLAYER.speed x / PLAYER.accel x on top
@@ -278,23 +279,23 @@ function carShade(m, { spec = null, baseSpec = null, f90 = null, road = true, ca
 // Round 2's base (metalness 0.32, roughness 0.3, cap 1.9) lit whole panels facing between the sun and
 // the camera as uniform silver sheets with hard edges.
 const paintCache = new Map();
+function makePaint(surf, color, snow, grime) {
+  const m = surfaceMaterial(surf, { snow, unique: true });
+  m.color.set(color);
+  delete m.defines.TRI_CURVE;
+  const u = m.userData.uniforms;
+  u.uEnvCC.value = 0.72;
+  u.uEnvSpec.value = 0.6;
+  // the base: metallic flakes give a broad, dim sheen in the paint's own colour (no Fresnel rise:
+  // f90; a weak dielectric part: x 0.4); solid paint a plain rough base
+  if (surf === 'paint') { m.metalness = 0.3; m.roughness = 0.45; }
+  else { m.metalness = 0; m.roughness = 0.4; }
+  return carShade(m, { spec: 2.2, baseSpec: 0.2, f90: [0.06, 0.12], grime }, 'paint');
+}
 function paintMat(surf, color, snow, grime = 0) {
   const k = surf + '|' + color + '|' + snow + '|' + grime;
   let m = paintCache.get(k);
-  if (!m) {
-    m = surfaceMaterial(surf, { snow, unique: true });
-    m.color.set(color);
-    delete m.defines.TRI_CURVE;
-    const u = m.userData.uniforms;
-    u.uEnvCC.value = 0.72;
-    u.uEnvSpec.value = 0.6;
-    // the base: metallic flakes give a broad, dim sheen in the paint's own colour (no Fresnel rise:
-    // f90; a weak dielectric part: x 0.4); solid paint a plain rough base
-    if (surf === 'paint') { m.metalness = 0.3; m.roughness = 0.45; }
-    else { m.metalness = 0; m.roughness = 0.4; }
-    carShade(m, { spec: 2.2, baseSpec: 0.2, f90: [0.06, 0.12], grime }, 'paint');
-    paintCache.set(k, m);
-  }
+  if (!m) paintCache.set(k, (m = makePaint(surf, color, snow, grime)));
   return m;
 }
 // Other car surfaces: own copies (shared by all cars) with the car shading; interiors ('fabric':
@@ -308,19 +309,21 @@ const CAR_SURF = {
   metal: { spec: 1.0, grime: true }, painted: { spec: 1.2, grime: true },
   fabric: { road: false, cabin: [0.3, 0.62] }, leather: { road: false, cabin: [0.3, 0.62] },
 };
+function makeCarSurface(s, snow, lv) {
+  const d = CAR_SURF[s];
+  const m = surfaceMaterial(s, { snow, unique: true });
+  if (!d) return m;
+  if (d.rough !== undefined) m.roughness = d.rough;
+  if (d.env !== undefined) m.userData.uniforms.uEnvSpec.value = d.env;
+  return carShade(m, { spec: d.spec ?? null, f90: d.f90 ?? null, road: d.road ?? true, cabin: d.cabin ?? null, grime: lv, grimeK: d.grimeK ?? 0.85, lodGlass: !!d.lodGlass }, s);
+}
 function carSurface(s, snow, grime = 0) {
   const d = CAR_SURF[s];
   if (!d) return surfaceMaterial(s, { snow });
   const lv = d.grime ? grime : 0;
   const k = s + '|' + snow + '|' + lv;
   let m = surfCache.get(k);
-  if (!m) {
-    m = surfaceMaterial(s, { snow, unique: true });
-    if (d.rough !== undefined) m.roughness = d.rough;
-    if (d.env !== undefined) m.userData.uniforms.uEnvSpec.value = d.env;
-    carShade(m, { spec: d.spec ?? null, f90: d.f90 ?? null, road: d.road ?? true, cabin: d.cabin ?? null, grime: lv, grimeK: d.grimeK ?? 0.85, lodGlass: !!d.lodGlass }, s);
-    surfCache.set(k, m);
-  }
+  if (!m) surfCache.set(k, (m = makeCarSurface(s, snow, lv)));
   return m;
 }
 // Wheel materials (instanced pools in carmodels.js): own copies with the road in the reflections;
@@ -369,15 +372,32 @@ export function carMaterials(geo, grime = 0) {
   const m = geo.userData.surfaces.map((s) => (s === 'paint' || s === 'paintsolid') ? paintMat(s, 0xffffff, false, lv) : carSurface(s, false, lv));
   return m.length === 1 ? m[0] : m;
 }
+// A body's materials. `frost` (feature sno_pa_bilar, carsnow.js): a car shedding its snow gets its
+// own copies of the snowy ones, whose frost follows frost.value instead of the town's snow (the same
+// programs: only that uniform differs).
+function bodyMats(geo, color, snow, solid, grime = 0, frost = null) {
+  const mats = geo.userData.surfaces.map((s) => {
+    const paint = s === 'paint' || s === 'paintsolid', surf = paint && solid && s === 'paint' ? 'paintsolid' : s;
+    const m = paint ? paintMat(surf, color, snow, grime) : carSurface(s, snow, grime);
+    if (!frost || !m.defines?.TRI_SNOW) return m;
+    const o = paint ? makePaint(surf, color, true, grime) : makeCarSurface(s, true, CAR_SURF[s]?.grime ? grime : 0);
+    const c = o.onBeforeCompile;
+    o.onBeforeCompile = function (sh, r) { c.call(this, sh, r); sh.uniforms.uSnow = frost; };
+    o.userData.frostOwn = true;
+    return o;
+  });
+  return mats.length === 1 ? mats[0] : mats;
+}
 function bodyMesh(geo, color, snow, solid, grime = 0) {
-  const surfs = geo.userData.surfaces;
-  const mats = surfs.map((s) => (s === 'paint' || s === 'paintsolid') ? paintMat(solid && s === 'paint' ? 'paintsolid' : s, color, snow, grime) : carSurface(s, snow, grime));
-  const mesh = new THREE.Mesh(geo, mats.length === 1 ? mats[0] : mats);
+  const mats = bodyMats(geo, color, snow, solid, grime);
+  const mesh = new THREE.Mesh(geo, mats);
   mesh.castShadow = true; mesh.receiveShadow = true;
+  const surfs = geo.userData.surfaces;
   mesh.userData.surfaceMats = {};
-  surfs.forEach((s, i) => { mesh.userData.surfaceMats[s] = mats[i]; });
+  surfs.forEach((s, i) => { mesh.userData.surfaceMats[s] = Array.isArray(mats) ? mats[i] : mats; });
   return mesh;
 }
+const freeOwnMats = (m) => { for (const x of [].concat(m || [])) if (x?.userData?.frostOwn) x.dispose(); };
 
 // ---------------------------------------------------------------------------------------------
 // Round 4 (perf): far bodies drawn instanced. Every car beyond the LOD distance (parked or driving,
@@ -754,6 +774,7 @@ export class Car {
     this.loose = false;
     this.updateObb();
     if (this.trailer) this.trailer.reset();
+    this.snowFx?.reset();
   }
 
   // Sleeping (round 4): a car nobody drives that has come to rest (no speed, no spin, the suspension
@@ -1037,7 +1058,43 @@ export class Car {
       }
       this.burn -= dt;
     }
+    if (this.snowy) this.stepSnow(dt);
     this.sleepCheck(game);
+  }
+
+  // Feature sno_pa_bilar (carsnow.js): a snowed-in car starts to shed its snow the first time it
+  // moves or its engine runs; `snowFx` keeps what is left of it until it is all gone (snowGone).
+  stepSnow(dt) {
+    if (this.dead) return;
+    if (!this.snowFx) {
+      if (!(this.running || this.speed > 0.4) || !this.snowCap || !snowLayout(this.model)) return;
+      this.snowFx = new CarSnow(this);
+      this.setLod(this.lod);   // far away it is drawn on its own now (its own cap and frost)
+    }
+    this.snowFx.step(dt);
+  }
+  // carsnow.js: the body's own snowy materials, their frost following u.value
+  frostMaterials(u) {
+    const m = this.model;
+    this.body.userData.baseMaterial = bodyMats(m.body, this.color, true, this.solid, this.grimeLv, u);
+    this.bodyLod.userData.baseMaterial = bodyMats(m.lod, this.color, true, this.solid, this.grimeLv, u);
+    if (!this.dead) { this.body.material = this.body.userData.baseMaterial; this.bodyLod.material = this.bodyLod.userData.baseMaterial; }
+  }
+  // carsnow.js: the last of the snow has gone - an ordinary clean car again (shared materials, no cap,
+  // instanced far away)
+  snowGone() {
+    const f = this.snowFx;
+    this.snowFx = null;
+    this.snowy = false;
+    this._batch = null;
+    f?.dispose();
+    for (const mesh of [this.body, this.bodyLod]) {
+      freeOwnMats(mesh.userData.baseMaterial);
+      mesh.userData.baseMaterial = bodyMats(mesh.geometry, this.color, false, this.solid, this.grimeLv);
+      if (!this.dead) mesh.material = mesh.userData.baseMaterial;
+    }
+    for (const k of ['snowCap', 'snowCapLod']) if (this[k]) { this.tilt.remove(this[k]); this[k] = null; }
+    this.setLod(this.lod);
   }
 
   // A four/five-speed gearbox for the engine note: revs climb through each gear and drop at shifts.
@@ -1132,7 +1189,9 @@ export class Car {
       this.body.material = MAT.burnt;
       this.bodyLod.material = MAT.burnt;
       if (this.glass) this.glass.visible = false;
-      if (this.snowCap) this.snowCap.visible = this.snowCapLod.visible = false;
+      if (this.snowCap) this.snowCap.visible = false;
+      if (this.snowCapLod) this.snowCapLod.visible = false;
+      this.snowFx?.die();
       FX.explosion(this.x, this.y + 0.5, this.z);
       this.vy = 6; this.air = true;
       this.w += (Math.random() - 0.5) * 3;
@@ -1259,7 +1318,7 @@ export class Car {
 
   setLod(on) {
     this.lod = on;
-    const inst = on && !this.dead && CAR_PERF.instLod;
+    const inst = on && !this.dead && CAR_PERF.instLod && !this.snowFx;
     this._inst = inst;
     this.body.visible = !on;
     this.bodyLod.visible = on && !inst;
@@ -1286,6 +1345,7 @@ export class Car {
     if (this.trailer) { this.trailer.dispose(); this.trailer = null; }
     this.lightMat?.dispose();
     this.glow?.material.dispose();
+    if (this.snowFx) { this.snowFx.dispose(); this.snowFx = null; freeOwnMats(this.body.userData.baseMaterial); freeOwnMats(this.bodyLod.userData.baseMaterial); }
     if (this.driverBust?.isObject3D) { this.driverBust.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); this.driverBust = null; }
     carsChanged();
   }
@@ -1388,6 +1448,9 @@ async function doWarm(renderer, scn, cam) {
     group.add(c.root);
     cars.push(c);
   }
+  // (one of them shedding its snow: its own cap material and frost, carsnow.js)
+  const shed = cars.find((c) => c.snowy && c.snowCap);
+  if (shed) shed.snowFx = new CarSnow(shed);
   scn.add(group);
   const wreck = new THREE.Mesh(carModel('volvo240').body, MAT.burnt);
   wreck.castShadow = wreck.receiveShadow = true;
@@ -1398,7 +1461,7 @@ async function doWarm(renderer, scn, cam) {
   hide(true);
   const extra = [];
   for (const kind of MODEL_KEYS) for (const snow of [false, true]) { const b = lodBatch(kind, snow); extra.push(b.mesh); if (b.capMesh) extra.push(b.capMesh); }
-  extra.push(...makeWheelPools());
+  extra.push(...makeWheelPools(), ...snowMeshes());
   for (const c of cars) {
     c.body.visible = c.bodyLod.visible = true;
     for (const o of [c.glass, c.lights, c.glow, c.snowCap, c.snowCapLod, c.plateMesh]) if (o) o.visible = true;

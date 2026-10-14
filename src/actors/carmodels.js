@@ -2167,11 +2167,13 @@ export const MODEL_KEYS = Object.keys(TYPES);
 // millimetres where the panel turns down, in 'snow'. A car that stood out overnight has snow on its
 // glass too: the upward-facing panes (windscreen, rear window; normal.y > 0.45) get a thinner layer
 // (~1.4 cm), from `glass` (the near body) or, on the LOD body, its opaque dark glass. Cached per body.
+// Feature sno_pa_bilar: the attribute `capo` = (how far the vertex was lifted, 1 on glass), for the
+// snow that a car driven away sheds (carsnow.js thins and breaks the cap where it has gone).
 const capCache = new WeakMap();
 const LOD_GLASS = new THREE.Color(0x14181d);
 export function snowCapGeometry(geo, glass = null) {
   if (capCache.has(geo)) return capCache.get(geo);
-  const P = [], N = [];
+  const P = [], N = [], O = [];
   const take = (g, filter, thick, thin) => {
     const surfs = g.userData.surfaces, pos = g.attributes.position, nrm = g.attributes.normal, idx = g.index.array, col = g.attributes.color;
     const groups = g.groups.length ? g.groups : [{ start: 0, count: idx.length, materialIndex: 0 }];
@@ -2187,6 +2189,7 @@ export function snowCapGeometry(geo, glass = null) {
           const off = thin + thick * smooth(0.55, 0.92, nrm.getY(v));
           P.push(pos.getX(v) + nrm.getX(v) * off, pos.getY(v) + nrm.getY(v) * off, pos.getZ(v) + nrm.getZ(v) * off);
           N.push(nrm.getX(v), nrm.getY(v), nrm.getZ(v));
+          O.push(off, thick > 0.02 ? 0 : 1);
         }
       }
     }
@@ -2201,6 +2204,7 @@ export function snowCapGeometry(geo, glass = null) {
     cap.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
     cap.setIndex([...Array(P.length / 3).keys()]);
     out = new GeoBuilder().use('snow').add(cap, 0xf2f3f4).build();
+    out.setAttribute('capo', new THREE.Float32BufferAttribute(O, 2));   // (one part: build() keeps the vertex order)
   }
   capCache.set(geo, out);
   return out;

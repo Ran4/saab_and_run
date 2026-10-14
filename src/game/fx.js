@@ -501,6 +501,17 @@ export const fx = {
       });
     }
   },
+  // Snow blown off a moving car (feature sno_pa_bilar, actors/carsnow.js): one wisp from (x, y, z) at
+  // about (vx, vy, vz) - most of the car's speed, which the air takes off it at once, so it streams
+  // back from where it left and spreads thin, sinking. k scales it.
+  blown(x, y, z, vx = 0, vy = 0.5, vz = 0, k = 1) {
+    // (a streak while it is fast - fine spray, not a row of cotton balls - slowing into a faint mist)
+    const p = puff(x + rnd(0.12), y + Math.random() * 0.06, z + rnd(0.12), [0.95, 0.96, 0.99], {
+      vx: vx + rnd(0.6), vy: vy + Math.random() * 0.5, vz: vz + rnd(0.6), s0: 0.06 * k, s1: (0.32 + Math.random() * 0.3) * k,
+      life: 0.45 + Math.random() * 0.45, a: 0.2, drag: 3.6, grav: 1.0, fadeIn: 14, fadeOut: 1.3, erode: 0.92,
+    });
+    p.stretch = 0.035;
+  },
   // Little glints (pickups): pinpoints of light with a thin four-point star, tinted by the colour,
   // thrown up softly and twinkling as they sink (additive, small: no confetti).
   sparkle(x, y, z, color = 0xffd23f, n = 10) {

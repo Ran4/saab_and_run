@@ -1,6 +1,7 @@
 # Cars — notes for later agents (phase 2, area C; fix rounds 1, 2, 3 and 4 (perf) and phase 4 round 2 applied)
 
 Files: `src/actors/car.js` (physics, `Car`, specs, materials, lights, plates, LOD, snow caps),
+`src/actors/carsnow.js` (the snow a snowed-in car sheds when driven away: feature sno_pa_bilar, below),
 `src/actors/carmodels.js` (lofted models, wheel instancing, plate atlas, lamp + glow materials),
 `src/actors/trailer.js` (släpkärra), `src/actors/drivers.js` (AI), `tools/cars.html` (look-dev
 page), `tools/scenarios/cars.mjs` (test scenarios). DESIGN.md §7 holds; additions and deviations
@@ -92,7 +93,11 @@ default by name and state: Ove's `saab` 0.35, `andersAudi` 0.3, `adrianSaab` 0.5
 - `car.lod` (far version active), `car.body` / `car.bodyLod` (both get `MAT.burnt` when wrecked;
   `repair()` restores), `car.glass`, `car.lights` (lamp mesh; hidden on a far car whose engine is
   off - its unlit lenses are baked into the LOD body), `car.glow` (lamp glow quads),
-  `car.snowCap` / `car.snowCapLod` (snow:true only), `car.plateMesh` (shown out to 72 m).
+  `car.snowCap` / `car.snowCapLod` (snow:true only; removed once a driven car has shed it all),
+  `car.plateMesh` (shown out to 72 m).
+- Snow on cars (feature sno_pa_bilar, see the section at the end): `car.snowy` (still has snow),
+  `car.snowFx` (a `CarSnow` once it has moved or run its engine: what is left of it), `car.stepSnow(dt)`
+  (from `step`), `car.frostMaterials(u)` / `car.snowGone()` (carsnow.js calls them).
 - `carGlassMaterial(clear)` (exported) is the see-through car glass (`clear`: the bus's and the
   sopbil's windscreens and the bus doors - glass geometry groups in the `'glass'` surface).
 - `carWheelMaterials(geo)` (exported, handed to carmodels' wheel pools): the wheels' own copies.
@@ -448,6 +453,8 @@ onStopped })` — API unchanged (`rubber` optional everywhere):
   frame at 19-28 ms (was 37-42 ms) with no car program compiled and no car geometry uploaded but 7
   plates; what is left is the town's blocks / ground / twigs coming into view (world). Entering from
   beside the Saab: no car program (the three new ones are world blocks and markers).
+- **`tickCarSnow(dt, game)`** (carsnow.js) every frame after `syncAll` and before `FX.tick` (the lumps
+  of snow off the cars and the wiper blades), on the title screen too.
 - **`car.asleep`**: parked cars nobody drives fall asleep 0.5 s after coming to rest and stop
   stepping (no physics, ground or solid queries) until something wakes them (`car.wake()`):
   `collideCars` contact, a trailer shoving them, `place()`, `damage()`, a driver or an AI, or anything
@@ -708,3 +715,80 @@ the car flies. `HOPP = { grav: 15, slope: 9.8, carry: 1, nose: 0.85, hold: 3.5 }
 - Measured (`snohogsim`: the car stepped by hand over the real hill, both ways, 5-22 m/s; saab900,
   volvo240, audi, van, volvo740 + trailer): nobody ever under the snow, every car upright, level and
   on its line after, no damage below 20 m/s; Saab 13 m/s: 1.0 s in the air, 13.5 m, impact 4.5-5.6.
+
+## Snow on cars, shed when driven (feature sno_pa_bilar, 2026-10-15)
+
+`src/actors/carsnow.js`; features/implemented/sno_pa_bilar.md has the why. The parked cars (`snow:
+true`: every unnamed parked car, the guest24 violations) keep the shared cap and shared materials and
+cost nothing more: a sleeping car never steps. The first step in which a snowy car moves (> 0.4 m/s) or
+runs its engine, `stepSnow` makes its `CarSnow`:
+- **The grid** (`snowLayout(model)`, cached per cap geometry): the near cap's triangles rasterised from
+  above into 8 cm cells (`CELL`): the cap's top, its depth (the new `capo` attribute of
+  `snowCapGeometry`: how far each vertex was lifted, and 1 on glass), the normal, glass or paint; one-
+  cell cracks filled; the cells cut into slabs (`chunks`: a jittered 0.4 x 0.46 m Voronoi, glass and
+  paint apart, tiny ones merged: 40-55 per car) with their neighbours (`same` = the same panel: only
+  those hold a slab in), `lee` (something of the cap > 12 cm higher within 1.6 m in front: the rear
+  window and the boot behind the roof), `bonnet` (paint in front of the windscreen's foot), `cl` (lift:
+  0.28-0.52 by height, 0.1 on the windscreen, 0.12 in the lee, ±20 %), `edge`; the windscreen in the
+  glass's own plane for the wipers (`wiper`: the two pivots where carmodels.js parks the blades).
+- **What is left**: per cell `own` (the wipers' share, up to 1.6 for their ridge) x per slab `alive` /
+  `thick` (the wind's wear), written into an R8 `DataTexture` (rim cells off the cap take their
+  neighbour's value, so the filtering never eats the cap's own outline). The car's cap and LOD cap get
+  their own material (`capMaterial`: the shared snow surface + `uShed`, `uShedBox`, program key
+  `|carsnow1`, one program for every shedding car): the vertex shader lowers the cap where snow has gone
+  (`capo.x` x 0.8), the fragment shader discards below a noisy threshold (warped lookup ±1.4 cells,
+  noise at 17 and 43 /m): a ragged break where a slab went, patchy where the wind wore it thin. Both caps
+  are `noAO` from then on (the AO pre-pass would draw them whole). The car is drawn on its own far away
+  while it sheds (`setLod`: no instancing while `snowFx`).
+- **The forces** (per step, car frame: +x left, +y up, +z forward). The acceleration from the body's
+  velocity (`vx, vy + sus.hv, vz`), what it keeps up smoothed (8/s, each axis clamped to 15 m/s²:
+  pulling away, braking, turning) and a knock within one step on its own (`knock`: a change of > 0.6
+  m/s across, or a landing after `air`). Per slab: shear = the tangential part of (-a, -drag), drag = q x
+  0.1 on a free windward edge (q = `AIR` 0.096 v²: 0.5 rho v² over 6.75 kg/m² of snow), pull = lift (q x
+  cl / thickness, x 0.3 without a free windward edge) + the normal part - g ny (in the air the snow
+  falls with the car: weightless whatever the game's gravity). It goes when pull > 0.6 hold with its
+  windward edge free (in the air: any side), or shear > hold with its side free that way. hold = 4-20
+  m/s² (skewed low: `4 + 16 r^1.3`, x 0.85 at a panel's edge), x (1 - 0.4 shake) after a jolt, x (1 -
+  0.7 warm) on the bonnet once the engine has run a while (`warmT` 180 s). A knock lets the slabs with a
+  free side away from it go by chance (p ∝ the knock, the weaker bonds likelier) and they keep the
+  velocity they had (`kick`); no cascades from one step's spike. Erosion: thick -= `erode` (v - 8)² cl /
+  0.45 (x 0.15 not at the windward edge) a second; below 0.22 it goes as powder.
+- **Measured** (`bilsnosim`, 6 models x 6 cars, the player's acceleration to a steady speed; area left):
+  30 km/h 0.96 after 3 s, 0.93 after a minute; 50 km/h 0.87 / 0.80 / 0.65 after 15 / 30 / 60 s; 70 km/h
+  0.58 / 0.40 / 0.17; 90 km/h 0.37 / 0.15 / 0; a hard stop from 50 0.90 -> 0.72; a 0.8 g turn at 50 0.90
+  -> 0.75. The hoppbacke at 45 km/h (`bilsnohopp`): ~55 % goes (air, landing, the braking after).
+- **Lumps** (one `InstancedMesh` 'carsnow:lumps', 72, the snow surface's 'inst' material, casting
+  shadows; a puck with a broken outline, `lumpGeometry`): a slab that lets go cracks into 1-4 pieces
+  that RIDE the car's top (`surface()`: the grid's height less what has gone, its normal): gravity, still
+  air's drag (`kd` = 0.65/(300 t)) and lift (`kl`), the car's top moving under them (v + w x r), the
+  normal part taken by the car and friction `MU` 0.22 for how hard it pressed; a steep rise (> 1.5:1)
+  stops them (the foot of the windscreen), a step off the snow onto the paint drops them, an edge or a
+  lift (> 0.6 m/s off it, 0.2 in the air) makes them FLY (world: gravity, drag, tumbling about the car's
+  left axis, crumbling into powder above 9 m/s: `k`, gone below 0.35); one that comes down on its own
+  car rides again. On the ground (`groundAt`) > 4 m/s across or > 2.6 m/s down they burst (powder, a
+  low spray of `fx.blown` streaks, 1-2 pieces), else they REST (settling flat) for ~30 s, sinking at the
+  end; a moving car over one squashes it. No lumps or powder beyond 110 m from the camera (`near`): the
+  slab just goes. `puffOk`: no puff within 1.5 m of the camera.
+- **Powder**: `fx.blown` (fx.js, new: a stretched wisp at most of the car's speed, slowing into a faint
+  mist) off the exposed snow above 9 m/s (up to ~36/s per car), behind flying lumps, at bursts;
+  `fx.powder` where a slab lets go and at landings.
+- **Wipers**: a driver (or an AI) with the engine running starts them 0.7 s later, once per car: three
+  1.3 s sweeps (up and down, sinusoidal) of two blades (`'carsnow:blades'`, rubber, instanced, drawn
+  while they move; the parked ones stay) from the pivots at the windscreen's foot, up to 104°; the first
+  two up-strokes clear the fans (each cell by how much of it lies behind the blade: a smooth edge) and
+  heap a ridge (up to 1.45) in front of the blade; powder off the tips. Windscreen slabs left under 15 %
+  are gone after.
+- **The frost** on the paint (TRI_SNOW): `car.frostMaterials(u)` gives the body and the LOD body their
+  own copies of the snowy materials (`bodyMats(..., frost)`: `makePaint` / `makeCarSurface` uncached,
+  the same programs, `uSnow` = `u`): down to `FROST` 0.32 of the town's snow in the first half second
+  (what a slab leaves is a patchy residue), then fading with `film` (-= `film` (v - 5)² a second: ~30 s
+  at 50 km/h). When every slab and the film are gone (and the wipers stopped) `snowGone()`: shared
+  `snow: false` materials (the own ones disposed), the caps out of the tilt, `snowy` false, `_batch`
+  reset: an ordinary car, instanced far away again.
+- `place()` resets it (no acceleration out of a teleport); a wreck's riding lumps fall off and it stops
+  (repair resumes); `dispose()` frees the texture, the cap material and the own materials. The warm-up
+  makes one shedding car and the lump / blade meshes, so the first car to shed compiles nothing.
+- Cost (`bilsnoperf`, a flat-out drive in a snowed-in Volvo vs the same without snow, 2 runs each):
+  the step + the lumps' tick 0.09-0.11 ms a frame; the whole frame loop 7.2-7.8 ms vs 7.2-7.5 ms over
+  4 pairs of runs (0-0.5 ms more: the puffs and lumps drawn; the run-to-run noise is ±0.3 ms); no
+  program compiled. Tests: tools/scenarios/bilsno.mjs (CLAUDE.md lists them).
