@@ -161,7 +161,13 @@ stage kinds as missions):
 4. Adrian: punktering → hold E at `bikeShed` 4 s ("Laga punkteringen").
 5. Patrick: låst sig ute → fetch spare key at `oveHouse` → hold E at `parvanehHouse` 1.5 s. After
    day 1.
-6. Anita: Rune har rullat iväg → find Rune (45–80 m away on a sidewalk), push him home.
+6. Anita: Rune har rullat iväg → find Rune (45–80 m away on a sidewalk), push him home (E takes
+   hold of the wheelchair and lets go of it: let go of in a stride, or kicked, it rolls on). No
+   patience timer: Rune's cold instead (5 minutes from the call, much quicker out past the forest),
+   and he can die (a car at speed, the cold): the errand fails with E (try again) or Q (give up:
+   he stays dead for the rest of the game, Anita grieves, days 3, 6 and 7 go on without him).
+   game/rune.js; features/implemented/roligare_runeuppdrag.md.
+   Errands 1 and 7 need Rune too (they are not offered once he is dead).
 7. Anita: skotta framför dörren → hold E at three spots by `runeHouse`.
 8. Sara: Oves katt har rymt ("Det är inte min katt.") → short cat chase, carry it to Sara. Only once
    the cat lives at Ove's (after day 4: template `after: 4`); the cat by his door is gone meanwhile.
@@ -178,7 +184,7 @@ one he can't act on yet is kept 0.25 s; see notes/people.md, *Gait*. People walk
 with Ove (errands) follow his trail (a point every 0.6 m) round fences and hedges, and are still
 "with him" until they have been more than 20 m behind for 2 s (beyond 35 m they give up). Children
 (cast and pedestrians) and the neighbours are never knocked over by cars; they are shoved aside,
-like Rune. A knock-down depends only on the car's own speed into the person (> 4.5 m/s), so
+like Rune (but on his errand that kills him). A knock-down depends only on the car's own speed into the person (> 4.5 m/s), so
 walking into a parked car just stops Ove. Pushing Rune: 3.0 m/s (3.6 with Shift). **J/click:
 "sparka på däcket"** — kicking a car's tyre plays a thunk, rocks the car (a parked car asleep is
 woken) and an Ove comment by make ("Bra däck." / "Plast och elektronik." / "Sommardäck. I november."); kicking props still breaks them (−Ordning; one kick breaks the nearest prop only). E: talk / get in & out / hold to

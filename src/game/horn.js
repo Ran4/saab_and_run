@@ -32,7 +32,7 @@ import { queryBlocks, BOX } from '../world/collision.js';
 import { isCarFree } from '../world/layout.js';
 import {
   HONK_SCARED, HONK_SIDEWALK, HONK_CARFREE, HONK_OLD, HONK_TEEN, HONK_KID, HONK_HEARD, HONK_BACK, SAAB_GREET, HONK_SMITARE,
-  HONK_WINDOW, ANDERS_LAW, HONK_NEIGHBOUR, RUNE_HORN, ANITA_RUNE, HONK_PASSENGER, HONK_PASSENGER_ANY, OVE_HONK, whenOk,
+  HONK_WINDOW, ANDERS_LAW, HONK_NEIGHBOUR, RUNE_HORN, ANITA_RUNE, HONK_PASSENGER, HONK_PASSENGER_ANY, OVE_HONK, whenOk, WIDOW,
 } from './script.js';
 import { clamp, dist, pick, yawTo, dampAngle } from '../util.js';
 
@@ -275,6 +275,8 @@ export class Horn {
   lineFor(c, p, car) {
     const g = this.g;
     if (c.key === 'rune') return RUNE_HORN[car.kind] || RUNE_HORN.default;
+    // (Anita once Rune is dead: game/rune.js)
+    if (c.key === 'anita' && g.runeDead) return pick(WIDOW.honk, this.rand);
     if (c.key) return pickWhen(HONK_NEIGHBOUR[c.key], g.missions, this.rand);
     if (isKid(c)) return pick(HONK_KID, this.rand);
     if (p.front && isCarFree(car.x, car.z)) return pick(HONK_CARFREE, this.rand);

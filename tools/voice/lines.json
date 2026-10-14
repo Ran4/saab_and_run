@@ -79,5 +79,60 @@
    "retake": 1,
    "note": "hördes som \"Geining\""
   }
+ },
+ "anita": {
+  "Rune...": {
+   "tts": "[sobbing] Rune...",
+   "note": "Anita gråter (Rune är död): snyftningar, namnet knappt hörbart"
+  },
+  "Förlåt, Ove. Det går över.": {
+   "tts": "[sniffles] Förlåt, Ove. [crying] Det går över.",
+   "note": "Anita gråter (Rune är död)"
+  },
+  "Varför, Rune? Varför?": {
+   "tts": "[crying] Varför, Rune? Varför?",
+   "note": "Anita gråter (Rune är död)"
+  },
+  "...": {
+   "tts": "[sobbing quietly] ...",
+   "note": "Anita gråter tyst (Rune är död): bara gråt, inga ord"
+  },
+  "Ove? De har hittat Rune. Han är död, Ove. Han är död.": {
+   "tts": "[crying] Ove? De har hittat Rune. [sobbing] Han är död, Ove. Han är död.",
+   "note": "i telefon, gråtande"
+  },
+  "Det är så tyst hemma nu, Ove.": {
+   "tts": "[sadly] Det är så tyst hemma nu, Ove."
+  },
+  "Jag dukade för två i morse. Av gammal vana.": {
+   "tts": "[sadly] Jag dukade för två i morse. Av gammal vana."
+  },
+  "Hans filt ligger kvar på stolen. Jag kan inte flytta den.": {
+   "tts": "[voice breaking] Hans filt ligger kvar på stolen. Jag kan inte flytta den."
+  },
+  "Jag skulle inte ha hängt tvätt den dagen.": {
+   "tts": "[crying softly] Jag skulle inte ha hängt tvätt den dagen."
+  },
+  "Han sa ditt namn ibland. Visste du det?": {
+   "tts": "[sadly] Han sa ditt namn ibland. Visste du det?"
+  },
+  "Inte nu, Ove. Snälla.": {
+   "tts": "[tearfully] Inte nu, Ove. Snälla."
+  },
+  "Ove... låt bli.": {
+   "tts": "[tearfully] Ove... låt bli."
+  },
+  "Han tyckte om när du kom, Ove. Även om han aldrig sa det.": {
+   "tts": "[sadly] Han tyckte om när du kom, Ove. Även om han aldrig sa det."
+  },
+  "Rune hade velat att det var du som gjorde det.": {
+   "tts": "[sadly] Rune hade velat att det var du som gjorde det."
+  },
+  "Ove? Jag tände ett ljus för Rune i dag. Jag ville bara att du skulle veta det.": {
+   "tts": "[softly] Ove? Jag tände ett ljus för Rune i dag. Jag ville bara att du skulle veta det."
+  },
+  "Det är så lugnt i området i dag, Ove. Rune hade tyckt om det.": {
+   "tts": "[sadly] Det är så lugnt i området i dag, Ove. Rune hade tyckt om det."
+  }
  }
 }

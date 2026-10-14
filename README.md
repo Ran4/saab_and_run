@@ -127,6 +127,11 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   elementet, någon har låst sig ute, katten har rymt, Rune har rullat iväg. Hjälp till innan
   tålamodet tar slut. Den som följer med Ove går i hans spår. De nya grannarna ringer först när de
   har träffat Ove, och en del ärenden dyker upp först senare i veckan.
+- **Rune.** Ta tag i rullstolen med **E** och släpp den med **E**. Släpper du den i farten (Shift)
+  rullar han vidare en bra bit, och en spark får den att rulla också. Rune har ingen tidsfrist, men
+  han blir kallare för varje minut (fem minuter, och mycket fortare ute bortom skogen), och en bil
+  i full fart tar livet av honom. Försök igen med **E**, eller ge upp med **Q**: då förblir han död,
+  och Anita är förkrossad resten av spelet.
 - **Till fots** går Ove, går raskt och sparkar på däck. Han har åsikter om de flesta bilmärken.
 - **Utanför stan.** Det finns inga osynliga väggar längre. Bortom den yttre ringvägen tar skogen vid,
   och fyra skogsgator (snöiga gluggar rakt ut genom skogen, en åt varje håll) leder ut på kullarna.
@@ -193,6 +198,7 @@ src/actors/models.js       människorna (och katten); character.js: fysik till f
 src/actors/pickups.js      pantburkar, emblem, fotografier, saker att hämta
 src/game/patrol.js         felparkeringar, anteckningsblocket, smitare, Ordning-mätaren
 src/game/interruptions.js  avbrotten: samtalen och ärendena
+src/game/rune.js           Runes rullstol som rullar själv, hans död på ärendet, Anitas sorg
 src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, anteckna, hämta, skjutsa, jaga...)
 src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
 src/game/hoppbacke.js      hoppen från hoppbacken: snöpudret, ljuden, Oves anteckning och rekord, vad alla säger
@@ -238,6 +244,8 @@ PORT=8791 node tools/shot.mjs coldlook coldsound coldperf  # bilder därute, lju
 PORT=8791 node tools/shot.mjs coldwind                     # ingen vind bakom svart, ett tyst sovrum, vindens stopp offline (ljudbuggen i Firefox)
 PORT=8791 node tools/shot.mjs snohog snohogsim             # hoppbacken: sex hopp med riktiga tangenter (bilar, farter, släp; FILM=1), och 64 uträknade
 PORT=8791 node tools/shot.mjs snohogwalk snohogsound       # Ove går över hoppbacken; hoppets ljud offline
+PORT=8791 node tools/shot.mjs runeroll runekick runecar runecold runewidow   # Runes ärende: släppa och sparka rullstolen, påkörd, ihjälfrusen, Anita utan honom (runelook: närbilder)
+QUERY='&runedead' PORT=8791 node tools/shot.mjs story      # berättelsen med Rune död
 ```
 
 I testerna (`?test=1`) är rösterna avstängda, så de går lika fort som förut; `&voice` slår på dem.

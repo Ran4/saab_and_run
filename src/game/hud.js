@@ -468,9 +468,12 @@ export const hud = {
       n.title.textContent = o.title || '';
       n.text.textContent = o.text || '';
     }
-    const tm = o.timer != null ? fmtTime(o.timer) : '';
-    if (tm !== c.tm) { c.tm = tm; n.timer.textContent = tm; }
-    const urgent = o.timer != null && o.timer < 15;
+    // Rune's errand: his cold instead of a timer (o.cold 0..1, o.temp °C, o.danger: the stage's obj())
+    const cold = o.cold != null;
+    if (cold !== !!c.cold) { c.cold = cold; e.classList.toggle('cold', cold); }
+    const tm = cold ? `${(o.temp ?? 36.6).toFixed(1).replace('.', ',')}°` : o.timer != null ? fmtTime(o.timer) : '';
+    if (tm !== c.tm) { c.tm = tm; if (cold) n.timer.innerHTML = `${ICON.flake}${tm}`; else n.timer.textContent = tm; }
+    const urgent = cold ? !!o.danger : o.timer != null && o.timer < 15;
     if (urgent !== c.urgent) { c.urgent = urgent; n.timer.classList.toggle('urgent', urgent); }
     const w = o.bar != null ? Math.round(clamp(o.bar, 0, 1) * 100) : -1;
     if (w !== c.w) { c.w = w; n.bar.style.display = w < 0 ? 'none' : ''; if (w >= 0) n.fill.style.width = `${w}%`; }

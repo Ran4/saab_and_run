@@ -40,7 +40,12 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   hoppbacke in the park, features/implemented/snöhög.md: `snohog` = six jumps with real keys, several
   cars and speeds, a trailer, `RUNS=`, `FILM=1` keeps the frames; `snohogsim` = 64 deterministic runs
   over the real hill; `snohogwalk snohogsound`); run `snohogsim snohog` after touching car or trailer
-  physics, collision.js or the hill).
+  physics, collision.js or the hill), rune.mjs (Rune's errand, features/implemented/
+  roligare_runeuppdrag.md: `runeroll runekick` (the wheelchair let go of and kicked, real keys),
+  `runecar runecold` (killed by a car / the cold, E tries again, Q gives up, a reload keeps him dead),
+  `runewidow` (`?runedead`: Anita grieving, no errand of his), `runelook` (close-ups); run them after
+  touching the escort stage, game/rune.js, the errands' retry or Anita, and `QUERY='&runedead' story`
+  after touching days 3, 6 or 7).
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -63,8 +68,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
   take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 30 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
-  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (495 lines, 15 488 chars on
-  2026-10-11 with the five WAKE lines; with the pool 1 300 lines, 1 236 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (522 lines, 16 665 chars on
+  2026-10-14 with Anita's grief; with the pool 1 327 lines, 1 263 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
   retry: < 5 % cut off, no two voices at once; `TO=7` all seven days; `LUFTSKIP=s`: the
   reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line). Every headless tool
@@ -82,7 +87,8 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   *increases* it while reversing). Drivers sit on the car's left (+X local). +z is north on the map (the minimap and big map draw N = +z since phase 4, so the low sun reads as south-west); +x is west.
 - There are no invisible walls (features/implemented/avgrunden.md): Ove and his car go on past
   `BOUND` (where they stood); everyone else (traffic, chases, the race, pedestrians, neighbours)
-  stops there (main.js `keepCarsInside` / `keepPeopleInside`). Outside the grid the ground follows
+  stops there (main.js `keepCarsInside` / `keepPeopleInside`), but Rune: he goes nowhere by himself,
+  and Ove may push, let go of or kick his wheelchair out there (game/rune.js). Outside the grid the ground follows
   the hills' mesh (`layout.terrain.at`, used by `baseGround`); four forest tracks (`layout.TRACKS`)
   lead out; from `COLD` (BOUND + 30, square distance `edgeDist`) game/cold.js's meter rises and
   kills Ove (112 s at the edge, features/implemented/avgrunden2.md). Nothing may spawn or be placed
@@ -160,6 +166,14 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   he wakes), errands abort, companions go home, a named car goes home; then game/waking.js plays his
   bedroom (world/interior.js `buildBedroom`, the line from script.js `WAKE`) and lets him out at
   his door.
+- **Rune** (`game.rune`, rune.js; features/implemented/roligare_runeuppdrag.md): E takes hold of and
+  lets go of his wheelchair (escort `push`), let go of in a stride or kicked it rolls on (`n.roll`).
+  His errand has no timer but his cold (escort `cold`), and he can die on it (`n.mortal`: a car at
+  speed, the cold): `interrupts.retry` holds RUNE ÄR DÖD with E (`tryAgain`) / Q (`giveUp`), Ove
+  frozen meanwhile (`game.failWait`, like a failed day). `game.runeDead` (set as he dies, saved
+  `rune: 0`): Rune hidden (`npcAway`), the errands needing him gone, Anita grieving (`rune.grief`:
+  `anim.grief`, sobs, script.js `WIDOW`), days 3, 6 and 7 without him (missions.js `widow`,
+  `MissionRunner.scene(def, key)`). `?runedead` (tests) starts so.
 - **Horn** (`game.horn`, horn.js): T / H (pad L3 / RB) in a car. People in front leap aside (`anim.fright`,
   then `anim.fist` / `cheer`), neighbours answer in character, drivers honk back with their make's
   horn (audio.js `HORNS`), smitare are spooked or pressed, needless honking costs Ordning. People's
@@ -175,5 +189,5 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   Music: `audio.music(state)` from main.js `musicState()` (roam playlist, errand, pursuit, race,
   chase, hurry, finale); the generative piano is the fallback.
 - Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`, `garage`
-  0 = Ove's garage door shut), every field sanitised on load. Settings separately in
+  0 = Ove's garage door shut, `rune` 0 = Rune dead), every field sanitised on load. Settings separately in
   `saab-and-run-settings` (`music`, `sound`, `quality`, `voice`, `voiceLevel`).

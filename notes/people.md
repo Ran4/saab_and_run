@@ -859,3 +859,20 @@ motion was rebuilt around them. `locomotion()` in models.js, for everybody:
   same blue), `down` held at `downLeft` 9 (lying, eyes shut) and then 1.3 → 0.845 in 0.32 s (downPose's
   lie → sit: eyes open, up); the legs straightened, the feet pointed and shrunk (under the duvet), the
   arms by his sides while asleep, the neck turned by hand (downPose ignores `look`).
+
+## Rune's fate (feature roligare_runeuppdrag, 2026-10-14)
+
+game/rune.js. New `anim` flags, all in animateCharacter's order after the shiver:
+- `anim.slump` (Rune dead in his wheelchair): `slumpPose`: spine +0.2, chest +0.1, the head fallen
+  onto his chest (neck +0.6, head +0.2) and over to one side, no look, the left arm hanging beside
+  the wheel (armIK to (0.42, 0.46, 0.1) body space), the lids shut (0.95). He is `frozen` (no physics)
+  but still posed: Character.sync animates a `frozen` character that has `dead` set.
+- Character `toppleW`: the topple's pivot `toppleW` m out to the side it goes over to (the root is
+  raised and moved so the edge stays on the ground): his chair onto its side after a car (0.32).
+- `anim.coast` (the chair rolling free): wheelchairPose keeps his hands in his lap whatever the speed.
+- `anim.shiver` now works in a wheelchair too (Rune's cold on his errand).
+- `anim.grief`, `anim.sob` (Anita once Rune is dead): `griefPose`: head bowed (neck +0.3), the right
+  palm at her eyes (headFrame: 0.56 Hh up, 0.62 Hh in front of the head's centre, fingers up and
+  across the brow, palm to the face), the left forearm across her waist; `sob` (0..1, 1 while she
+  says a sob) heaves the chest and spine at ~1.2 Hz. Off while talking (unless sobbing), on the phone
+  or waving; lids 0.55 shut. Look-dev: scenarios/rune.mjs `runelook` (rune_look_*.png).

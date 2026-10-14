@@ -27,7 +27,7 @@ import { circleVsObb } from '../world/collision.js';
 import { THREE, camera } from '../gfx.js';
 import { audio } from '../audio.js';
 import { hud } from './hud.js';
-import { OVE_START, FLEE_LINES, CAUGHT_LINES, PATROL } from './script.js';
+import { OVE_START, FLEE_LINES, CAUGHT_LINES, PATROL, WIDOW } from './script.js';
 import { clamp, dist, pick } from '../util.js';
 
 // [tag text (also the pause log's short form), notebook sentence]. The one source for both: hud.js
@@ -457,7 +457,8 @@ export class Patrol {
       g.addCoins(100);
       hud.showBanner('ORDNING OCH REDA', 'Området är som det ska · +100 kr', 'good', 3000);
       audio.jingle('complete');
-      setTimeout(() => g.radio(...PATROL.reda), 2200);
+      // (Rune is dead: Anita, missing him - game/rune.js)
+      setTimeout(() => g.radio(...(g.runeDead ? WIDOW.reda : PATROL.reda)), 2200);
       g.save();
     }
     // Keep up to 6 open violations, a new one now and then, out of sight.

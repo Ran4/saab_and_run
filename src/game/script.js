@@ -25,13 +25,16 @@
 //     day                        1-7
 //     intro, retryIntro, outro   [LINE...]: the scenes (missions.js adds the outros' camera beats,
 //                                by line index: keep those lines where they are)
+//     introWidow, outroWidow,    the same, once Rune is dead (game/rune.js: the errand given up
+//     callsBackWidow             after he died); missions.js takes them instead (same beats)
 //     call: CALL, calls / callsBack: [CALL...]   phone calls during a stage (keys starting 'call')
 //     any other key              a LINE or [LINE...] said during the day's stages, named for the
 //                                moment (missions.js says where: bubbles, radio, a stage's hello)
 //   }
 //   ERRANDS[id] = { who, lines: POOL said in turn on the phone, ove (his answer), thanks, fail,
 //                   busy (a story day took Ove off it), hello / bye: LINE (a stage's, by whoever is
-//                   fetched or dropped off) }      ERRAND_BUSY  the fallback busy line
+//                   fetched or dropped off), dead (rune: on the radio once Ove has given up after
+//                   Rune died) }      ERRAND_BUSY  the fallback busy line
 //   ANSWER, DONE     Ove picks up the phone / has done an errand
 //   CHATTER[who]     small talk (POOL of text | WHEN)   CHATTER_FIRST[who]  before day 1's scene
 //   CHATTER_AFTER[who] = [days done, POOL, replace]     CHATTER_FALLBACK  when nothing else fits
@@ -41,6 +44,8 @@
 //   FLEE_LINES, CAUGHT_LINES, PATROL   the patrol (smitare, the Ordning meter's events)
 //   HONK_*, SAAB_GREET, ANDERS_LAW, RUNE_HORN, ANITA_RUNE, OVE_HONK   the horn (horn.js)
 //   COMING, CAT_COMES, CHASER_GAVE_UP   stages.js
+//   WIDOW            Anita once Rune is dead (game/rune.js): small talk, sobs, horn, the radio
+//   RUNE_DIES        Ove, as Rune dies on the errand
 //
 //   whenOk(tag, m)   the WHEN tags: 'met' (day 1 is done: the new neighbours know Ove), 'notMet',
 //                    'eveningOfDay1', 'onDay<n>' (the day it is: the evening after day n is still day
@@ -49,7 +54,7 @@
 //   allLines()       [[who, text, part], ...]: every line the code can say, deduplicated on who +
 //                    text (the first one wins). part: 'day1' .. 'day7' (all of STORY), then
 //                    'chatterFirst', 'chatter', 'chatterAfter', 'errands', 'calls' (ANSWER, DONE),
-//                    'reactions' (Ove's own), 'patrol', 'peds', 'horn', 'stages'. A CALL's reply is
+//                    'reactions' (Ove's own), 'patrol', 'peds', 'horn', 'stages', 'widow'. A CALL's reply is
 //                    its own ['ove', reply, part]. The fallbacks (ERRAND_BUSY, CHATTER_FALLBACK,
 //                    HONK_PASSENGER_ANY) are in it only for a speaker who can get to them (nobody
 //                    today). Keep it complete: a new table goes in here too.
@@ -126,6 +131,20 @@ export const STORY = {
       ['ove', 'Ja, Rune. Saab.'],
       ['anita', 'Han kom ihåg dig. Han kom faktiskt ihåg dig.'],
       ['ove', 'Hmpf. Han har kört Volvo hela livet. Klart han minns en riktig bil.'],
+    ],
+    // Rune is dead (game/rune.js): Anita alone.
+    introWidow: [
+      ['anita', 'Ove, förlåt att jag stör. Elementen är kalla igen, och det klickar i dem.'],
+      ['ove', 'Det är luft i dem. Har du luftat?'],
+      ['anita', 'Rune gjorde alltid det. Förut. Nu vet jag inte ens var nyckeln ligger.'],
+      ['ove', 'Elementnyckel. Jag har en i garaget. Alla borde ha en.'],
+      ['anita', 'Han tyckte om när du kom, Ove. Även om han aldrig sa det.'],
+    ],
+    outroWidow: [
+      ['anita', 'Det är varmt i huset igen. Tack, Ove.'],
+      ['ove', 'Två gånger per vinter. Minst. Jag skriver det på en lapp åt dig.'],
+      ['anita', 'Rune hade velat att det var du som gjorde det.'],
+      ['ove', 'Hmpf. Han körde Volvo hela livet. Men elementen skötte han.'],
     ],
     // Bubbles: the empty hook in the garage, the note in Rune's glove box, Anders handing it over.
     noKey: ['ove', 'Rune. Naturligtvis.'],
@@ -205,6 +224,24 @@ export const STORY = {
       ['anita', 'Du är en god människa, Ove.'],
       ['ove', 'Säg inte det till någon.'],
     ],
+    // Rune is dead: it is Anita they want to move.
+    introWidow: [
+      ['anita', 'Ove... mannen från kommunen var här igen. Han i den vita skjortan.'],
+      ['ove', 'Vad ville han?'],
+      ['anita', 'De vill flytta mig till ett boende. Nu när Rune är borta säger de att jag inte klarar mig själv.'],
+      ['anita', 'Han tog med sig alla papper. Hela utredningen om mig. Han sitter i sin vita bil vid infarten och skriver.'],
+      ['ove', 'Vid infarten. Jaså.'],
+      ['anita', 'Ove, du ska väl inte göra något dumt?'],
+      ['ove', 'Jag ska bara prata med honom.'],
+    ],
+    outroWidow: [
+      ['anita', 'Ove? Är det där... mina papper?'],
+      ['ove', 'De hade glömt en underskrift. Då gäller inte beslutet.'],
+      ['anita', 'Så jag får bo kvar? I vårt hus?'],
+      ['ove', 'Tills de har lärt sig läsa sina egna blanketter.'],
+      ['anita', 'Du är en god människa, Ove.'],
+      ['ove', 'Säg inte det till någon.'],
+    ],
     // The Škoda sets off (radio); Anita phones; the radio during the chase; the talk at the wreck.
     getaway: ['vitskjorta', 'Nej, nej, nej. Inte nu, Ove.'],
     call: ['anita', 'Ove... var försiktig. Han är bara en tjänsteman.', 'Det är det som är problemet.'],
@@ -241,6 +278,17 @@ export const STORY = {
       ['ove', 'Det är i ordning nu, Sonja. Området.'],   // (beat: the stone)
       ['ove', 'Jag kommer igen på söndag. Som vanligt.'],
     ],
+    // Rune is dead (the same beats: line 3 his face, line 6 the stone).
+    outroWidow: [
+      ['ove', 'Hej, Sonja.'],
+      ['ove', 'Vilken vecka det har varit. Grannarna, alltså. De kan ingenting.'],
+      ['ove', 'Parvaneh fick en pojke. Han skriker som hon. Patrick svimmade.'],
+      ['ove', 'Adrian har köpt en Saab. Rune är borta. Anita bor kvar. Katten... katten får stanna. Tills vidare.'],
+      ['ove', 'Jag vet vad du skulle säga. Att jag behöver dem lika mycket som de behöver mig.'],
+      ['ove', 'Hmpf.'],
+      ['ove', 'Det är i ordning nu, Sonja. Området.'],
+      ['ove', 'Jag kommer igen på söndag. Som vanligt.'],
+    ],
     // Parvaneh gets in; the Škoda sets off and stops Ove (radio: one at random); the morning's
     // "INTE NU!" calls; the radio on the drive; she gets out at Akuten.
     hello: ['parvaneh', 'Kör, Ove! KÖR!'],
@@ -261,6 +309,10 @@ export const STORY = {
     call: ['patrick', 'Ove! Det blev en pojke! Tre kilo fyrahundra! Han skriker precis som Parvaneh. Jag svimmade bara lite!', 'Hmpf. Grattis.'],
     callsBack: [
       ['anita', 'Ove? Rune sa ditt namn i dag. Två gånger. Jag ville bara att du skulle veta det.', 'Bra. Det är bra, Anita.'],
+      ['adrian', 'Ove! Jag kollade under trösklarna. Ingen rost! Och jag prutade fyratusen!', 'Hmpf. Femtusen hade gått.'],
+    ],
+    callsBackWidow: [
+      ['anita', 'Ove? Jag tände ett ljus för Rune i dag. Jag ville bara att du skulle veta det.', 'Bra. Det är bra, Anita.'],
       ['adrian', 'Ove! Jag kollade under trösklarna. Ingen rost! Och jag prutade fyratusen!', 'Hmpf. Femtusen hade gått.'],
     ],
   },
@@ -313,6 +365,7 @@ export const ERRANDS = {
     hello: ['rune', '...Ove?'],
     thanks: 'Tack, Ove. Jag vet inte vad vi skulle göra utan dig.', fail: 'Grannarna hittade honom vid busshållplatsen. Han frös.',
     busy: 'Jaså. Jag letar själv då. Han kan inte ha kommit långt.',
+    dead: 'Ove? De har hittat Rune. Han är död, Ove. Han är död.',
   },
   skotta: {
     who: 'anita',
@@ -575,6 +628,21 @@ export const OVE_HONK = {
 };
 
 // ---------------------------------------------------------------------------------------------
+// Rune's fate (game/rune.js, features/implemented/roligare_runeuppdrag.md): he can die on the errand
+// "Rune har rullat iväg", and if Ove gives it up then, he stays dead for the rest of the game.
+
+// Ove, as it happens (a bubble by the body).
+export const RUNE_DIES = ['ove', 'Rune?'];
+// Anita from then on: her small talk (instead of CHATTER and CHATTER_AFTER), what she says through her
+// tears as Ove goes by (now and then), a honk at her, and the radio after ORDNING OCH REDA (PATROL.reda).
+export const WIDOW = {
+  chatter: ['Det är så tyst hemma nu, Ove.', 'Jag dukade för två i morse. Av gammal vana.', 'Hans filt ligger kvar på stolen. Jag kan inte flytta den.', 'Jag skulle inte ha hängt tvätt den dagen.', 'Han sa ditt namn ibland. Visste du det?'],
+  sobs: ['Rune...', 'Förlåt, Ove. Det går över.', 'Varför, Rune? Varför?', '...'],
+  honk: ['Inte nu, Ove. Snälla.', 'Ove... låt bli.'],
+  reda: ['anita', 'Det är så lugnt i området i dag, Ove. Rune hade tyckt om det.'],
+};
+
+// ---------------------------------------------------------------------------------------------
 // Stages (stages.js), in any mission or errand.
 
 // Someone waiting for Ove's car, called out by its horn (a pickup stage's who: in allLines 'cast').
@@ -634,7 +702,7 @@ export function allLines() {
     pool(e.who, e.lines, 'errands');
     add('ove', e.ove, 'errands');
     for (const l of [e.hello, e.bye]) if (l) add(l[0], l[1], 'errands');
-    pool(e.who, [e.thanks, e.fail, e.busy || ERRAND_BUSY], 'errands');
+    pool(e.who, [e.thanks, e.fail, e.busy || ERRAND_BUSY, ...(e.dead ? [e.dead] : [])], 'errands');
   }
   pool('ove', [...ANSWER, ...DONE], 'calls');
   pool('ove', [...OVE_REPLY, ...Object.values(TYRE).flat(), ...Object.values(SLID).flat(), ...Object.values(OVE_HOPP), ...Object.values(GARAGE_DOOR).flat(), ...OVE_START], 'reactions');
@@ -663,5 +731,8 @@ export function allLines() {
   pool('ove', Object.values(OVE_HONK).flat(), 'horn');
   pool('cast', COMING, 'stages');
   for (const l of [CAT_COMES, CHASER_GAVE_UP]) add(l[0], l[1], 'stages');
+  add(RUNE_DIES[0], RUNE_DIES[1], 'widow');
+  pool('anita', [...WIDOW.chatter, ...WIDOW.sobs, ...WIDOW.honk], 'widow');
+  add(WIDOW.reda[0], WIDOW.reda[1], 'widow');
   return out;
 }

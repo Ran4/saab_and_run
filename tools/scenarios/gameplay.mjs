@@ -58,7 +58,7 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       if (!a) return null;
       const g = __game, s = a.stage, t = it.target();
       const n = s.npc;
-      return { id: a.tpl.id, i: a.i, kind: s.kind, text: s.sub || s.text, t, phase: s.phase, needCar: !!(s.kind === 'pickup' && a.tpl.id === 'skjuts'), npcWith: n ? g.isWithOve(n) : null, inCar: !!g.playerCar, timer: +a.timer.toFixed(0), spots: s.spots?.length, si: s.i };
+      return { id: a.tpl.id, i: a.i, kind: s.kind, text: s.sub || s.text, t, phase: s.phase, needCar: !!(s.kind === 'pickup' && a.tpl.id === 'skjuts'), npcWith: n ? g.isWithOve(n) : null, inCar: !!g.playerCar, timer: a.timer == null ? null : +a.timer.toFixed(0), spots: s.spots?.length, si: s.i };
     });
     if (!s) return false;
     console.log('[t] errand', JSON.stringify(s));
@@ -100,9 +100,12 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
         break;
       }
       case 'escort':
-        if (s.phase === 'find') {
+        if (s.phase === 'find' || !s.npcWith) {
+          // (Rune: E takes hold of the wheelchair, features/implemented/roligare_runeuppdrag.md)
           await ev((t) => { const g = __game; if (g.playerCar) g.exitCar(true); const s = g.freeSpot(t.x, t.z, 1.2, 1.6); g.player.teleport(s.x, s.z, Math.atan2(t.x - s.x, t.z - s.z)); g.cam.snapNext = true; }, t);
           await frames(8);
+          await tap('KeyE');
+          await frames(4);
           await shot('errand_rune_found');
         } else {
           // Push Rune home: warp next to the door (he rolls in front of Ove).

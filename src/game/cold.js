@@ -45,6 +45,9 @@ const TEST = typeof location !== 'undefined' && new URLSearchParams(location.sea
 // costs as much cold as the way out did.
 export const COLDK = { start: COLD, edgeSecs: 112.5, scale: 70, thaw: 24, thawCar: 12, whiteout: COLD + 255, warn: 0.45 };
 const rate = (d) => (1 / COLDK.edgeSecs) * (1 + (d - COLDK.start) / COLDK.scale) ** 2;
+// (Ove's rate out there, per s at square distance d >= COLDK.start: Rune's cold on his errand goes
+// with it too, stages.js escort)
+export const coldRate = rate;
 
 // The line under "Ove dog av frost" (shown, never said; one of these, not the same twice running).
 const SUBS = [
@@ -106,7 +109,7 @@ export class Cold {
     else {
       // (not while Ove isn't his own: a scene, a cut, a failed mission waiting for E or Q)
       const ms = g.missions.state;
-      const held = g.inDialog || g.freezeCar || ms === 'intro' || ms === 'outro' || ms === 'failed' || p.state === 'hidden';
+      const held = g.inDialog || g.freezeCar || ms === 'intro' || ms === 'outro' || ms === 'failed' || !!g.interrupts.retry || p.state === 'hidden';
       const out = d > COLDK.start;
       if (!held) {
         this.v = clamp(this.v + (out ? rate(d) : -1 / (g.playerCar ? COLDK.thawCar : COLDK.thaw)) * dt, 0, 1);

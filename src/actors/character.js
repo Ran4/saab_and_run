@@ -87,9 +87,12 @@ export class Character {
       jumpWind: 0, jumping: false, landT: 9, jumpV: 0, // a jump's wind-up (0..1), flight, landing (see JUMP)
       fright: false, fist: false,                      // the horn: hands up in fright, a fist shaken at it
       shiver: 0,                                       // the cold (game/cold.js): 0..1
+      slump: false, coast: false,                      // dead in his wheelchair; rolling free (game/rune.js)
+      grief: false, sob: 0,                            // Anita without Rune: a hand to her face, sobbing 0..1
     };
     this.car = null;
-    this.topple = 0;
+    this.topple = 0; this.toppleW = 0;
+    this.dead = null;   // game/rune.js: Rune dead (frozen, still posed: anim.slump)
     this.spin = 0; this.spinRate = 0;
     this.height = this.model.height;
     this.floats = def.kind === 'wizard' || def.kind === 'ghost';
@@ -257,9 +260,14 @@ export class Character {
   sync(dt) {
     const a = this.anim;
     if (this.state === 'frozen') {
-      // stiff: the last pose stays; only the root moves (the topple)
+      // stiff: the last pose stays; only the root moves (the topple: about the root, or about an
+      // edge toppleW m out to the side it goes over to - Rune's wheelchair onto its side)
       const r = this.root;
-      r.position.set(this.x, this.y, this.z);
+      // (dead in his wheelchair, still posed: he slumps - game/rune.js)
+      if (this.dead && dt > 0) { a.t += dt; a.speed = 0; a.talk = false; animateCharacter(this.model, a, dt); }
+      const tw = this.toppleW, s = Math.sign(this.topple), u = Math.abs(this.topple);
+      const ox = tw ? -s * tw * (1 - Math.cos(u)) : 0, oy = tw ? tw * Math.sin(u) : 0;
+      r.position.set(this.x + ox * Math.cos(this.yaw), this.y + oy, this.z - ox * Math.sin(this.yaw));
       r.rotation.set(0, this.yaw, this.topple);
       r._skipFrom = null;
       return;

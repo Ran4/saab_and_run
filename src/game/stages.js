@@ -21,7 +21,7 @@
 //   goLine ...) come from script.js through missions.js and interruptions.js.
 
 import { THREE } from '../gfx.js';
-import { lm, landmarks, nodeX, nodeZ, nodeId, nearestNode, neighbors, findPath, LANE, NN, isRoad } from '../world/layout.js';
+import { lm, landmarks, nodeX, nodeZ, nodeId, nearestNode, neighbors, findPath, LANE, NN, isRoad, edgeDist } from '../world/layout.js';
 import { pedLoops } from '../world/town.js';
 import { AIDriver, LanePath, startNodes } from '../actors/drivers.js';
 import { Collectible } from '../actors/pickups.js';
@@ -33,6 +33,7 @@ import { voice } from '../voice.js';
 import { hud } from './hud.js';
 import { fx as FX } from './fx.js';
 import { COMING, CAT_COMES, CHASER_GAVE_UP } from './script.js';
+import { COLDK, coldRate } from './cold.js';
 import { dist, yawTo, pick, angleDiff, clamp } from '../util.js';
 
 // A place: a landmark name, a { x, z, yaw } object, or a function (g) => place.
@@ -546,7 +547,17 @@ export const dropoff = (o) => ({
 
 // Find someone and bring them home walking (Rune: Ove pushes the wheelchair). o: { who, at |
 // spawn: 'sidewalk' (somewhere on a sidewalk 45-110 m from `to`), to, push, radius = 3.5,
-// findText, bringText, hello }.
+// findText, bringText, hello, mortal, cold }.
+// push: E takes hold of the wheelchair and E lets go of it again (game/rune.js: let go of in Ove's
+// stride it rolls on a good way; a kick rolls it too); home is home whether he is pushed there or
+// rolls there. mortal (Rune's errand, features/implemented/roligare_runeuppdrag.md): a car at speed
+// kills him (main.js carsVsPeople), and so does the cold: from nothing to dead in `cold` s wherever
+// he is, much quicker out past the forest (RUNE_COLD); the stage then fails with { fail, dead }
+// (interruptions.js: E tries again, Q gives up and he stays dead). obj() has his cold for the panel.
+export const RUNE_COLD = { out: 3.0, temp: [36.6, 27.0] };
+const sstep = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
+const RUNE_NOTES = [[0.2, 'Rune är kall om händerna'], [0.45, 'Rune fryser'], [0.7, 'Rune skakar av köld'], [0.88, 'Rune är blå om läpparna'], [2, 'Rune somnar']];
+const DEATH = { cold: 'Rune frös ihjäl.', coldOut: 'Rune frös ihjäl bortom skogen.', car: 'Rune blev påkörd.', ove: 'Ove körde över Rune.' };
 export const escort = (o) => ({
   kind: 'escort',
   get text() { return this.phase === 'bring' ? (o.bringText || `Följ ${this.name} hem`) : (o.findText || `Hitta ${this.name}`); },
@@ -556,6 +567,8 @@ export const escort = (o) => ({
     m.data.npcs.add(n);
     g.removeCompanion(n);
     if (n.car) g.unseat(n);
+    if (n.dead) g.rune.revive(n);
+    n.roll = null;
     n.busy = true; n.walkTo = null; n.walkPath = null;
     const dest = at(o.to, g);
     let p = o.at ? at(o.at, g) : null;
@@ -574,31 +587,76 @@ export const escort = (o) => ({
     const s = g.freeSpot(p.x, p.z, 0, 1.5);
     n.teleport(s.x, s.z, p.yaw ?? 0);
     this.phase = 'find';
+    this.can = null;
+    if (o.mortal) {
+      this.cold = 0; this.out = false;
+      n.mortal = true;
+      m.items.push(() => { n.mortal = false; n.roll = null; n.anim.shiver = 0; n.anim.coast = false; });
+    }
   },
+  held(g) { const n = this.npc; return !!g.companions.get(n)?.push && g.isWithOve(n); },
   target(g) {
-    if (this.phase === 'bring') { const d = at(o.to, g); return { x: d.x, z: d.z, r: o.radius || 3.5 }; }
+    if (this.phase === 'bring' && (!o.push || this.held(g))) { const d = at(o.to, g); return { x: d.x, z: d.z, r: o.radius || 3.5 }; }
     return { x: this.npc.x, z: this.npc.z, r: 2.5 };
   },
-  tags() { const n = this.npc; return this.phase === 'find' ? [{ x: n.x, y: n.y + n.height + 0.35, z: n.z, text: this.name, cls: 'errand' }] : []; },
-  update(g) {
+  tags(g) { const n = this.npc; return this.phase === 'find' || (o.push && !this.held(g)) ? [{ x: n.x, y: n.y + n.height + 0.35, z: n.z, text: this.name, cls: 'errand' }] : []; },
+  prompt() {
+    if (this.can === 'grab') return { text: '<b>E</b> Ta tag i rullstolen', takesE: true };
+    if (this.can === 'let') return { text: '<b>E</b> Släpp rullstolen', takesE: true };
+    return null;
+  },
+  obj() {
+    if (!o.mortal) return {};
+    const v = this.cold, [t0, t1] = RUNE_COLD.temp;
+    return { cold: v, temp: t0 + (t1 - t0) * v, note: this.out ? 'Här ute fryser Rune fort' : RUNE_NOTES.find(([k]) => v < k)[1], danger: v > 0.75 || this.out };
+  },
+  // Rune's cold (o.cold s from nothing to dead; out past the forest the cold's own rate, times
+  // RUNE_COLD.out, on top of it): he shivers, and at the end he dies.
+  chill(g, n, dt) {
+    const d = edgeDist(n.x, n.z);
+    this.out = d > COLDK.start;
+    this.cold = Math.min(1, this.cold + (1 / o.cold + (this.out ? RUNE_COLD.out * coldRate(d) : 0)) * dt);
+    n.anim.shiver = sstep(0.12, 0.7, this.cold);
+    if (this.cold >= 1) g.rune.kill(n, this.out ? 'coldOut' : 'cold');
+  },
+  update(g, m, dt) {
     const n = this.npc;
     this.sub = null;
-    if (this.phase === 'find') {
-      const d = dist(g.player.x, g.player.z, n.x, n.z);
-      if (g.playerCar) { if (dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 18) this.sub = 'Kliv ur bilen.'; return; }
-      if (g.player.state === 'normal' && d < 2.2) {
-        g.addCompanion(n, { push: !!o.push });
-        if (o.hello) g.say(n, o.hello, 2);
-        this.phase = 'bring';
+    if (o.mortal) {
+      if (!n.dead && o.cold) this.chill(g, n, dt);
+      if (n.dead) { this.can = null; return { fail: DEATH[n.dead.cause] || DEATH.car, dead: true }; }
+    }
+    const p = g.player, held = this.held(g);
+    const near = !g.playerCar && p.state === 'normal' && !n.car && dist(p.x, p.z, n.x, n.z) < 2.2;
+    if (o.push) {
+      this.can = held ? 'let' : near ? 'grab' : null;
+      if (this.can && g.input.pressed('interact')) {
+        if (this.can === 'grab') {
+          n.roll = null; n.anim.coast = false;
+          g.addCompanion(n, { push: true });
+          if (this.phase === 'find' && o.hello) g.say(n, o.hello, 2);
+          this.phase = 'bring';
+          this.can = 'let';
+        } else { g.rune.letGo(n); this.can = null; }
       }
+    } else if (this.phase === 'find' && near) {
+      g.addCompanion(n);
+      if (o.hello) g.say(n, o.hello, 2);
+      this.phase = 'bring';
+    }
+    if (this.phase === 'find') {
+      if (g.playerCar && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 18) this.sub = 'Kliv ur bilen.';
       return;
     }
-    if (!g.isWithOve(n)) { this.phase = 'find'; return; }
+    if (!o.push && !g.isWithOve(n)) { this.phase = 'find'; return; }
+    // Home: pushed there, or rolled there (and come to a stop).
     const d = at(o.to, g);
-    if (dist(n.x, n.z, d.x, d.z) < (o.radius || 3.5)) {
+    if (dist(n.x, n.z, d.x, d.z) < (o.radius || 3.5) && (this.held(g) || !n.roll)) {
       g.removeCompanion(n, { walkTo: d });
+      this.can = null;
       return 'done';
     }
+    if (o.push && !this.held(g)) this.sub = n.roll ? `${this.name} rullar iväg!` : g.playerCar && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 18 ? 'Kliv ur bilen.' : `Ta tag i ${this.name}s rullstol igen`;
   },
 });
 

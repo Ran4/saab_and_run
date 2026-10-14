@@ -26,13 +26,14 @@ import { Interruptions } from './game/interruptions.js';
 import { Horn } from './game/horn.js';
 import { Hoppbacke } from './game/hoppbacke.js';
 import { Cold } from './game/cold.js';
+import { RuneFate, KILL as RUNE_KILL } from './game/rune.js';
 import * as stages from './game/stages.js';
 import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
 import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
 import { HANDLE as DOOR_HANDLE } from './world/garagedoor.js';
 import {
-  CHATTER, CHATTER_FIRST, CHATTER_AFTER, CHATTER_FALLBACK, whenOk, OVE_REPLY, SLID, TYRE, GARAGE_DOOR,
+  CHATTER, CHATTER_FIRST, CHATTER_AFTER, CHATTER_FALLBACK, whenOk, OVE_REPLY, SLID, TYRE, GARAGE_DOOR, WIDOW,
   OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID,
 } from './game/script.js';
 
@@ -133,6 +134,9 @@ class Game {
     this.input = input;
     this.got = { emblems: new Set(), photos: new Set() };
     this.unlocked = new Set();
+    // Rune died on his errand and Ove gave it up (game/rune.js; saved: `rune: 0`). True from the
+    // moment he dies, also while E or Q is still to be chosen.
+    this.runeDead = false;
     this.autoDialog = TEST;
     this.companions = new Map();   // Character -> { push, left }
     this.carrying = null;           // the cat (or anything with a root) in Ove's arms
@@ -221,6 +225,8 @@ class Game {
     // Flights off the snow hill in the park and what everybody makes of them (game/hoppbacke.js,
     // feature snöhög; the flying is car.js HOPP).
     this.hopp = new Hoppbacke(this);
+    // Rune's wheelchair rolling free, his death on the errand, Anita's grief (game/rune.js).
+    this.rune = new RuneFate(this);
     this.interrupts.auto = !TEST || params.has('calls');
     window.__patrol = this.patrol;
     window.__interrupt = this.interrupts;
@@ -1162,7 +1168,7 @@ class Game {
       // short retry lines, not the whole scene again - the day's progress itself is not kept)
       const ms = this.missions, cur = ms.current;
       const begun = cur && (ms.state !== 'idle' || ms.gaveUp.has(cur.day)) ? ms.index : null;
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave(), garage: this.garage && !this.garage.isOpen ? 0 : 1, hopp: Math.round(this.hopp.best * 10) }));
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave(), garage: this.garage && !this.garage.isOpen ? 0 : 1, hopp: Math.round(this.hopp.best * 10), rune: this.runeDead ? 0 : 1 }));
     } catch (e) { /* private mode: progress just won't persist */ }
   }
   // Every field is checked: a hand-edited or half-written save must not kill the story (mission -1
@@ -1185,6 +1191,8 @@ class Game {
           if (this.garage && s.garage === 0) this.garage.set(false);
           // (Ove's longest jump off the hoppbacke, in dm)
           this.hopp.best = int(s.hopp, 0, 2000, 0) / 10;
+          // (Rune: 0 = dead, game/rune.js; anything else, or none, = alive)
+          this.runeDead = s.rune === 0;
           const clock = Number(s.clock);
           if (s.clock != null && clock >= 0 && clock < 24 * 60) this.clockMin = clock;
           // Saved between two days: the next one still waits for a little patrolling.
@@ -1196,6 +1204,8 @@ class Game {
       } catch (e) { /* corrupt save: start fresh */ }
     }
     if (params.has('mission')) { this.missions.index = clamp(Math.floor(+params.get('mission')) || 0, 0, MISSIONS.length); this.isNewGame = false; }
+    // (tests: the game as it is after Rune died and Ove gave his errand up)
+    if (TEST && params.has('runedead')) this.runeDead = true;
   }
   applySaveToWorld() {
     for (const e of this.emblems) if (this.got.emblems.has(e.id)) e.remove();
@@ -1225,6 +1235,8 @@ class Game {
   // Someone who is elsewhere today (DESIGN 5: Patrick is in hospital on day 2, Vita skjortan is
   // out in his Škoda on days 6 and 7) is hidden at home, unless a stage has borrowed them.
   npcAway(key) {
+    // (Rune is dead: game/rune.js)
+    if (key === 'rune' && this.runeDead) return true;
     const ms = this.missions, def = ms.state === 'idle' ? ms.offered : ms.m?.def || ms.current;
     // (m.data.away: someone a stage has sent out of the story for the rest of the day, e.g.
     // Parvaneh, in the delivery room on day 7)
@@ -1239,7 +1251,7 @@ class Game {
     const f = this.playerCar || this.player;
     for (const key of Object.keys(HOMES)) {
       const n = this.npcs[key];
-      if (n.busy || n.car || this.companions.has(n) || n.walkTo) continue;
+      if (n.busy || n.car || this.companions.has(n) || n.walkTo || n.dead) continue;
       const h = this.homeSpot(key);
       const needed = cur && (cur.giver === key || cur.extra?.includes(key));
       const away = n.homeX === undefined || dist(n.x, n.z, n.homeX, n.homeZ) > 6;
@@ -1385,6 +1397,10 @@ class Game {
     if (this.saveT > 30) { this.saveT = 0; this.save(); }
   }
 
+  // A failed day (missions.js) or errand (interruptions.js retry: Rune's, once he has died) waiting
+  // for E or Q: Ove stands still, his car brakes.
+  get failWait() { return this.missions.state === 'failed' || !!this.interrupts.retry; }
+
   // The prompt-and-E owner of the moment: a mission stage or an errand stage.
   stagePrompt() {
     if (this.missions.state === 'running') { const p = this.missions.stage?.prompt?.(this); if (p) return p; }
@@ -1397,7 +1413,7 @@ class Game {
     if (input.pressed('pause') && !TEST) { this.pause(true); return; }
     const p = this.player;
     if (input.pressed('jump') && !this.playerCar) this.jumpAsk = this.time;   // (in a car Space is the handbrake)
-    if (this.inDialog || this.missions.state === 'failed') { p.cancelJump(); this.jumpAsk = -9; return; }
+    if (this.inDialog || this.failWait) { p.cancelJump(); this.jumpAsk = -9; return; }
     if (input.pressed('reset')) { this.resetToRoad(); return; }
     const sp = this.stagePrompt();
     if (this.playerCar) {
@@ -1445,6 +1461,8 @@ class Game {
   // The lines a neighbour may say now (see CHATTER, CHATTER_FIRST, CHATTER_AFTER).
   chatterFor(key) {
     const m = this.missions;
+    // (Anita once Rune is dead: game/rune.js)
+    if (key === 'anita' && this.runeDead) return WIDOW.chatter;
     if (m.index === 0 && CHATTER_FIRST[key]) return CHATTER_FIRST[key];
     const later = CHATTER_AFTER[key];
     const list = later && m.index >= later[0] && (later[2] || Math.random() < 0.6) ? later[1] : CHATTER[key];
@@ -1566,7 +1584,7 @@ class Game {
   stepDoorOp(op, dt) {
     const d = this.garage, p = this.player;
     // (into a car, knocked over, a scene: he lets go; the door goes on)
-    if (this.playerCar || p.state !== 'normal' || this.inDialog || this.missions.state === 'failed') { this.endDoorOp(); return; }
+    if (this.playerCar || p.state !== 'normal' || this.inDialog || this.failWait) { this.endDoorOp(); return; }
     // After his hands are off it, a step (a jump, a kick) of his own is the end of it.
     if (!op.lock && (Math.abs(input.moveX() || 0) > 0.2 || Math.abs(input.moveY() || 0) > 0.2 || input.pressed('jump') || input.pressed('attack'))) { this.endDoorOp(); return; }
     op.t += dt; op.pt += dt;
@@ -1700,6 +1718,8 @@ class Game {
   keepPeopleInside() {
     const keep = (ch) => {
       if (ch.state === 'seated' || ch.state === 'hidden') return;
+      // (Rune goes nowhere by himself: only Ove takes him out there - pushing, letting go, kicking)
+      if (ch.wheelchair) return;
       const lim = BOUND - ch.r;
       if (ch.x > lim || ch.x < -lim) { const sg = Math.sign(ch.x); ch.x = sg * lim; if (ch.vx * sg > 0) ch.vx = 0; }
       if (ch.z > lim || ch.z < -lim) { const sg = Math.sign(ch.z); ch.z = sg * lim; if (ch.vz * sg > 0) ch.vz = 0; }
@@ -1712,11 +1732,11 @@ class Game {
     const p = this.player;
     if (this.playerCar) {
       const c = this.playerCar.ctrl;
-      if (this.inDialog || this.freezeCar || this.missions.state === 'failed') { c.throttle = 0; c.brake = 1; c.steer = 0; c.handbrake = true; }
+      if (this.inDialog || this.freezeCar || this.failWait) { c.throttle = 0; c.brake = 1; c.steer = 0; c.handbrake = true; }
       else { c.throttle = input.throttle(); c.brake = input.brake(); c.steer = input.steer(); c.handbrake = input.down('handbrake'); }
       c.park = false;
     } else if (p.state === 'normal') {
-      if (this.inDialog || this.missions.state === 'failed') { p.wishX = p.wishZ = 0; }
+      if (this.inDialog || this.failWait) { p.wishX = p.wishZ = 0; }
       else if (this.doorOp?.walk) { p.wishX = this.doorOp.wx; p.wishZ = this.doorOp.wz; p.anim.sprint = false; }
       else {
         const mx = input.moveX() || 0, my = input.moveY() || 0;
@@ -1762,6 +1782,8 @@ class Game {
       const n = this.npcs[k];
       if (n.state === 'seated') continue;
       n.wishX = n.wishZ = 0;
+      // Rune's chair rolling free, or his body (game/rune.js).
+      if (n.wheelchair && this.rune.step(n, h)) continue;
       // Honked at (game/horn.js): the fright and its aftermath steer them for a moment.
       if (n.honk && this.horn.drive(n, h)) { n.step(h, this); continue; }
       const comp = this.companions.get(n);
@@ -1879,7 +1901,10 @@ class Game {
     }
     for (const k in this.npcs) {
       const n = this.npcs[k];
-      if (n.state === 'normal' && !n.car && dist(n.x, n.z, kx, kz) < 1.2) this.say(n, pick(KICKED_NEIGHBOUR), 1.5);
+      if (n.state !== 'normal' || n.car || dist(n.x, n.z, kx, kz) >= 1.2) continue;
+      // Rune's wheelchair rolls off (game/rune.js); he says so, as anyone would.
+      if (n.wheelchair) this.rune.kick(n, fx, fz);
+      this.say(n, pick(KICKED_NEIGHBOUR), 1.5);
     }
   }
   kickTyre(c, fx, fz) {
@@ -1925,6 +1950,9 @@ class Game {
         if (!circleVsObb(ch.x, ch.z, ch.r, car.obb, hit)) continue;
         // How fast the car itself comes at them (the person's own walking doesn't count).
         const carIn = car.vx * hit.nx + car.vz * hit.nz;
+        // Rune on his errand is mortal (game/rune.js): pushed or not, what knocks anyone else over
+        // kills him.
+        if (ch.mortal && !ch.dead && ch.state === 'normal' && carIn > RUNE_KILL.carIn && car.speed > RUNE_KILL.speed) { this.rune.hit(ch, car, hit); continue; }
         if (ch.state === 'normal' && !ch.invulnerable && !pushed && carIn > 4.5 && car.speed > 3) {
           const sp = car.speed;
           ch.x += hit.nx * hit.depth; ch.z += hit.nz * hit.depth;
@@ -2039,7 +2067,12 @@ class Game {
       n.anim.wave = (!title && giver && near < 9 && !this.inDialog && n.state === 'normal') || !!n.honk?.wave;
       const comp = this.companions.get(n);
       n.anim.push = false;
-      if (!title && n.state === 'normal' && !comp && !n.walkTo && !this.inDialog && !n.honk) {
+      // Anita without Rune; Rune's body, gone once Ove has gone off (game/rune.js).
+      if (k === 'anita') this.rune.grief(n, dt, near);
+      else if (n.dead) this.rune.bury(n, near);
+      // (Rune on his errand doesn't turn his chair to face Ove: he sits as he rolled, so a boot from
+      // behind rolls him on forwards - game/rune.js)
+      if (!title && n.state === 'normal' && !comp && !n.walkTo && !this.inDialog && !n.honk && !n.roll && !n.mortal) {
         if (near < 9 && !this.playerCar) n.yaw = dampAngle(n.yaw, yawTo(p.x - n.x, p.z - n.z), 3, dt);
         else if (n.homeYaw !== undefined && n.speed < 0.3) n.yaw = dampAngle(n.yaw, n.homeYaw, 1.5, dt);
         if (near < 7 && !this.playerCar && !running) {
@@ -2273,7 +2306,7 @@ class Game {
     hud.setMeter(this.patrol.ordning);
     hud.setClock(this.clockText());
     let it = null;
-    if (this.missions.state !== 'failed') {
+    if (!this.failWait) {
       let prompt = '', hold = null;
       if (!this.inDialog && (this.playerCar || this.player.state === 'normal')) {
         const parts = this._parts ||= [];
@@ -2326,7 +2359,7 @@ class Game {
     if (this.bigMap && this.frame % 10 === 0) hud.toggleBigMap(true, this);
     // (the day's scenes loaded as soon as it is offered: no wait before each line of the intro)
     const off = this.missions.offered;
-    if (off !== this._prefetched) { this._prefetched = off; if (off) voice.prefetch([...off.intro, ...(off.retryIntro || []), ...off.outro]); }
+    if (off !== this._prefetched) { this._prefetched = off; if (off) voice.prefetch([...this.missions.scene(off, 'intro'), ...(off.retryIntro || []), ...this.missions.scene(off, 'outro')]); }
     voice.update(this);
     hud.tickBubbles();
     if (this.penaltyT > 0) {

@@ -9,7 +9,9 @@
 //   interrupts.abort()                   drop the current errand (a mission started: no blame; the
 //                                        neighbour says it's fine on the radio once the intro is over)
 //   interrupts.hangUp()                  cut off a mission's flavour call (radioOnly) still going
-//   interrupts.active                    { tpl, ctx, stages, i, stage, timer } or null
+//   interrupts.active                    { tpl, ctx, stages, i, stage, timer (null: none) } or null
+//   interrupts.retry                     a failed errand waiting for E (try again) or Q (give up):
+//                                        { tpl, t, reason } (tpl.retry: Rune's, once he has died)
 //   interrupts.call                      the ringing / talking phone call or null
 //   interrupts.onPhone                   Ove has the phone at his ear
 //   interrupts.auto                      the scheduler runs (main.js: off in ?test unless &calls)
@@ -43,8 +45,8 @@ function snowSpots(where) {
 export const TEMPLATES = [
   {
     // Only after day 3: until then Ove's elementnyckel is in Rune's Volvo ("Tom krok."), and day 3 is
-    // the day he gets it back.
-    id: 'element', ...E.element, title: 'Elementet klickar', patience: 90, after: 3,
+    // the day he gets it back. (It needs Rune: Anita says the clicking worries him.)
+    id: 'element', ...E.element, title: 'Elementet klickar', needs: ['rune'], patience: 90, after: 3,
     stages: () => [holdAt({ at: 'runeHouse', secs: 3, label: 'Lufta elementet', text: 'Lufta elementet hos Anita och Rune', work: 'wall' })],
   },
   {
@@ -76,8 +78,15 @@ export const TEMPLATES = [
     ],
   },
   {
-    id: 'rune', ...E.rune, title: 'Rune har rullat iväg', needs: ['rune'], patience: 130,
-    stages: () => [escort({ who: 'rune', to: 'runeHouse', push: true, max: 80, findText: 'Hitta Rune. Han kan inte ha kommit långt.', bringText: 'Rulla hem Rune till Anita', hello: E.rune.hello[1] })],
+    // No time limit: Rune's cold instead (5 minutes from the call wherever he is, much quicker out past
+    // the forest), and he can die (game/rune.js, features/implemented/roligare_runeuppdrag.md): then E
+    // tries again (onRetry: alive, and lost again) or Q gives up (he stays dead for the rest of the game).
+    id: 'rune', ...E.rune, title: 'Rune har rullat iväg', needs: ['rune'], patience: null, retry: true,
+    toast: 'Rune har bara sin filt. Han blir kallare för varje minut.',
+    stages: () => [escort({ who: 'rune', to: 'runeHouse', push: true, mortal: true, cold: 300, max: 80, findText: 'Hitta Rune. Han kan inte ha kommit långt.', bringText: 'Rulla hem Rune till Anita', hello: E.rune.hello[1] })],
+    deadBanner: 'RUNE ÄR DÖD',
+    onRetry: (g) => g.rune.revive(g.npc('rune')),
+    onGiveUp: (g) => g.rune.givenUp(),
   },
   {
     id: 'skotta', ...E.skotta, title: 'Snöskottning', needs: ['rune'], patience: 100,
@@ -118,6 +127,7 @@ export class Interruptions {
     this.lastId = null;
     this.done = 0;
     this.failed = 0;
+    this.retry = null;    // a failed errand waiting for E (try again) or Q (give up): { tpl, t, reason }
   }
 
   get stage() { return this.active?.stage || null; }
@@ -130,6 +140,11 @@ export class Interruptions {
     // An errand a story day took Ove off: the neighbour says it's fine, once the intro is over.
     const dn = this.dropNote;
     if (dn && !g.inDialog && g.missions.state !== 'intro' && (dn.t += dt) > 1.6) { this.dropNote = null; g.radio(dn.who, dn.text); }
+    // A failed errand waiting for E or Q (Rune's, once he has died): nothing else meanwhile.
+    if (this.retry) {
+      if (!free) this.giveUp();
+      else { this.updateRetry(dt); return; }
+    }
     if (this.call) this.updateCall(dt);
     if (this.active) {
       if (!free) this.abort();
@@ -178,6 +193,8 @@ export class Interruptions {
   available(t) {
     const g = this.g;
     if (t.after && g.missions.index < t.after) return false;
+    // (Rune is dead: game/rune.js)
+    if (g.runeDead && (t.who === 'rune' || t.needs?.includes('rune'))) return false;
     // Everyone involved has to be around (not riding in a mission car, not busy elsewhere).
     for (const k of [t.who, ...(t.needs || [])]) { const n = g.npc(k); if (n && (n.busy || n.car || n.state === 'hidden')) return false; }
     return true;
@@ -241,7 +258,7 @@ export class Interruptions {
   // The errand
 
   force(id, opts = {}) {
-    if (this.active) this.abort();
+    if (this.active || this.retry) this.abort();
     if (this.call) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; }
     const tpl = TEMPLATES.find((t) => t.id === id) || TEMPLATES[0];
     if (opts.quick) { this.g.patrol.cancelWriting('telefonen ringde'); this.lastId = tpl.id; this.start(tpl); }
@@ -253,16 +270,20 @@ export class Interruptions {
     const g = this.g;
     const ctx = newCtx(tpl);
     const stages = tpl.stages();
-    this.active = { tpl, ctx, stages, i: 0, stage: stages[0], timer: tpl.patience ?? 120 };
+    // (patience null: no time limit - Rune's errand has his cold instead)
+    this.active = { tpl, ctx, stages, i: 0, stage: stages[0], timer: tpl.patience === null ? null : tpl.patience ?? 120 };
     this.active.stage.init?.(g, ctx);
     audio.checkpoint();
-    if (!this.told) { this.told = true; hud.toast('Ett avbrott. Hjälp grannen innan tålamodet tar slut.', 'warn', 6500); }
+    if (!this.told && this.active.timer != null) { this.told = true; hud.toast('Ett avbrott. Hjälp grannen innan tålamodet tar slut.', 'warn', 6500); }
+    if (tpl.toast) hud.toast(tpl.toast, 'cold', 6500);
   }
 
   updateErrand(dt) {
     const g = this.g, a = this.active;
-    a.timer -= dt;
-    if (a.timer <= 0) { this.fail(); return; }
+    if (a.timer != null) {
+      a.timer -= dt;
+      if (a.timer <= 0) { this.fail(); return; }
+    }
     const r = a.stage.update(g, a.ctx, dt);
     if (r === 'done') {
       a.stage.cleanup?.(g, a.ctx);
@@ -271,7 +292,7 @@ export class Interruptions {
       a.stage = a.stages[a.i];
       a.stage.init?.(g, a.ctx);
       audio.checkpoint();
-    } else if (r && r.fail) this.fail(r.fail);
+    } else if (r && r.fail) this.fail(r.fail, { retry: !!r.dead && !!a.tpl.retry });
   }
 
   finish() {
@@ -302,15 +323,54 @@ export class Interruptions {
     }, 900);
   }
 
-  fail(reason = '') {
+  // o.retry: as after a failed day (missions.js), the banner waits for E (the errand again, from the
+  // start) or Q (give up): Rune's errand once he has died (updateRetry).
+  fail(reason = '', o = {}) {
     const g = this.g, tpl = this.active.tpl;
     this.finish();
     this.failed++;
     g.patrol.addOrdning(-10);
     g.save();
     audio.jingle('fail');
+    if (o.retry) {
+      this.retry = { tpl, t: 0, reason };
+      hud.showBanner(tpl.deadBanner || 'MISSLYCKADES', reason || tpl.title, 'bad', 0, 'Avbrott');
+      return;
+    }
     hud.showBanner('FÖR SENT', reason || tpl.title, 'bad', 2200, 'Avbrott');
     setTimeout(() => g.radio(tpl.who, tpl.fail, { must: true, tag: 'fail' }), 900);
+  }
+
+  // While a failed errand waits: E tries again, Q (the pad's B) gives up. Ove stands still meanwhile
+  // (main.js failWait), as after a failed day; no calls.
+  updateRetry(dt) {
+    const g = this.g, r = this.retry;
+    r.t += dt;
+    hud.setPrompt(r.t > 0.8 ? '<b>E</b> Försök igen &nbsp; · &nbsp; <b>Q</b> Ge upp' : '');
+    if (r.t > 0.8 && g.input.pressed('interact')) this.tryAgain();
+    else if (r.t > 0.8 && g.input.pressed('giveUp')) this.giveUp();
+  }
+  tryAgain() {
+    const g = this.g, tpl = this.retry?.tpl;
+    if (!tpl) return;
+    this.retry = null;
+    hud.hideBanner();
+    hud.setPrompt('');
+    tpl.onRetry?.(g);
+    this.lastId = tpl.id;
+    this.start(tpl);
+    hud.showBanner(tpl.title, 'Ett försök till.', 'mission', 2000, 'Avbrott');
+    audio.jingle('start');
+    g.save();
+  }
+  giveUp() {
+    const g = this.g, tpl = this.retry?.tpl;
+    if (!tpl) return;
+    this.retry = null;
+    hud.hideBanner();
+    hud.setPrompt('');
+    this.nextT = Math.max(this.nextT, 70);
+    tpl.onGiveUp?.(g);
   }
 
   // A story mission starts: drop the errand without blame. A call cut off by it (Ove walked up to the
@@ -319,6 +379,7 @@ export class Interruptions {
   // the radio that it's fine (tpl.busy), after the day's intro. (abort() in free roam - tests, force -
   // drops it without a word.)
   abort() {
+    if (this.retry) this.giveUp();
     if (this.call && !this.call.radio) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; this.nextT = Math.max(this.nextT, 45); }
     if (this.active) {
       const tpl = this.active.tpl;
@@ -335,6 +396,8 @@ export class Interruptions {
     const a = this.active;
     if (!a) return null;
     const s = a.stage, o = s.obj?.(this.g) || {};
+    // (Rune's errand: his cold instead of a timer)
+    if (o.cold != null) return { kicker: 'Avbrott', title: a.tpl.title, text: s.sub || s.text, timer: null, cold: o.cold, temp: o.temp, bar: o.cold, barLabel: o.note, danger: o.danger };
     return { kicker: 'Avbrott', title: a.tpl.title, text: s.sub || s.text, timer: a.timer, bar: o.bar, barLabel: o.barLabel };
   }
   target() { const s = this.stage; return s ? (s.altTarget?.(this.g) || s.target?.(this.g) || null) : null; }

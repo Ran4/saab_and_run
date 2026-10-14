@@ -470,3 +470,17 @@ her photograph and reading glasses on her nightstand; from day 4 the cat sits at
 script.js `WAKE` in the dialogue box (said in his voice; `pickWake()` never repeats the last), a sigh,
 black, out at his door. The real Ove is `offstage` meanwhile (the fixa_outro_anita lesson: back as his
 state says, never a snapshot).
+
+## Rune dead (feature roligare_runeuppdrag, 2026-10-14)
+
+Rune can die on his errand, and if Ove gives it up he stays dead (`game.runeDead`, game/rune.js).
+The days go on without him: `MissionRunner.scene(def, key)` takes the def's `widow` (intro, outro,
+tagline) instead, from script.js's `introWidow` / `outroWidow` / `callsBackWidow`:
+- day 3: Anita alone ("Har du luftat?", "Han tyckte om när du kom ..."); the outro without his
+  "...Saab." ("Rune hade velat att det var du som gjorde det." / "Men elementen skötte han."); the
+  kitchen has nobody at his place (no puppet, no snort); "Lufta elementen hos Anita";
+- day 6: it is Anita the kommun wants to move ("Nu när Rune är borta säger de att jag inte klarar
+  mig själv."), the folder is "Anitas papper", the outro "Så jag får bo kvar? I vårt hus?";
+- day 7: at the grave "Rune är borta. Anita bor kvar." (the same beats), and Anita's call back on the
+  way: "Jag tände ett ljus för Rune i dag."
+Test: `QUERY='&runedead' node tools/shot.mjs story` (`?runedead`: tests only).

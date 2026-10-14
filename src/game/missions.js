@@ -17,7 +17,8 @@
 // place: where Ove stands for the outro, facing its yaw), outroSetup (g) => { look, dispose } (a
 // prop for the outro: the Saab for sale), outroLook (g) => a point to frame when nobody but Ove
 // speaks, snow (light snowfall from the start until after the outro), bustFails (a chaser that
-// catches Ove fails the mission instead of just holding him up) }.
+// catches Ove fails the mission instead of just holding him up), widow ({ intro, outro, tagline }:
+// instead of those once Rune is dead - game/rune.js; MissionRunner.scene) }.
 // Player-facing text is Swedish; speaker keys are CHARS keys ('ove' is the player). Everything said
 // out loud (intro, retryIntro, outro and every stage's lines, calls, hello, bye ...) is in script.js
 // STORY, by mission id (D1 .. D7 below); only text that is read stays here.
@@ -45,6 +46,10 @@ const D1 = STORY.slapet, D2 = STORY.sjukhuset, D3 = STORY.elementet, D4 = STORY.
 // A scene's lines with camera beats: { line index: (g) => {...} } (a third element: it runs as that
 // line starts).
 const cue = (lines, beats) => lines.map((l, i) => (beats[i] ? [l[0], l[1], beats[i]] : l));
+// Rune is dead (game/rune.js: he died on his errand and Ove gave it up): days 3, 6 and 7 go on
+// without him (the defs' `widow`; the stages' texts below ask this as they start).
+let GAME = null;
+const widowed = () => !!GAME?.runeDead;
 
 export const DAYS = ['Måndag', 'Tisdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lördag', 'Söndag'];
 // Between two days: the next one dawns after this many more reports (but not before minSecs), or
@@ -376,6 +381,8 @@ export const MISSIONS = [
     tagline: 'Det klickar i elementen hos Anita och Rune.',
     intro: D3.intro,
     retryIntro: D3.retryIntro,
+    // (Rune is dead: Anita alone, nobody at the kitchen table)
+    widow: { intro: D3.introWidow, outro: D3.outroWidow, tagline: 'Det klickar i elementen hos Anita.' },
     stages: [
       // The key isn't on its hook: Rune borrowed it in 1998, and it is still in his Volvo. (Ove
       // opens his garage door first if he has shut it.)
@@ -393,7 +400,7 @@ export const MISSIONS = [
         call: D3.call,
       }),
       // One press of E and Ove is inside, bleeding their radiator (game/luftning.js).
-      () => holdAt({ at: 'runeHouse', secs: 2.6, label: 'Gå in och lufta elementen', text: 'Lufta elementen hos Anita och Rune', work: 'wall', cut: 'Ove går in och luftar elementen.', scene: luftScene, sceneEnd: 'Sex element till. Ett i taget.' }),
+      () => holdAt({ at: 'runeHouse', secs: 2.6, label: 'Gå in och lufta elementen', text: widowed() ? 'Lufta elementen hos Anita' : 'Lufta elementen hos Anita och Rune', work: 'wall', cut: 'Ove går in och luftar elementen.', scene: luftScene, sceneEnd: 'Sex element till. Ett i taget.' }),
     ],
     // Out on the walkway in front of their door, facing it (not on Rune's ramp: its railings
     // filled the shot and the camera ended up filming the ground).
@@ -454,6 +461,8 @@ export const MISSIONS = [
     tagline: 'Kommunen har kommit för Rune.',
     intro: D6.intro,
     retryIntro: D6.retryIntro,
+    // (Rune is dead: it is Anita they want to move)
+    widow: { intro: D6.introWidow, outro: D6.outroWidow, tagline: 'Kommunen har kommit för Anita.' },
     // This morning the Saab stands along the aisle, facing the lot entrance (Ove turned it last
     // night: he knew), not nose to the garage door with a three-point turn to make first.
     setup: (g) => {
@@ -475,7 +484,7 @@ export const MISSIONS = [
         lines: D6.chase,
       }),
       () => talk({ who: 'vitskjorta', from: 'wreck', text: 'Prata med Vita skjortan', lines: D6.talk }),
-      () => grab({ item: 'papers', label: 'Runes papper', text: 'Ta pärmen med Runes papper', side: -1, got: 'Runes papper. Sidan fyra, ingen underskrift. Ove hade rätt. Som vanligt.' }),
+      () => { const w = widowed() ? 'Anitas' : 'Runes'; return grab({ item: 'papers', label: `${w} papper`, text: `Ta pärmen med ${w} papper`, side: -1, got: `${w} papper. Sidan fyra, ingen underskrift. Ove hade rätt. Som vanligt.` }); },
       () => goto({ to: 'runeHouse', radius: 3.5, text: 'Lämna pappren till Anita' }),
     ],
     outro: D6.outro,
@@ -527,7 +536,7 @@ export const MISSIONS = [
       also(() => fetch({ at: 'flowerShop', item: 'flowers', label: 'blommorna', text: 'Köp blommor vid kyrkogården', rMin: 0.8, rMax: 2.2, got: 'Rosa. Hon tyckte alltid om rosa.' }), {
         say: D7.sunday[1],
         call: D7.call, callAt: 3.5,
-        calls: D7.callsBack,
+        calls: widowed() ? D7.callsBackWidow : D7.callsBack,
         callEvery: 6, quietR: 45,
       }),
       () => layFlowers(),
@@ -542,6 +551,7 @@ export const MISSIONS = [
     },
     // (his face as he gets to the cat; the stone again at "i ordning")
     outro: cue(D7.outro, { 3: (g) => graveShot(g, 'face'), 6: (g) => graveShot(g, 'stone') }),
+    widow: { outro: cue(D7.outroWidow, { 3: (g) => graveShot(g, 'face'), 6: (g) => graveShot(g, 'stone') }) },
   },
 ];
 
@@ -550,6 +560,7 @@ export const MISSIONS = [
 export class MissionRunner {
   constructor(game) {
     this.g = game;
+    GAME = game;
     this.index = 0;          // the day whose mission is next (0 = day 1; MISSIONS.length = all done)
     this.state = 'idle';     // idle | intro | running | outro | failed
     this.m = null;
@@ -568,6 +579,8 @@ export class MissionRunner {
   get current() { return MISSIONS[this.index] || null; }
   // The mission a neighbour is offering right now (null while a mission runs or the day hasn't begun).
   get offered() { return this.state === 'idle' && this.gateOpen ? this.current : null; }
+  // A day's intro, outro or tagline: without Rune once he is dead (def.widow).
+  scene(def, key) { return (this.g.runeDead && def?.widow?.[key]) || def?.[key]; }
   get active() { return this.state !== 'idle'; }
 
   // While idle between two days: the next one begins after a little patrolling.
@@ -576,7 +589,7 @@ export class MissionRunner {
     const g = this.g, G = (this.gate ||= { idle: 0, reports: g.patrol.reports });
     // Never in the middle of an errand, a call, a chase or a conversation (it used to dawn while
     // Ove carried Sara's cat home).
-    if (g.interrupts.active || g.interrupts.call || g.patrol.pursuit || g.inDialog) return;
+    if (g.interrupts.active || g.interrupts.call || g.interrupts.retry || g.patrol.pursuit || g.inDialog) return;
     G.idle += dt;
     if (this.gating && !((g.patrol.reports - G.reports >= GATE.reports && G.idle >= GATE.minSecs) || G.idle >= GATE.secs)) return;
     this.gateOpen = true;
@@ -664,7 +677,7 @@ export class MissionRunner {
     g.patrol.dropPursuit?.();
     const giver = g.npc(def.giver);
     const again = this.gaveUp.has(def.day) && !!def.retryIntro;
-    const lines = again ? def.retryIntro : def.intro;
+    const lines = again ? def.retryIntro : this.scene(def, 'intro');
     // Whoever else speaks in the scene (Parvaneh beside Patrick, Anders, Rune).
     const cast = [giver, ...[...new Set(lines.map(([w]) => w))].filter((w) => w !== 'ove' && w !== def.giver).map((k) => g.npc(k)).filter((n) => n && n.state === 'normal' && !n.car)];
     g.player.wishX = g.player.wishZ = 0;
@@ -695,7 +708,7 @@ export class MissionRunner {
       if (this.stage?.kind !== 'race') hud.curtain(false);
       return;
     }
-    hud.showBanner(def.name, def.tagline || '', 'mission', 3000, `Dag ${def.day} · ${DAYS[def.day - 1]}`);
+    hud.showBanner(def.name, this.scene(def, 'tagline') || '', 'mission', 3000, `Dag ${def.day} · ${DAYS[def.day - 1]}`);
     audio.jingle('start');
     this.startMission();
   }
@@ -864,14 +877,15 @@ export class MissionRunner {
     if (def.day < 7) g.setClock(...DAY_END);
     if (def.outroAt) { const o = at(def.outroAt, g); p.teleport(o.x, o.z, o.yaw ?? p.yaw); }
     this.outroProps = def.outroSetup?.(g) || null;
-    const keys = [...new Set(def.outro.map(([w]) => w).filter((w) => w !== 'ove'))];
+    const outro = this.scene(def, 'outro');
+    const keys = [...new Set(outro.map(([w]) => w).filter((w) => w !== 'ove'))];
     const cast = (this.outroCast = keys.length ? this.placeCast(keys) : []);
     if (def.finale) { hud.letterbox(true); g.inDialog = true; def.finale(g, 'outro'); }
     else if (cast[0]) g.cinematic(cast[0], p, { extras: cast.slice(1) });
     else if (def.outroLook) { const o = def.outroLook(g); p.yaw = yawTo(o.x - p.x, o.z - p.z); g.cinematic(o, p); }
     else { hud.letterbox(true); g.inDialog = true; }
     this.outroOn = true;
-    await g.dialog(this.beats(def.outro, cast));
+    await g.dialog(this.beats(outro, cast));
     const last = this.index + 1 >= MISSIONS.length;
     if (!last || !def.finale) { g.endCinematic(); def.finale?.(g, 'done'); this.behindOve(); }
     this.outroOn = false;

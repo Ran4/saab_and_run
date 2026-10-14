@@ -3370,7 +3370,7 @@ export function buildCharacter(def, opts = {}) {
     def, d, D, lod, root: new THREE.Group(), body: new THREE.Group(), phase: Math.random() * TAU, squash: 0, talkT: 0,
     seed: Math.random(), wheelAng: 0, meshes: [], style: { swing: 1, stride: 1, stoop: 0, lean: 0, sway: 1, bounce: 1, ...(d.style || {}) },
     P: new Float32Array(NCH), Q: new Float32Array(NCH),
-    w: { seat: 0, air: 0, flung: 0, down: 0, kick: 0, write: 0, phone: 0, wave: 0, talk: 0, listen: 0, push: 0, cheer: 0, pockets: 0, carry: 0, work: 0, kneel: 0, fright: 0, fist: 0, shiver: 0 }, kneelT: 0,
+    w: { seat: 0, air: 0, flung: 0, down: 0, kick: 0, write: 0, phone: 0, wave: 0, talk: 0, listen: 0, push: 0, cheer: 0, pockets: 0, carry: 0, work: 0, kneel: 0, fright: 0, fist: 0, shiver: 0, slump: 0, grief: 0 }, kneelT: 0,
     handScale: [1, 1], fingScale: [1, 1],
   };
   m.root.add(m.body);
@@ -3718,8 +3718,13 @@ export function animateCharacter(m, st, dt) {
   const upright = !st.seated && !st.down && !st.flung && !wheel;
   const wFright = smoothW(m, 'fright', st.fright && upright ? 1 : 0, st.fright ? 22 : 6, dt);
   const wFist = smoothW(m, 'fist', st.fist && upright ? 1 : 0, 9, dt);
-  // the cold (game/cold.js): st.shiver 0..1, standing, walking or at the wheel
-  const wShiver = smoothW(m, 'shiver', !st.flung && !st.down && !wheel ? clamp(st.shiver || 0, 0, 1) : 0, 2.5, dt);
+  // the cold (game/cold.js): st.shiver 0..1, standing, walking or at the wheel (and Rune in his
+  // wheelchair, game/rune.js)
+  const wShiver = smoothW(m, 'shiver', !st.flung && !st.down && !st.slump ? clamp(st.shiver || 0, 0, 1) : 0, 2.5, dt);
+  // dead in his wheelchair; Anita grieving (game/rune.js)
+  const wSlump = smoothW(m, 'slump', st.slump ? 1 : 0, 2.2, dt);
+  // (her hand stays at her eyes through a sob: st.sob 1 while she says one)
+  const wGrief = smoothW(m, 'grief', st.grief && upright && (!st.talk || (st.sob || 0) > 0.5) && !st.phone && !st.wave ? 1 : 0, 2.5, dt);
   m.kneelT = st.kneel ? m.kneelT + dt : 0;
   m.squash = Math.max(0, (m.squash || 0) - dt * 2.5);
 
@@ -3756,6 +3761,8 @@ export function animateCharacter(m, st, dt) {
   if (wFright > 0.001) frightPose(m, P, Q, t, wFright);
   if (wFist > 0.001) fistPose(m, P, Q, t, wFist);
   if (wShiver > 0.001) shiverPose(m, P, t, wShiver);
+  if (wGrief > 0.001) griefPose(m, st, P, Q, t, wGrief);
+  if (wSlump > 0.001) slumpPose(m, P, Q, wSlump);
   if (st.kick > 0) { kickPose(m, st, P, Q); lerpPose(P, Q, 1); }
   if (wFlung > 0.001) { flungPose(m, st, Q, t); lerpPose(P, Q, wFlung); }
   if (wDown > 0.001) { downPose(m, st, Q, t); lerpPose(P, Q, wDown); }
@@ -3777,7 +3784,7 @@ export function animateCharacter(m, st, dt) {
   const bones = m.bones;
   for (let b = 0; b < NB; b++) bones[b].rotation.set(P[b * 3], P[b * 3 + 1], P[b * 3 + 2]);
   // hands that went into pockets come back out for anything else
-  const busy = Math.min(1, Math.max(wPhone, wWrite, wPush, wCheer, wWave, wTalk, wSeat, wFlung, wDown, wAir, wCarry, wWork, wKneel, wFright, wFist, m.windK ? m.windK * sstep(0, 0.25, m.windU) : 0));
+  const busy = Math.min(1, Math.max(wPhone, wWrite, wPush, wCheer, wWave, wTalk, wSeat, wFlung, wDown, wAir, wCarry, wWork, wKneel, wFright, wFist, wGrief, m.windK ? m.windK * sstep(0, 0.25, m.windU) : 0));
   for (const i of [0, 1]) {
     m.hands[i].scale.setScalar(lerp(m.handScale[i], 1, busy));
     m.fings[i].scale.setScalar(lerp(m.fingScale[i], 1, busy));
@@ -3820,7 +3827,7 @@ export function animateCharacter(m, st, dt) {
     if (m.blinkT <= 0) { m.blink = 1e-4; m.blinkT = 2 + Math.random() * 4 - (Math.random() < 0.15 ? 1.75 : 0); }
     let c = 0;
     if (m.blink > 0) { m.blink += dt; const u = m.blink; c = u < 0.06 ? u / 0.06 : u < 0.09 ? 1 : u < 0.21 ? 1 - (u - 0.09) / 0.12 : 0; if (u >= 0.21) m.blink = 0; }
-    const shut = st.down && (st.downLeft ?? 9) > 1.3 ? 0.85 : wFlung * 0.5;
+    const shut = Math.max(st.down && (st.downLeft ?? 9) > 1.3 ? 0.85 : wFlung * 0.5, 0.95 * wSlump, 0.55 * wGrief);
     const down = 0.3 * wWrite + 0.22 * wKneel + 0.3 * Math.max(m.windC, 0.6 * wLand);
     for (const l of m.lids) l.rotation.x = m.lidClose * Math.max(c, shut) + down * (1 - c);
   }
@@ -4137,8 +4144,9 @@ function wheelchairPose(m, st, dt, P) {
   const D = m.D, t = st.t || 0, v = st.speed || 0;
   P.fill(0);
   seatBase(m, P, 0.58);
-  // pushing the rims when moving, hands in the lap otherwise
-  const mv = sstep(0.05, 0.4, v);
+  // pushing the rims when moving, hands in the lap otherwise (and while the chair rolls on by
+  // itself: st.coast, game/rune.js)
+  const mv = st.coast ? 0 : sstep(0.05, 0.4, v);
   m.pushPh = (m.pushPh || 0) + dt * (0.8 + v * 0.9);
   const ph = fract(m.pushPh);
   const Q = m.Q;
@@ -4267,6 +4275,49 @@ function shiverPose(m, P, t, w) {
   P[B.chest * 3 + 2] += 0.014 * a; P[B.spine * 3 + 1] += 0.012 * b;
   P[B.neck * 3 + 2] += 0.012 * b; P[B.head * 3 + 1] += 0.016 * a;
   for (const k of [B.armR, B.armL]) P[k * 3] += 0.02 * a;
+}
+
+// Dead in his wheelchair (Rune, game/rune.js): sunk down and forward, the head fallen onto his chest
+// and over to one side, one hand slid off his lap to hang beside the wheel.
+function slumpPose(m, P, Q, w) {
+  const D = m.D;
+  P[B.spine * 3] += 0.2 * w; P[B.chest * 3] += 0.1 * w;
+  P[B.neck * 3] += 0.6 * w; P[B.head * 3] += 0.2 * w;
+  P[B.neck * 3 + 1] *= 1 - w;
+  P[B.neck * 3 + 2] += 0.14 * w; P[B.head * 3 + 2] += 0.26 * w;
+  // the left arm: down beside the wheel, the hand limp
+  bodyToChest(m, P, 0.42, 0.46, 0.1, _T);
+  armIK(m, Q, 1, _T.x, _T.y, _T.z, 0.8, 0, -0.6);
+  aimHand(m, P, Q, 1, 0.05, -1, 0.1, -1, 0, 0);
+  handShape(Q, 1, 'limp');
+  lerpBones(P, Q, w, ARM_L);
+}
+
+// Grief (Anita once Rune is dead, game/rune.js): the head bowed, her right hand over her eyes, the
+// left across her waist; while she sobs (st.sob, 0..1) her shoulders heave.
+const _gE = new THREE.Vector3(), _gF = new THREE.Vector3(), _gP = new THREE.Vector3();
+function griefPose(m, st, P, Q, t, w) {
+  const D = m.D, hp = m.headP, k = D.hand / 0.19, s = m.seed * 10;
+  const sob = clamp(st.sob || 0, 0, 1), heave = sob * Math.max(0, Math.sin(t * 7.5 + s)) ** 2 * (0.6 + 0.4 * Math.sin(t * 1.9 + s));
+  P[B.spine * 3] += w * (0.07 + 0.03 * heave); P[B.chest * 3] += w * (0.04 + 0.05 * heave);
+  P[B.neck * 3] += w * (0.3 + 0.04 * heave); P[B.head * 3] += w * 0.12;
+  if (!hp) return;
+  // the right palm over the eyes: the fingers up and across the brow, the palm to the face
+  headFrame(m, P, _hf);
+  _gE.set(-0.03 * hp.Hh, hp.chinY + 0.56 * hp.Hh - D.headY, hp.z0 + 0.62 * hp.Hh - D.headZ).applyMatrix4(_hf);
+  _gF.set(0.5, 0.86, 0.1).transformDirection(_hf);
+  _gP.set(0.05, 0, -1).transformDirection(_hf);
+  bodyToChest(m, P, _gE.x - _gF.x * 0.085 * k - _gP.x * 0.02 * k, _gE.y - _gF.y * 0.085 * k - _gP.y * 0.02 * k, _gE.z - _gF.z * 0.085 * k - _gP.z * 0.02 * k, _T);
+  armIK(m, Q, 0, _T.x, _T.y, _T.z, -0.5, -0.9, 0.1);
+  aimHand(m, P, Q, 0, _gF.x, _gF.y, _gF.z, _gP.x, _gP.y, _gP.z);
+  handShape(Q, 0, 'relax');
+  lerpBones(P, Q, w, ARM_R);
+  // the left forearm across the waist
+  const fz = D.frontZ ? D.frontZ(D.spineY) : 0.15;
+  armIK(m, Q, 1, -0.04 * k, D.spineY + 0.04 - D.chestY, fz + 0.09 * k, 0.7, -0.6, -0.2);
+  aimHand(m, P, Q, 1, -1, 0.15, 0.1, 0, 0, -1);
+  handShape(Q, 1, 'relax');
+  lerpBones(P, Q, w, ARM_L);
 }
 
 function wavePose(m, P, Q, t) {

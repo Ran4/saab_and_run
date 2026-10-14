@@ -44,7 +44,8 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   (Anita, hold E 3 s at runeHouse), forskolan (Parvaneh: Nasanin from the preschool home), mobilen
   (Jimmy's phone on the centrum torg, back to Jimmy), punktering (Adrian, hold E 4 s at the bike
   shed), nyckeln (Patrick: the spare key from Ove's door, hold E at Parvaneh's), rune (Anita: find
-  Rune on a sidewalk 45-80 m away, push him home), skotta (Anita: three snow heaps in front of
+  Rune on a sidewalk 45-80 m away, push him home; no timer but his cold, and he can die: *Feature
+  roligare_runeuppdrag* below), skotta (Anita: three snow heaps in front of
   their door), katten (Sara: catch the cat by the bike shed, carry it to her), skjuts (Jimmy waits at
   the Solrosvägen bus stop, needs a car, and must *ride* to centrum: walking him there doesn't count).
 - **Neighbours** at their homes (`HOMES` in main.js): Parvaneh, Patrick, Sara and Nasanin by
@@ -71,7 +72,8 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   `andersAudi`), 22 traffic cars of the new types (one bus, one sopbil at most) with seated busts,
   headlights on whenever an engine runs. **Ove's Saab always has the plate `SAB 900`.** People vs
   cars: only a car that itself drives into someone at > 4.5 m/s knocks them over (Ove's own
-  walking speed doesn't count); children, Rune and **all the neighbours** are shoved aside
+  walking speed doesn't count); children, Rune (except on his errand: it kills him, game/rune.js)
+  and **all the neighbours** are shoved aside
   sideways instead; nobody lying down or in the air is pushed along a bumper (shoved sideways, the
   car slowed as by something soft); traffic brakes for people lying on the road (and for the
   neighbours).
@@ -134,7 +136,7 @@ call `disposeCtx` on complete / fail / abort** (or do the same by hand). Each st
 | `fetch` | `{ at, item: 'key' \| 'phone' \| 'wrench' \| 'papers' \| 'flowers', label, text, rMin, rMax, exact, got }` → `m.data.carrying = label` |
 | `pickup` | `{ who, at, needCar, text, carText, hello }` — on foot: walk up, they follow; in a car: stop within 9 m |
 | `dropoff` | `{ who, at, radius = 8, text, bye, needCar, carText }` — `needCar`: they must arrive in Ove's car (walking beside him doesn't count; `carText` says so) |
-| `escort` | `{ who, at \| (none: a sidewalk 45-110 m from `to`), to, push, radius, findText, bringText, hello, min, max }` |
+| `escort` | `{ who, at \| (none: a sidewalk 45-110 m from `to`), to, push, radius, findText, bringText, hello, min, max, mortal, cold }` — `push`: E takes hold of the wheelchair and E lets go (game/rune.js: it rolls on); home pushed or rolled there. `mortal`: a car at speed or the cold (`cold` s from nothing to dead, quicker beyond COLD) kills him → `{ fail, dead: true }`; `obj()` → `{ cold, temp, note, danger }` (the errand panel shows it instead of a timer) |
 | `catchCat` | `{ near, timer, text, rMin, rMax, failText }` — `buildCat()` wanders, bolts within 7 m at 4.3 m/s (faster than a walk, slower than a run), caught within 1.15 m on foot; then carried (`m.data.cat`) until `disposeCtx` |
 | `parkIn` | `{ box, car, tol = 0.3, either, trailer, reverse, still = 0.8, text }` — all four corners (and the trailer's) inside the box, heading within `tol`, stopped for `still` s; `reverse`: must have entered the box backwards ("Backa in!" otherwise). Draws an amber outline + chevron on the ground (green when right). |
 | `report` | `{ n, near, radius = 70, smitare = false, spawn = true, text }` — force-spawns n violations near `near` and counts every report from the stage's start |
@@ -159,8 +161,10 @@ stop says).
 
 `interrupts.radioOnly(who, text, reply?)` → Promise (a short call for flavour: ring, one line,
 optional Ove reply; missions 7's "INTE NU!"), `interrupts.force(id, { quick })` (quick = no call),
-`interrupts.abort()`, `interrupts.active { tpl, ctx, stages, i, stage, timer }`, `.call`,
-`.onPhone`, `.auto`, `.nextT`, `.done`, `.failed`, `TEMPLATES`.
+`interrupts.abort()`, `interrupts.active { tpl, ctx, stages, i, stage, timer }` (timer null: none,
+`tpl.patience: null`), `.call`, `.onPhone`, `.auto`, `.nextT`, `.done`, `.failed`, `TEMPLATES`,
+`.retry { tpl, t, reason }` (a failed errand waiting for E / Q: `tpl.retry`, Rune's once he has died;
+`tryAgain()`, `giveUp()`, `tpl.onRetry`, `tpl.onGiveUp`).
 
 ## Debug hooks and test URL params
 
@@ -852,3 +856,44 @@ to its default 1; notes/ui.md *audio API*), 60 a second: −14 dB RMS of noise o
   576 / 571; none left; no door; the effects bus ≤ −36 dB in the bedroom before the line) and
   offline (the wind never cancels; stopped as made: silent; played then stopped: fades out).
 
+
+## Feature roligare_runeuppdrag: Rune's errand as a sandbox (2026-10-14) — what changed
+
+features/implemented/roligare_runeuppdrag.md. game/rune.js (new, `game.rune`), stages.js `escort`
+(`push`, `mortal`, `cold`), interruptions.js (no timer, `retry`), main.js, missions.js, luftning.js,
+script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
+- **The wheelchair**: E takes hold of it (it used to be taken at 2.2 m by itself) and E lets go
+  (`rune.letGo`): in Ove's stride (Shift) it keeps max(his speed, 3.2) × 1.4 and rolls on ~15 m;
+  walking × 0.3 (under a metre). A kick (J) rolls it too, any time (also at home): 3.6 m/s along its
+  own heading, forwards from behind, backwards from in front, less and a little turned from the side
+  (~8 m). Rolling (`n.roll`, `anim.coast`: hands in the lap) it slows at 0.85 m/s², stops against
+  walls and cars (a knock when fast); `rune.step` runs it from `stepNpcs`. On his errand Rune no
+  longer turns his chair to face Ove (`n.mortal`): a boot from behind sends him on forwards.
+  `keepPeopleInside` never stops Rune at BOUND: only Ove takes him out there.
+- **His cold** (escort `cold: 300`): 1/300 a second wherever he is, from the call (find or bring),
+  plus 3 × the cold's own rate (cold.js `coldRate`) beyond COLD: ~25 s from nothing at COLD + 12. The
+  errand card shows it instead of a timer (`#errand.cold`: a body temperature 36,6° → 27,0°, the
+  bar, a note; pulsing over 0.75 or out there); he shivers (`shiverPose` now also in a wheelchair).
+- **Death** (`rune.kill(n, cause)`, causes `cold`, `coldOut`, `car`, `ove`): on his errand
+  (`n.mortal`) a car coming at him at > 4.5 m/s and itself > 3 m/s (what flings a passer-by) kills
+  him, pushed or not (`rune.hit` from `carsVsPeople`): the chair tips onto its side (`toppleW`, the
+  pivot at its edge) and slides to a stop; cold: he slumps (`anim.slump`: head on his chest, eyes
+  shut, an arm off his lap; posed though `frozen`). Ove: "Rune?". The errand fails into
+  `interrupts.retry`: banner RUNE ÄR DÖD + the cause ("Rune blev påkörd." / "Ove körde över
+  Rune." / "Rune frös ihjäl." / "... bortom skogen."), E / Q held like a failed day (`game.failWait`:
+  Ove still, his car braking, no prompts, his own cold held). E: `rune.revive`, the errand from the
+  start. Q (or a story day / Ove's frost death taking it over): given up.
+- **Dead for good**: `game.runeDead` is set the moment he dies (saved, `rune: 0`; a reload during
+  E / Q keeps him dead), cleared by E. The body stays until Ove is > 30 m off or it is out of view
+  (`rune.bury`), then Rune is hidden for good (`npcAway('rune')`). Errands `rune`, `skotta` and
+  `element` (now `needs: ['rune']`) are never offered. Anita (`rune.grief`): `anim.grief` (head bowed,
+  right hand at her eyes, the left across her waist; `sob` heaves the shoulders) whenever nobody is
+  talking to her; within 14 m of Ove a line from `WIDOW.sobs` every 22-38 s (voiced crying); small
+  talk `WIDOW.chatter`; the horn `WIDOW.honk`; the ORDNING OCH REDA radio `WIDOW.reda`; on giving up
+  a toast and her call (`ERRANDS.rune.dead`). The story: `MissionRunner.scene(def, key)` takes
+  `def.widow` (days 3, 6, 7: intros, outros, taglines without him: day 6's kommun wants to move
+  Anita), day 3's kitchen has nobody at his place (no snort), day 6's folder is "Anitas papper", day 7's
+  call back from Anita is `callsBackWidow`.
+- Tests: scenarios/rune.mjs `runeroll runekick runecar runecold runewidow` (+ `runelook`: close-ups,
+  no checks); `?runedead` (tests) starts with him dead: `QUERY='&runedead' node tools/shot.mjs story`.
+  gameplay.mjs `errands` takes hold with E.

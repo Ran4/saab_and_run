@@ -123,10 +123,12 @@ class LuftScene {
     for (const ch of this.offstage) g.offstage(ch, true);
     // the puppets
     this.ove = this.puppet(CHARS.ove, OVE.x, OVE.z, OVE.yaw);
-    this.rune = this.puppet(RUNE_IN, RUNE.x, RUNE.z, Math.atan2(OVE.x - RUNE.x, OVE.z - RUNE.z) - 0.25);
+    // (Rune is dead, game/rune.js: his place at the table stays empty)
+    this.rune = g.runeDead ? null : this.puppet(RUNE_IN, RUNE.x, RUNE.z, Math.atan2(OVE.x - RUNE.x, OVE.z - RUNE.z) - 0.25);
     this.anita = this.puppet(ANITA_IN, ANITA.x, ANITA.z, Math.atan2(OVE.x - ANITA.x, OVE.z - ANITA.z));
     Object.assign(this.ove.st, { kneel: true, kneelReach: 0 });
-    this.rune.st.listen = true; this.anita.st.listen = true;
+    if (this.rune) this.rune.st.listen = true;
+    this.anita.st.listen = true;
     this.poses();
     // the cat on the sill outside, sitting, looking in
     const cat = (this.cat = buildCat());
@@ -298,7 +300,7 @@ class LuftScene {
     if (at(T.shut)) this.sfx('key');
     if (at(T.thud)) this.sfx('thud');
     if (at(T.mm)) this.say(grunt('Mm.'));
-    if (at(T.wake)) this.sfx('snort');
+    if (at(T.wake) && this.rune) this.sfx('snort');
     if (at(T.hmpf)) this.say(grunt('Hmpf.'));
     // the air: a thin wisp out of the valve while it hisses (thinning as the pressure falls)
     if (this.hissing && t < T.sputter) {
@@ -320,13 +322,15 @@ class LuftScene {
     const talking = (this.talkU && (this.talkU.state === 'playing' || this.talkU.state === 'queued')) || t < (this.talkUntil || 0);
     o.st.talk = !!talking && (!this.talkU || this.talkU.state === 'playing');
     o.st.mouth = this.talkU?.mouth?.() ?? null;
-    for (const p of [o, ru, an]) { p.st.t += dt; animateCharacter(p.m, p.st, dt); }
+    for (const p of [o, ru, an]) if (p) { p.st.t += dt; animateCharacter(p.m, p.st, dt); }
     // Rune nods off in the hiss and wakes with a jerk at the thud
     const doze = sstep(T.doze, T.doze + 1.3, t) * (1 - sstep(T.wake, T.wake + 0.12, t));
     const jerk = t > T.wake ? Math.exp(-(t - T.wake) * 5) * Math.sin(Math.min(Math.PI, (t - T.wake) * 9)) : 0;
-    ru.neck.rotation.x += 0.78 * doze - 0.3 * jerk;
-    ru.head.rotation.z += 0.2 * doze;
-    ru.head.rotation.x += 0.22 * doze;
+    if (ru) {
+      ru.neck.rotation.x += 0.78 * doze - 0.3 * jerk;
+      ru.head.rotation.z += 0.2 * doze;
+      ru.head.rotation.x += 0.22 * doze;
+    }
     // Anita leans in to watch the valve, and nods at the "Mm."
     an.spine.rotation.x += 0.12 * sstep(T.hiss, T.hiss + 1.2, t) * (1 - sstep(T.sputter, T.sputter + 1, t));
     an.neck.rotation.x += 0.18 * Math.max(0, Math.sin(Math.min(1, Math.max(0, (t - T.mm - 0.2) / 0.5)) * Math.PI));
@@ -386,7 +390,7 @@ class LuftScene {
     this.hush();
     for (const [o, v] of this.hidden) o.visible = v;
     for (const ch of this.offstage) g.offstage(ch, false);
-    for (const p of [this.ove, this.rune, this.anita]) { scene.remove(p.m.root); p.m.root.traverse((x) => x.geometry?.dispose()); }
+    for (const p of [this.ove, this.rune, this.anita]) if (p) { scene.remove(p.m.root); p.m.root.traverse((x) => x.geometry?.dispose()); }
     scene.remove(this.cat.root); this.cat.root.traverse((x) => x.geometry?.dispose());
     for (const m of [this.key, this.cup, ...this.drops.map((d) => d.m)]) { scene.remove(m); m.traverse((x) => { if (x.geometry !== this.dropGeo) x.geometry?.dispose(); }); }
     this.dropGeo.dispose();
