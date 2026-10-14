@@ -12,6 +12,7 @@ Arbetssätt när du fått in en ny feature:
 
 * Spinna upp en ny claude code-session (i ett nytt tmux-fönster) där du behöver agenten implementera+verifiera
 en viss feature i features/ och sedan flytta den till features/implemented när den är klar.
+Kalla varje tmux-session för saab:FEATUREKORTNAMN typ saab:lutning eller saab:pskiva eller saab:rune
 * När en feature är klar, döda den förra, ta nästa feature-ticket, och spinna upp en ny claude code-session
 
 obs: du ska INTE använda egna subagenter för att skapa/verifiera features! Däremot får du göra det för att
