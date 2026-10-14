@@ -72,6 +72,14 @@ Allt annat i döden och sängscenen är som förut: ljuden, nivåerna och tidern
   - Spelet kunde inte köras levande i Firefox headless. Firefox startar ingen ljudkontext utan en
     ljudenhet, och användarens ljudsystem rörde jag inte. Därför är Firefox-delen mätt offline,
     med spelets egen vindkod.
+  - Så kördes Firefox (verktyget ligger inte i repot): puppeteer-core 25 med `browser: 'firefox'`
+    i en egen installation utanför projektet, eftersom projektets `node_modules/chromium-bidi` saknar
+    sina byggda filer och Firefox-vägen importerar dem. Webbläsaren var `/snap/bin/firefox` med
+    `TMPDIR` under `~/snap/firefox/common/`, så att snappen når profilen (snappens egen binär kräver
+    snappens bibliotek), eller en fristående Firefox från `npx @puppeteer/browsers install
+    firefox@stable`. Inställningarna var `media.cubeb.force_null_context: true` (ingen ljudenhet
+    alls) och `media.volume_scale: '0.0'`. Spelets sida laddas som vanligt, och
+    `OfflineAudioContext` fungerar, men utan `suspend()`.
 - **Chrome, hela döden inspelad** (riktigt läge utan `?test`, rösterna och musiken på, både med en
   död direkt vid kanten och efter en promenad ut med riktiga tangenter): utgången mätt var 0,1 s, ett
   spektrogram över förloppet, och varje ljudanrop loggat. Utöver vinden och dörren fanns inget
