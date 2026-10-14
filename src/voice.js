@@ -27,7 +27,8 @@
 //   voice.waitQuiet(min, max)         Promise: quiet, waiting at least min and at most max s
 //   voice.prefetch(lines)             [[who, text], ...]: fetch and decode now
 //   voice.voiceFor(ch)                the role key a character (or a car, a window) speaks with:
-//                                     a neighbour's, or a pool voice (poolVoice: sex, age, seed)
+//                                     a neighbour's, or a pool voice (poolVoice: sex, age, seed;
+//                                     a child a kid voice, ped_kid_*)
 //   voice.stop(slot), voice.hush()    stop a slot / everything and drop what waits
 //   voice.update(game)                main.js, every frame: the queue, positions, mouths
 import { audio } from './audio.js';
@@ -41,7 +42,9 @@ const WAIT = { main: 6, bubble: 2.5 };
 const TEMPO = 13;                     // chars/s for a role with no clips yet
 const LIP = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_';
 const SETTINGS_KEY = 'saab-and-run-settings';
-const KIDS = new Set(['sara', 'nasanin', 'ped_kid']);
+// (the children: Sara, Nasanin and the kid voices of the pool, ped_kid_*; 'ped_kid' is a child with
+// no kid voice in the manifest)
+const isKid = (who) => who === 'sara' || who === 'nasanin' || who.startsWith('ped_kid');
 const P = new URLSearchParams(location.search);
 
 const lipVal = (s, i) => { const k = LIP.indexOf(s[i]); return k < 0 ? 0 : k / 63; };
@@ -119,17 +122,18 @@ export const voice = {
     return this.poolVoice(ch.def, ch);                   // a passer-by; no def: a window (horn.js)
   },
   // A passer-by's voice from the pool (index.json _pool, tools/voice/voice.mjs): by sex and age
-  // (13-34 young, 35-64 mid, 65+ old; children murmur), one voice per person from their own
-  // random pitch, so the same person always sounds the same. No def (a window, a car nobody sits
-  // in): an adult from where it is (a window: a mid or old voice).
+  // (under 13 a kid voice: an adult's made squeaky, features/implemented/barnroster.md; 13-34
+  // young, 35-64 mid, 65+ old), one voice per person from their own random pitch, so the same
+  // person always sounds the same. No def (a window, a car nobody sits in): an adult from where it
+  // is (a window: a mid or old voice). No pool voice for them: 'ped' / 'ped_kid' (mumbled).
   poolVoice(def, at) {
     const P = this.manifest?._pool;
     const age = def?.age ?? 50;
-    if (def && (def.kind === 'kid' || age < 13)) return 'ped_kid';
-    if (!P) return 'ped';
-    const band = age < 35 ? 'young' : age < 65 ? 'mid' : 'old';
+    const kid = !!def && (def.kind === 'kid' || age < 13), none = kid ? 'ped_kid' : 'ped';
+    if (!P) return none;
+    const band = kid ? 'kid' : age < 35 ? 'young' : age < 65 ? 'mid' : 'old';
     const list = def ? P[`${def.sex === 'f' ? 'f' : 'm'}_${band}`] : [...(P.f_mid || []), ...(P.m_mid || []), ...(P.f_old || []), ...(P.m_old || [])];
-    if (!list?.length) return 'ped';
+    if (!list?.length) return none;
     const seed = def ? def.voice ?? def.height ?? 0 : Math.round(at?.x ?? 0) * 31 + Math.round(at?.z ?? 0);
     const h = Math.abs(Math.sin(seed * 12.9898 + 78.233) * 43758.5453) % 1;
     return list[Math.floor(h * list.length)];
@@ -289,8 +293,8 @@ export const voice = {
     u.murmurs = [];
     for (const at of w) if (!u.murmurs.length || at - u.murmurs[u.murmurs.length - 1] >= 0.22) u.murmurs.push(at);
     u.mi = 0;
-    // (the children: a giggle after the murmur, now and then: 4.4 c)
-    u.giggle = KIDS.has(u.who) && Math.random() < 0.55 ? Math.max(0.2, u.dur - 0.45) : null;
+    // (a child with no clip: a giggle after the murmur, now and then: 4.4 c)
+    u.giggle = isKid(u.who) && Math.random() < 0.55 ? Math.max(0.2, u.dur - 0.45) : null;
   },
   _finish(u, fade) {
     if (!u || u.state === 'done' || u.state === 'dropped') return;

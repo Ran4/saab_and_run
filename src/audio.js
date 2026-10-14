@@ -794,8 +794,8 @@ export const audio = {
     // Breath.
     burst(t, dur * 0.9, 0.028, rnd(1300, 2000), 'bandpass', 0.9, { attack: 0.03 });
   },
-  // A child's giggle (the children's lines have no voice: a murmur and this, voice.js): three or
-  // four quick breathy "hi"s falling in pitch.
+  // A child's giggle (a child's line with no clip is a murmur and this, voice.js): three or four
+  // quick breathy "hi"s falling in pitch.
   giggle(pitch = 420) {
     if (!S) return;
     const n = 3 + (Math.random() < 0.5 ? 1 : 0);

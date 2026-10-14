@@ -627,14 +627,16 @@ Keep every existing `hud.*` function working (some re-styled/renamed in text onl
   (`assets/voice/`, made by `tools/voice/voice.mjs` from `src/game/script.js`, which holds every
   line said out loud) played by `src/voice.js` (`voice.play(who, text, { slot, mode, ... })`: two
   slots, a queue, a murmur with a guessed length when there is no clip; contract in its header).
-  Every role has a voice since feature resten_av_replikerna (2026-10-11) except the children (Sara,
-  Nasanin, the kids among the passers-by: a murmur and a giggle). Passers-by, drivers and window
-  shouts speak with a pool of twelve voices (index.json `_pool`: women and men, 13-34 / 35-64 /
-  65+): `voice.voiceFor(ch)` gives a neighbour their own key, a person (or a car's seated bust) a
-  pool voice of their sex and age band from their own seed, a window a mid or old one.
+  Every role has a voice since feature resten_av_replikerna (2026-10-11), the children too since
+  feature barnroster (2026-10-15): Sara, Nasanin and four kid voices are adult Voice Library voices
+  raised by tools/voice/voice.mjs (cast.json `shift: { pitch, formant }`: very squeaky, the length
+  kept). Passers-by, drivers and window shouts speak with a pool of sixteen voices (index.json
+  `_pool`: women and men, 13-34 / 35-64 / 65+, girls and boys under 13): `voice.voiceFor(ch)` gives
+  a neighbour their own key, a person (or a car's seated bust) a pool voice of their sex and age
+  band from their own seed, a window a mid or old one.
   `audio.voiceChain(mode)` ('dialog' | 'phone' | 'car' | 'world' | 'shout'), `audio.voiceDuck(on)`
   (music −8 dB, engine −4 dB under speech), `audio.setVoiceLevel(v)`, `audio.setListener(...)`,
-  `audio.giggle(pitch)` (the mumbled children). The composed score: `audio.music(state, { day })`
+  `audio.giggle(pitch)` (a child's line with no clip). The composed score: `audio.music(state, { day })`
   plays `assets/music/` cues (title, roam playlist with the generative piano, errand, pursuit,
   hurry, race, chase, finale), cross-faded; the piano is the fallback. Characters get
   `anim.mouth` (0..1) while a clip plays: the jaw follows it (models.js). Pause menu **Röster** and

@@ -13,13 +13,19 @@
 //           also skips day 3's radiator scene with Enter, s s into it (1 = in its first black).
 //   vstory  the whole story with the voices on (FROM=n works): `story` + the vcut numbers.
 //   vpool   the passers-by's pool voices (the real manifest): sex, age band, the same voice every
-//           time, children murmur, drivers, windows, the neighbours' shared lines; a clip for each.
+//           time, a child a kid voice of their sex (features/implemented/barnroster.md), drivers,
+//           windows, the neighbours' shared lines; a clip for each; a child's, Sara's and Nasanin's
+//           line said as a clip.
+//   barnroster  the children's voices (features/implemented/barnroster.md): Sara and Nasanin, the
+//           camera on them, say lines as clips (not cut, the jaw following the clip: open on the
+//           vowels, shut after; close-ups barn_*.png), then one of them says a line of small talk by
+//           herself, as a clip.
 //   music   the score: the patrol's cue on day 1, an errand's loop, back to the patrol.
 import fs from 'node:fs';
 import path from 'node:path';
 
 export default (H) => {
-  const { page, ev, frames, sleep, until, errors, PORT, ROOT } = H;
+  const { page, ev, shot, frames, sleep, until, errors, PORT, ROOT } = H;
   const log = (...a) => console.log('[t]', ...a);
   const bad = (...a) => { console.log('[t] CHECK FAILED', ...a); errors.push('check failed: ' + a.join(' ')); };
   const load = async (q) => {
@@ -241,20 +247,32 @@ export default (H) => {
     },
 
     // The passers-by's pool (index.json _pool): each person gets a voice of their sex and age band
-    // from their own seed (the same one every time), children murmur, a car speaks with its bust's
-    // voice, a window with a mid or old one, and every line that person can say has a clip in it.
+    // from their own seed (the same one every time), a child a kid voice of their sex (an adult's
+    // made squeaky: features/implemented/barnroster.md), a car speaks with its bust's voice, a window
+    // with a mid or old one, and every line that person can say has a clip in it. A child's line and
+    // Sara's and Nasanin's are said as clips.
     async vpool() {
       await load('&voice');
       const r = await ev(async () => {
         const g = __game, V = window.__voice, S = await import('./src/game/script.js');
-        const P = V.manifest._pool || {}, M = V.manifest, out = { bad: [], tally: {}, n: 0, kids: 0, cars: 0, windows: 0, said: 0 };
+        const P = V.manifest._pool || {}, M = V.manifest, out = { bad: [], tally: {}, kidTally: {}, n: 0, kids: 0, cars: 0, windows: 0, said: 0, kidSaid: [] };
         const band = (age) => (age < 35 ? 'young' : age < 65 ? 'mid' : 'old');
         const lacks = (key, list) => list.filter((t) => !M[key]?.[t]);
         const adult = [...S.OUCH, ...S.GETUP, ...S.CARJACK, ...S.KICKED, ...S.SHOVED, ...S.PANIC, ...S.HONK_SIDEWALK, ...S.HONK_CARFREE];
         const drive = [...S.FLEE_LINES, ...S.CAUGHT_LINES, ...Object.values(S.HONK_BACK).flat(), ...S.SAAB_GREET, ...S.HONK_SMITARE];
+        // (the tables tagged ped_kid in script.js)
+        const young = [...S.SHOVED_KID, ...S.HONK_KID, ...S.KICKED, ...S.PANIC, ...S.CARJACK];
         const person = (def, key, what) => {
           const age = def.age ?? 30;
-          if (def.kind === 'kid' || age < 13) { out.kids++; if (key !== 'ped_kid') out.bad.push(`${what}: a child (${age}) got ${key}`); return; }
+          if (def.kind === 'kid' || age < 13) {
+            out.kids++;
+            const want = `${def.sex === 'f' ? 'f' : 'm'}_kid`;
+            if (!P[want]?.includes(key)) out.bad.push(`${what}: a child (${def.sex} ${age}) got ${key}, not one of ${want}`);
+            out.kidTally[key] = (out.kidTally[key] || 0) + 1;
+            const miss = lacks(key, young);
+            if (miss.length) out.bad.push(`${key} (${what}, a child of ${age}) has no clip for ${miss.length}: ${miss.slice(0, 3).join(' | ')}`);
+            return;
+          }
           const want = `${def.sex === 'f' ? 'f' : 'm'}_${band(age)}`;
           if (!P[want]?.includes(key)) out.bad.push(`${what}: ${def.sex} ${age} got ${key}, not one of ${want}`);
           out.tally[key] = (out.tally[key] || 0) + 1;
@@ -290,12 +308,92 @@ export default (H) => {
         V.log.length = 0;
         const grown = g.peds.find((p) => p.char.def.kind !== 'kid' && (p.char.def.age ?? 30) >= 19 && (p.char.def.age ?? 30) < 65);
         if (grown) { g.say(grown.char, S.OUCH[1], 1.8); await V.waitQuiet(0.3, 6); out.said = V.log.filter((x) => x.clip && x.t0 != null).length; out.saidWho = V.log[0]?.who; }
+        // the children: a passer-by's horn line, Sara's and Nasanin's small talk
+        const child = g.peds.find((p) => p.char.def.kind === 'kid' || (p.char.def.age ?? 30) < 13);
+        const kidLines = [...(child ? [[V.voiceFor(child.char), S.HONK_KID[1]]] : []), ['sara', S.CHATTER_FIRST.sara[2]], ['nasanin', S.CHATTER_FIRST.nasanin[0]]];
+        for (const [who, text] of kidLines) {
+          V.log.length = 0;
+          V.play(who, text, { slot: 'bubble' });
+          await V.waitQuiet(0.3, 6);
+          const rec = V.log[0];
+          out.kidSaid.push({ who, text, clip: !!rec?.clip && rec.t0 != null, dur: rec?.dur, mouth: null });
+        }
         return out;
       });
-      log(`pool: ${r.n} passers-by (${r.kids} children murmur), ${r.cars} traffic drivers, ${r.windows} windows; voices used: ${JSON.stringify(r.tally)}; a passer-by's OUCH said as a clip: ${r.said} (${r.saidWho})`);
+      log(`pool: ${r.n} passers-by (${r.kids} children: ${JSON.stringify(r.kidTally)}), ${r.cars} traffic drivers, ${r.windows} windows; voices used: ${JSON.stringify(r.tally)}; a passer-by's OUCH said as a clip: ${r.said} (${r.saidWho})`);
+      log(`children said: ${r.kidSaid.map((k) => `${k.who} "${k.text}" ${k.clip ? `clip ${k.dur} s` : 'NO CLIP'}`).join('; ')}`);
       for (const b of r.bad.slice(0, 20)) bad(b);
       if (!r.said) bad('a passer-by\'s line was not said with a clip');
       if (Object.keys(r.tally).length < 6) bad(`only ${Object.keys(r.tally).length} pool voices in use`);
+      if (r.kids >= 4 && Object.keys(r.kidTally).length < 2) bad(`${r.kids} children, but only ${Object.keys(r.kidTally).length} kid voices in use`);
+      for (const k of r.kidSaid) if (!k.clip) bad(`${k.who} "${k.text}" was not said with a clip`);
+    },
+
+    async barnroster() {
+      await load('&voice');
+      const S = await import(path.join(ROOT, 'src/game/script.js'));
+      // Ove on his path a few metres east of Sara (the girls turn to him), out of the hush round the
+      // day's giver (Patrick, beside them: within 6 m of him nobody chats); the camera held still on a
+      // girl's face, more than 1.75 m off (nearer, main.js hideNearCamera hides her).
+      const at = await ev(() => {
+        const g = __game, p = g.player, n = g.npc('sara'), gv = g.npc(g.missions.offered?.giver || 'patrick');
+        const x0 = p.x, z0 = p.z;
+        for (let dx = 0; dx < 14; dx += 0.5) if (Math.hypot(x0 + dx - gv.x, z0 - gv.z) > 6.5 && Math.hypot(x0 + dx - n.x, z0 - n.z) < 6) { p.teleport(x0 + dx, z0, Math.atan2(n.x - x0 - dx, n.z - z0)); break; }
+        return { ove: [+p.x.toFixed(1), +p.z.toFixed(1)], girls: ['sara', 'nasanin'].map((k) => { const m = g.npc(k); return { k, x: +m.x.toFixed(1), z: +m.z.toFixed(1), state: m.state, shown: m.root.visible }; }) };
+      });
+      log('the girls:', JSON.stringify(at));
+      // (nobody chats of their own accord until the small-talk part: a neighbour's line would hold
+      // up the girls' in the queue)
+      await ev(() => { __game.chatGlobalT = 1e9; });
+      await frames(90);
+      const portrait = (who, d, side, h, lookH, fov) => ev(async ({ who, d, side, h, lookH, fov }) => {
+        const { camera } = await import('./src/gfx.js');
+        const g = __game, n = g.npc(who), a = n.yaw + side;
+        g.cam.update = function () {};
+        camera.position.set(n.x + Math.sin(a) * d, n.y + h, n.z + Math.cos(a) * d);
+        camera.lookAt(n.x, n.y + lookH, n.z); camera.fov = fov; camera.updateProjectionMatrix();
+      }, { who, d, side, h, lookH, fov });
+      const lines = [['sara', S.CHATTER_FIRST.sara[2]], ['sara', S.CHATTER.sara[2]], ['sara', S.CHATTER_AFTER.sara[1][1]], ['nasanin', S.CHATTER.nasanin[0]], ['nasanin', S.CHATTER_FIRST.nasanin[2]]];
+      let k = 0;
+      for (const [who, text] of lines) {
+        if (who === 'sara') await portrait('sara', 2.4, 0.3, 1.1, 0.98, 20);
+        else await portrait('nasanin', 2.2, 0.3, 0.9, 0.75, 20);
+        await frames(4);
+        await until(() => window.__voice.quiet(), 10000).catch(() => {});
+        const dur = await ev(({ who, text }) => {
+          const g = __game, V = window.__voice, n = g.npc(who);
+          V.log.length = 0;
+          const u = g.say(n, text, 2.5), S = (window.__mouths = []);
+          window.__u = u;
+          const tick = () => { S.push(n.anim.mouth); if (u.state === 'playing' || u.state === 'queued' || S.length < 3) requestAnimationFrame(tick); else S.push(n.anim.mouth); };
+          requestAnimationFrame(tick);
+          return u.dur;
+        }, { who, text });
+        // (a close-up while the mouth is open)
+        await until(() => (window.__u.state === 'playing' && window.__u.mouth() > 0.5) || window.__u.state === 'done', 6000).catch(() => {});
+        await shot(`barn_${++k}_${who}`);
+        await until(() => window.__u.state === 'done' && window.__voice.quiet(), 10000).catch(() => {});
+        await frames(4);
+        const r = await ev(() => {
+          const rec = window.__voice.log[0], m = window.__mouths, said = m.filter((v) => v != null);
+          return { clip: !!rec?.clip, who: rec?.who, took: rec?.t1 != null ? +(rec.t1 - rec.t0).toFixed(2) : null, cut: rec ? +rec.cut.toFixed(2) : null, frames: m.length, open: said.filter((v) => v > 0.25).length, max: said.length ? +Math.max(...said).toFixed(2) : 0, after: window.__game.npc(rec.who).anim.mouth };
+        });
+        log(`${who} "${text}": ${r.clip ? 'clip' : 'NO CLIP'} ${dur} s, said in ${r.took} s (cut ${r.cut}), jaw open on ${r.open} of ${r.frames} frames, widest ${r.max}, after the line ${r.after}`);
+        if (!r.clip || r.who !== who) bad(`${who} "${text}" was not said with her own clip (${r.who})`);
+        if (r.cut > 0.25) bad(`${who} "${text}" cut off ${r.cut} s early`);
+        if (r.max < 0.4 || r.open < 3) bad(`${who}'s jaw did not follow "${text}"`, JSON.stringify(r));
+        if (r.after != null) bad(`${who}'s jaw still driven after the line`);
+      }
+      // Left to themselves (the camera back behind Ove, standing by Sara): small talk by itself.
+      await ev(() => { const g = __game; delete g.cam.update; g.cam.snapNext = true; g.chatGlobalT = 0; window.__voice.log.length = 0; });
+      const heard = () => window.__voice.log.find((r) => (r.who === 'sara' || r.who === 'nasanin') && r.t0 != null) || null;
+      await until(`(${heard})()`, 30000).catch(() => {});
+      const chat = await ev(`(${heard})()`);
+      if (!chat) bad('neither girl said a line of small talk by herself in 30 s');
+      else {
+        log(`small talk: ${chat.who} "${chat.text}" ${chat.clip ? 'as a clip' : 'NO CLIP'}`);
+        if (!chat.clip) bad(`${chat.who}'s small talk "${chat.text}" was not a clip`);
+      }
     },
 
     async vstory() {

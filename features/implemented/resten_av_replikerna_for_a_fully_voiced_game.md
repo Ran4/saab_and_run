@@ -86,6 +86,9 @@ Varje poolröst har två eller tre alternativ på provlyssningssidan, med sina g
 
 ### Barnen
 
+(**Inaktuellt sedan 2026-10-15:** barnen har röster nu, vuxna röster gjorda pipiga, och `ped_kid`
+är fyra poolröster: `features/implemented/barnroster.md`.)
+
 Sara, Nasanin och barnstatisterna (`ped_kid`, en egen roll med `"mumble": true`) mumlar och
 fnissar som förut. Voice Library har inga barnröster: ElevenLabs tillåter dem inte, och bland de
 61 röster som har svenska som modersmål finns ingen. Det finns alltså ingen trovärdig barnröst att

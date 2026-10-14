@@ -4,7 +4,7 @@ URL  := http://$(HOST):$(PORT)/
 # The headless tests serve the game themselves, on their own port.
 TESTPORT ?= 8791
 
-.PHONY: run serve test test-all voice voice-cast voice-review voice-check music music-check
+.PHONY: run serve test test-all voice voice-cast voice-review voice-check voice-hear music music-check
 .DEFAULT_GOAL := run
 
 # Serve the game and open it in the browser once the server answers. Ctrl-C stops the server.
@@ -42,10 +42,11 @@ node_modules:
 
 # The voices (features/implemented/a_fully_voiced_game.md, tools/voice/voice.mjs). `make voice DRY=1`
 # says what would be made and what it costs, without a request; `make voice` makes what is missing
-# in cast.json's scope (WHO=a,b LIMIT=n DAY=n MAX=chars ALL=1 PRUNE=1 REPROCESS=1).
+# in cast.json's scope (WHO=a,b LIMIT=n DAY=n MAX=chars ALL=1 PRUNE=1 REPROCESS=1; REPROCESS=1 WHO=a,b
+# redoes only those roles, e.g. after a child's shift changed: features/implemented/barnroster.md).
 VOICE_FLAGS = $(if $(DRY),--dry) $(if $(WHO),--who $(WHO)) $(if $(LIMIT),--limit $(LIMIT)) $(if $(DAY),--day $(DAY)) $(if $(MAX),--max $(MAX)) $(if $(ALL),--all) $(if $(PRUNE),--prune)
 voice:
-	node tools/voice/voice.mjs $(if $(REPROCESS),reprocess,$(VOICE_FLAGS))
+	node tools/voice/voice.mjs $(if $(REPROCESS),reprocess $(if $(WHO),--who $(WHO)),$(VOICE_FLAGS))
 # Auditions for a role: its Voice Library candidates (SEARCH=n finds n more). (DESIGN=1 would add
 # Voice Design candidates, but a designed voice needs a free voice slot: not used, see the feature.)
 voice-cast:
@@ -55,6 +56,9 @@ voice-review:
 	PORT=$(or $(REVIEWPORT),8795) node tools/voice/review.mjs
 voice-check:
 	node tools/voice/voice.mjs check
+# Listen to the clips as the game plays them (after a child's shift): pitch and words per role, free.
+voice-hear:
+	node tools/voice/voice.mjs hear $(if $(WHO),--who $(WHO))
 
 # The music (features/implemented/a_fully_voiced_game.md section 8, tools/music/music.mjs): one take
 # for each cue in tools/music/cues.json that has none, processed into assets/music/. `make music DRY=1`

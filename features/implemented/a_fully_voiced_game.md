@@ -6,7 +6,8 @@
 > vilka röster som valdes och varför, vad det kostade och vad som avviker från förslaget står i
 > "Det här gjordes" nedan. **Resten av replikerna gjordes samma dag** (alla roller utom barnen, och
 > en pool av tolv röster för statisterna): se
-> `features/implemented/resten_av_replikerna_for_a_fully_voiced_game.md`.
+> `features/implemented/resten_av_replikerna_for_a_fully_voiced_game.md`. **Barnen fick röster
+> 2026-10-15** (vuxna röster gjorda pipiga): se `features/implemented/barnroster.md`.
 >
 > Efter det avsnittet följer förslaget som det skrevs (före bygget), med korta noteringar
 > **(Blev: …)** där det blev annorlunda.

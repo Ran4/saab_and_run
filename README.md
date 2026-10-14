@@ -29,8 +29,9 @@ URL-val: `?fresh` struntar i det sparade spelet, `?mission=N` börjar på dag N+
 
 **Röster och musik.** Alla pratar med riktig röst: grannarna med var sin röst, och de som går
 förbi, förarna och den som ropar från ett fönster med en av tolv röster (kvinnor och män i tre
-åldrar; samma person låter alltid likadant). Barnen mumlar och fnissar, och textningen syns
-alltid. Ingen pratar i munnen på någon: repliker väntar på sin tur. Musiken är
+åldrar; samma person låter alltid likadant). Barnen pratar pipigt: ElevenLabs gör inga
+barnröster, så vuxna röster läser deras repliker och höjs sedan i tonläge (Sara, Nasanin och fyra
+barnröster bland dem som går förbi). Textningen syns alltid. Ingen pratar i munnen på någon: repliker väntar på sin tur. Musiken är
 komponerad (tema, patrull, ärenden, jakt, racet, Vita skjortan) med det genererade pianot emellan.
 **Röster** och **Röstvolym** i pausmenyn stänger av rösterna (då blir det mummel) och sänker dem.
 
@@ -268,6 +269,7 @@ anropar aldrig API:t. Nyckeln ligger i `.env` (`ELEVENLABS_API_KEY`) och använd
 make voice DRY=1            # vad som skulle göras och vad det kostar, utan anrop
 make voice                  # gör klippen som saknas (statisternas repliker en gång per poolröst)
 make voice-check            # saknas något? (inga anrop)
+make voice-hear WHO=sara    # klippen som de spelas: tonhöjd och vad taligenkänningen hör (gratis)
 make voice-review           # provlyssningssidan: http://127.0.0.1:8795/ (byt röst, gör om repliker)
 make voice-cast WHO=anita   # provinspelningar av en rolls kandidater (Voice Library)
 make music DRY=1            # musiken: samma sak, tools/music/cues.json

@@ -66,19 +66,27 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
 - **Voices and music** (features/implemented/a_fully_voiced_game.md and
   resten_av_replikerna_for_a_fully_voiced_game.md): every line said out loud is in
   `src/game/script.js` (pure data, `allLines()` = `[who, text, part]`); code never inlines voiced
-  text (toasts, banners, objectives stay in code). Every role has a voice but the children (they
-  murmur). A shared table's line (`ped`, `driver`, `window`, `cast`) is made once per voice its `//
-  @voice` tag names: the neighbours and twelve pool voices (`tools/voice/cast.json` roles with
-  `pool: { sex, age }`; the game picks one by the person's sex, age and seed, `voice.voiceFor`).
+  text (toasts, banners, objectives stay in code). Every role has a voice; the children's (Sara,
+  Nasanin, the pool's four kid voices) are adult voices made squeaky by the processing (cast.json
+  `shift: { pitch, formant }`, features/implemented/barnroster.md: after changing one `make voice
+  REPROCESS=1 WHO=x`, free; `make voice-hear WHO=x` measures pitch and words as played). A shared
+  table's line (`ped`, `driver`, `window`, `cast`, `ped_kid`) is made once per voice its `//
+  @voice` tag names: the neighbours and sixteen pool voices (`tools/voice/cast.json` roles with
+  `pool: { sex, age }`, age `kid` for the children; the game picks one by the person's sex, age and
+  seed, `voice.voiceFor`).
   A new shared table needs its `@voice` tag. After editing a line: `make voice DRY=1`, then
   `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
   take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 30 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
   console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (522 lines, 16 665 chars on
-  2026-10-14 with Anita's grief; with the pool 1 327 lines, 1 263 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  2026-10-14 with Anita's grief; with the pool and the children's voices 1 384 lines, 1 383 clips on
+  2026-10-15). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
   retry: < 5 % cut off, no two voices at once; `TO=7` all seven days; `LUFTSKIP=s`: the
-  reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line). Every headless tool
+  reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line; a
+  child a kid voice of their sex; a child's, Sara's and Nasanin's line said as a clip), `barnroster`
+  (Sara and Nasanin on camera: their lines as clips, not cut, the jaw following them; close-ups
+  `barn_*.png`; one of them chats by herself, as a clip). Every headless tool
   starts Chrome with `--mute-audio`: never play sound on the speakers.
 - Test mode is `?test=1` (no title, no pointer lock, dialogue auto-advances, no automatic phone
   calls unless `&calls`, no wait between story days unless `&gate`). `&fresh` ignores the save,

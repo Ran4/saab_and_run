@@ -8,16 +8,25 @@
 //        what it would cost. --all ignores cast.json's scope. --prune removes clips no line uses.
 //   node tools/voice/voice.mjs check         no requests: lines without a clip, orphans; exit 1 if
 //                                             anything in scope is missing (a test can run it)
-//   node tools/voice/voice.mjs reprocess     redo trimming, loudness, lip curves from .cache (free)
+//   node tools/voice/voice.mjs reprocess [--who a,b]   redo trimming, shift, loudness, lip curves
+//                                             from .cache (free)
 //   node tools/voice/voice.mjs qc [--all]    listen to the takes in use that have no verdict (--all:
 //                                             every one again; free): qc.json
+//   node tools/voice/voice.mjs hear [--who a,b]   listen to the clips as the game plays them
+//                                             (after the shift: pitch and words; free, nothing kept)
 //   node tools/voice/voice.mjs manifest      just rewrite assets/voice/index.json
 //   node tools/voice/voice.mjs cast <who> [--search n] [--design] [--rounds n]
 //        auditions: each Voice Library candidate in cast.json says the role's preview text (and
-//        --design: Voice Design candidates); measured, for the review page (make voice-review)
+//        --design: Voice Design candidates); measured, for the review page (make voice-review). A
+//        candidate already auditioned for another role is copied from there (its text; no request).
 //   node tools/voice/voice.mjs choose <who> <voice_id | design:<generated_voice_id> | none>
 //
-// The files: tools/voice/cast.json (the roles: voice, settings, candidates, scope), lines.json
+// The children (features/implemented/barnroster.md): ElevenLabs makes no child voices, so a child's
+// role has an adult voice and a "shift": { pitch, formant } in cast.json, and the processing raises
+// the take by those factors (tools/voice/shift.py: Praat), its length kept (the times and the lip
+// curve still fit). A changed shift needs no request: reprocess --who <role>; `cast <role>` makes the
+// auditions as the role would sound (raised).
+// The files: tools/voice/cast.json (the roles: voice, settings, shift, candidates, scope), lines.json
 // (direction per line: { who: { text: { tts, retake, locked, hash, note, lufs } } }), qc.json (what
 // the recogniser heard, per clip), .cache/voice/ (raw takes and auditions: not checked in).
 // A clip's name is a hash of who, the spoken text, the voice, model, settings and retake number, and
@@ -119,11 +128,11 @@ const alias = (t) => LEX.reduce((s, [re, a]) => s.replace(re, a), t);
 // voiceFor: sex, age, their own seed), so every voice a person can have needs the line.
 //   ped       adults 19-64: the pool's young (19-34; teens too) and mid (35-64) voices
 //   ped_teen  13-18: the young voices          ped_old   65+: the old voices
-//   ped_kid   children: no voices (they murmur and giggle, 4.4 c)
-//   driver    anyone at a wheel (randomPed: any age): every pool voice
+//   ped_kid   children (under 13): the kid voices (adult voices raised: "shift", barnroster.md)
+//   driver    anyone at a wheel (randomPed: any age): every grown-up pool voice
 //   window    someone in a house: the mid and old voices
 //   cast      every neighbour (not Ove; not the extras' roles: "extra": true); a role key: that role
-export const POOL_AGES = { ped: ['young', 'mid'], ped_teen: ['young'], ped_old: ['old'], ped_kid: [], driver: ['young', 'mid', 'old'], window: ['mid', 'old'] };
+export const POOL_AGES = { ped: ['young', 'mid'], ped_teen: ['young'], ped_old: ['old'], ped_kid: ['kid'], driver: ['young', 'mid', 'old'], window: ['mid', 'old'] };
 function tagsOf(script, src) {
   const by = new Map();
   // (the tagged tables are plain pools of text: no WHEN tags in them)
@@ -140,13 +149,13 @@ export function speakersFor(who, text, tags) {
   const out = new Set();
   for (const t of tags.get(text) || [who]) {
     if (t === 'cast') cast.forEach((k) => out.add(k));
-    else if (conf.roles[t]) out.add(t);   // (a role: a neighbour, or 'ped_kid', mumbled)
+    else if (conf.roles[t]) out.add(t);   // (a role: a neighbour)
     else if (POOL_AGES[t]) for (const [k, r] of pool) { if (POOL_AGES[t].includes(r.pool.age)) out.add(k); }
   }
   // (a speaker nobody knows stays in the plan as itself: "no voice", never silently gone)
   return out.size || POOL_AGES[who] ? [...out] : [who];
 }
-// The pool as the game reads it (index.json _pool): { 'f_young': [keys], ... }.
+// The pool as the game reads it (index.json _pool): { 'f_young': [keys], ..., 'm_kid': [keys] }.
 export function poolGroups() {
   const g = {};
   for (const [k, r] of Object.entries(conf.roles)) if (r.pool && r.voice_id) (g[`${r.pool.sex}_${r.pool.age}`] ||= []).push(k);
@@ -263,16 +272,32 @@ function charTimes(text, spoken, al, shift) {
   return out;
 }
 
+// A child's role (cast.json "shift": { pitch, formant }): tools/voice/shift.py (Praat's Change gender,
+// PSOLA) raises the take's pitch by `pitch` and its formants by `formant`, its length kept to the
+// sample, so the character times and the lip curve still fit. (ffmpeg's rubberband was tried first: at
+// the same pitch the recogniser misheard more than twice as many of Sara's lines.) A wav in, a wav out.
+export function shiftWav(src, dst, shift) {
+  const r = spawnSync('uv', ['run', '--quiet', path.join(DIR, 'shift.py')], { input: JSON.stringify({ src, dst, pitch: shift.pitch ?? 1, formant: shift.formant ?? 1 }) + '\n', encoding: 'utf8', cwd: ROOT });
+  if (r.status !== 0 || !fs.existsSync(dst)) throw new Error('shift.py failed: ' + (r.stderr || '').slice(-600));
+}
+
 const lufsTarget = (l) => direction[l.who]?.[l.text]?.lufs ?? conf.roles[l.who]?.lufs ?? conf.lufs ?? -20;
 function processTake(l) {
   const raw = path.join(RAW, l.who, l.hash + '.mp3'), al = readJson(path.join(RAW, l.who, l.hash + '.json'), {}).alignment;
   const pcm = decode(raw);
   const [a, b] = speechBounds(pcm);
-  const seg = pcm.subarray(Math.floor(a * SR), Math.floor(b * SR));
+  let seg = pcm.subarray(Math.floor(a * SR), Math.floor(b * SR));
   // (in memory where there is a /dev/shm: nothing on a disk that may be full)
   const tmp = path.join(fs.existsSync('/dev/shm') ? '/dev/shm' : CACHE, `saab-voice-${process.pid}-${l.hash}.wav`);
   fs.mkdirSync(CACHE, { recursive: true });
   writeWav(tmp, seg);
+  const shift = conf.roles[l.who]?.shift;
+  if (shift) {
+    const raised = tmp.replace(/\.wav$/, '-shift.wav');
+    shiftWav(tmp, raised, shift);
+    fs.renameSync(raised, tmp);
+    seg = decode(tmp);
+  }
   const i = lufsOf(tmp), gainDb = i == null ? 0 : lufsTarget(l) - i;
   const out = path.join(OUT, l.file);
   fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -470,10 +495,31 @@ async function requalify() {
   for (const l of lines) if (qc[l.hash].verdict !== 'ok') console.log(`  ${qc[l.hash].verdict} (${qc[l.hash].flags.join(', ') || 'short line'}; heard "${qc[l.hash].heard}"): ${l.who} "${l.text}"`);
 }
 
+// Listen to the clips in use as the game plays them (assets/voice/: after the shift), per role: the
+// pitch, and whether the recogniser still understands the longer lines, against the same takes before
+// the processing (qc.json). No requests, nothing written.
+async function hear() {
+  const only = opt('--who')?.split(','), qc = readJson(QCF, {});
+  const lines = (await plan()).filter((l) => l.have && (!only || only.includes(l.who)));
+  const got = analyze(lines.map((l) => ({ file: path.join(OUT, l.file), text: l.spoken })));
+  const by = {};
+  for (const [k, l] of lines.entries()) (by[l.who] ||= []).push({ l, a: got[k] });
+  const q = (v, p) => { v = v.filter((x) => x != null).sort((x, y) => x - y); return v.length ? v[Math.round(p * (v.length - 1))] : null; };
+  const mean = (v) => (v.length ? Math.round(v.reduce((s, x) => s + x, 0) / v.length * 1000) / 1000 : null);
+  for (const [who, r] of Object.entries(by)) {
+    const f0 = r.map(({ a }) => a.f0), long = r.filter(({ l }) => !short(l.spoken)), sh = conf.roles[who]?.shift;
+    // (the pitch analysis stops at 600 Hz and a child's shout goes over it: the takes' pitch times the
+    // shift is the surer figure)
+    const src = q(r.map(({ l }) => qc[l.hash]?.f0), 0.5);
+    console.log(`${who.padEnd(14)} ${String(r.length).padStart(3)} clips  pitch ${q(f0, 0.5)} Hz (lines ${q(f0, 0.1)}-${q(f0, 0.9)}${sh && src ? `; the takes ${src} Hz × ${sh.pitch} = ${Math.round(src * sh.pitch)}` : ''})  understood ${long.filter(({ a }) => a.wer <= 0.25).length}/${long.length} longer lines, WER ${mean(long.map(({ a }) => a.wer))} (before the processing ${mean(long.map(({ l }) => qc[l.hash]?.wer).filter((x) => x != null))})${sh ? `  shift pitch ×${sh.pitch} formant ×${sh.formant}` : ''}`);
+    for (const { l, a } of long) if (a.wer > 0.25) console.log(`    heard "${a.heard}" for "${l.text}" (WER ${a.wer})`);
+  }
+}
+
 async function reprocess() {
-  const lines = await plan();
+  const lines = await plan(), only = opt('--who')?.split(',');
   let n = 0;
-  for (const l of lines) if (l.hash && fs.existsSync(path.join(RAW, l.who, l.hash + '.mp3'))) { processTake(l); l.have = true; n++; }
+  for (const l of lines) if (l.hash && (!only || only.includes(l.who)) && fs.existsSync(path.join(RAW, l.who, l.hash + '.mp3'))) { processTake(l); l.have = true; n++; }
   writeManifest(lines);
   console.log(`reprocessed ${n} clips`);
 }
@@ -514,15 +560,41 @@ async function cast(who) {
   fs.mkdirSync(dir, { recursive: true });
   const list = readJson(idx, []);
   let spent = 0;
-  for (const c of role.candidates || []) {
-    const file = path.join(dir, c.voice_id + '.mp3');
-    if (!fs.existsSync(file)) {
-      const { r, cost } = await api(`/v1/text-to-speech/${c.voice_id}?output_format=mp3_44100_128`, { text, model_id: conf.model, language_code: conf.language, voice_settings: conf.settings, seed: 1 }, { accept: 'audio/mpeg' });
-      fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
-      spent += cost ?? 0;
-      console.log(`${who}: ${c.name} said ${text.length} chars (cost ${cost ?? '?'})`);
+  // (a voice already auditioned for another role, a pool's free Voice Library preview say, is copied
+  // from there rather than asked for again; a shifted role's audition is the voice as it will sound,
+  // raised from the adult one, `adult`, again whenever the role's shift changes)
+  const elsewhere = (id) => {
+    for (const d of fs.readdirSync(CASTDIR)) {
+      const x = d !== who && readJson(path.join(CASTDIR, d, 'index.json'), []).find((y) => y.id === id);
+      if (x && fs.existsSync(path.join(ROOT, x.adult || x.file))) return { ...x, from: d };
     }
-    if (!list.some((x) => x.id === c.voice_id)) list.push({ id: c.voice_id, kind: 'library', name: c.name, accent: c.accent, age: c.age, lang: c.lang, file: rel(file), text });
+    return null;
+  };
+  for (const c of role.candidates || []) {
+    const file = path.join(dir, c.voice_id + '.mp3'), plain = role.shift ? path.join(dir, c.voice_id + '.adult.mp3') : file;
+    let entry = list.find((x) => x.id === c.voice_id);
+    if (!fs.existsSync(plain)) {
+      const src = elsewhere(c.voice_id);
+      if (src) {
+        fs.copyFileSync(path.join(ROOT, src.adult || src.file), plain);
+        console.log(`${who}: ${c.name}: the audition made for ${src.from} (no request)`);
+        if (!entry) list.push(entry = { id: c.voice_id, kind: src.kind, name: c.name, accent: c.accent, age: c.age, lang: c.lang, file: rel(file), text: src.text });
+      } else {
+        const { r, cost } = await api(`/v1/text-to-speech/${c.voice_id}?output_format=mp3_44100_128`, { text, model_id: conf.model, language_code: conf.language, voice_settings: conf.settings, seed: 1 }, { accept: 'audio/mpeg' });
+        fs.writeFileSync(plain, Buffer.from(await r.arrayBuffer()));
+        spent += cost ?? 0;
+        console.log(`${who}: ${c.name} said ${text.length} chars (cost ${cost ?? '?'})`);
+      }
+    }
+    if (!entry) list.push(entry = { id: c.voice_id, kind: 'library', name: c.name, accent: c.accent, age: c.age, lang: c.lang, file: rel(file), text });
+    if (role.shift && (JSON.stringify(entry.shift) !== JSON.stringify(role.shift) || !fs.existsSync(file))) {
+      const a = path.join(dir, c.voice_id + '.adult.wav'), b = path.join(dir, c.voice_id + '.child.wav');
+      execFileSync('ffmpeg', ['-hide_banner', '-nostats', '-loglevel', 'error', '-y', '-i', plain, '-ac', '1', '-ar', String(SR), a]);
+      shiftWav(a, b, role.shift);
+      execFileSync('ffmpeg', ['-hide_banner', '-nostats', '-loglevel', 'error', '-y', '-i', b, '-c:a', 'libmp3lame', '-b:a', '128k', file]);
+      fs.rmSync(a); fs.rmSync(b);
+      Object.assign(entry, { adult: rel(plain), shift: role.shift, wer: null });
+    }
   }
   if (flag('--design')) {
     if (text.length < 100) throw new Error(`Voice Design needs 100+ chars of preview text (${who}: ${text.length})`);
@@ -568,6 +640,7 @@ if (isMain) {
     if (cmd === 'check') await check();
     else if (cmd === 'reprocess') await reprocess();
     else if (cmd === 'qc') await requalify();
+    else if (cmd === 'hear') await hear();
     else if (cmd === 'manifest') { writeManifest(await plan()); console.log('manifest rewritten'); }
     else if (cmd === 'cast') await cast(args[1]);
     else if (cmd === 'choose') await choose(args[1], args[2]);
