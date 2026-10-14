@@ -28,7 +28,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   uitoasts uiabort uifavicon titlegone uipause` (the pause card at 15 window sizes: run it after
   touching the pause menu or its rows), render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
   (round 2: `wheelfaces trailersleep`; the slides: `handling drift driftshot speedslide`), people.mjs
-  (round 2: `pplanim pplcine`), world.mjs (round 2: `wsame wcalls wvram wprops`), cold.mjs (the cold
+  (round 2: `pplanim pplcine`; `seatlegs`: nothing of anyone seated in a car below the cushion in
+  sight, every car model, the lower legs back on getting out: run it after touching seating, the
+  seated pose or a car's seats), world.mjs (round 2: `wsame wcalls wvram wprops`), cold.mjs (the cold
   beyond the town, features/implemented/avgrunden.md: `coldwalk colddrive coldback` with real keys,
   `coldrate coldmission coldwall coldbed coldbedskip`, `coldlook coldsound coldperf` (an A/B of draw
   calls and triangles with the cars and people hidden; copy cold.mjs into an old checkout); run

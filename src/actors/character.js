@@ -283,7 +283,8 @@ export class Character {
     const k = this.animStride(dt);
     this.lodEvery = k;
     this.lodAcc += dt;
-    const posed = k === 1 || ++this.lodN >= k;
+    // (into or out of a seat: posed at once, the lower legs fold away or come back with it)
+    const posed = k === 1 || ++this.lodN >= k || (!!this.model.shins && this.model.shinsIn !== a.seated);
     if (posed) { animateCharacter(this.model, a, this.lodAcc); this.lodAcc = 0; this.lodN = 0; }
     const r = this.root;
     if (this.state === 'seated') { r._skipFrom = null; return; }

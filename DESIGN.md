@@ -566,6 +566,8 @@ Added in phase 2 (details and the bone order in `notes/people.md`):
   face texture; pedestrians lod 1; busts lod 2 body + lod 1 head.
 - Seating: a seated character's root goes at `car.seatLocal(side)` + (0, 0.12 − legLen, 0.12)
   inside `car.tilt`; a bust's origin at `car.seatLocal(1)`. Then the hands land on the wheel.
+  Seated (`st.seated`), the shins and feet are folded into the knees (bone scale 1e-4), as a bust
+  has none: the cars have no footwells, the lower legs stood on the road under them.
 - `st.kneel` (+ `st.kneelReach` 0..1) — down on one knee (Sonja's grave): the right knee on the
   ground, the left foot forward, torso upright, head bowed. By itself it goes down holding flowers,
   lays them ~0.42 m ahead of the root (~0.27 m above it) and rests the hands on the knee (~3 s);

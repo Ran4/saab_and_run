@@ -1,6 +1,5 @@
 # Gör dessa grejer (flytta filen till features/implemented/ och uppdatera den när du är klar, och
 # flytta den till "färdiga features"-sektionen nedan
-features/ben_i_marken_vid_bilkorning.md
 features/ljudbugg_vid_kold.md
 features/roligare_runeuppdrag.md
 features/fixa_kameran_vid_rorelse.md
@@ -33,3 +32,4 @@ features/implemented/fixa_outro_anita.md
 features/implemented/avgrunden.md
 features/implemented/avgrunden2.md
 features/implemented/snöhög.md
+features/implemented/ben_i_marken_vid_bilkorning.md

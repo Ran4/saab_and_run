@@ -4,7 +4,8 @@ Realistic, PBR-lit winter people for DESIGN.md §3 and §8. No cartoon heads, no
 no monsters. Look-dev page: `PORT=88xx ../browserslot node tools/pageshot.mjs tools/people.html`
 (views below); in-game checks: `PORT=88xx ../browserslot node tools/shot.mjs people pplsmash peopledrive`
 (`tools/scenarios/people.mjs`; also `pplperf`, `pplkneel`, and since p4r2 `pplanim` (the animation LOD,
-A/B + checks) and `pplcine` (dialogue shots stay at level 0)).
+A/B + checks) and `pplcine` (dialogue shots stay at level 0), and `seatlegs` (nothing of a seated
+person below the cushion in sight, every car model; feature ben_i_marken_vid_bilkorning)).
 
 Phase 4, round 2 (the whole-game review's last fix round): see "Phase 4, round 2" below — close-up
 clothing and hair (scarves rebuilt as a knit band wound twice round the neck with folds, a knot and a
@@ -237,7 +238,7 @@ measurements), **`headP`** (head parameters), `d` (normalised def), `squash`, `p
 | **`kneel`** (+ `kneelReach`) (round 4) | down on one knee (Sonja's grave): the right knee on the ground, its shin and foot lying behind, the left foot planted forward, the torso upright, the head bowed, the eyes down (a small nod while `talk`). Without `kneelReach` an automatic sequence from the moment `kneel` is set: going down holding the flowers at the waist (~0.5 s), leaning in and laying them on the ground ~0.42 m (× height/1.78) ahead of the root, ~0.27 m above it (0.6–2.3 s), straightening up with the hands resting on the forward knee (from ~2.9 s). `kneelReach` (0..1) drives the reach by hand (0 = resting, 1 = laying). `kneelPoint(m)` = the bouquet (between the hands). Whole body; blends in/out over ~0.5 s. (feature luftning_borde_vara_en_scen) A scene may place the hands itself: `st.hands = [right, left]`, each null (as above) or `{ p: [x, y, z], fd, pn, shape, pole }` in body space (y above the soles, z ahead, x to the left; the fingers' direction, the palm's normal, a `HANDS` shape, the elbow's pole), `st.lean` (rad, the back further in), `st.head` (`[neck pitch, neck yaw, head roll]` added) — day 3's radiator (game/luftning.js) |
 | `phone` | the phone at the right ear: its top at the ear canal, the fingers up its back, the palm towards the cheek (cast with `'phone'` in `props` show the phone) |
 | `push` | both hands grip the wheelchair's push handles (0.75 m ahead of the root, ~0.95 m up) |
-| `seated` + `driving` | seated; `driving` = hands gripping the car's wheel rim at ten to two, palms towards the rim (the wheel of carmodels' `interior()`: 0.5 m above / ahead of the seat point, radius 0.19, tilted 0.45 rad); else hands relaxed on the thighs |
+| `seated` + `driving` | seated; `driving` = hands gripping the car's wheel rim at ten to two, palms towards the rim (the wheel of carmodels' `interior()`: 0.5 m above / ahead of the seat point, radius 0.19, tilted 0.45 rad); else hands relaxed on the thighs. **No lower legs** (feature ben_i_marken_vid_bilkorning): while `seated` the shin bones are scaled to 1e-4, so the shins and feet fold into the knees, like a bust's (the car seats sit ~0.35 m above the road in shells without footwells: the lower legs went through the floor and stood on the road under the car). Not smoothed, it cuts with the seat; `m.shinsIn` = what the last pose did, and `Character.sync` poses at once when it no longer matches `seated` (getting in or out, whatever the animation LOD) |
 | `flung` + `flungT` | knocked over backwards, limbs loose |
 | `down` + `downLeft` | lying on the back; in the last 1.3 s gets up: sit up → one knee → stand |
 | `look`, `spin`, `yell` | neck yaw / old air spin / jaw open |
@@ -466,7 +467,8 @@ Round 2:
   same yaw; the hands land on his push handles).
 - **Seating rule** (main.js already does this): root = `car.seatLocal(side)` + (0, 0.12 − legLen,
   0.12) in the car's frame, rotation 0; busts at `car.seatLocal(1)`. In the Saab Ove's hands are on
-  the wheel (`peopledrive`).
+  the wheel (`peopledrive`). Seated, a character has no shins or feet (`anim.seated` folds them into
+  the knees; `seatlegs` checks every car model from low views on both sides).
 - The cat: `cat.sit(true)` for a cat that waits (mission 4); `animate(dt, speed)` otherwise.
 - Pocket style, rollator/stick, pregnant idle hand, blinking — all automatic.
 - NPC strolls look best at 1.2–2.2 m/s (planted feet; 3.2 m/s is a power walk, 5.5 a run).
@@ -693,7 +695,8 @@ bones by CORE position); `buildCharacter` now sorts the core bones first. Bald m
   k = 1 within `ANIM_LOD.off` (12 m) of the camera or when dt is 0 (a snap) or on the frame after a
   level-of-detail switch, k = 4 off screen (a sphere test against the last rendered frustum) or
   hidden beyond 12 m, k = 2 on screen beyond `ANIM_LOD.near` (30 m), 4 for seated people in cars
-  beyond 30 m. Who skips which frame is staggered. Never Ove (`animLod` false).
+  beyond 30 m. Who skips which frame is staggered. Never Ove (`animLod` false). Posed at once,
+  whatever k, on the frame someone gets into or out of a seat (the lower legs fold away with it).
 - On a frame without a new pose the root's whole matrix update is skipped as well:
   `buildCharacter` gives every root an `updateMatrixWorld` that returns early while `root._skipFrom`
   is its parent and its world matrix still sits within 25 cm of its position (a portrait reparents

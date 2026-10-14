@@ -3808,6 +3808,12 @@ export function animateCharacter(m, st, dt) {
     m.casters[0].rotation.x = m.casters[1].rotation.x = m.wheelAng * 4.6;
   }
   if (m.aid) vis(m.aid, !st.seated);
+  // in a car seat the shins and feet are folded away into the knees (a bust has none either): the
+  // seats sit low in the cars' shells, which have no footwells, so the lower legs went through the
+  // floor and stood on the road under the car (features/implemented/ben_i_marken_vid_bilkorning.md).
+  // Not smoothed: in and out of a seat is a cut. m.shinsIn: what this pose did (Character.sync).
+  m.shinsIn = !!st.seated;
+  vis(m.shins[0], !st.seated); vis(m.shins[1], !st.seated);
   // blinking (lod 0): every 2-6 s, ~0.2 s, now and then twice; the lids drop when looking down
   if (m.lids) {
     m.blinkT -= dt;

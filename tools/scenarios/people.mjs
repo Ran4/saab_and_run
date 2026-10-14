@@ -9,6 +9,8 @@
 //              (QUERY='&farevery=1' for steady shadow numbers: the far cascade every frame).
 // pplanim:     the animation level of detail A/B (character.js ANIM_LOD) with its checks.
 // pplcine:     a dialogue shot keeps its speakers and near extras at level 0 (the mid LOD's check).
+// seatlegs:    every car model with people seated in it, low views: nothing of them below the cushion
+//              in sight (the folded lower legs), and the legs back on getting out.
 export default ({ page, ev, shot, frames, fps }) => {
   // Freeze the camera rig and aim the camera (world coordinates); hide the HUD.
   const camAt = (at, look, fov = 35) => ev(([at, look, fov]) => {
@@ -390,6 +392,165 @@ export default ({ page, ev, shot, frames, fps }) => {
       console.log('[t] bust car', JSON.stringify(t));
       await frames(4);
       await shot('ppl_drive_bust');
+    },
+
+    // The legs of people sitting in cars (features/implemented/ben_i_marken_vid_bilkorning.md): every
+    // car model in turn on the same empty street, a traffic bust at the wheel and neighbours beside and
+    // behind it (Ove at the wheel of the Saab, Rune in the Volvo 240), seen low from both sides and
+    // from the front and rear corners (ppl_seat_<model>_<view>.png: L = the driver's side, Lg / Rg at
+    // the road).
+    // Check: nothing of a seated person below the seat cushion can be seen from any of those views (a
+    // ray from each such vertex to the lens meets the car's body; the wheels, drawn apart, don't
+    // count); the lowest point of each is logged against the cushion. Failures are console errors.
+    async seatlegs() {
+      await frames(20);
+      const start = await ev(() => {
+        const g = __game;
+        // an empty street: traffic out and none coming back, the camera ours
+        g.recycleTraffic = function () {};
+        for (const c of g.cars.slice()) if (c.traffic) g.removeCar(c);
+        g.hideNearCamera = function () {};
+        g.cam.update = function () {};
+        g.hideHud = true; document.getElementById('hud').style.display = 'none';
+        // a straight stretch of a north-south street (centre lines at x = 40 + k * 80), on its centre
+        // line (room for a lens on either side), away from the parked cars
+        let best = null;
+        for (const k of [0, -1, 1, -2, 2]) for (const z of [-30, 30, -110, 110]) {
+          const x = 40 + k * 80;
+          if (best) break;
+          let ok = true;
+          for (const c of g.cars) if (Math.abs(c.x - x) < 12 && Math.abs(c.z - z) < 18) ok = false;
+          if (ok && g.spotFree(x, z)) best = { x, z };
+        }
+        window.__seatAt = best;
+        return best;
+      });
+      console.log('[t] seat street', JSON.stringify(start));
+      const CARS = [
+        { type: 'volvo240', fp: 'parvaneh', rl: 'rune', rr: 'nasanin' },
+        { type: 'volvo740', fp: 'parvaneh', rl: 'jimmy', rr: 'sara' },
+        { type: 'audi', drv: 'anders', fp: 'parvaneh', rl: 'jimmy' },
+        { type: 'bmw', fp: 'parvaneh', rl: 'patrick' },
+        { type: 'skoda', drv: 'patrick', fp: 'parvaneh', rl: 'jimmy' },
+        { type: 'golf', fp: 'parvaneh', rl: 'anita' },
+        { type: 'kombi', fp: 'parvaneh', rl: 'jimmy' },
+        { type: 'taxi', fp: 'parvaneh', rl: 'adrian' },
+        { type: 'van', fp: 'parvaneh' },
+        { type: 'bus', fp: 'parvaneh' },
+        { type: 'garbage', fp: 'parvaneh' },
+        { type: 'saab900', drv: 'ove', fp: 'parvaneh' },
+      ];
+      const fails = [];
+      for (const cfg of CARS) {
+        await ev(async (cfg) => {
+          const g = __game, at = window.__seatAt;
+          const { Car } = await import('/src/actors/car.js');
+          const { randomPed } = await import('/src/actors/models.js');
+          if (window.__seatCar) {
+            if (g.playerCar === window.__seatCar) { g.exitCar(true); g.player.teleport(at.x + 20, at.z - 25); }
+            g.removeCar(window.__seatCar);
+            window.__seatCar = null;
+          }
+          const car = new Car(cfg.type, { engineOn: false });
+          const len = car.spec.len;
+          car.place(at.x, at.z + Math.max(0, len - 5) * 0.3, 0);
+          g.addCar(car);
+          window.__seatCar = car;
+          if (cfg.drv === 'ove') g.enterCar(car);
+          else if (cfg.drv) g.seat(g.npc(cfg.drv), car, 1);
+          else g.addBust(randomPed(() => 0.37), car);
+          const sides = { fp: -1, rl: 2, rr: -2 };
+          for (const k of ['fp', 'rl', 'rr']) if (cfg[k] && (Math.abs(sides[k]) < 2 || car.model.rear)) g.seat(g.npc(cfg[k]), car, sides[k]);
+          car.ctrl.park = true;
+        }, cfg);
+        await frames(30);
+        // low views round the car (forward = +z, the driver's side = +x): both sides at knee height
+        // and at the road (Lg, Rg: under the sills), the front-left and rear-right corners
+        const VIEWS = [['L', 1, 0, 3.5, 0.45], ['R', -1, 0, 3.5, 0.45], ['FL', 0.75, 0.75, 4.5, 0.6], ['RR', -0.75, -0.75, 4.5, 0.6], ['Lg', 1, 0, 3, 0.12], ['Rg', -1, 0, 3, 0.12]];
+        const cams = await ev((VIEWS) => {
+          const car = window.__seatCar, s = car.spec;
+          const out = [];
+          for (const [name, lx, lz, d, h] of VIEWS) {
+            const k = d + Math.max(s.wid, s.len * Math.hypot(lz, 0)) / 2;
+            out.push({ name, pos: [car.x + lx * k, car.y + h, car.z + lz * (k + (lz ? s.len * 0.25 : 0))], look: [car.x, car.y + 0.5, car.z] });
+          }
+          return out;
+        }, VIEWS);
+        // the check: the vertices of everyone seated that lie below the cushion, rays to each lens
+        const chk = await ev(async (cams) => {
+          const THREE = await import('three');
+          const g = __game, car = window.__seatCar;
+          car.root.updateMatrixWorld(true);
+          const occl = [car.body, car.snowCap].filter(Boolean);
+          const inv = new THREE.Matrix4().copy(car.tilt.matrixWorld).invert();
+          const people = [];
+          if (car.driverBust) people.push({ who: 'bust', mesh: car.driverBust.children[0], skinned: false });
+          // (a vertex wholly on bones scaled away - the folded shins, Rune's wheelchair - is drawn as
+          // nothing: degenerate triangles)
+          const gone = (m) => { const r = m.matrixWorld.determinant(); return m.skeleton.bones.map((b) => Math.abs(b.matrixWorld.determinant() / r) < 1e-6); };
+          for (const p of [car.driver, ...car.passengers]) if (p) { p.sync(0); p.root.updateMatrixWorld(true); people.push({ who: p.key || 'ove', mesh: p.model.mesh, skinned: true }); }
+          const rc = new THREE.Raycaster(), v = new THREE.Vector3(), l = new THREE.Vector3(), dir = new THREE.Vector3(), cp = new THREE.Vector3();
+          const res = [];
+          for (const P of people) {
+            const m = P.mesh, pos = m.geometry.attributes.position;
+            if (P.skinned) m.skeleton.update();
+            const G = P.skinned ? gone(m) : null, si = m.geometry.attributes.skinIndex, sw = m.geometry.attributes.skinWeight;
+            let minY = 1e9;
+            const low = [];
+            for (let i = 0; i < pos.count; i++) {
+              if (G) { let w = 0; for (let k = 0; k < 4; k++) if (G[si.getComponent(i, k)]) w += sw.getComponent(i, k); if (w > 0.999) continue; }
+              if (P.skinned) m.getVertexPosition(i, v); else v.fromBufferAttribute(pos, i);
+              v.applyMatrix4(m.matrixWorld);
+              l.copy(v).applyMatrix4(inv);
+              minY = Math.min(minY, l.y);
+              if (l.y < car.model.seat[1] - 0.005) low.push(v.clone());
+            }
+            const vis = {};
+            for (const c of cams) {
+              cp.set(...c.pos);
+              let n = 0;
+              // (from the lens to the vertex: the body's faces are one-sided, seen from outside)
+              for (let i = 0; i < low.length; i += 2) {
+                dir.copy(low[i]).sub(cp);
+                const d = dir.length(); dir.normalize();
+                rc.set(cp, dir); rc.near = 0; rc.far = d - 0.003;
+                if (!rc.intersectObjects(occl, false).length) n++;
+              }
+              vis[c.name] = n;
+            }
+            res.push({ who: P.who, below: +(minY - car.model.seat[1]).toFixed(2), low: low.length, vis });
+          }
+          return res;
+        }, cams);
+        console.log('[t] seat', cfg.type.padEnd(9), JSON.stringify(chk));
+        for (const q of chk) if (Object.values(q.vis).some((n) => n > 0)) fails.push('below the seat and in sight: ' + cfg.type + ' ' + q.who + ' ' + JSON.stringify(q.vis));
+        const names = [];
+        for (const c of cams) {
+          await ev((c) => { const cam = __game.cam.cam; cam.position.set(...c.pos); cam.lookAt(...c.look); cam.fov = 40; cam.updateProjectionMatrix(); }, c);
+          await frames(3);
+          const n = 'ppl_seat_' + cfg.type + '_' + c.name;
+          await shot(n);
+          names.push(n);
+        }
+        console.log('[t] seatshots', JSON.stringify({ type: cfg.type, names }));
+      }
+      // out again: the lower legs are back on the first frame (posed at once, whatever the animation
+      // level of detail), for Ove and for someone getting out 150 m from the lens (posed every 4th)
+      const back = await ev(async () => {
+        const g = __game, car = window.__seatCar, pv = g.npc('parvaneh'), an = g.npc('anita');
+        const cam = g.cam.cam;
+        g.seat(an, car, 2);
+        cam.position.set(car.x + 150, car.y + 2, car.z); cam.lookAt(car.x + 200, car.y + 2, car.z);
+        for (let i = 0; i < 12; i++) await new Promise(requestAnimationFrame);
+        const stride = an.lodEvery;
+        g.exitCar(true); g.unseat(pv); g.unseat(an);
+        await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
+        return { stride, ...Object.fromEntries([['ove', g.player], ['parvaneh', pv], ['anita', an]].map(([k, c]) => [k, c.model.shins.map((s) => s.scale.x)])) };
+      });
+      console.log('[t] seat out', JSON.stringify(back));
+      for (const k of ['ove', 'parvaneh', 'anita']) if (back[k].some((s) => s !== 1)) fails.push(k + ' got out without the lower legs');
+      for (const f of fails) await ev((f) => console.error('seatlegs: ' + f), f);
+      console.log('[t] seatlegs', fails.length ? fails.length + ' failed' : 'all hidden');
     },
   };
 };
