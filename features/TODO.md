@@ -8,6 +8,7 @@ features/sno_pa_bilar.md
 features/barnroster.md
 features/snotraktor.md
 features/se_pa_trinkets.md
+features/smaprat.md
 features/snöspår.md
 features/snubbla_vid_hopp.md
 features/p-skiva.md
@@ -15,6 +16,7 @@ features/gungorna_saknar_linor.md
 features/bussen_ar_inte_en_bil.md
 
 # Vänta med dessa tills spelaren säger till
+features/nya_satt_att_interagera_med_omgivningen.md
 
 # Färdiga features
 features/implemented/oves_ganganimation.md

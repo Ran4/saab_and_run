@@ -57,7 +57,7 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `pool: { sex, age }`; the game picks one by the person's sex, age and seed, `voice.voiceFor`).
   A new shared table needs its `@voice` tag. After editing a line: `make voice DRY=1`, then
   `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
-  take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 16 000 chars and ≲ 25
+  take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 30 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
   console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (495 lines, 15 488 chars on
   2026-10-11 with the five WAKE lines; with the pool 1 300 lines, 1 236 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
