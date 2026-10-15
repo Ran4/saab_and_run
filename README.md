@@ -228,6 +228,7 @@ src/game/rune.js           Runes rullstol som rullar själv, hans död på ären
 src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, anteckna, hämta, skjutsa, jaga...)
 src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
 src/game/hoppbacke.js      hoppen från hoppbacken: snöpudret, ljuden, Oves anteckning och rekord, vad alla säger
+src/game/tracks.js         spår i snön: fotspår och hjulspår (bilar, släpkärran, rullstolen), borta en ny dag
 src/game/collection.js     Oves samling: anteckningarna om emblemen, Sonjas sju fotografier (ritade, samma bild i
                            världen och i pausmenyns album) och emblemet som albumet visar det
 src/game/missions.js       de sju dagarna och uppdragskörningen

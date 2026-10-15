@@ -771,7 +771,12 @@ colour). town.js / batch.js are the rendering fixer's (props.js uses `StaticBatc
   snow banks and plowed piles on top as 'snow'); roads 'asphalt', off the grid 'snow', anything
   else inside the grid 'paving'. `buildTown` sets **`fx.surfaceAt = surfaceAt`**, so car grip
   (`car.js` `onSnow`) and skid marks use it now; main.js's own `Game.surfaceAt` (footsteps) can just
-  call it. ~0.5 µs per call (8 m grid of footprints).
+  call it. ~0.5 µs per call (8 m grid of footprints). Feature snöspår: **`surfaceHit`** (surface.js)
+  holds what the last call found: `y` = that piece's registered height (its visible top: lawns at CURB
+  + 0.015, a cm or two over the collision ground; snow banks and piles register at 1 m) and `raw` = the
+  name it was registered with ('grass', 'ice', ...), both null off the registry. game/tracks.js lays
+  its prints and ruts at `y` (and leaves ground registered as 'ice' alone, which the tyres count as
+  snow).
 - **`roadNames`** (data.js, re-exported by town.js): `{ ns: [8], ew: [8], at(x, z) }` — exactly the
   lists patrol.js uses (ns[i] = the road along z at x = rc(i), ew[j] = the road along x at
   z = rc(j); ew[3] = 'Solrosvägen' = the bus stop's name). Every junction now has a street-name

@@ -315,6 +315,25 @@ pensioners shake their fists; lines they already say), and a neighbour within 60
 "Hej, Ove."). It costs no Ordning. A sign at its foot: "Pulkaåkning sker på egen risk" / "Motortrafik
 förbjuden".
 
+### 4.10 Tracks in the snow (`src/game/tracks.js`, feature snöspår)
+Whoever walks on snow leaves footprints, whatever rolls on it leaves ruts: Ove and the people near
+the camera (70 m), every car near it (100 m) and the one Ove drives, a trailer, Rune's wheelchair (its
+big wheels and its casters), the snow tractor (big chevron lugs). Snow is what `surfaceAt` calls snow
+(lawns, the park, the snow hills, the fields and beyond the town), not ice; nothing on
+asphalt, paving or gravel, on a bench or a car roof, nor in the air. A print per step, where the foot
+stands as it is planted (the foot bone early in its stance), both feet on a landing; its size
+and sole from the person's shoes (winter boots: lugs; sneakers: waves; shoes: a separate heel), ~4 cm
+deep for an adult, shallower for a child, deeper running. A rut per wheel, the width of its tyre, ~5.5
+cm deep, a segment every 0.45 m with mitred joints, the last one stretched to the wheel each frame; a
+tyre sliding sideways smears a wider band (the old pale skid decal is no longer drawn on snow). They
+stay until a new day dawns (`missions.updateGate` calls `game.tracks.clear()`), or until the ring they
+are in comes round: Ove's prints and his car's ruts (~560 m walking, ~500 m driving on snow) apart
+from everybody else's, the oldest fading out first. Not saved. Out in the cold's blizzard new ones
+fill in with blown snow (`fx.blowAmount`: ~40 s at its height). API: `tracks.init(scene)`,
+`tracks.update(game, dt)` (main.js, after `syncAll`), `tracks.clear()`, `tracks.on` (`&notracks`: none
+made, the skid decal on snow back), for tests `tracks.stats()`, `feetList(ring)`, `rutList(ring)`,
+`meshes()`, `debugFill(x, z, r)`; `window.__tracks`. Rendering: 10.5.
+
 ## 5. Story — seven days (`src/game/missions.js`)
 
 Each day: a giver NPC at a landmark (amber marker over the head, E to talk), intro dialogue in the
@@ -976,6 +995,22 @@ Unknown names fall back to `plain`. `SURFACES` (exported) holds the table (scale
   surface's spruce stands and bare patches show only from beyond ~100 m (fading in 70-170 m): close
   by, where Ove can walk now, it is plain snow.
 
+- **Tracks in the snow** (game/tracks.js, 4.10): two transparent meshes (prints: an
+  InstancedBufferGeometry of quads; ruts: a ribbon of four-vertex segments) drawn with a unique copy of
+  the `'snow'` surface material (its texture, drifts and sparkle in world coordinates like the ground
+  under them, `vertexColors` off, colour = the surface's), patched in its `onBeforeCompile` after
+  `surfaceCompile`: a height function per fragment (the sole's outline, walls, a crumbly rim, the
+  pattern; a tyre's bottom, shoulders, berms, tread) bends the normal by its slope; the sky and its
+  reflection see a normal bent most of the way back up (`geometryNormal` before
+  `lights_fragment_maps`: a wall facing the bright horizon sees the opposite wall) with a little
+  occlusion in the bottom; a 7-step march towards the sun over the same function shadows the sun's
+  light only (`RE_Direct` wrapped: the low sun fills a 4 cm print with shade). Alpha fades over the
+  rim / berm, the rings' oldest, a fill-in and 90-140 m away. `polygonOffset`, `renderOrder` 1.05 /
+  1.1, `userData.noAO` (no shadow or AO pre-pass), receive shadows. If gfx.js renames the chunks it
+  patches (`#define GAME_SURF 1`, `#define RE_Direct RE_Direct_Game\n#endif`), tracks.js logs
+  'tracks: shader chunk not found'. Cost: +2 draw calls; with every ring full in view from above
+  +0.4 ms GPU, from a chase camera nothing measurable (`snospar.mjs sposperf`).
+
 ### 10.6 Particles (`src/game/fx.js`)
 Same API as before; all lit by the sun/sky, soft (fade where they touch geometry), fogged:
 `fx.init(scene)`, `fx.tick(dt)`, `fx.spawn(x, y, z, color, { vx, vy, vz, s0, s1, life, drag,
@@ -988,7 +1023,8 @@ color, n)` (pickups: tiny additive glints - a pinpoint with a thin four-point st
 tinted by the colour), `fx.sparks(x, y, z, n)` (hot streaks that bounce), `fx.shame(x, y, z,
 n)` (neutral puff now), `fx.splash(x, z)` (slush), `fx.skid(x, z, yaw, w, kind)` (tyre track
 decal; `kind` 'snow' = pale compressed rut, else dark rubber on asphalt; if `kind` is omitted
-`fx.surfaceAt(x, z)` is asked when the world sets it), `fx.snowfall(on, intensity)`.
+`fx.surfaceAt(x, z)` is asked when the world sets it; main.js no longer lays it on snow, where the
+ruts of game/tracks.js show a slide), `fx.snowfall(on, intensity)`.
 Puffs are procedural (no sprite texture): a ball whose edge is eaten by a per-particle noise field
 that drifts and erodes with age (billows and wisps, rotated per particle), lit like a translucent
 ball with self-shading towards the sun, softly faded where scene geometry cuts through its depth

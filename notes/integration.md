@@ -914,6 +914,38 @@ script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
   no checks); `?runedead` (tests) starts with him dead: `QUERY='&runedead' node tools/shot.mjs story`.
   gameplay.mjs `errands` takes hold with E.
 
+## Tracks in the snow (feature snöspår, features/implemented/snöspår.md)
+
+- **game/tracks.js** (`game.tracks`, `window.__tracks`): `init(scene)` after `fx.init`;
+  `update(game, dt)` every frame of `Game.update` right after `syncAll` (the people are posed, the cars
+  synced; not on the title); `clear()` from `MissionRunner.updateGate` at the dawn ("Ny dag"), the one
+  place a new day begins. Not saved: a reload starts clean.
+- **People** (Ove on foot: ring 0; peds and neighbours within 70 m of the camera: ring 1): a print as
+  each leg's phase (`model.phase`, leg 0 at u, leg 1 at u + 0.5; `STAMP_U` 0.22 into the stance) is
+  passed, at the foot bone (`foot.updateWorldMatrix(true, false)`: the sole's centre 0.26 L ahead of the
+  ankle, turned out 0.1 rad like the shoe mesh), both feet when `onGround` comes back (a jump, getting
+  out of a car). Only `state === 'normal'`, not `offstage`, not floating, moving > 0.2 m/s. Size and
+  sole from `model.D` and `model.d.shoes.type`.
+- **Wheels** (`car.wheels` at the car's yaw; a trailer's two at ±0.83 m; Rune's chair: rear ±0.3 m,
+  casters ±0.21 m ahead): a `Trail` per wheel on the object (`_trkW`), ring 0 for `game.playerCar` and
+  its trailer, ring 1 for everything else (a car changing hands starts a new trail). A trail ends where
+  the wheel leaves the snow, in the air (`car.air` / `flight`, `trailer.air`), after a jump of > 3 m
+  (placed) and at a new day. Cars asleep or beyond 100 m are skipped; one standing still costs nothing.
+- **What is snow**: `surfaceAt` 'snow' but not raw 'ice', on the ground or a snow hill (`HILL`), not
+  on another block, the decal at `surfaceHit.y` when that is the ground's visible top (lawns), else at
+  `groundAt` (+1.2 cm on a hill, whose mesh is coarser than its function; the ground's normal from
+  four samples off the flat town).
+- **main.js `updateAudio`**: the skid decal (`fx.skid`) is laid per mark where `surfaceAt` is not snow
+  (on snow the ruts show the slide, wider as the tyres go sideways); with `&notracks` as before.
+- Cost: `update` ~3 µs a frame with nothing moving on snow; a car on snow ~4 snow lookups a frame per
+  wheel (more off the flat town, for the ground's height across the rut).
+- Tests: scenarios/snospar.mjs `snospar` (real keys: prints per step, under his feet, left / right,
+  the way he walks, running, a jump, none on asphalt; Parvaneh's across a lawn; the Saab's four ruts
+  under the wheels, a slide's wider ones, none on a road; a new day clears all), `sposmore` (the
+  hoppbacke: ruts up it, none across the flight; Patrick's trailer; the snow tractor; Rune's chair let
+  go of; Ove beyond the town: prints on the hills' ground, filling in), `sposlook` (close-ups in shade
+  and in the sun, the chase cameras), `sposperf` (QUERY='&gputime': every ring full, on / off).
+
 ## Small talk answered (feature smaprat, features/implemented/smaprat.md)
 
 - **The answers** are data: script.js `CHATTER_REPLY[who][line]` = a pool of answers, each `text`,

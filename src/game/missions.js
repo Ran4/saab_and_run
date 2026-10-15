@@ -595,7 +595,9 @@ export class MissionRunner {
     this.gateOpen = true;
     const def = this.current;
     g.setClock(...DAY_START);
-    // A new morning: everyone where they spend the day (whoever is elsewhere is gone at once), and
+    // A new morning: yesterday's tracks in the snow are gone (game/tracks.js),
+    g.tracks?.clear();
+    // everyone where they spend the day (whoever is elsewhere is gone at once), and
     // the Saab back at home (unless Ove is in it or standing by it).
     g.placeNpcs?.(true);
     const saab = g.named?.saab;

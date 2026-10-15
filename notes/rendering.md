@@ -402,6 +402,23 @@ compiled in the background).
 - Props cast and take AO as before; on low they still cost ~40 shadow calls.
 - GPU timings are from a desktop RTX 4070 shared with other agents; laptop numbers are estimates.
 
+## Tracks in the snow (feature snöspår, 2026-10-15)
+
+- game/tracks.js draws prints and ruts as two transparent meshes with a unique `surfaceMaterial('snow')`
+  patched after `surfaceCompile` (DESIGN.md 10.5): the same snow texture, drifts and sparkle as the
+  ground (its triplanar coordinates are world positions, like the static ground's; the ground's own
+  parts are rotated back by their yaw, so the texture's phase differs a little at the rim, which the
+  alpha hides), a per-fragment height function for the relief, the sky on a bent normal, the sun
+  shadowed by a march over the same function.
+- Look-dev that mattered: lit on the relief normal alone, every wall facing the bright horizon of the
+  HDRI caught the sky and the prints read as white outlines in shade; with the sky on a normal bent 60 %
+  back up and 15 % occlusion at the bottom they read as soft blue hollows. In the sun at 13° a 4 cm
+  print is mostly in its own shade (~(113, 127, 154) sRGB, a little darker than a house's shade on the
+  snow, ~(127, 142, 168)), its far wall lit. The tread and sole patterns are band-limited (gone by ~6 mm a pixel) and only partly
+  pressed in (a noise mask): a full-strength pattern looked like a zip.
+- Cost (sposperf, RTX 4070): +2 draw calls; every ring full in view from 25 m up +0.37 ms GPU, from a
+  chase camera's height none measurable.
+
 ## The cold's blizzard (feature avgrunden, 2026-10-11)
 
 - `fx.blizzard(amount, wx, wz, now)`: the snowfall's flakes (`uCount` = max(snowfall, blizzard)) on a

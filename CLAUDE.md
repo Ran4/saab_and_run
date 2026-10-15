@@ -65,7 +65,12 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   pratat." and 20 s without them, 40 E on Rune, their own small talk answered, broken off; close-ups
   `smaprat_*.png`; `smapratvoice` = the same with the clips: none cut, never two voices at once);
   run `smaprat smalltalk` after touching small talk, `CHATTER*` or the bubbles, `smapratvoice` after
-  touching the voices' turns.
+  touching the voices' turns. snospar.mjs (tracks in the snow, features/implemented/snöspår.md:
+  `snospar` = real keys, 20 checks: Ove's prints per step under his feet, a neighbour's, the Saab's
+  four ruts under its wheels, a slide's wider ones, none on asphalt or a road, a new day clears them;
+  `sposmore` = the hoppbacke (none across a flight), a trailer, the snow tractor, Rune's chair, the
+  cold beyond the town; `sposlook` close-ups; `sposperf` with `QUERY='&gputime'`); run `snospar
+  sposmore` after touching tracks.js, surface.js, the feet, the wheels or the dawn of a day.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -222,6 +227,10 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `voice.quiet()`; the outro waits for quiet. `game.murmur(pitch)` is the old murmur, voices off only.
   Music: `audio.music(state)` from main.js `musicState()` (roam playlist, errand, pursuit, race,
   chase, hurry, finale); the generative piano is the fallback.
+- **Tracks in the snow** (`game.tracks`, tracks.js; features/implemented/snöspår.md): prints where
+  people walk on snow, ruts where wheels roll on it (`surfaceAt` 'snow', not ice), drawn
+  with the snow surface's own shader plus a relief; ring buffers (Ove's and his car's apart), cleared
+  at the dawn (`missions.updateGate`), not saved. On snow the ruts replace `fx.skid`. `&notracks` off.
 - Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`, `garage`
   0 = Ove's garage door shut, `rune` 0 = Rune dead), every field sanitised on load. Settings separately in
   `saab-and-run-settings` (`music`, `sound`, `quality`, `voice`, `voiceLevel`).

@@ -21,6 +21,7 @@ import { spawnPeds, nearestSidewalk } from './actors/peds.js';
 import { initCans, tickCans, Collectible } from './actors/pickups.js';
 import { EMBLEM_NOTES, PHOTO_NOTES } from './game/collection.js';
 import { fx as FX } from './game/fx.js';
+import { tracks } from './game/tracks.js';
 import { hud, renderPortrait } from './game/hud.js';
 import { CamRig } from './game/camera.js';
 import { Patrol } from './game/patrol.js';
@@ -164,6 +165,10 @@ class Game {
     hud.init();
     hud.onResetSave = () => this.resetSave();
     FX.init(scene);
+    // Footprints and ruts in the snow (game/tracks.js, feature snöspår); cleared at every dawn.
+    tracks.init(scene);
+    this.tracks = tracks;
+    window.__tracks = tracks;
     setLoading('Plogar gatorna…');
     await hud.fontsReady;
     await frame();
@@ -1375,6 +1380,7 @@ class Game {
     while (this.acc >= STEP && n < MAX_STEPS) { this.fixedStep(STEP); this.acc -= STEP; n++; }
     if (this.acc >= STEP) this.acc = 0;
     this.syncAll(dt, false);
+    tracks.update(this, dt);
     const ms = this.missions.state;
     this.patrol.suspended = ms !== 'idle';
     if (ms !== this.lastMissionState) {
@@ -2507,7 +2513,12 @@ class Game {
           this.skidT = 2;
           const fx_ = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx_;
           const bz = -c.spec.len / 2 + c.spec.wheelR + 0.4, bx = c.spec.wid / 2 - 0.14;
-          for (const s of [-1, 1]) FX.skid(c.x + fx_ * bz + rx * bx * s, c.z + fz * bz + rz * bx * s, c.yaw, undefined, c.onSnow ? 'snow' : undefined);
+          for (const s of [-1, 1]) {
+            const x = c.x + fx_ * bz + rx * bx * s, z = c.z + fz * bz + rz * bx * s, k = this.surfaceAt(x, z);
+            // (on snow the ruts show the slide: game/tracks.js widens them as the tyres go sideways)
+            if (k === 'snow' && tracks.on) continue;
+            FX.skid(x, z, c.yaw, undefined, k === 'snow' ? 'snow' : 'asphalt');
+          }
           // a real slide or a donut throws up spray (powder off the snow, salty mist off the asphalt)
           if ((c.drift > 0.5 || c.pivot > 0.5) && c.skidAmt > 0.6 && (this.frame & 2)) {
             const s = this.frame & 4 ? 1 : -1, wz = -c.spec.len / 2 + c.spec.wheelR + 0.5;
