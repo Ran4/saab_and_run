@@ -69,7 +69,11 @@ with no errors; `story` was run against it).
   hold-back and the flush, and the real case: a phone call going when day 1's intro starts),
   `uiabort` (non-test game: hidden in free roam and the intro, shown while running, confirm and its
   time-out, abort → idle + unpaused + day given up + the toast, the day taken up again; then the same
-  with a mocked gamepad), `uifavicon`. Failed checks go to the run's errors.
+  with a mocked gamepad), `uifavicon`, `album` (Samlingen in a real game: empty, then two
+  photographs, two emblems and a can walked onto, the pickup note, the counts, what it opens on, the
+  notes by picture / by order, hover, click, arrows, hints; a reload with Fortsätt; all seven emblems;
+  shots `album_*`), and `uipause` checks the album page too (`_album`). Failed checks go to the run's
+  errors.
 - Changed behaviour others' tests see: gameplay.mjs `p4ui` now logs `toastTop: null` (toasts wait
   while the letterbox is down: by design). The old "toasts below the letterbox's top bar" CSS stays
   (harmless).
@@ -129,11 +133,14 @@ with no errors; `story` was run against it).
   under them `#loading` and, with a save, the link-style **Nytt spel** (`#newgame`, two clicks:
   "Säker? Klicka igen", then `resetSave`). The shade is white on the left 30 %, gone by 70 %. Pause (`#pause`): Fortsätt, Musik /
   Ljud / Grafik toggles, **Kontroller** (Visa/Dölj: swaps the notebook page for a copy of the
-  title's controls table, `#pause-controls`, cloned by hud.js), **Avbryt dagens uppdrag** (only
+  title's controls table, `#pause-controls`, cloned by hud.js), **Samlingen** (`#opt-album`, the
+  badge "found/14", dark while open: swaps the notebook page for the album, `#pause-album`, see
+  below), **Avbryt dagens uppdrag** (only
   while a mission runs, phase 4 round 2), Radera sparat spel, and Oves
   anteckningsbok (a paper page, `hud.renderLog`). The card is a fixed grid (300 + 548 px); the
-  log page and the controls share one cell (the hidden one is `visibility: hidden`), so the
-  toggle never moves or resizes the card.
+  log page, the controls and the album share one cell (the hidden ones are `visibility: hidden`), so
+  the toggles never move or resize the card. The menu opens on the notebook (`ctl` and `album`
+  dropped).
 - Dialogue in letterbox (`hud.letterbox(true)` + `runDialog`): the bottom bar grows to hold the
   dialogue box, which loses its card background (film-subtitle look); without letterbox it is the
   usual card above the bottom edge.
@@ -237,7 +244,8 @@ Prompt / toasts / banners / misc
   ANMÄLD / TAGEN! → stamp (rubber-stamp look), SMET! → bad, KAOS I OMRÅDET → chaos, ORDNING OCH
   REDA / UPPDRAG KLART → good, OMRÅDET ÄR I ORDNING → final. `kicker` = small line above (e.g.
   "Dag 3" / "Måndag"). `hud.hideBanner()`.
-- `hud.showCollect(html, ms)` — note in the left column. Icons: `<span class="emblem-icon">`,
+- `hud.showCollect(html, ms)` — note in the left column (main.js: the icon, then one `<span>` with
+  the title, count, memory and `<small class="col-hint">Samlingen: <kbd>Esc</kbd></small>`). Icons: `<span class="emblem-icon">`,
   `<span class="photo-icon">` (old `.rec-icon`/`.mos-icon` still styled); wrap a Sonja memory in
   `<span class="memory">…</span>` to get Ove's handwriting.
 - `hud.flashColor(css, ms = 700)` (fades out over `ms`), `hud.letterbox(on)` (the dialogue box darkens into the bottom bar;
@@ -260,6 +268,24 @@ Prompt / toasts / banners / misc
   plain [0.35, 0.72]) — the things Ove hunts stay readable at any distance. The smitare tag is
   opaque red with a white hairline. Or pass `opacity`. Pass `[]`/`null` to clear. Put `y` ~0.5 m
   above the car roof. DOM nodes are pooled. Tags and bubbles always draw under the HUD panels.
+- **`hud.renderAlbum(data?)`** (feature se_pa_trinkets) — "Samlingen", the pause menu's album:
+  `data` = main.js `game.albumData()`: `{ photos, emblems: [{ kind, id, got, rank, where, hint, note
+  }], last: { kind, id } | null, cans, jump }` (without it the last data, else `window.__game`'s).
+  A dark album page (`.album-page`, white ink in Caveat): "Oves samling", "Hittat n av 14", two rows
+  of seven (`.al-slot`: the print or the emblem drawn by game/collection.js into a canvas at twice
+  its size; one not found is a dashed frame with "?"), the chosen one large (`.al-detail`: the
+  picture, "Sonjas fotografi" / "Saab-emblem nr n" (the order found), the note in Ove's hand,
+  "Hittat" + where; not found: "Inte hittat än." and "Ledtråd: Någonstans {hint}."), at the foot
+  Pantburkar and Längsta hoppet (once there is one). A full row says "På hyllan i hallen." /
+  "Uppsatta i garaget." New data opens on `last` (the one just found), else the photograph found
+  last, else the emblem, else the first. Hover or click chooses; the arrows or WASD (left / right
+  along all fourteen, up / down between the rows) and a gamepad's d-pad / stick left-right while it
+  is open. As tall as the menu (`contain: size`), it scrolls only in windows too low for it (under
+  ~700 px with the abort row, and in the stacked narrow layout, where opening it scrolls the card to
+  it). Main.js calls it from `pause(true)`; the menu's observer re-renders it on open.
+- **Pause menu spacing** (with Samlingen's row): `.opt` 11/10 px padding (was 12/11), h2 margin 20;
+  ≤ 540 px high: rows 8/7, h2 46 px margin 2/10, `.pm-opts` margin 10; ≤ 464 px: also rows 7/6, h2
+  40 px, no key hint. `uipause` passes at all its sizes, with and without the abort row.
 - `hud.renderLog(entries)` — `[{ plate, kind, text, time, caught?, escaped? }]` oldest first;
   drawn on the pause menu's paper page (short kind names, e.g. "På gräsmattan", "Bil i bilfritt
   område", "Gästplats över ett dygn"). `caught: true` = a smitare who was caught: "(tagen)";

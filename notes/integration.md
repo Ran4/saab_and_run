@@ -67,7 +67,12 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   1.8 m, back after 4-7 min out of sight), 7 Saab-emblem and 7 of Sonja's photographs at
   `collectibleSpots` (a faint shaft of light; each plays a note/memory in Ove's handwriting; all
   emblems +150 kr). Saved in `localStorage['saab-and-run-v1']` with kr, mission index and the patrol
-  (Ordning, reports, log).
+  (Ordning, reports, log). The notes are game/collection.js's (`EMBLEM_NOTES` by the order found:
+  `game.got.emblems` is a Set and keeps it, saved as an array; `PHOTO_NOTES` by id, each with its
+  own picture). Cans picked up ever: `game.cans`, saved as `pant` (with the 30 s autosave, as their
+  kronor). **Samlingen** in the pause menu (feature se_pa_trinkets): `game.albumData()` ->
+  `hud.renderAlbum(data)` whenever the menu opens; `game.lastFound` (not saved) is what it opens on.
+  The pickup note says "Samlingen: Esc".
 - **Cars**: every parked car from the world (`snow` on unnamed, not on named/indoor ones, engines
   off), the named ones in `game.named` (`saab`, `patrickCar` with its trailer, `runeVolvo`,
   `andersAudi`), 22 traffic cars of the new types (one bus, one sopbil at most) with seated busts,
@@ -305,7 +310,8 @@ is unanswered (`interrupts.ringing` = `call.k === 0`; the call script waits anyw
 pencil if a report is being written.
 
 **Save (main.js `load`, patrol.js `fromSave`).** Every field is checked: mission an integer 0-7, kr an
-integer >= 0, clock 0-1439 (else the default), emblems / photos integer ids 0-6, unlocked strings, the
+integer >= 0, clock 0-1439 (else the default), emblems / photos integer ids 0-6 (in the order found),
+`pant` an integer >= 0, unlocked strings, the
 gate only between days 1-6; Ordning a finite number 0-100 (else 50), reports an integer, the log only
 objects with string fields. `reda` (ORDNING OCH REDA paid) is saved and restored (and taken as paid if
 the meter is full): it paid +100 kr on every reload with a full meter. `game.isNewGame` (no day done,

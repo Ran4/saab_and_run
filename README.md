@@ -164,7 +164,9 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   och en granne som följde med har gått hem. Saaben (eller grannens bil) står hemma igen; en lånad bil
   får stå kvar där ute. Mellanslag hoppar fram när skylten syns, och över scenen i sängen.
 - **Kronor och samlarsaker.** Pantburkar (1 kr), belöningar, sju Saab-emblem och sju av Sonjas
-  fotografier gömda i stan. Allt Ove har sönder betalar han själv.
+  fotografier gömda i stan. Allt Ove har sönder betalar han själv. Det han hittat finns under
+  **Samlingen** i pausmenyn: fotografierna (vart och ett en egen bild), emblemen, vad Ove tänker om
+  dem, var de låg, en ledtråd till dem han inte hittat än, och hur många burkar han pantat.
 - Spelet sparas automatiskt i webbläsaren (efter varje anmälan, ärende, samlarsak och dag, och var
   30:e sekund). Laddar du om mitt i en dag börjar dagen om, men grannen fattar sig kort. Pausmenyn kan
   radera det sparade spelet.
@@ -220,6 +222,8 @@ src/game/rune.js           Runes rullstol som rullar själv, hans död på ären
 src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, anteckna, hämta, skjutsa, jaga...)
 src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
 src/game/hoppbacke.js      hoppen från hoppbacken: snöpudret, ljuden, Oves anteckning och rekord, vad alla säger
+src/game/collection.js     Oves samling: anteckningarna om emblemen, Sonjas sju fotografier (ritade, samma bild i
+                           världen och i pausmenyns album) och emblemet som albumet visar det
 src/game/missions.js       de sju dagarna och uppdragskörningen
 src/game/luftning.js       dag 3:s scen: Ove luftar elementet hemma hos Anita och Rune (och katten tittar in)
 src/game/cold.js           kylan utanför stan: köldmätaren, frosten, huttrandet, snöyran, döden av frost

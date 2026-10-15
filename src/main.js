@@ -19,6 +19,7 @@ import { CHARS, buildBust, randomPed, buildCat, carryPoint } from './actors/mode
 import { AIDriver } from './actors/drivers.js';
 import { spawnPeds, nearestSidewalk } from './actors/peds.js';
 import { initCans, tickCans, Collectible } from './actors/pickups.js';
+import { EMBLEM_NOTES, PHOTO_NOTES } from './game/collection.js';
 import { fx as FX } from './game/fx.js';
 import { hud, renderPortrait } from './game/hud.js';
 import { CamRig } from './game/camera.js';
@@ -77,26 +78,7 @@ const HOMES = {
 };
 
 // Everything said out loud (the neighbours' small talk, Ove's reactions, people knocked over, kicked
-// or shoved ...) is in game/script.js. The notes below are only read.
-// Saab emblems: Ove's notes. Sonja's photographs: short memories (warm, a little sad, never more).
-const EMBLEM_NOTES = [
-  'Riktig plåt. Inte som nu för tiden.',
-  'Från en 99:a. Någon hade slängt det. Idioter.',
-  'Griphuvudet. Ove putsar det med tummen.',
-  'Från en 96:a. Sonja sa att den lät som en symaskin. Hon hade fel.',
-  'En man ska ha en ordentlig bil.',
-  'Trollhättan, 1986. Han körde dit bara för att titta på fabriken.',
-  'Det sista. Nu är samlingen hel. Ove säger ingenting.',
-];
-const PHOTO_NOTES = [
-  'Sonja, 1984. Tåget till Göteborg. Hon skrattade åt honom hela vägen.',
-  'Sonja i Saaben, 1988. Hon ville byta radiokanal. Han lät henne. En gång.',
-  'Sonja på skolavslutningen. Hela klassen hade ritat henne.',
-  'Sonja och Ove i Spanien. Hon i solen. Han i skuggan, med en karta.',
-  'Bröllopsdagen. Hon sa ja innan han hunnit fråga ordentligt.',
-  'Sonja i trädgården. Hon planterade blommor där han ville ha grus. Blommorna vann.',
-  'Sonja, en vanlig tisdag. Han vet inte varför han tog bilden. Han är glad att han gjorde det.',
-];
+// or shoved ...) is in game/script.js. The collectibles' notes (only read) are in game/collection.js.
 // Ove's Saab always wears the same plate (the player looks at it all game). Valid Swedish format:
 // no I, Q, V, Å, Ä, Ö, and no O last.
 const FIXED_PLATES = { saab: 'SAB 900', tractor: 'BRF 076' };
@@ -133,7 +115,10 @@ class Game {
     this.inDialog = false;
     this.talker = null;
     this.input = input;
+    // Ove's collection, in the order found (Sets: an emblem's note goes with its place in the order)
     this.got = { emblems: new Set(), photos: new Set() };
+    this.lastFound = null;   // { kind, id }: what the album opens on (not saved)
+    this.cans = 0;           // pantburkar picked up, ever (saved: `pant`)
     this.unlocked = new Set();
     // Rune died on his errand and Ove gave it up (game/rune.js; saved: `rune: 0`). True from the
     // moment he dies, also while E or Q is still to be chosen.
@@ -412,7 +397,7 @@ class Game {
     voice.pause(on);
     this.pausedAt = performance.now();
     document.getElementById('pause').classList.toggle('show', on);
-    if (on) hud.renderLog(this.patrol.log);
+    if (on) { hud.renderLog(this.patrol.log); hud.renderAlbum(this.albumData()); }
     audio.engine(false, 0, 0);
     audio.skid(0);
     audio.horn(false);
@@ -996,6 +981,7 @@ class Game {
   }
 
   collectCan() {
+    this.cans++;
     this.coins += 1;
     hud.setCoins(this.coins);
     hud.bumpCoins();
@@ -1173,7 +1159,7 @@ class Game {
       // short retry lines, not the whole scene again - the day's progress itself is not kept)
       const ms = this.missions, cur = ms.current;
       const begun = cur && (ms.state !== 'idle' || ms.gaveUp.has(cur.day)) ? ms.index : null;
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], unlocked: [...this.unlocked], patrol: this.patrol.toSave(), garage: this.garage && !this.garage.isOpen ? 0 : 1, hopp: Math.round(this.hopp.best * 10), rune: this.runeDead ? 0 : 1 }));
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, mission: ms.index, begun, clock: Math.round(this.clockMin) % (24 * 60), gate: !ms.gateOpen && ms.index < MISSIONS.length, kr: this.coins, emblems: [...this.got.emblems], photos: [...this.got.photos], pant: this.cans, unlocked: [...this.unlocked], patrol: this.patrol.toSave(), garage: this.garage && !this.garage.isOpen ? 0 : 1, hopp: Math.round(this.hopp.best * 10), rune: this.runeDead ? 0 : 1 }));
     } catch (e) { /* private mode: progress just won't persist */ }
   }
   // Every field is checked: a hand-edited or half-written save must not kill the story (mission -1
@@ -1190,6 +1176,7 @@ class Game {
           this.coins = int(s.kr, 0, 9999999, 0);
           this.got.emblems = ids(s.emblems, this.emblems?.length || 7);
           this.got.photos = ids(s.photos, this.photos?.length || 7);
+          this.cans = int(s.pant, 0, 9999999, 0);
           this.unlocked = new Set((Array.isArray(s.unlocked) ? s.unlocked : []).filter((v) => typeof v === 'string'));
           this.patrol.fromSave(s.patrol);
           // (the garage door: 0 = shut; anything else, or none, = open as at the start)
@@ -1215,6 +1202,23 @@ class Game {
   applySaveToWorld() {
     for (const e of this.emblems) if (this.got.emblems.has(e.id)) e.remove();
     for (const p of this.photos) if (this.got.photos.has(p.id)) p.remove();
+  }
+  // What the pause menu's "Samlingen" shows (hud.renderAlbum): every emblem and photograph, found or
+  // not, where it was found (or roughly where it might be: world/town.js placeCollectibles), the note
+  // it came with (an emblem's by the order found, a photograph's by its picture), and a few counts.
+  albumData() {
+    const list = (spots, got, kind, notes) => {
+      const order = [...got];
+      return spots.map(([, , , where, hint], id) => {
+        const rank = order.indexOf(id);
+        return { kind, id, got: rank >= 0, rank, where: where || '', hint: hint || '', note: rank < 0 ? '' : notes[(kind === 'emblem' ? rank : id) % notes.length] };
+      });
+    };
+    return {
+      emblems: list(collectibleSpots.emblems, this.got.emblems, 'emblem', EMBLEM_NOTES),
+      photos: list(collectibleSpots.photos, this.got.photos, 'photo', PHOTO_NOTES),
+      last: this.lastFound, cans: this.cans, jump: this.hopp?.best || 0,
+    };
   }
   resetSave() {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
@@ -2208,9 +2212,12 @@ class Game {
           audio.jingle('record');
           FX.sparkle(mp.x, mp.y, mp.z, 0xfff1d0, 16);
           const n = set.size;
+          this.lastFound = { kind, id: c.id };
           const icon = kind === 'emblem' ? '<span class="emblem-icon"></span>' : '<span class="photo-icon"></span>';
           const title = kind === 'emblem' ? 'Saab-emblem' : 'Sonjas fotografi';
-          hud.showCollect(`${icon} ${title} <b>${n}/7</b><br><span class="memory">${notes[(n - 1) % notes.length]}</span>`, 6500);
+          // (an emblem's note goes with the order found, a photograph's memory with its picture)
+          const note = kind === 'emblem' ? notes[(n - 1) % notes.length] : notes[c.id % notes.length];
+          hud.showCollect(`${icon}<span>${title} <b>${n}/7</b><br><span class="memory">${note}</span><small class="col-hint">Samlingen: <kbd>Esc</kbd></small></span>`, 6500);
           if (n === 7 && kind === 'emblem') { this.addCoins(150); setTimeout(() => hud.toast('Alla sju Saab-emblem. Ove hänger upp dem i garaget. +150 kr', 'good'), 2500); }
           if (n === 7 && kind === 'photo') setTimeout(() => hud.toast('Alla sju fotografierna. Ove ställer dem på hyllan i hallen. Där hör de hemma.', 'good'), 2500);
           this.save();

@@ -1,7 +1,6 @@
 # Gör dessa grejer (flytta filen till features/implemented/ och uppdatera den när du är klar, och
 # flytta den till "färdiga features"-sektionen nedan
 features/fixa_kameran_vid_rorelse.md
-features/se_pa_trinkets.md
 features/smaprat.md
 features/snöspår.md
 features/snubbla_vid_hopp.md
@@ -13,6 +12,7 @@ features/bussen_ar_inte_en_bil.md
 features/nya_satt_att_interagera_med_omgivningen.md
 
 # Färdiga features
+features/implemented/se_pa_trinkets.md
 features/implemented/snotraktor.md
 features/implemented/barnroster.md
 features/implemented/sno_pa_bilar.md

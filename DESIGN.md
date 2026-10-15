@@ -206,6 +206,12 @@ den". Open at the start; saved (`garage`: 0 = shut).
 `kr` (kronor) replaces coins: pantburkar (cans) lying around (1 kr), rewards. 7 Saab-emblem and
 7 Sonjas fotografier (each found plays a short memory toast, e.g. "Sonja, 1984. Tåget till
 Göteborg. Hon skrattade åt honom hela vägen."). All reachable without double jumps.
+**Samlingen** (pause menu, features/implemented/se_pa_trinkets.md): a dark photo-album page in the
+notebook's place with all fourteen (found ones shown, the rest empty frames with a hint where they
+might be), each photograph a picture of its own (the one in the world is the same print: game/
+collection.js), its memory and where it was found, and the counts (found of 14, pantburkar ever,
+the longest jump). An emblem's note goes with the order found (the seventh closes the collection), a
+photograph's with its picture.
 
 ### 4.6 Controls
 | key | till fots | i bil |
@@ -513,8 +519,9 @@ a `GarageDoor` from `garagedoor.js` whose mesh town.js adds after the static wor
   with its centre ≥ 5.5 m from the road centre line (half up on the sidewalk).
 - `carFreeZones`: array of `{x0, z0, x1, z1}` rectangles (the `ove` interior), and
   `isCarFree(x, z)` in `layout.js` or `town.js`.
-- `collectibleSpots = { emblems: [[x,y,z] ×7], photos: [[x,y,z] ×7] }` — reachable on foot with
-  one small jump (max ledge 0.45 m step + ~0.5 m jump).
+- `collectibleSpots = { emblems: [[x,y,z,where,hint] ×7], photos: [[x,y,z,where,hint] ×7] }` —
+  reachable on foot with one small jump (max ledge 0.45 m step + ~0.5 m jump); `where` / `hint` are
+  the Swedish place ("På kyrktrappan") and hint ("vid kyrkan") the album shows.
 - `litterSpots`: ~120 `[x, y, z]` for pantburkar along sidewalks, the parking lot, the park,
   bus stops.
 

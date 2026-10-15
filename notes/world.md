@@ -136,7 +136,11 @@ fordon" + E9 gångfartsområde signs at all four entrances (Räddningsväg plate
 So every `carfree` violation spot satisfies `isCarFree` (the validate scenario asserts it). The
 lots, garages and streets are not car-free. `isCarFree(x, z)` lives in `layout.js`.
 
-## collectibleSpots (`[x, y, z]`, y = item centre)
+## collectibleSpots (`[x, y, z, where, hint]`, y = item centre)
+
+`where` and `hint` (Swedish) are what the pause menu's album says: where it was found ("På bänken
+vid dammen i parken") and, while it is not, roughly where it might be ("i parken": "Någonstans i
+parken."). The array order is the ids (the save and the photographs' pictures go by id).
 
 emblems: Ove's workbench (5, 1.45, −14.55); Bilhallen lot; top of the park's sledding hill
 (65, 4.25, 17); behind the car wash; Ove's bike shed; top row of the football stand; hospital car

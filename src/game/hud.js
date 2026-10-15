@@ -8,6 +8,7 @@ import * as LAYOUT from '../world/layout.js';
 import { blocks, BOX, CIRCLE, RAMP } from '../world/collision.js';
 import { audio } from '../audio.js';
 import { voice } from '../voice.js';
+import { photoCanvas, drawEmblem } from './collection.js';
 
 const { MAP, N, P, HALF, RHW, rc, BOUND } = LAYOUT;
 const $ = (id) => document.getElementById(id);
@@ -79,6 +80,16 @@ const ICON = {
   flake: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 1.5v17M2.6 5.75l14.8 8.5M2.6 14.25l14.8-8.5M7.6 2.9 10 5.2l2.4-2.3M7.6 17.1 10 14.8l2.4 2.3"/></svg>',
   pencil: '<svg viewBox="0 0 84 14"><path d="M0 7 L7 4.6 L7 9.4 Z" fill="#3b3e44"/><path d="M7 4.6 L19 1.5 L19 12.5 L7 9.4 Z" fill="#dcc29a"/><rect x="19" y="1.5" width="60" height="11" fill="#9a2f22"/><rect x="19" y="1.5" width="60" height="3.2" fill="#b4412f"/><rect x="79" y="1.5" width="5" height="11" fill="#5b2018"/></svg>',
 };
+
+// An album picture into canvas c, w px wide: a photograph (3:4, from collection.js' print at twice
+// its size) or the emblem (square).
+function albumImage(c, it, w) {
+  const photo = it.kind === 'photo';
+  c.width = w; c.height = photo ? Math.round(w * 4 / 3) : w;
+  const x = c.getContext('2d');
+  if (photo) x.drawImage(photoCanvas(it.id, 2), 0, 0, c.width, c.height);
+  else drawEmblem(x, w);
+}
 
 export const hud = {
   portraits: {},
@@ -240,12 +251,22 @@ export const hud = {
       el('div', 'tc-head', ctl, 'Kontroller');
       ctl.appendChild(table.cloneNode(true));
     }
-    bind('opt-controls', () => { pause?.classList.toggle('ctl'); this.syncMenu(); });
+    bind('opt-controls', () => { pause?.classList.remove('album'); pause?.classList.toggle('ctl'); this.syncMenu(); });
+    // "Samlingen": the album of what Ove has found (renderAlbum), shown in the notebook's place too.
+    // (a mouse click lets go of the focus, or the arrows that choose in the album ring the button;
+    // a gamepad keeps it: it moves the focus over the menu)
+    bind('opt-album', (e) => { pause?.classList.remove('ctl'); if (pause?.classList.toggle('album')) this.renderAlbum(); this.syncMenu(); if (!pause?.classList.contains('pad')) e.currentTarget.blur(); });
+    // In the album the arrows (or WASD) choose: left / right along a row, up / down between the rows.
+    window.addEventListener('keydown', (e) => {
+      if (!pause?.classList.contains('show') || !pause.classList.contains('album')) return;
+      const d = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1, ArrowUp: -7, KeyW: -7, ArrowDown: 7, KeyS: 7 }[e.code];
+      if (d) { e.preventDefault(); this._albumStep(d); }
+    });
     pause?.addEventListener('mousemove', () => pause.classList.remove('pad'));
     let wasShown = false;
     if (pause) new MutationObserver(() => {
       const shown = pause.classList.contains('show');
-      if (shown && !wasShown) { pause.classList.remove('ctl'); for (const b of pause.querySelectorAll('.confirm')) unconfirm(b); this.syncMenu(); this.renderLog(this._log); }
+      if (shown && !wasShown) { pause.classList.remove('ctl', 'album'); for (const b of pause.querySelectorAll('.confirm')) unconfirm(b); this.renderAlbum(); this.syncMenu(); this.renderLog(this._log); }
       if (shown !== wasShown) this._padMenu(shown);
       wasShown = shown;
     }).observe(pause, { attributes: true, attributeFilter: ['class'] });
@@ -269,7 +290,8 @@ export const hud = {
       if (!pad) return;
       const b = (i) => { const v = pad.buttons[i]; return !!(v && (typeof v === 'object' ? v.pressed || v.value > 0.5 : v > 0.5)); };
       const ay = +pad.axes[1] || 0;
-      const cur = { up: b(12) || ay < -0.6, down: b(13) || ay > 0.6, a: b(0) };
+      const ax = +pad.axes[0] || 0;
+      const cur = { up: b(12) || ay < -0.6, down: b(13) || ay > 0.6, left: b(14) || ax < -0.6, right: b(15) || ax > 0.6, a: b(0) };
       if (!prev) { prev = cur; return; }   // a button already held when the menu opened doesn't count
       const list = [...pause.querySelectorAll('.pause-menu button')].filter((e) => !e.hidden && e.offsetParent);
       const now = performance.now();
@@ -279,6 +301,11 @@ export const hud = {
         i = i < 0 ? 0 : (i + (cur.down ? 1 : -1) + list.length) % list.length;
         pause.classList.add('pad');
         list[i]?.focus();
+      }
+      // (the album, while it is open: left / right go through what is in it)
+      if (pause.classList.contains('album') && (cur.left || cur.right) && (!(prev.left || prev.right) || now > rep)) {
+        rep = now + (prev.left || prev.right ? 160 : 420);
+        this._albumStep(cur.right ? 1 : -1);
       }
       if (prev.a && !cur.a && list.includes(document.activeElement)) document.activeElement.click();
       prev = cur;
@@ -302,6 +329,10 @@ export const hud = {
     set('opt-gfx', true, q === 'auto' ? `Auto (${tierName(qualityInfo().tier)})` : tierName(q));
     const ctl = !!$('pause')?.classList.contains('ctl');
     set('opt-controls', true, ctl ? 'Dölj' : 'Visa');
+    // Samlingen: how much of it Ove has found (the badge dark while the album is open)
+    const A = this._album, found = A ? [...A.photos, ...A.emblems].filter((it) => it.got).length : 0;
+    set('opt-album', true, `${found}/${A ? A.photos.length + A.emblems.length : 14}`);
+    $('opt-album')?.classList.toggle('on', !!$('pause')?.classList.contains('album'));
     // "Avbryt dagens uppdrag" only while a mission runs and can be given up (not in its intro, outro,
     // a mid-mission scene such as day 6's talk, or after a failure): missions.canGiveUp, like hold-Q.
     const ab = $('opt-abort');
@@ -1094,6 +1125,71 @@ export const hud = {
     // Shrink the handwriting of entries that do not fit their line (only measurable when shown).
     if (page.offsetParent) for (const t of page.querySelectorAll('.le-text')) fitWidth(t, 14);
     page.scrollTop = page.scrollHeight;
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // "Samlingen" (features/implemented/se_pa_trinkets.md): Sonja's photographs and the Saab emblems on
+  // a dark album page, in the notebook's place in the pause menu. data = main.js albumData():
+  // { photos, emblems: [{ kind, id, got, rank, where, hint, note }], last: { kind, id } | null, cans,
+  // jump }; without it, what the page last had (or window.__game's). New data opens on the one found
+  // last; hovering, clicking or the arrows (the d-pad) choose the one shown large with its note.
+
+  renderAlbum(data) {
+    const fresh = !!data || !this._album;
+    this._album = data || this._album || window.__game?.albumData?.() || null;
+    const page = $('pause-album');
+    if (!page || !this._album) return;
+    const A = this._album, items = [...A.photos, ...A.emblems];
+    this._albumItems = items;
+    if (fresh || !(this._albumSel >= 0 && this._albumSel < items.length)) {
+      const last = A.last && items.findIndex((it) => it.kind === A.last.kind && it.id === A.last.id);
+      const got = (list) => list.filter((it) => it.got).sort((a, b) => b.rank - a.rank)[0];
+      const pick = last >= 0 ? items[last] : got(A.photos) || got(A.emblems) || items[0];
+      this._albumSel = Math.max(0, items.indexOf(pick));
+    }
+    const n = (list) => list.filter((it) => it.got).length;
+    const np = n(A.photos), ne = n(A.emblems);
+    // (a found one shows itself; one not yet found is an empty frame with a question mark)
+    const slot = (it, i) => `<button type="button" class="al-slot ${it.kind} ${it.got ? 'got' : 'missing'}" data-i="${i}" style="--rot:${((it.id * 37) % 7 - 3) * 0.8}deg" aria-label="${it.kind === 'photo' ? 'Fotografi' : 'Emblem'} ${it.id + 1}${it.got ? '' : ', inte hittat'}">${it.got ? '<canvas></canvas>' : '<span>?</span>'}</button>`;
+    const jump = A.jump > 0 ? `<span>Längsta hoppet <b>${A.jump.toFixed(1).replace('.', ',')} m</b></span>` : '';
+    page.innerHTML = `<div class="al-head">Oves samling</div><div class="al-sub">Hittat ${np + ne} av ${items.length}</div>
+      <div class="al-kick"><span>Sonjas fotografier</span><b>${np}/${A.photos.length}</b>${np && np === A.photos.length ? '<i>På hyllan i hallen.</i>' : ''}</div>
+      <div class="al-row">${A.photos.map((it, i) => slot(it, i)).join('')}</div>
+      <div class="al-kick"><span>Saab-emblem</span><b>${ne}/${A.emblems.length}</b>${ne && ne === A.emblems.length ? '<i>Uppsatta i garaget.</i>' : ''}</div>
+      <div class="al-row">${A.emblems.map((it, i) => slot(it, A.photos.length + i)).join('')}</div>
+      <div class="al-detail"></div>
+      <div class="al-foot"><span>Pantburkar <b>${A.cans | 0}</b></span>${jump}</div>`;
+    // The pictures: canvases at twice their size (crisp under the HUD zoom).
+    for (const b of page.querySelectorAll('.al-slot.got canvas')) {
+      const it = items[+b.parentNode.dataset.i];
+      albumImage(b, it, it.kind === 'photo' ? 120 : 114);
+    }
+    page.onpointerover = page.onclick = (e) => { const b = e.target.closest?.('.al-slot'); if (b) this._albumPick(+b.dataset.i); };
+    this._albumPick(this._albumSel);
+  },
+  _albumStep(d) {
+    const L = this._albumItems?.length;
+    if (!L) return;
+    const i = this._albumSel ?? 0;
+    // left / right along all of it (a row runs on into the next), up / down to the other row
+    this._albumPick(Math.abs(d) === 7 && L === 14 ? (i + 7) % 14 : (i + d + L) % L);
+  },
+  _albumPick(i) {
+    const page = $('pause-album'), it = this._albumItems?.[i];
+    if (!page || !it) return;
+    const same = this._albumSel === i && page.querySelector('.al-detail').childElementCount;
+    this._albumSel = i;
+    for (const b of page.querySelectorAll('.al-slot')) b.classList.toggle('sel', +b.dataset.i === i);
+    if (same) return;
+    const d = page.querySelector('.al-detail');
+    const title = it.kind === 'photo' ? 'Sonjas fotografi' : it.got ? `Saab-emblem nr ${it.rank + 1}` : 'Saab-emblem';
+    d.innerHTML = it.got
+      ? `<div class="al-big"><canvas class="${it.kind}"></canvas></div><div class="al-text"><div class="al-t">${title}</div><div class="al-note">${esc(it.note)}</div><div class="al-where"><small>Hittat</small>${esc(it.where)}</div></div>`
+      : `<div class="al-big"><span class="missing ${it.kind}">?</span></div><div class="al-text"><div class="al-t">${title}</div><div class="al-note dim">Inte hittat än.</div>${it.hint ? `<div class="al-where"><small>Ledtråd</small>Någonstans ${esc(it.hint)}.</div>` : ''}</div>`;
+    const c = d.querySelector('canvas');
+    if (c) albumImage(c, it, it.kind === 'photo' ? 276 : 252);
+    // (keep the chosen one in sight when the page scrolls: low windows)
+    if ($('pause')?.classList.contains('album')) page.querySelector('.al-slot.sel')?.scrollIntoView?.({ block: 'nearest' });
   },
 
   // ------------------------------------------------------------------------------------------

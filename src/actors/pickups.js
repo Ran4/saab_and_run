@@ -4,6 +4,7 @@
 
 import { THREE, GeoBuilder, realMesh, realMaterials } from '../gfx.js';
 import { groundAt } from '../world/collision.js';
+import { photoCanvas } from '../game/collection.js';
 
 const _m = new THREE.Matrix4(), _zero = new THREE.Matrix4().makeScale(0, 0, 0);
 const _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1);
@@ -154,9 +155,21 @@ export function sonjaPhotoTexture() {
   photoTex.anisotropy = 4;
   return photoTex;
 }
-function photoMesh() {
+// Each of the seven photographs lying about is a picture of its own (game/collection.js draws them,
+// the album in the pause menu shows the same ones).
+const photoTexs = [];
+function photoTexture(id) {
+  if (!photoTexs[id]) {
+    const t = new THREE.CanvasTexture(photoCanvas(id, 1));
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    photoTexs[id] = t;
+  }
+  return photoTexs[id];
+}
+function photoMesh(id) {
   const grp = new THREE.Group();
-  const front = new THREE.Mesh(new THREE.PlaneGeometry(0.21, 0.28), new THREE.MeshStandardMaterial({ map: sonjaPhotoTexture(), roughness: 0.55, metalness: 0 }));
+  const front = new THREE.Mesh(new THREE.PlaneGeometry(0.21, 0.28), new THREE.MeshStandardMaterial({ map: id == null ? sonjaPhotoTexture() : photoTexture(id), roughness: 0.55, metalness: 0 }));
   const back = new THREE.Mesh(new THREE.PlaneGeometry(0.21, 0.28), new THREE.MeshStandardMaterial({ color: 0xe6dcc6, roughness: 0.8 }));
   back.rotation.y = Math.PI;
   front.castShadow = back.castShadow = true;
@@ -291,7 +304,7 @@ export class Collectible {
     this.scene = scene;
     const k = kind === 'record' ? 'papers' : kind;
     if (k === 'emblem') this.inner = realMesh(geoCache.emblem ??= emblemGeo(), { snow: false });
-    else if (k === 'photo') this.inner = photoMesh();
+    else if (k === 'photo') this.inner = photoMesh(Number.isInteger(id) ? id : null);
     else { this.inner = realMesh(geoCache[k] ??= itemGeo(k), { snow: false }); this.inner.scale.setScalar(opts.scale ?? 1.7); }
     // `mesh` is the holder: its position is the item's (old callers read mesh.position).
     this.mesh = new THREE.Group();

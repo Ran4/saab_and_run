@@ -14,7 +14,13 @@
 //   uipause      the pause card at several window sizes (SIZES='1280x720,800x600' overrides) with a
 //                full notebook, with and without "Avbryt dagens uppdrag", and with Kontroller open:
 //                the notebook page and the controls exactly as tall as the menu, nothing in the menu
-//                clipped, the card inside the window. Shots uipause_<w>x<h>[_abort|_ctl|_empty].
+//                clipped, the card inside the window. Shots uipause_<w>x<h>[_abort|_ctl|_empty|_album]
+//                (_album: Samlingen open, its page as tall as the menu, nothing in it wider than it).
+//   album        Samlingen in a real game (features/implemented/se_pa_trinkets.md): empty at first,
+//                then photographs, emblems and a can picked up by walking onto them: the pickup note,
+//                the album's counts, what it opens on, a photograph's memory by its picture and an
+//                emblem's by the order found, hover / click / arrows, the hints; kept over a reload
+//                (Fortsätt); all seven emblems. Shots album_*.
 export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT, OUT }) => {
   const log = (...a) => console.log('[t]', ...a);
   const bad = (...a) => { console.log('[t] CHECK FAILED', ...a); errors.push('check failed: ' + a.join(' ')); };
@@ -300,29 +306,34 @@ export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT
       // 27 entries as in the bug report (a few caught, two struck through), oldest first.
       const kinds = ['sidewalk', 'sidewalk', 'sidewalk', 'garbage', 'carfree', 'sidewalk', 'corner', 'sidewalk', 'garbage', 'handicap', 'guest24', 'crosswalk', 'sidewalk', 'crosswalk', 'firelane', 'loading', 'busstop', 'lawn', 'corner', 'garbage', 'sidewalk', 'handicap', 'crosswalk', 'lawn', 'busstop', 'loading', 'carfree'];
       const entries = kinds.map((kind, i) => ({ plate: `${'DMAGROMNHMNNKOS'.substr(i % 13, 3)} ${100 + (i * 37) % 900}`, kind, time: `${String(6 + (i >> 3)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}`, caught: i % 5 === 3 || undefined, escaped: i % 13 === 6 || undefined }));
-      const open = (list, abort, ctl) => ev(async ({ list, abort, ctl }) => {
+      // (a few things found, for Samlingen: two photographs, three emblems, some cans and a jump)
+      await ev(() => { const g = __game; g.got.photos = new Set([3, 0]); g.got.emblems = new Set([5, 1, 2]); g.cans = 37; g.hopp.best = 23.4; });
+      const open = (list, abort, ctl, album) => ev(async ({ list, abort, ctl, album }) => {
         const { hud } = await import('./src/game/hud.js');
         const p = document.getElementById('pause');
-        p.classList.remove('show', 'ctl');
+        p.classList.remove('show', 'ctl', 'album');
         await new Promise((r) => setTimeout(r, 30));
         hud.renderLog(list);
+        hud.renderAlbum(__game.albumData());
         p.classList.add('show');
         await new Promise((r) => setTimeout(r, 30));   // the menu's observer (syncMenu hides the abort button)
         document.getElementById('opt-abort').hidden = !abort;
         if (ctl) document.getElementById('opt-controls').click();
+        if (album) document.getElementById('opt-album').click();
         hud.renderLog(list);                          // as main.js does once shown (fits and scrolls the page)
-      }, { list, abort, ctl });
+      }, { list, abort, ctl, album });
       const measure = () => ev(() => {
         const r = (e) => { const b = e.getBoundingClientRect(); return { t: b.top, b: b.bottom, l: b.left, r: b.right }; };
         const card = document.querySelector('.pause-card'), menu = document.querySelector('.pause-menu');
-        const log = document.getElementById('pause-log'), ctl = document.getElementById('pause-controls');
+        const log = document.getElementById('pause-log'), ctl = document.getElementById('pause-controls'), alb = document.getElementById('pause-album');
         const btns = [...menu.querySelectorAll('button, .pm-keys')].filter((e) => !e.hidden && e.offsetParent);
         const C = r(card), M = r(menu);
         const outside = btns.filter((e) => { const b = r(e); return b.t < M.t - 0.5 || b.b > M.b + 0.5 || b.l < M.l - 0.5 || b.r > M.r + 0.5; }).map((e) => e.id || e.className);
         const last = log.querySelector('.log-entry:last-child'), table = ctl.querySelector('table');
         return {
           vw: innerWidth, vh: innerHeight, ui: +getComputedStyle(document.documentElement).getPropertyValue('--ui'),
-          card: C, menu: M, log: r(log), ctl: r(ctl), table: table ? r(table) : null,
+          card: C, menu: M, log: r(log), ctl: r(ctl), alb: r(alb), table: table ? r(table) : null,
+          albScroll: alb.scrollHeight - alb.clientHeight, albWide: Math.max(alb.scrollWidth - alb.clientWidth, ...[...alb.querySelectorAll('.al-row, .al-detail, .al-foot, .al-kick')].map((e) => Math.round(e.getBoundingClientRect().right - alb.getBoundingClientRect().right))),
           menuClip: menu.scrollHeight - menu.clientHeight, menuScrolls: getComputedStyle(menu).overflowY === 'auto', cardClip: card.scrollHeight - card.clientHeight,
           ctlClip: ctl.scrollHeight - ctl.clientHeight, ctlWide: table ? table.scrollWidth - (ctl.clientWidth - 44) : 0,
           logScroll: log.scrollHeight - log.clientHeight, logAt: log.scrollTop,
@@ -341,14 +352,20 @@ export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT
         if (!stacked) {
           if (!near(m.log.t, m.menu.t) || !near(m.log.b, m.menu.b)) f.push(`notebook ${Math.round(m.log.t)}..${Math.round(m.log.b)} vs menu ${Math.round(m.menu.t)}..${Math.round(m.menu.b)}`);
           if (!near(m.ctl.t, m.menu.t) || !near(m.ctl.b, m.menu.b)) f.push(`controls ${Math.round(m.ctl.t)}..${Math.round(m.ctl.b)} vs menu ${Math.round(m.menu.t)}..${Math.round(m.menu.b)}`);
+          if (!near(m.alb.t, m.menu.t) || !near(m.alb.b, m.menu.b)) f.push(`album ${Math.round(m.alb.t)}..${Math.round(m.alb.b)} vs menu ${Math.round(m.menu.t)}..${Math.round(m.menu.b)}`);
           if (m.log.r > m.card.r + 0.5) f.push('notebook wider than the card');
           if (m.lastIn === false) f.push('the newest entry is not in view');
+        }
+        if (/album/.test(tag)) {
+          if (m.albWide > 1) f.push(`album content ${m.albWide}px wider than its page`);
+          // (whole, without scrolling, wherever the window is at least 700 px high)
+          if (m.vh >= 700 && m.albScroll > 1 && !stacked) f.push(`album scrolls by ${m.albScroll}px`);
         }
         if (/ctl/.test(tag)) {
           if (m.ctlClip > 1 && !low) f.push(`controls table clipped by ${m.ctlClip}px`);
           if (m.ctlWide > 1 || m.table.r > m.ctl.r + 0.5) f.push(`controls table ${m.ctlWide}px wider than its panel`);
         }
-        log(tag, f.length ? 'FAIL' : 'ok', JSON.stringify({ ui: m.ui, card: [Math.round(m.card.r - m.card.l), Math.round(m.card.b - m.card.t)], menuH: Math.round(m.menu.b - m.menu.t), logH: Math.round(m.log.b - m.log.t), top: Math.round(m.card.t), menuClip: m.menuClip, cardClip: m.cardClip, ctlClip: m.ctlClip, logScroll: m.logScroll, logAt: Math.round(m.logAt) }), f.join('; '));
+        log(tag, f.length ? 'FAIL' : 'ok', JSON.stringify({ ui: m.ui, card: [Math.round(m.card.r - m.card.l), Math.round(m.card.b - m.card.t)], menuH: Math.round(m.menu.b - m.menu.t), logH: Math.round(m.log.b - m.log.t), top: Math.round(m.card.t), menuClip: m.menuClip, cardClip: m.cardClip, ctlClip: m.ctlClip, logScroll: m.logScroll, logAt: Math.round(m.logAt), albScroll: m.albScroll }), f.join('; '));
         for (const x of f) bad(tag, x);
       };
       for (const [w, h] of sizes) {
@@ -356,9 +373,9 @@ export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT
         await sleep(300);
         // Narrow windows stack the menu over the notebook (style.css, max-width 860px).
         const stacked = w <= 860, low = !stacked && h < 435;
-        for (const [suffix, abort, ctl, list] of [['', false, false, entries], ['_abort', true, false, entries], ['_ctl', true, true, entries], ['_empty', false, false, []]]) {
+        for (const [suffix, abort, ctl, list, album] of [['', false, false, entries], ['_abort', true, false, entries], ['_ctl', true, true, entries], ['_empty', false, false, []], ['_album', true, false, entries, true]]) {
           if (suffix === '_empty' && w !== 1280) continue;
-          await open(list, abort, ctl);
+          await open(list, abort, ctl, album);
           await sleep(150);
           check(`${w}x${h}${suffix}`, await measure(), stacked, low);
           await shot(`uipause_${w}x${h}${suffix}`);
@@ -373,7 +390,7 @@ export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT
           if (t.right > t.panelRight + 0.5 || t.right > t.vw) bad(`${w}x${h} title controls table runs out of its panel`, JSON.stringify(t));
         }
       }
-      await ev(() => { const p = document.getElementById('pause'); p.classList.remove('show', 'ctl'); });
+      await ev(() => { const p = document.getElementById('pause'); p.classList.remove('show', 'ctl', 'album'); });
       await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
       // The real pause (P in a real game, main.js pause -> renderLog): the newest entry in view.
       await realGame();
@@ -386,6 +403,120 @@ export default ({ page, ev, shot, frames, sleep, tap, until, fresh, errors, PORT
       if (m.logAt < m.logScroll - 1) bad('real game: the notebook is not scrolled to the newest entry', JSON.stringify({ at: m.logAt, max: m.logScroll }));
       await shot('uipause_real');
       await tap('KeyP'); await sleep(300);
+    },
+
+    async album() {
+      const N = await ev(async () => { const m = await import('./src/game/collection.js'); return { E: m.EMBLEM_NOTES, P: m.PHOTO_NOTES }; });
+      const expect = (what, ok, o) => { log(what, ok ? 'ok' : 'FAIL', JSON.stringify(o)); if (!ok) bad(what, JSON.stringify(o)); };
+      // What the pause menu and the album page show.
+      const st = () => ev(() => {
+        const p = document.getElementById('pause'), pg = document.getElementById('pause-album'), menu = document.querySelector('.pause-menu');
+        const d = pg.querySelector('.al-detail'), slots = [...pg.querySelectorAll('.al-slot')];
+        const R = (e) => e.getBoundingClientRect();
+        return {
+          shown: p.classList.contains('show'), album: p.classList.contains('album'), paused: __game.paused,
+          vis: getComputedStyle(pg).visibility, logVis: getComputedStyle(document.getElementById('pause-log')).visibility,
+          badge: document.querySelector('#opt-album b').textContent,
+          got: slots.map((b, i) => (b.classList.contains('got') ? i : -1)).filter((i) => i >= 0), sel: slots.findIndex((b) => b.classList.contains('sel')),
+          title: d?.querySelector('.al-t')?.textContent || '', note: d?.querySelector('.al-note')?.textContent || '', where: d?.querySelector('.al-where')?.textContent || '',
+          sub: pg.querySelector('.al-sub')?.textContent, foot: pg.querySelector('.al-foot')?.textContent, kicks: [...pg.querySelectorAll('.al-kick')].map((k) => k.textContent),
+          pageTB: [Math.round(R(pg).top), Math.round(R(pg).bottom)], menuTB: [Math.round(R(menu).top), Math.round(R(menu).bottom)],
+          scroll: pg.scrollHeight - pg.clientHeight, wide: pg.scrollWidth - pg.clientWidth,
+          // pictures drawn: canvases whose middle pixel is not blank
+          painted: [...pg.querySelectorAll('canvas')].filter((c) => c.width && c.getContext('2d').getImageData(c.width >> 1, c.height >> 1, 1, 1).data[3] > 0).length,
+        };
+      });
+      const openAlbum = async () => {
+        await tap('KeyP'); await sleep(450);
+        const pre = await st();
+        if (!pre.shown || pre.album || pre.logVis !== 'visible') bad('the pause menu opens on the notebook', JSON.stringify(pre));
+        await page.click('#opt-album'); await sleep(250);
+        return st();
+      };
+      const closeAlbum = async () => { await tap('KeyP'); await sleep(400); };
+      // Walks onto one (teleports on top of it) and waits for it to be taken.
+      const take = async (kind, id) => {
+        await ev(({ kind, id }) => { const g = __game, c = (kind === 'emblem' ? g.emblems : g.photos)[id]; g.player.teleport(c.x, c.z, g.player.yaw); g.cam.snapNext = true; }, { kind, id });
+        try { await until(({ kind, id }) => __game.got[kind + 's'].has(id), 6000, { kind, id }); } catch (e) { bad(`${kind} ${id} was not picked up`, JSON.stringify(await ev(({ kind, id }) => { const g = __game, c = (kind === 'emblem' ? g.emblems : g.photos)[id]; return { c: [c.x, c.y, c.z], p: [g.player.x, g.player.y, g.player.z] }; }, { kind, id }))); }
+        await frames(3);
+        return ev(() => document.getElementById('collect').innerHTML);
+      };
+      const box = (o) => near(o.pageTB, o.menuTB) && o.scroll <= 1 && o.wide <= 1;
+      const near = (a, b) => Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1;
+
+      await realGame();
+      // Nothing found yet.
+      let o = await openAlbum();
+      expect('empty: shown, nothing found, a hint for the chosen one', o.album && o.vis === 'visible' && o.logVis === 'hidden' && o.badge === '0/14' && !o.got.length && o.sel === 0 && o.note === 'Inte hittat än.' && /Någonstans i parken\./.test(o.where) && box(o), o);
+      await shot('album_empty');
+      await page.click('#opt-album'); await sleep(200);
+      o = await st();
+      expect('Samlingen again: back to the notebook', !o.album && o.vis === 'hidden' && o.logVis === 'visible', { album: o.album, vis: o.vis, logVis: o.logVis });
+      await closeAlbum();
+      // Two photographs, two emblems and a can.
+      const card = await take('photo', 3);
+      expect('the pickup note: the memory of that picture, where Samlingen is', card.includes(N.P[3]) && /Samlingen/.test(card), card);
+      await shot('album_collect');
+      await take('emblem', 5);
+      await take('emblem', 1);
+      await take('photo', 0);
+      const can = await ev(async () => {
+        const { cans } = await import('./src/actors/pickups.js');
+        const g = __game, c = cans.find((c) => c.alive && Math.hypot(c.x - g.player.x, c.z - g.player.z) < 80) || cans.find((c) => c.alive);
+        const n0 = g.cans;
+        g.player.teleport(c.x, c.z, g.player.yaw);
+        for (let i = 0; i < 30 && c.alive; i++) await new Promise((r) => requestAnimationFrame(r));
+        return { taken: !c.alive, n: g.cans - n0 };
+      });
+      expect('a can picked up is counted', can.taken && can.n === 1, can);
+      o = await openAlbum();
+      expect('four found: the badge, the rows, the counts', o.badge === '4/14' && o.got.join() === '0,3,8,12' && /Hittat 4 av 14/.test(o.sub) && /Pantburkar\s*1/.test(o.foot) && /2\/7/.test(o.kicks[0]) && /2\/7/.test(o.kicks[1]) && o.painted >= 5, o);
+      expect('opens on the last one found (photograph 0), its memory and where', o.sel === 0 && o.title === 'Sonjas fotografi' && o.note === N.P[0] && /På bänken vid dammen i parken/.test(o.where) && box(o), o);
+      await shot('album_open');
+      await page.hover('.al-slot[data-i="8"]'); await sleep(150);
+      o = await st();
+      expect('hover: emblem 1 was the second found: nr 2, the second note', o.sel === 8 && o.title === 'Saab-emblem nr 2' && o.note === N.E[1] && /Bland begagnade bilar på Bilhallen/.test(o.where), o);
+      await page.hover('.al-slot[data-i="12"]'); await sleep(150);
+      o = await st();
+      expect('hover: emblem 5 was the first: nr 1, the first note', o.sel === 12 && o.title === 'Saab-emblem nr 1' && o.note === N.E[0], o);
+      await shot('album_emblem');
+      await page.keyboard.press('ArrowRight'); await sleep(150);
+      o = await st();
+      expect('arrow right: emblem 6, not found, a hint', o.sel === 13 && o.title === 'Saab-emblem' && o.note === 'Inte hittat än.' && /Någonstans vid sjukhuset\./.test(o.where), o);
+      await shot('album_missing');
+      await page.keyboard.press('ArrowUp'); await sleep(150);
+      o = await st();
+      expect('arrow up: the photograph above it (6)', o.sel === 6 && /Någonstans på förskolan\./.test(o.where), o);
+      await page.keyboard.press('ArrowRight'); await sleep(150);
+      o = await st();
+      expect('arrow right off the end of a row: on into the next', o.sel === 7, o);
+      await page.click('.al-slot[data-i="3"]'); await sleep(150);
+      o = await st();
+      expect('click: photograph 3, its own memory', o.sel === 3 && o.note === N.P[3] && /Under julgranen på torget/.test(o.where), o);
+      await closeAlbum();
+      // Kept over a reload: Fortsätt. (The can is in the save from the next autosave, as its krona is:
+      // every 30 s of play; brought forward here.)
+      await ev(() => { __game.saveT = 31; });
+      await frames(30);
+      await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
+      await page.waitForFunction('window.__ready === true', { timeout: 120000, polling: 250 });
+      await page.click('#play'); await sleep(1500);
+      o = await openAlbum();
+      expect('after a reload: the same four, the same order, the can', o.badge === '4/14' && o.got.join() === '0,3,8,12' && o.sel === 0 && o.note === N.P[0] && /Pantburkar\s*1/.test(o.foot), o);
+      await page.hover('.al-slot[data-i="8"]'); await sleep(150);
+      o = await st();
+      expect('after a reload: emblem 1 still nr 2', o.title === 'Saab-emblem nr 2' && o.note === N.E[1], o);
+      await closeAlbum();
+      // All seven emblems: the last one's note closes the collection.
+      let last = '';
+      for (const id of [0, 2, 3, 4, 6]) last = await take('emblem', id);
+      expect('the seventh emblem: the last note', last.includes(N.E[6]) && /7\/7/.test(last), last);
+      await sleep(2800);
+      o = await openAlbum();
+      expect('all seven emblems: nr 7, the last note, up in the garage', o.badge === '9/14' && o.sel === 13 && o.title === 'Saab-emblem nr 7' && o.note === N.E[6] && /7\/7/.test(o.kicks[1]) && /Uppsatta i garaget/.test(o.kicks[1]) && box(o), o);
+      await shot('album_full');
+      await closeAlbum();
+      await ev(() => localStorage.removeItem('saab-and-run-v1'));
     },
 
     async uifavicon() {

@@ -124,6 +124,8 @@ body.bigmap-open #tags, body.bigmap-open #bubbles { display: none; }
 #collect.show { display: flex; align-items: center; gap: 10px; }
 #collect b { font-family: var(--cond); font-weight: 600; font-size: 17px; }
 #collect .memory, .toast .memory { font: 500 19px/1.2 var(--hand); color: var(--fg); }
+#collect .col-hint { display: block; margin-top: 5px; font: 500 12px/1.2 var(--body); color: var(--fg-dim); }
+#collect .col-hint kbd { font-size: 11px; }
 .rec-icon, .mos-icon, .emblem-icon, .photo-icon { display: inline-block; flex: none; vertical-align: -3px; }
 .rec-icon, .emblem-icon { width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #f6f7f8 0 22%, #b9c0c6 23% 58%, #6d757c 60%); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6); }
 .mos-icon, .photo-icon { width: 17px; height: 21px; background: linear-gradient(#cbb89a, #9a8a70); border: 2.5px solid #f2efe6; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); transform: rotate(-6deg); }
@@ -491,20 +493,23 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
    once Röster and Röstvolym came. In a window too low for the menu the row is held to the window
    (minmax(0, 1fr) under the card's max-height) and the menu scrolls as a last resort. */
 .pause-card { display: grid; grid-template-columns: 300px 548px; grid-template-rows: minmax(0, 1fr); align-items: stretch; max-width: calc(94vw / var(--ui)); max-height: calc(96vh / var(--ui)); box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45); }
-.pause-card > #pause-log, .pause-card > #pause-controls { grid-area: 1 / 2; min-width: 0; min-height: 0; }
-.pause-card > #pause-log { contain: size; }
+.pause-card > #pause-log, .pause-card > #pause-controls, .pause-card > #pause-album { grid-area: 1 / 2; min-width: 0; min-height: 0; }
+.pause-card > #pause-log, .pause-card > #pause-album { contain: size; }
 #pause .pause-controls { width: auto; border-top: 0; box-shadow: none; background: rgba(244, 242, 236, 0.97); padding: 26px 22px 22px; visibility: hidden; overflow: hidden auto; }
 #pause.ctl .pause-controls { visibility: visible; }
 #pause.ctl #pause-log { visibility: hidden; }
+#pause #pause-album { visibility: hidden; }
+#pause.album #pause-album { visibility: visible; }
+#pause.album #pause-log { visibility: hidden; }
 .pause-menu { width: 300px; background: rgba(244, 242, 236, 0.97); padding: 28px 30px 24px; border-top: 3px solid var(--ink); display: flex; flex-direction: column; overflow: hidden auto; scrollbar-width: thin; }
 .pm-kicker { font: 600 12px/1 var(--cond); letter-spacing: 0.26em; text-transform: uppercase; color: #6d727a; }
-.pause-menu h2 { margin: 6px 0 22px; font: 700 54px/0.9 var(--cond); letter-spacing: 0.02em; color: var(--ink); }
+.pause-menu h2 { margin: 6px 0 20px; font: 700 54px/0.9 var(--cond); letter-spacing: 0.02em; color: var(--ink); }
 .pause-menu .btn.primary { width: 100%; }
 .pm-opts { margin: 18px 0 18px; border-top: 1px solid rgba(27, 31, 36, 0.18); }
-.opt { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 12px 2px 11px; background: none; border: 0; border-bottom: 1px solid rgba(27, 31, 36, 0.18); font: 500 16px/1 var(--body); color: var(--ink); cursor: pointer; }
+.opt { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 11px 2px 10px; background: none; border: 0; border-bottom: 1px solid rgba(27, 31, 36, 0.18); font: 500 16px/1 var(--body); color: var(--ink); cursor: pointer; }
 .opt b { font: 600 13px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; padding: 5px 9px 4px; border: 1.5px solid var(--ink); border-radius: 2px; min-width: 52px; text-align: center; }
 .opt.off b { color: #8a8f96; border-color: #b9bdc2; }
-.opt:hover b { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.opt:hover b, .opt.on b { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 /* Gamepad navigation (hud.js _padMenu): the focused button gets an amber ring. */
 #pause.pad button:focus { outline: 2px solid var(--amber); outline-offset: 2px; }
 .pm-acts { display: flex; flex-direction: column; gap: 8px; }
@@ -529,6 +534,44 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
 .log-entry.escaped .le-mark { color: #7a7f86; }
 .log-empty { font: 600 24px/30px var(--hand); color: #6a6f76; padding-top: 0; }
 
+/* "Samlingen" (hud.js renderAlbum): a dark photo-album page, white ink. Two rows of seven (Sonja's
+   photographs, the Saab emblems; one not yet found is an empty dashed frame), the chosen one large
+   with its note, where it was found (or a hint), and the counts at the foot. As tall as the menu,
+   like the notebook (contain: size); it scrolls in a window too low for it. */
+.album-page { display: flex; flex-direction: column; overflow: hidden auto; padding: 20px 26px 18px; color: #ece5d6; background-color: #2b2723; background-image: var(--paper-grain), radial-gradient(120% 90% at 30% 0%, rgba(255, 240, 210, 0.06), transparent 60%); scrollbar-width: thin; scrollbar-color: rgba(236, 229, 214, 0.3) transparent; }
+.album-page > * { flex: none; }
+.al-head { font: 700 34px/1 var(--hand); color: #f3ecdc; }
+.al-sub { margin: 4px 0 14px; font: 600 11px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(236, 229, 214, 0.55); }
+.al-kick { display: flex; align-items: baseline; gap: 9px; margin-bottom: 6px; font: 600 12px/1 var(--cond); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(236, 229, 214, 0.7); }
+.al-kick b { font-size: 14px; letter-spacing: 0.06em; color: #f3ecdc; }
+.al-kick i { font: 600 18px/1 var(--hand); letter-spacing: 0; text-transform: none; color: var(--amber); }
+.al-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+.al-slot { position: relative; display: flex; align-items: center; justify-content: center; height: 90px; padding: 0; border: 0; background: none; cursor: pointer; }
+.al-slot.emblem { height: 66px; }
+.al-slot canvas { display: block; transition: transform 0.15s; }
+.al-slot.photo canvas { width: 60px; height: 80px; transform: rotate(var(--rot, 0deg)); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55); }
+.al-slot.emblem canvas { width: 57px; height: 57px; }
+.al-slot.missing span { display: flex; align-items: center; justify-content: center; width: 60px; height: 80px; border: 1.5px dashed rgba(236, 229, 214, 0.26); border-radius: 2px; font: 700 26px/1 var(--hand); color: rgba(236, 229, 214, 0.32); }
+.al-slot.emblem.missing span { width: 53px; height: 53px; border-radius: 50%; }
+.al-slot.photo.sel canvas, .al-slot.photo:hover canvas { transform: rotate(0deg) scale(1.08); }
+.al-slot.emblem.sel canvas, .al-slot.emblem:hover canvas { transform: scale(1.08); }
+.al-slot.sel span, .al-slot:hover span { border-color: rgba(236, 229, 214, 0.6); color: rgba(236, 229, 214, 0.7); }
+.al-slot.sel::after { content: ''; position: absolute; left: 50%; bottom: -5px; width: 18px; height: 3px; margin-left: -9px; border-radius: 2px; background: var(--amber); }
+.al-slot:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.al-detail { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 18px; align-items: start; min-height: 208px; padding-top: 12px; border-top: 1px solid rgba(236, 229, 214, 0.14); }
+.al-big { display: flex; justify-content: center; }
+.al-big canvas.photo { width: 138px; height: 184px; transform: rotate(-2deg); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6); }
+.al-big canvas.emblem { width: 126px; height: 126px; margin-top: 10px; }
+.al-big .missing { display: flex; align-items: center; justify-content: center; width: 138px; height: 184px; border: 1.5px dashed rgba(236, 229, 214, 0.3); border-radius: 2px; font: 700 54px/1 var(--hand); color: rgba(236, 229, 214, 0.35); }
+.al-big .missing.emblem { width: 126px; height: 126px; margin-top: 10px; border-radius: 50%; }
+.al-t { margin: 4px 0 8px; font: 600 12px/1 var(--cond); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(236, 229, 214, 0.6); }
+.al-note { font: 600 23px/1.12 var(--hand); color: #f6f0e2; }
+.al-note.dim { color: rgba(236, 229, 214, 0.6); }
+.al-where { margin-top: 12px; font: 400 13.5px/1.35 var(--body); color: rgba(236, 229, 214, 0.78); }
+.al-where small { display: block; margin-bottom: 4px; font: 600 10.5px/1 var(--cond); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(236, 229, 214, 0.45); }
+.al-foot { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: auto; padding-top: 10px; border-top: 1px solid rgba(236, 229, 214, 0.14); font: 600 11px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(236, 229, 214, 0.55); }
+.al-foot b { margin-left: 6px; font-size: 14px; letter-spacing: 0.04em; color: #f3ecdc; }
+
 @media (max-width: 980px) {
   .title-grid { grid-template-columns: 1fr; gap: 20px; }
   #title .title-controls { display: none; }
@@ -543,18 +586,20 @@ h1 { margin: 10px 0 0; font: 700 clamp(48px, calc((min(1200px, 93vw / var(--ui))
    the key hint goes, which keeps it whole to ~435 px. Lower still it scrolls (see .pause-card). */
 @media (max-height: 540px) and (min-width: 861px) {
   .pause-menu { padding-top: 20px; padding-bottom: 18px; }
-  .pause-menu h2 { margin: 4px 0 14px; font-size: 46px; }
-  .pm-opts { margin: 12px 0; }
-  .pause-menu .opt { padding: 9px 2px 8px; }
-  .pm-keys { padding-top: 12px; }
+  .pause-menu h2 { margin: 2px 0 10px; font-size: 46px; }
+  .pm-opts { margin: 10px 0; }
+  .pause-menu .opt { padding: 8px 2px 7px; }
+  .pm-keys { padding-top: 8px; }
 }
 @media (max-height: 464px) and (min-width: 861px) {
   .pm-keys { display: none; }
+  .pause-menu h2 { font-size: 40px; }
+  .pause-menu .opt { padding: 7px 2px 6px; }
 }
 @media (max-width: 860px) {
   .pause-card { grid-template-columns: min(430px, calc(94vw / var(--ui))); grid-template-rows: auto auto; max-height: calc(94vh / var(--ui)); overflow: auto; }
-  .pause-card > #pause-log, .pause-card > #pause-controls { grid-area: 2 / 1; }
-  .pause-card > #pause-log { contain: none; max-height: min(560px, calc(86vh / var(--ui))); }
+  .pause-card > #pause-log, .pause-card > #pause-controls, .pause-card > #pause-album { grid-area: 2 / 1; }
+  .pause-card > #pause-log, .pause-card > #pause-album { contain: none; max-height: min(560px, calc(86vh / var(--ui))); }
   .pause-menu { width: auto; overflow: visible; }
   #pause .controls .hold { white-space: normal; }   /* the narrow column has no room for a whole note */
 }

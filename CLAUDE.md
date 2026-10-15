@@ -26,7 +26,10 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   luftcam luftsound` (day 3's radiator scene: a shot per beat, the skip, started with the camera at
   Anita or Rune, its sounds offline), ui.mjs `uiportraits
   uitoasts uiabort uifavicon titlegone uipause` (the pause card at 15 window sizes: run it after
-  touching the pause menu or its rows), render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
+  touching the pause menu or its rows) and `album` (Samlingen, the pause menu's album of the emblems
+  and Sonja's photographs, features/implemented/se_pa_trinkets.md: real pickups, the counts, the
+  notes, hover / click / arrows, a reload: run it after touching the collectibles, the album or the
+  save), render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
   (round 2: `wheelfaces trailersleep`; the slides: `handling drift driftshot speedslide`), people.mjs
   (round 2: `pplanim pplcine`; `seatlegs`: nothing of anyone seated in a car below the cushion in
   sight, every car model (the snow tractor's cab keeps the lower legs: nothing below its floor), the

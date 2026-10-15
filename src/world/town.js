@@ -216,25 +216,27 @@ export function tickTown(t) {
 
 // Seven Saab emblems and seven of Sonja's photographs, each reachable on foot (ground level, or
 // on a low step / bench / the stand, which are climbable in 0.4 m steps, or up the hoppbacke).
+// Each spot is [x, y, z, where, hint]: where it was found and where it might be, as the album in the
+// pause menu says them ("Samlingen": game/collection.js, hud.js renderAlbum). The order is the ids.
 function placeCollectibles(c) {
   const at = (type, yaw, lx, lz, y) => { const b = c[type]; const f = new Frame(null, null, b.ox, b.oz, yaw); return [f.wx(lx, lz), y, f.wz(lx, lz)]; };
   const E = collectibleSpots.emblems, Ph = collectibleSpots.photos;
-  E.push(at('ove', 0, 5.0, -14.55, CURB + 1.3));            // on Ove's workbench, in the open garage
-  E.push(at('dealer', Math.PI / 2, -15, -8.5, CURB + 1.0));   // among the used cars at Bilhallen
+  E.push([...at('ove', 0, 5.0, -14.55, CURB + 1.3), 'På arbetsbänken i Oves garage', 'hemma, närmare än man tror']);   // in the open garage
+  E.push([...at('dealer', Math.PI / 2, -15, -8.5, CURB + 1.0), 'Bland begagnade bilar på Bilhallen', 'på Bilhallen']);
   const jh = JUMP_HILLS[0];                                    // on the table of the hoppbacke
-  E.push([jh.x - jh.fx * 1.5, jh.at(jh.x - jh.fx * 1.5, jh.z - jh.fz * 1.5) + 0.9, jh.z - jh.fz * 1.5]);
-  E.push(at('gas', 0, 21, -29.8, CURB + 1.0));                 // behind the car wash
-  E.push(at('ove', 0, -28.2, 28.0, CURB + 0.9));               // in the bike shed
-  E.push(at('field', Math.PI, 30.4, 2, CURB + 1.2 + 0.9));     // top row of the stand
-  E.push(at('hospital', 0, -29.6, 5.4, CURB + 1.0));           // by a parking meter
-  Ph.push(at('park', 0, 12, -6.7, CURB + 1.05));               // on the bench by the pond
-  Ph.push(at('church', 0, -16.6, -2, CURB + 0.48 + 0.9));      // on the church steps
-  Ph.push(at('cemetery', 0, -11.4, 24.9, CURB + 1.0));         // by the minneslund
-  Ph.push(at('centrum', 0, 7.4, -0.8, CURB + 1.0));            // under the Christmas tree on the torg
+  E.push([jh.x - jh.fx * 1.5, jh.at(jh.x - jh.fx * 1.5, jh.z - jh.fz * 1.5) + 0.9, jh.z - jh.fz * 1.5, 'Uppe på hoppbacken i parken', 'i parken']);
+  E.push([...at('gas', 0, 21, -29.8, CURB + 1.0), 'Bakom biltvätten på macken', 'vid Bensin & Service']);
+  E.push([...at('ove', 0, -28.2, 28.0, CURB + 0.9), 'I cykelförrådet i området', 'här i området']);       // in the bike shed
+  E.push([...at('field', Math.PI, 30.4, 2, CURB + 1.2 + 0.9), 'Översta raden på läktaren vid fotbollsplanen', 'vid fotbollsplanen']);
+  E.push([...at('hospital', 0, -29.6, 5.4, CURB + 1.0), 'Vid en parkeringsautomat vid sjukhuset', 'vid sjukhuset']);
+  Ph.push([...at('park', 0, 12, -6.7, CURB + 1.05), 'På bänken vid dammen i parken', 'i parken']);
+  Ph.push([...at('church', 0, -16.6, -2, CURB + 0.48 + 0.9), 'På kyrktrappan', 'vid kyrkan']);
+  Ph.push([...at('cemetery', 0, -11.4, 24.9, CURB + 1.0), 'Vid minneslunden på kyrkogården', 'på kyrkogården']);
+  Ph.push([...at('centrum', 0, 7.4, -0.8, CURB + 1.0), 'Under julgranen på torget', 'i centrum']);
   const bs = BUS_STOPS[0];
-  Ph.push([bs.a + 0.5, CURB + 1.05, bs.c + bs.dir * 7.6]);     // in the shelter at Solrosvägen
-  Ph.push(at('forest', 0, -22, 5, CURB + 1.0));                // on the jogging track
-  Ph.push(at('preschool', Math.PI, 6, 5.5, CURB + 0.3 + 0.9)); // in the preschool sandbox
+  Ph.push([bs.a + 0.5, CURB + 1.05, bs.c + bs.dir * 7.6, `I busskuret vid hållplatsen ${bs.name}`, 'vid en busshållplats']);
+  Ph.push([...at('forest', 0, -22, 5, CURB + 1.0), 'På elljusspåret i skogen', 'i skogen']);            // on the jogging track
+  Ph.push([...at('preschool', Math.PI, 6, 5.5, CURB + 0.3 + 0.9), 'I sandlådan på förskolan', 'på förskolan']);
 }
 
 // Make sure there are ~120 cans: add more along sidewalks near Ove's if needed.
