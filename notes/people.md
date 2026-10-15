@@ -884,3 +884,61 @@ game/rune.js. New `anim` flags, all in animateCharacter's order after the shiver
   back up by 0.8 s. Shake: neck yaw ±0.3 (head ±0.1, a little behind) at 0.8 s a turn, in and out
   over 2 s, the neck bowed 0.08. Close-ups: scenarios/smaprat.mjs `smaprat` (smaprat_nod*.png,
   smaprat_shake*.png).
+
+## The ragdoll (feature snubbla_vid_hopp, 2026-10-15)
+
+`src/actors/ragdoll.js` (`Ragdoll`, `RAG`), `Character.tumble(o)` / `fling(..., o)` with
+`ch.ragdoll`, models.js `st.rag` / `st.prone`. Ove only (main.js sets `player.ragdoll`); anyone could
+use it (`fling(vx, vy, vz, { rag: true })`), the pedestrians keep the old canned `flungPose`.
+- **The points** (22): the hip, knee and ankle joints, the balls of the feet, the spine, chest and
+  neck joints, the middle of the skull, the shoulder, elbow and wrist joints, the ends of the hands,
+  and a point in front of the pelvis and of the chest (the trunk's depth). Each hangs on a bone
+  (`BONE`) at an offset from it in rest-pose model space; `rig(m)` (cached as `m.ragRig`) has the rest
+  points from `m.D`, the constraints, the bones' rest frames, radii (×`D.k`; the head 0.47 headH) and
+  inverse masses (the trunk 1, hands and toes 3-4).
+- **Constraints**: sticks (the bones; the pelvis (both hips, the spine joint, its front point) and the
+  chest (the chest joint, both shoulders, the neck joint, its front point) rigid); ranges (the spine
+  bends 0.8-1.07 of its front length and twists a little, the neck likewise, an ankle 0.3 up to 0.85
+  down of its rest angle, a wrist 1.1 rad either way, elbows and knees fold only so far, the legs never
+  through each other); the hips in a cone (flexion -0.5..2.2, abduction -0.35..1 rad), soft (a fifth a
+  pass, at most 2 cm, the knee and the hip shared by their weights); a knee always in front of the line
+  from its hip to its ankle (`ahead`: the pelvis' forward, mass-weighted). **No hinges that move a point
+  outright onto their plane**: that blew the body apart (a limb near the hinge's axis jumps from side to
+  side; the run's points went 15-30 m/s for six seconds, `snubbladbg DBG=noLimits` found it). Elbows
+  and knees bend any way in the points; the pose makes them hinges (below).
+- **The step**: Verlet, 2 substeps of the 60 Hz fixed step, 10 passes of the constraints, the walls
+  (blocks taller than 0.3 m over a point's bottom), the cars' boxes (and their roofs as floors), the
+  ground (`groundAt`, steps of 0.3 m). Contacts are inelastic (no speed out of the ground from being
+  pushed out of it) with Coulomb friction (mu 0.8 x the push), and a body tumbling with its trunk on
+  the ground loses `RAG.tumble` (4/s) of its speed (a roll loses nothing to friction: he rolled 9 m
+  from a run). Gravity 16. Nothing starts under the ground (a landing is a little below it: lifted), and
+  the start pose is solved before anything moves (hands in pockets are scaled down). `tone` s of
+  stiffness at the start (springs to the starting distances, 0.35 a pass, fading; ended by the trunk's
+  first hard hit) and `brace` (the wrists drawn ahead of the chest along the fall) make a trip look like
+  a man going over, not a sack cut loose. Still (every point < 0.45 m/s for 0.3 s, not before 0.7 s,
+  at the latest 7 s): `freeze`.
+- **The pose** (`pose(m, P, Q)`, from animateCharacter after the whole-body states): every bone's
+  rotation from two directions: its own (the next point down the chain) and one across it (the pelvis:
+  the hips; the spine: hips + shoulders; the chest and the neck: the shoulders; a limb: its **twist**,
+  `rag.twist[arm R, L, leg R, L]`, carried along square to the upper bone from step to step and turned
+  towards the plane its elbow (forearm x upper arm) or knee (thigh x shin) bends in, a leg's held within
+  0.8 rad of the pelvis' left: a hip turns only so far). Against the rig's rest frames, as locals down
+  the chain, the neck and the head share the neck's turn (0.55 / the rest). The pelvis offset from the
+  hips' middle. Hands and fingers keep flungPose's / downPose's limp shape. A bent elbow or knee is
+  then a pure hinge on screen.
+- **Lying still** (`freeze`): the root under his hips, turned along the body: on his back feet to +z,
+  on his front (`st.prone`, the pelvis' front pointing down) head to +z; the points frozen in its
+  frame. While 'down' the points move from where he lies to the points of downPose's first pose (`fk`:
+  the bones from Q's angles, as animateCharacter would set them) over `rollT` (0.4-0.9 s by how far he
+  is turned from flat), the sticks relaxed and no point under the ground at every step, the last third
+  of the way slerped into Q's own bones; then Q as it is (the get-up). (Turning the bones there instead
+  rolled him over his own outstretched arm, through the road: a foot 0.35 m, a hand 0.5 m under.)
+- **downPose** got: `st.prone`: face down (`proneKeys`: the head turned to a side off the ground, the
+  palms beside the shoulders) -> on hands and knees (the trunk 20 degrees up, the palms under the
+  shoulders: `pronePalms`, armIK + aimHand, solved again every frame of the push-up so they stay on the
+  ground) -> the same one knee -> stand. And for every get-up past sitting (g > 0.3; face down from the
+  start) `liftFeet`: a knee bent or straightened, as little as will do, where its ankle would be under
+  0.07 m (sitting -> one knee put the kneeling leg's ankle 0.33 m under the ground, for everyone who was
+  ever knocked over). The sitting pose's elbows bend 0.4 (was 0.2: the hands went 2.5 cm into the
+  ground). The waking scene (lie -> sit only, legs and sleeping arms its own) is unchanged to the eye.
+- Cost (`snubblaperf`): ~0.1-0.25 ms a fixed step tumbling, ~0.05 ms a pose; nothing once he is up.

@@ -271,10 +271,12 @@ export class Cold {
     } else {
       // on foot: he stops, stiffens where he stands, and goes over like a plank
       if (at(0.9) && (p.state === 'normal' || p.state === 'down')) {
+        // (lying already, after a fall or a tumble out of a car: he stiffens where he lies)
+        D.lying = p.state === 'down';
         p.state = 'frozen'; p.vx = p.vz = p.vy = 0; p.topple = 0; D.side = Math.random() < 0.5 ? 1 : -1;
         this.sfx('freeze');
       }
-      if (p.state === 'frozen' && t > 1.5) { const u = clamp((t - 1.5) / 0.6, 0, 1); p.topple = D.side * (Math.PI / 2 - 0.1) * u * u; }
+      if (p.state === 'frozen' && t > 1.5 && !D.lying) { const u = clamp((t - 1.5) / 0.6, 0, 1); p.topple = D.side * (Math.PI / 2 - 0.1) * u * u; }
       if (at(2.1) && p.state === 'frozen') {
         this.sfx('poff');
         audio.thud(1.1);

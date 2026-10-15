@@ -71,6 +71,15 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `sposmore` = the hoppbacke (none across a flight), a trailer, the snow tractor, Rune's chair, the
   cold beyond the town; `sposlook` close-ups; `sposperf` with `QUERY='&gputime'`); run `snospar
   sposmore` after touching tracks.js, surface.js, the feet, the wheels or the dawn of a day.
+  snubbla.mjs (Ove tripping and tumbling, a ragdoll, features/implemented/snubbla_vid_hopp.md:
+  `snubbla` = real Space presses standing / walking / running with the next landing set to trip, none
+  without the lever, the odds, at a wall, on a car roof: each time down, no point or joint under the
+  ground, nothing in a wall, up near where he fell, a line of his; `hoppaur` = E out of the Saab at
+  15/35/60/90 km/h (real keys: tumbling, further the faster, never under the road or in the car), at
+  10 km/h stepping out, a car into him (`HIT=1` that alone); `snubblaperf` (the ragdoll's ms a step
+  and a pose); `snubblalook` (film strips, `FILM=dir` keeps the frames); `snubbladbg` (`DBG=`
+  RAG.dbg's switches)); run `snubbla hoppaur` after touching ragdoll.js, downPose, the jump's
+  landing, exitCar or Ove's fling.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -227,6 +236,14 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `voice.quiet()`; the outro waits for quiet. `game.murmur(pitch)` is the old murmur, voices off only.
   Music: `audio.music(state)` from main.js `musicState()` (roam playlist, errand, pursuit, race,
   chase, hurry, finale); the generative piano is the fallback.
+- **Stumbling, ragdoll** (actors/ragdoll.js, `Character.tumble(o)`, main.js `stumble` / `jumpOut`;
+  features/implemented/snubbla_vid_hopp.md): one landing in 40 (`STUMBLE.chance`) Ove trips (never in
+  tests without `&stumble`; `__game.stumbleNext` trips the next one), E out of a car above 4 m/s
+  (`STUMBLE.exit`) tumbles him along the road, and every `fling` of his (`player.ragdoll`) is a
+  ragdoll. State `flung` while it moves (`ch.rag`; carsVsPeople leaves him to it), `down` once still:
+  the points frozen in a root turned along him, morphed into downPose's first pose and then its
+  get-up (`anim.prone`: face down he pushes up on all fours). `teleport` ends one; `onGetUp(ch, why)`
+  (script.js `OVE_STUMBLE[why]`: lines he has already).
 - **Tracks in the snow** (`game.tracks`, tracks.js; features/implemented/snöspår.md): prints where
   people walk on snow, ruts where wheels roll on it (`surfaceAt` 'snow', not ice), drawn
   with the snow surface's own shader plus a relief; ring buffers (Ove's and his car's apart), cleared

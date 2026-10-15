@@ -3767,6 +3767,9 @@ export function animateCharacter(m, st, dt) {
   if (wFlung > 0.001) { flungPose(m, st, Q, t); lerpPose(P, Q, wFlung); }
   if (wDown > 0.001) { downPose(m, st, Q, t); lerpPose(P, Q, wDown); }
   if (m.squash > 0) { const s = Math.sin(Math.min(1, m.squash / 0.6) * PI) * 0.6; P[OFF + 1] -= 0.06 * s; for (const i of [0, 1]) { P[(i ? B.thighL : B.thighR) * 3] -= 0.35 * s; P[(i ? B.shinL : B.shinR) * 3] += 0.7 * s; P[(i ? B.footL : B.footR) * 3] -= 0.35 * s; } }
+  // a ragdoll (actors/ragdoll.js, feature snubbla_vid_hopp): the trunk, the limbs and the pelvis from its
+  // points; lying still, blended into the get-up above (Q: downPose)
+  if (st.rag) { if (st.down && !(wDown > 0.001)) downPose(m, st, Q, t); st.rag.pose(m, P, st.down ? Q : null); }
   // mouth: barely moves. With a voice clip playing (voice.js) the jaw follows its loudness and shuts
   // on m, b and p (st.mouth, 0..1); a murmur still flaps.
   const jawT = st.talk ? (st.mouth != null ? 0.01 + 0.07 * st.mouth : 0.02 + 0.055 * Math.abs(Math.sin(t * 13 + Math.sin(t * 4.7) * 2)) * (0.6 + 0.4 * Math.sin(t * 2.3 + m.seed * 9))) : st.yell || st.flung ? 0.16 : 0.004;
@@ -3779,7 +3782,7 @@ export function animateCharacter(m, st, dt) {
   // (teeth chattering in the cold)
   if (wShiver > 0.25 && !st.talk) P[B.jaw * 3] = Math.max(P[B.jaw * 3], 0.016 * wShiver * (0.5 + 0.5 * Math.sin(t * 46)));
   // look
-  P[B.neck * 3 + 1] += (st.look || 0) * (1 - wDown);
+  if (!st.rag) P[B.neck * 3 + 1] += (st.look || 0) * (1 - wDown);
   // a nod or a slow shake of the head (st.gesture 'nod' | 'shake' from st.gestureAt = st.t: Ove's
   // silent answers to small talk, main.js chat)
   if (st.gesture && wDown < 0.05 && wFlung < 0.05) {
@@ -4828,9 +4831,11 @@ function flungPose(m, st, Q, t) {
   handShape(Q, 0, 'limp'); handShape(Q, 1, 'limp');
 }
 
-const _kneel = new Float32Array(NCH), _sit = new Float32Array(NCH), _lie = new Float32Array(NCH);
+const _kneel = new Float32Array(NCH), _sit = new Float32Array(NCH), _lie = new Float32Array(NCH), _plie = new Float32Array(NCH), _pall = new Float32Array(NCH);
 function downPose(m, st, Q, t) {
-  // lying on the back for a moment, then: sit up -> one knee -> stand
+  // lying on the back for a moment, then: sit up -> one knee -> stand. st.prone (a ragdoll that came to
+  // rest on his front, actors/ragdoll.js): face down, then: push up onto hands and knees -> one knee ->
+  // stand (the root's +z is where his head was).
   const D = m.D, s = m.seed > 0.5 ? 1 : 0;
   const lie = _lie; lie.fill(0);
   lie[B.pelvis * 3] = -PI / 2;
@@ -4844,7 +4849,8 @@ function downPose(m, st, Q, t) {
   sit[B.pelvis * 3] = -0.45;
   for (const i of [0, 1]) { const bent = i === s; sit[(i ? B.thighL : B.thighR) * 3] = bent ? -1.45 : -1.1; sit[(i ? B.shinL : B.shinR) * 3] = bent ? 0.85 : 0.1; sit[(i ? B.footL : B.footR) * 3] = bent ? 0.5 : -0.3; }
   sit[B.spine * 3] = 0.3; sit[B.chest * 3] = 0.1; sit[B.neck * 3] = 0.15;
-  sit[B.armR * 3] = 0.5; sit[B.armL * 3] = 0.5; sit[B.armR * 3 + 2] = -0.35; sit[B.armL * 3 + 2] = 0.35; sit[B.foreR * 3] = -0.2; sit[B.foreL * 3] = -0.2;
+  // (the hands behind him on the ground: the elbows a little bent, or the hands go into it)
+  sit[B.armR * 3] = 0.5; sit[B.armL * 3] = 0.5; sit[B.armR * 3 + 2] = -0.35; sit[B.armL * 3 + 2] = 0.35; sit[B.foreR * 3] = -0.4; sit[B.foreL * 3] = -0.4;
   const kn = _kneel; kn.fill(0);
   kn[OFF + 1] = D.kneeY + 0.02 - D.hipY;
   const a = s ? B.thighL : B.thighR, b = s ? B.thighR : B.thighL;
@@ -4855,11 +4861,82 @@ function downPose(m, st, Q, t) {
   for (const A of [lie, sit, kn]) { handShape(A, 0, 'limp'); handShape(A, 1, 'limp'); }
   // timeline: lying until 1.3 s before the end, then the get-up
   const g = clamp(1 - (st.downLeft ?? 9) / 1.3, 0, 1);
-  if (g <= 0) { Q.set(lie); return; }
-  if (g < 0.35) { const k = sstep(0, 0.35, g); for (let i = 0; i < NCH; i++) Q[i] = lerp(lie[i], sit[i], k); return; }
-  if (g < 0.7) { const k = sstep(0.35, 0.7, g); for (let i = 0; i < NCH; i++) Q[i] = lerp(sit[i], kn[i], k); return; }
-  const k = sstep(0.7, 1, g);
-  for (let i = 0; i < NCH; i++) Q[i] = lerp(kn[i], 0, k);
+  const first = st.prone ? proneKeys(m, t) : lie, second = st.prone ? _pall : sit;
+  if (g <= 0) Q.set(first);
+  else if (g < 0.35) {
+    const k = sstep(0, 0.35, g);
+    for (let i = 0; i < NCH; i++) Q[i] = lerp(first[i], second[i], k);
+    // (pushing himself up: the palms stay on the ground under the trunk as it rises)
+    if (st.prone) pronePalms(m, Q, k);
+  }
+  else if (g < 0.7) { const k = sstep(0.35, 0.7, g); for (let i = 0; i < NCH; i++) Q[i] = lerp(second[i], kn[i], k); }
+  else { const k = sstep(0.7, 1, g); for (let i = 0; i < NCH; i++) Q[i] = lerp(kn[i], 0, k); }
+  // (getting up from the ground the poses in between put a foot through it: from sitting to one knee
+  // the kneeling leg's ankle went 0.33 m under; that knee bends further instead)
+  if (g > 0.3 || (g > 0 && st.prone)) liftFeet(m, Q, 0.07 * D.k);
+}
+
+// Lying face down (proneKeys returns it: _plie) and on hands and knees (_pall), for downPose.
+function proneKeys(m, t) {
+  const D = m.D, s = m.seed > 0.5 ? 1 : 0, k = D.k;
+  const lie = _plie; lie.fill(0);
+  lie[B.pelvis * 3] = PI / 2;
+  lie[OFF + 1] = 0.11 * k - D.hipY;
+  for (const i of [0, 1]) { lie[(i ? B.footL : B.footR) * 3] = 1.2; lie[(i ? B.thighL : B.thighR) * 3 + 2] = (i ? 1 : -1) * 0.08; }
+  // the head turned to a side (his face off the ground), breathing
+  lie[B.neck * 3 + 1] = (s ? 1 : -1) * 0.9; lie[B.head * 3 + 1] = (s ? 1 : -1) * 0.35; lie[B.neck * 3] = -0.15 - 0.06 * Math.max(0, Math.sin(t * 1.3));
+  pronePalms(m, lie, 0);
+  const all = _pall; all.fill(0);
+  const tilt = 0.35;
+  all[B.pelvis * 3] = PI / 2 - tilt;
+  all[OFF + 1] = D.hipY - D.kneeY + 0.07 * k - D.hipY;
+  for (const i of [0, 1]) { all[(i ? B.thighL : B.thighR) * 3] = -(PI / 2 - tilt); all[(i ? B.shinL : B.shinR) * 3] = PI / 2; all[(i ? B.footL : B.footR) * 3] = 1.2; }
+  all[B.neck * 3] = -0.35;
+  pronePalms(m, all, 1);
+  return lie;
+}
+// Both palms flat on the ground beside (up: under) the shoulders, the fingers towards the head, the
+// elbows out and up (up: nearly straight).
+const _ppM = new THREE.Matrix4(), _ppV = new THREE.Vector3();
+function pronePalms(m, A, up) {
+  const D = m.D, k = D.k;
+  chestFrame(m, A, _ppM);
+  for (const i of [0, 1]) {
+    const side = i ? 1 : -1;
+    _ppV.set(side * D.S, D.shJ - D.chestY, 0).applyMatrix4(_ppM);
+    const wx = _ppV.x + side * lerp(0.16, 0.03, up) * k, wz = _ppV.z + lerp(-0.08, 0.04, up) * k, wy = 0.05 * k;
+    bodyToChest(m, A, wx, wy, wz, _T);
+    armIK(m, A, i, _T.x, _T.y, _T.z, side, lerp(0.2, 0, up), lerp(-1, -0.3, up));
+    aimHand(m, A, A, i, 0, 0, 1, 0, -1, 0);
+    handShape(A, i, 'open');
+  }
+}
+// A leg's ankle in body space under pose Q, its shin bent f (a leg's FK: pelvis, thigh, shin).
+const _lfA = new THREE.Matrix4(), _lfB = new THREE.Matrix4(), _lfV = new THREE.Vector3();
+function ankleAt(m, Q, i, f) {
+  const D = m.D, th = (i ? B.thighL : B.thighR) * 3, sh = (i ? B.shinL : B.shinR) * 3;
+  _lfA.makeRotationFromEuler(_e.set(Q[0], Q[1], Q[2])).setPosition(Q[OFF], D.hipY + Q[OFF + 1], Q[OFF + 2]);
+  _lfB.makeRotationFromEuler(_e.set(Q[th], Q[th + 1], Q[th + 2])).setPosition((i ? 1 : -1) * D.hipX, 0, 0); _lfA.multiply(_lfB);
+  _lfB.makeRotationFromEuler(_e.set(f, Q[sh + 1], Q[sh + 2])).setPosition(0, D.kneeY - D.hipY, 0); _lfA.multiply(_lfB);
+  return _lfV.set(0, D.ankleY - D.kneeY, 0).applyMatrix4(_lfA).y;
+}
+// A knee bent or straightened (0 .. 2.6 rad), as little as will do, where its ankle would be under minY
+// (the ground at 0); the best it can if nothing will.
+function liftFeet(m, Q, minY) {
+  for (const i of [0, 1]) {
+    const sh = (i ? B.shinL : B.shinR) * 3, f0 = Q[sh];
+    let y = ankleAt(m, Q, i, f0), best = f0;
+    if (y >= minY) continue;
+    for (let j = 1; j <= 32 && y < minY; j++) {
+      for (const f of [f0 + j * 0.08, f0 - j * 0.08]) {
+        if (f < 0 || f > 2.6) continue;
+        const y2 = ankleAt(m, Q, i, f);
+        if (y2 > y) { y = y2; best = f; }
+        if (y >= minY) break;
+      }
+    }
+    Q[sh] = best;
+  }
 }
 
 // Old models (anything not built by buildCharacter here): keep the old swinging pivots working.

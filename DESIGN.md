@@ -617,6 +617,13 @@ Added in phase 2 (details and the bone order in `notes/people.md`):
   relative to the game's 55-degree lens: a 42-degree dialogue shot keeps its speakers at level 0).
   Level 0 of the cast carries alpha-tested hair and fur cards (one extra skinned mesh, main pass
   only). Nothing to call.
+- A ragdoll (feature snubbla_vid_hopp, `src/actors/ragdoll.js`): `ch.tumble(o)` (or `fling(vx, vy,
+  vz, o)` on a character with `ch.ragdoll` set: Ove) puts 22 points of the skeleton under
+  position-based physics (ground, walls, cars) from the bones as they are (`o.pose` 'live') or a
+  standing body (`{ x, y, z, yaw }`), with `o.v`, `o.trip`, `o.spin`, `o.tone`, `o.brace`, `o.lie`,
+  `o.why`; state `flung` while it moves, `down` once it lies still (`ch.rag`, `st.rag` posing the
+  bones in animateCharacter), then the get-up of `downPose`, from the back or (`st.prone`) the front;
+  `onGetUp(ch, why)`. `teleport` ends it.
 - Animation level of detail (`character.js` `ANIM_LOD`): beyond 30 m visible people are posed every
   2nd frame, off-screen people beyond 12 m (and seated people in cars beyond 30 m) every 4th, with
   the dt accumulated, and their skeleton's matrices are skipped while they stand still. Never Ove,

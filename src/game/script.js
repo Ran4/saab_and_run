@@ -40,7 +40,7 @@
 //   CHATTER_AFTER[who] = [days done, POOL, replace]     CHATTER_FALLBACK  when nothing else fits
 //   CHATTER_REPLY[who][line]   Ove's answer to each line of small talk (and the exchanges that go on)
 //   CHATTER_ENOUGH, CHATTER_SPARE   the fourth chat in a minute; an answer to a line with none
-//   OVE_REPLY, TYRE, SLID, OVE_HOPP, GARAGE_DOOR, OVE_START    Ove's own reactions
+//   OVE_REPLY, TYRE, SLID, OVE_HOPP, GARAGE_DOOR, OVE_START, OVE_STUMBLE    Ove's own reactions
 //   OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID, PANIC   people hit, kicked,
 //                    shoved, carjacked, nearly run over
 //   FLEE_LINES, CAUGHT_LINES, PATROL   the patrol (smitare, the Ordning meter's events)
@@ -605,6 +605,14 @@ export const GARAGE_DOOR = {
   shut: ['Så.', 'Stängt.', 'Ordning och reda.'],
   hit: ['Porten!', 'Min garageport!', 'Den var stängd, Ove.'],
 };
+// Up again after a fall of his own (main.js onGetUp, feature snubbla_vid_hopp), by what put him down:
+// he tripped landing a jump, jumped out of a moving car, a car knocked him over. Lines he has already
+// (SLID, OVE_REPLY, OVE_START: no new clips).
+export const OVE_STUMBLE = {
+  stumble: ['Det där såg ingen.', 'Kommunen har inte sandat här.', 'Det var meningen.', 'Hmpf.'],
+  car: ['Det var meningen.', 'Det där såg ingen.', 'Hmpf.'],
+  hit: ['Idioter.', 'Hmpf.'],
+};
 // Starting to write up a felparkering (on foot).
 export const OVE_START = ['Det står ju på skylten.', 'Idioter.', 'Typiskt.', 'Ingen kan läsa nu för tiden.', 'Hmpf.', 'Jaså. Här ska vi stå, minsann.'];
 // Waking up in his own bed after freezing to death out beyond the forest (game/waking.js,
@@ -832,7 +840,7 @@ export function allLines() {
     pool(e.who, [e.thanks, e.fail, e.busy || ERRAND_BUSY, ...(e.dead ? [e.dead] : [])], 'errands');
   }
   pool('ove', [...ANSWER, ...DONE], 'calls');
-  pool('ove', [...OVE_REPLY, ...Object.values(TYRE).flat(), ...Object.values(SLID).flat(), ...Object.values(OVE_HOPP), ...Object.values(GARAGE_DOOR).flat(), ...OVE_START], 'reactions');
+  pool('ove', [...OVE_REPLY, ...Object.values(TYRE).flat(), ...Object.values(SLID).flat(), ...Object.values(OVE_HOPP), ...Object.values(GARAGE_DOOR).flat(), ...OVE_START, ...Object.values(OVE_STUMBLE).flat()], 'reactions');
   pool('ove', WAKE, 'waking');
   pool('driver', [...FLEE_LINES, ...CAUGHT_LINES], 'patrol');
   for (const l of Object.values(PATROL)) add(l[0], l[1], 'patrol');

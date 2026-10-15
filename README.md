@@ -113,6 +113,14 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   släpkärra (släpet dinglar efter, och studsar efter en hård landning). Ove antecknar lufttiden och
   längden, och det längsta hoppet är hans rekord. Efter ett riktigt hopp har han en åsikt, liksom
   passagerarna, folk som såg det och grannarna. Till fots går det att gå upp på högen.
+- **Ove är ingen ungdom.** Ungefär ett hopp på fyrtio snubblar han när han landar och går i backen
+  som en trasdocka (en ragdoll: kroppen faller av sig själv, händerna ut för att ta emot). I farten
+  fastnar en fot och han far framåt, ibland rakt över ända; stående faller han bakåt eller åt sidan,
+  och ibland går fötterna undan och han hamnar på rumpan. Han ligger kvar ett ögonblick, reser sig
+  (från rygg sätter han sig upp, från magen tar han sig upp på alla fyra) och säger att det var
+  meningen, eller att kommunen inte har sandat. Hoppar du ur en bil i fart (**E** i mer än ungefär 15
+  km/h) tumlar han längs vägen, längre ju fortare det gick, och bilen rullar vidare utan honom. Blir
+  han påkörd flyger han på samma sätt.
 - **Snön på bilarna.** De parkerade bilarna har stått ute i nysnön. Tar du en och kör iväg går
   vindrutetorkarna först, och sedan börjar snön lossna: i fartvinden ryker snön från taket, och
   flak släpper och glider av och slår i vägen bakom bilen i ett stänk av snö (i 30 km/h ligger det
@@ -221,6 +229,7 @@ src/actors/carsnow.js      snön på de parkerade bilarna: flak som lossnar och 
 src/actors/trailer.js      släpkärran
 src/actors/drivers.js      AI-förare: trafik, rutt, jakt, flykt, stanna vid kanten
 src/actors/models.js       människorna (och katten); character.js: fysik till fots; peds.js: fotgängare
+src/actors/ragdoll.js      Ove som trasdocka: när han snubblar, hoppar ur en bil i fart eller blir påkörd
 src/actors/pickups.js      pantburkar, emblem, fotografier, saker att hämta
 src/game/patrol.js         felparkeringar, anteckningsblocket, smitare, Ordning-mätaren
 src/game/interruptions.js  avbrotten: samtalen och ärendena
@@ -276,6 +285,7 @@ PORT=8791 node tools/shot.mjs snohog snohogsim             # hoppbacken: sex hop
 PORT=8791 node tools/shot.mjs snohogwalk snohogsound       # Ove går över hoppbacken; hoppets ljud offline
 PORT=8791 node tools/shot.mjs runeroll runekick runecar runecold runewidow   # Runes ärende: släppa och sparka rullstolen, påkörd, ihjälfrusen, Anita utan honom (runelook: närbilder)
 QUERY='&runedead' PORT=8791 node tools/shot.mjs story      # berättelsen med Rune död
+PORT=8791 node tools/shot.mjs snubbla hoppaur snubblaperf # snubbla vid landningen, hoppa ur bilen i 15-90 km/h, påkörd (riktiga tangenter): aldrig under marken, upp igen; kostnaden (snubblalook: filmremsor)
 PORT=8791 node tools/shot.mjs traktor seatlegs             # snöröjningstraktorn med riktiga tangenter: in, ut ur rutan, 40 km/h, gångvägen, plogen, ut (traktorlook, traktorplog: bilder)
 ```
 

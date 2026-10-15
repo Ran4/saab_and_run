@@ -37,7 +37,7 @@ import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
 import { HANDLE as DOOR_HANDLE } from './world/garagedoor.js';
 import {
   CHATTER, CHATTER_FIRST, CHATTER_AFTER, CHATTER_FALLBACK, CHATTER_REPLY, CHATTER_ENOUGH, CHATTER_SPARE, whenOk, SLID, TYRE,
-  GARAGE_DOOR, WIDOW,
+  GARAGE_DOOR, WIDOW, OVE_STUMBLE,
   OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID,
 } from './game/script.js';
 
@@ -61,6 +61,11 @@ const TEST = params.has('test');
 // wind-up (half a second standing). A press he can't act on yet (still in the air, just landing) is
 // kept JUMP_BUFFER s and acted on as soon as he can.
 const WALK = 3.2, BRISK = 5.5, PUSH = 3.0, PUSH_BRISK = 3.6, JUMP_V = 3.95, JUMP_BUFFER = 0.25;
+// Ove is an old man (feature snubbla_vid_hopp): one landing in forty he trips and goes down (a ragdoll,
+// actors/ragdoll.js; never in tests without &stumble: __game.stumbleNext trips the next one), and out of
+// a car moving faster than `exit` m/s (~14 km/h) he tumbles along the road. Every fling of his is a
+// ragdoll (a car into him, his car wrecked under him).
+const STUMBLE = { chance: TEST && !params.has('stumble') ? 0 : 1 / 40, exit: 4 };
 const CLOCK_RATE = 0.25;   // in-game minutes per real second: an hour every four minutes
 // The clock stops at the end of the day while nothing is going on: the days end at 14:30 ("Dagen är
 // slut", missions.js DAY_END) and the light never changes, so before day 1, between two days and while
@@ -207,6 +212,8 @@ class Game {
     for (const c of Object.values(this.npcs)) c.invulnerable = true;
     this.player = new Character(CHARS.ove);
     this.player.key = 'ove';
+    this.player.ragdoll = true;
+    this.stumbleNext = false; this.stumbles = 0;
     scene.add(this.player.root);
     this.emblems = collectibleSpots.emblems.map(([x, y, z], i) => new Collectible(scene, 'emblem', i, x, y, z, { static: true }));
     this.photos = collectibleSpots.photos.map(([x, y, z], i) => new Collectible(scene, 'photo', i, x, y, z, { static: true }));
@@ -648,7 +655,7 @@ class Game {
   exitCar(force = false, quiet = false) {
     const car = this.playerCar;
     if (!car) return;
-    const fast = car.speed > 7 && !force;
+    const fast = car.speed > STUMBLE.exit && !force;
     const spot = this.exitSpot(car, 1);
     this.unseat(this.player, spot.x, spot.z);
     this.player.yaw = car.yaw;
@@ -660,9 +667,45 @@ class Game {
     audio.engine(false, 0, 0);
     audio.skid(0);
     audio.horn(false);
-    if (fast) this.player.fling(car.vx * 0.55, 4, car.vz * 0.55);
+    if (fast) this.jumpOut(car);
     // Passengers who are with Ove get out and walk with him.
     for (const [ch] of this.companions) if (ch.car === car) { const e = this.exitSpot(car, ch.seatSide || -1); this.unseat(ch, e.x, e.z); }
+  }
+
+  // Out of the driver's door of a moving car (feature snubbla_vid_hopp): a body standing beside the
+  // door, turned a little out of it, at the car's height (a car in the air), with the car's speed, a
+  // push out of the door and a hop; the road does the rest (actors/ragdoll.js).
+  jumpOut(car) {
+    const p = this.player, lx = Math.cos(car.yaw), lz = -Math.sin(car.yaw), sp = car.speed;
+    // (pitching forward, the head going on faster than the feet, and rolling to one side or the other,
+    // more the faster the car)
+    const dx = car.vx / (sp || 1), dz = car.vz / (sp || 1), w = 1.5 + sp * 0.12, rl = (Math.random() < 0.5 ? -1 : 1) * (1 + sp * 0.08);
+    p.tumble({
+      pose: { x: p.x, y: Math.max(p.y, car.y) + 0.12, z: p.z, yaw: car.yaw + 0.6 },
+      v: [car.vx * 0.9 + lx * 1.8, 2, car.vz * 0.9 + lz * 1.8], spin: [dz * w + dx * rl, 0, -dx * w + dz * rl], tone: 0.35,
+      lie: 1.1 + Math.random() * 0.6, why: 'car',
+    });
+    audio.grunt(p.def.voice);
+  }
+
+  // He trips as he lands a jump (onJumpLand): on the move a foot caught and he pitches forward along
+  // his way; standing, over backwards off his heels or to a side; now and then (more often standing)
+  // his feet go from under him and he lands on his back. Not on a car's roof, with the cat in his
+  // arms, in a dialogue, at the garage door, while he freezes, at a failed day's screen.
+  stumble(p) {
+    if (p.standingOn || this.carrying || this.inDialog || this.doorOp || this.cold.busy || this.failWait || this.pushedNpc()) return false;
+    const sp = Math.hypot(p.vx, p.vz), r = Math.random, way = sp > 1.2 ? Math.atan2(p.vx, p.vz) : p.yaw;
+    let a, k, feet = 0, pivot = 0, tone = 0.5;
+    if (r() < (sp > 1.2 ? 0.2 : 0.4)) { a = way + Math.PI + (r() - 0.5) * 0.5; k = 3; feet = 1; pivot = 0.45; }
+    else if (sp > 1.2) { a = way + (r() - 0.5) * 0.6; k = 0.9 + 0.12 * sp; feet = 0.1; tone = 0.35; }
+    // (standing his legs give way under him: the feet a little the other way, not a plank going over)
+    else { a = p.yaw + (r() < 0.5 ? Math.PI : (r() < 0.5 ? 1 : -1) * Math.PI / 2) + (r() - 0.5) * 0.5; k = 1.6; pivot = 0.25; tone = 0.25; }
+    if (!p.tumble({ v: [p.vx, Math.min(0, p.vy), p.vz], trip: [Math.sin(a), Math.cos(a), k, pivot], feet, tone, brace: true, lie: 0.4 + r() * 0.4, why: 'stumble' })) return false;
+    this.stumbleNext = false;
+    this.stumbles++;
+    audio.oof(p.def.voice);
+    FX.dust(p.x, p.z, 2, p.y + 0.08);
+    return true;
   }
 
   // ------------------------------------------------------------------------------------------
@@ -968,7 +1011,9 @@ class Game {
     if (car === this.playerCar) this.patrol.addOrdning(-12);
     if (Math.random() < 0.85) this.say(ch, pick(OUCH), 1.8);
   }
-  onGetUp(ch) {
+  // (why: what put a ragdoll down, Ragdoll's `why`: Ove up after a fall of his own says it was nothing)
+  onGetUp(ch, why) {
+    if (ch === this.player && OVE_STUMBLE[why] && !this.inDialog && Math.random() < 0.8) { this.say(ch, pick(OVE_STUMBLE[why]), 1.8); this.murmur(CHARS.ove.voice); }
     if (ch !== this.player && Math.random() < 0.4 && dist(ch.x, ch.z, this.player.x, this.player.z) < 30) this.say(ch, pick(GETUP), 2);
   }
   onBodyBounce(ch) { if (dist(ch.x, ch.z, this.focus().x, this.focus().z) < 40) audio.thud(); }
@@ -981,6 +1026,7 @@ class Game {
   onJumpLand(ch, v) {
     if (ch !== this.player) return;
     audio.step(this.surfaceAt(ch.x, ch.z)); audio.thud(0.6);
+    if ((this.stumbleNext || Math.random() < STUMBLE.chance) && this.stumble(ch)) return;
     if (Math.random() < 0.7) audio.oof(ch.def.voice);
     FX.dust(ch.x, ch.z, 2, ch.y + 0.08);
   }
@@ -2036,7 +2082,8 @@ class Game {
     trs.length = 0;
     for (const c of this.cars) if (c.trailer && !c.dead) trs.push(c);
     for (const ch of chars) {
-      if (ch.state === 'seated' || ch.state === 'hidden' || ch.solid === false) continue;
+      // (a ragdoll in the air or tumbling meets the cars point by point: actors/ragdoll.js)
+      if (ch.state === 'seated' || ch.state === 'hidden' || ch.solid === false || (ch.rag && ch.state === 'flung')) continue;
       const pushed = !!this.companions.get(ch)?.push && !this.playerCar;
       for (let i = this.firstX(ch.x - R); i < a.length; i++) {
         const car = a[i];
@@ -2052,7 +2099,9 @@ class Game {
         if (ch.state === 'normal' && !ch.invulnerable && !pushed && carIn > 4.5 && car.speed > 3) {
           const sp = car.speed;
           ch.x += hit.nx * hit.depth; ch.z += hit.nz * hit.depth;
-          if (ch.fling(car.vx * 0.9 + hit.nx * 2.5, 3.5 + sp * 0.18, car.vz * 0.9 + hit.nz * 2.5)) {
+          // (Ove: swept off his feet, the legs first)
+          const vx = car.vx * 0.9 + hit.nx * 2.5, vz = car.vz * 0.9 + hit.nz * 2.5, vl = Math.hypot(vx, vz) || 1, w = 2 + sp * 0.15;
+          if (ch.fling(vx, 3.5 + sp * 0.18, vz, ch === this.player ? { spin: [-vz / vl * w, 0, vx / vl * w], lie: 1.4, why: 'hit' } : undefined)) {
             car.vx *= 0.94; car.vz *= 0.94;
             this.onCharHit(ch, car, carIn);
           }

@@ -2,6 +2,7 @@ import { buildCharacter, animateCharacter, LOD_DIST, CHARS, JUMP_PUSH } from './
 import { THREE, camera, gfxStats } from '../gfx.js';
 import { queryBlocks, circleVsBlock, groundAt, groundInfo, topAt, RAMP } from '../world/collision.js';
 import { dampAngle, yawTo } from '../util.js';
+import { Ragdoll } from './ragdoll.js';
 
 export const STEP = 0.45;
 const GRAV = 24;
@@ -50,7 +51,8 @@ function viewFrustum() {
 //   write (notebook + pencil), phone (phone at the ear), push (hands on a wheelchair/trolley),
 //   yell, seated + driving (set from the car seat), flung / flungT, down / downLeft, carry, work +
 //   workKind, listen, kneel (+ kneelReach), fright / fist (the horn, game/horn.js), and a jump's
-//   jumpWind / jumping / landT / jumpV (set here: see JUMP and jump()).
+//   jumpWind / jumping / landT / jumpV (set here: see JUMP and jump()), rag (a ragdoll posing the
+//   body while flung and down: tumble(), actors/ragdoll.js).
 export class Character {
   constructor(def, opts = {}) {
     this.def = def;
@@ -90,11 +92,15 @@ export class Character {
       slump: false, coast: false,                      // dead in his wheelchair; rolling free (game/rune.js)
       grief: false, sob: 0,                            // Anita without Rune: a hand to her face, sobbing 0..1
       gesture: null, gestureAt: -9,                    // a nod / a shake of the head from t = gestureAt (main.js chat)
+      rag: null, prone: false,                         // the ragdoll posing him (sync sets it: tumble()); it came to rest face down
     };
     this.car = null;
     this.topple = 0; this.toppleW = 0;
     this.dead = null;   // game/rune.js: Rune dead (frozen, still posed: anim.slump)
     this.spin = 0; this.spinRate = 0;
+    // A ragdoll (actors/ragdoll.js, feature snubbla_vid_hopp) while 'flung' and lying 'down' after it;
+    // ragdoll: every fling of this person is one (Ove: main.js).
+    this.rag = null; this.ragdoll = false;
     this.height = this.model.height;
     this.floats = def.kind === 'wizard' || def.kind === 'ghost';
     // Rune does not get knocked out of his wheelchair; cars just shove him.
@@ -114,6 +120,8 @@ export class Character {
     this.vx = this.vz = this.vy = 0;
     this.onGround = true; this.offT = 0;
     this.windT = -1; this.jumping = false; this.landT = 9;
+    // (put somewhere else, a ragdoll is over: on his feet there)
+    if (this.rag) { this.rag = null; this.anim.prone = false; if (this.state === 'flung' || this.state === 'down') this.state = 'normal'; }
   }
 
   // Starts a jump: the wind-up first (wind: see JUMP), the push off (game.onJumpPush), off the
@@ -130,8 +138,11 @@ export class Character {
 
   // Knocked over by a car: thrown along (vx, vz), falls over backwards (facing what hit them),
   // turns a little in the air, lands on the back, lies there, gets up.
-  fling(vx, vy, vz) {
+  fling(vx, vy, vz, o) {
     if (this.state === 'seated' || this.state === 'hidden' || this.state === 'frozen' || this.invulnerable) return false;
+    // (straight out of a car seat the bones are still seated, the lower legs folded away: a standing
+    // body where he is)
+    if (this.ragdoll || o?.rag) return this.tumble({ v: [vx, vy, vz], pose: this.anim.seated ? this.standPose() : 'live', ...o });
     this.state = 'flung';
     this.vx = vx; this.vy = vy; this.vz = vz;
     this.onGround = false;
@@ -143,16 +154,33 @@ export class Character {
     return true;
   }
 
+  // Limp (feature snubbla_vid_hopp): a ragdoll from now until he lies still, then the get-up of the
+  // 'down' state. o: Ragdoll's options (actors/ragdoll.js).
+  tumble(o = {}) {
+    if (this.state === 'seated' || this.state === 'hidden' || this.state === 'frozen' || this.wheelchair) return false;
+    this.rag = new Ragdoll(this, o);
+    this.state = 'flung'; this.flungT = 0; this.onGround = false;
+    this.windT = -1; this.pushed = false; this.jumping = false; this.landT = 9;
+    return true;
+  }
+  // A body standing where he is, feet on the ground (Ragdoll's pose).
+  standPose(yaw = this.yaw) { return { x: this.x, y: this.y, z: this.z, yaw }; }
+
   step(dt, game) {
+    if (this.rag && this.state !== 'flung' && this.state !== 'down') { this.rag = null; this.anim.prone = false; }
     if (this.state === 'seated' || this.state === 'hidden' || this.state === 'frozen') { this.windT = -1; return; }
     if (this.state === 'down') {
       this.timer -= dt;
       this.downT += dt;
-      if (this.timer <= 0) { this.state = 'normal'; this.spin = 0; game?.onGetUp(this); }
+      if (this.timer <= 0) { const why = this.rag?.why; this.rag = null; this.anim.prone = false; this.state = 'normal'; this.spin = 0; game?.onGetUp(this, why); }
       return;
     }
     if (this.state === 'flung') {
       this.flungT += dt;
+      if (this.rag) {
+        if (this.rag.step(dt, game)) { this.state = 'down'; this.timer = this.rag.downFor; this.downT = 0; this.vx = this.vz = this.vy = 0; this.onGround = true; }
+        return;
+      }
       this.vy -= GRAV * dt;
       this.x += this.vx * dt; this.y += this.vy * dt; this.z += this.vz * dt;
       this.yaw += this.spinRate * dt;
@@ -198,7 +226,11 @@ export class Character {
       if (roof && roof.top > gh) { gh = roof.top; gb = null; this.standingOn = roof.car; } else this.standingOn = null;
     }
     if (this.y <= gh) {
-      if (this.jumping) { this.jumping = false; this.landT = 0; game?.onJumpLand?.(this, -this.vy); }
+      if (this.jumping) {
+        this.jumping = false; this.landT = 0; game?.onJumpLand?.(this, -this.vy);
+        // (he tripped as he landed: main.js made him tumble)
+        if (this.state !== 'normal') return;
+      }
       if (!this.onGround && this.vy < -6) { this.model.squash = 0.5; game?.onLand(this, -this.vy); }
       this.y = gh;
       this.vy = 0;
@@ -280,6 +312,8 @@ export class Character {
     a.flung = this.state === 'flung';
     a.flungT = this.flungT;
     a.down = this.state === 'down';
+    if (this.rag && this.state !== 'flung' && this.state !== 'down') { this.rag = null; this.anim.prone = false; }
+    a.rag = this.rag;
     a.downLeft = this.state === 'down' ? this.timer : 0;
     a.seated = this.state === 'seated';
     a.driving = a.seated && !!this.car && this.car.driver === this;

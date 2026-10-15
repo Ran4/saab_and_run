@@ -979,3 +979,28 @@ script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
   close-ups) and `smapratvoice` (&voice: clips, none cut, never two voices at once, each line ≥ 0.4 s
   after the last); gameplay.mjs `smalltalk` (every line has an answer each day, the forbidden lines
   checked on the answers too, the thaw by day).
+
+## Stumbling and tumbling (feature snubbla_vid_hopp, features/implemented/snubbla_vid_hopp.md)
+
+- **main.js** `STUMBLE = { chance: 1/40 (0 in tests without &stumble), exit: 4 }`. `player.ragdoll =
+  true`: every `fling` of Ove's is a ragdoll (actors/ragdoll.js; notes/people.md *The ragdoll*): a car
+  into him (`carsVsPeople`: his fling gets a spin about the axis across its way, the legs swept first,
+  `why: 'hit'`), his car wrecked under him, and:
+- **The trip**: `onJumpLand` -> `stumbleNext || Math.random() < chance` -> `stumble(p)` (not on a car
+  roof, carrying the cat, in a dialogue, at the garage door, while he freezes, at a failed day's
+  screen, pushing Rune). On the move (> 1.2 m/s) a foot caught (the feet's speed x 0.1, a push along his
+  way growing up the body to 0.9 + 0.12 v m/s at the head); standing, over backwards or to a side (the
+  push about a quarter up his legs, which give way); 20 % on the move, 40 % standing, the feet go from
+  under him (forward, he falls back). Tone 0.25-0.5 s, hands out, lying 0.4-0.8 s. His 'uff', a little
+  snow. Character.step returns right after `onJumpLand` if he is no longer `normal`.
+- **Out of a moving car**: `exitCar` above `STUMBLE.exit` (was a fling above 7 m/s) -> `jumpOut(car)`: a
+  standing body at the exit spot at the car's height, turned 0.6 rad out of the driver's door, with 0.9
+  of the car's speed, 1.8 m/s out of the door, 2 m/s up, pitching forward (1.5 + 0.12 v rad/s) and
+  rolling to a side (1 + 0.08 v); his grunt. 3 / 5 / 9 / 13 m of tumbling at 15 / 35 / 60 / 90 km/h. The
+  car rolls on without him (park). At 10 km/h he steps out as before.
+- `carsVsPeople` skips a ragdoll in the air or tumbling (`ch.rag && state 'flung'`: the points meet the
+  cars themselves); lying still he is shoved like anyone down. `isPerson` etc. unchanged (flung, down).
+- `onGetUp(ch, why)`: Ove up after a fall of his own says one of `OVE_STUMBLE[why]` (script.js: 'stumble'
+  'car' 'hit', lines he already has: no new clips) 4 times in 5, not in a dialogue.
+- `teleport` ends a ragdoll (on his feet there): the warps, `resetToRoad`, the cold's waking.
+- Tests: scenarios/snubbla.mjs `snubbla hoppaur snubblaperf snubblalook snubbladbg`.
