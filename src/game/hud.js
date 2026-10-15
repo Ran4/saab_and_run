@@ -516,14 +516,15 @@ export const hud = {
   // Phone
 
   // Shows the ringing card. `who` = portrait key (CHARS key), `name` = display name, `sub` = an
-  // optional line under the name (e.g. 'Radhus 12'; hidden when empty).
-  incomingCall(who, name, sub = '') {
+  // optional line under the name (e.g. 'Radhus 12'; hidden when empty). o.out: Ove is the one calling
+  // ("Ove ringer", the rings pulse but the handset doesn't shake: feature p-skiva).
+  incomingCall(who, name, sub = '', o = {}) {
     const c = this.callEl;
     clearTimeout(this._callT);
-    c.className = 'card show ringing';
+    c.className = o.out ? 'card show ringing out' : 'card show ringing';
     c.querySelector('img').src = this.portraits[who] || '';
     c.querySelector('.call-name').textContent = name || who || '';
-    c.querySelector('.call-kicker').textContent = 'Telefonen ringer';
+    c.querySelector('.call-kicker').textContent = o.out ? 'Ove ringer' : 'Telefonen ringer';
     c.querySelector('.call-sub').textContent = sub || '';
     this._callWho = who;
     this._callStart = 0;

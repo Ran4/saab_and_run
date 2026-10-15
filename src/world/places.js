@@ -5,7 +5,7 @@
 import { THREE, PRIM, mat } from '../gfx.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CURB } from './layout.js';
-import { C, rnd, R, pickR, TAU, win, door, canopy, lampBox, quads, snowBank, snowPile, snowFringe, chunks, shrub, limb, tree, Frame, fineTex, granris, vnoise3, hash, metalRoof, streetLamp, pathLamp, shadeLast, glow } from './kit.js';
+import { C, rnd, R, pickR, TAU, parkingLot, PSKIVA_PLATE, win, door, canopy, lampBox, quads, snowBank, snowPile, snowFringe, chunks, shrub, limb, tree, Frame, fineTex, granris, vnoise3, hash, metalRoof, streetLamp, pathLamp, shadeLast, glow } from './kit.js';
 import { gableHouse, flatBuilding, winLite, hipGeo, flagpole, jit, CARS, CAR_COLS } from './buildings.js';
 import { textFace, picto, decal, addSign, addCard, twigFace } from './signs.js';
 import { violationSpots, keepClear, litterSpots, animated, shared } from './data.js';
@@ -44,6 +44,8 @@ function trodPath(f, ax, az, bx, bz, w, seed, y = CURB + 0.03, color = 0xcdd0d4)
   const nx = -(bz - az) / L, nz = (bx - ax) / L;
   for (const sd of [-1, 1]) f.fringe(ax + nx * sd * w / 2, az + nz * sd * w / 2, bx + nx * sd * w / 2, bz + nz * sd * w / 2, -sd, y + 0.001, seed + (sd > 0 ? 7 : 0), { reach: 0.3, color: 0xe2e4e6 });
 }
+// The "P-skiva" plate under a time-limited P sign (feature p-skiva): blue on white.
+const pskivaFace = () => ({ f: textFace('P-skiva', PSKIVA_PLATE.w, PSKIVA_PLATE.h, { bg: '#f4f2ea', fg: '#1e4f9a', border: '#1e4f9a', ppm: 260, scale: 0.74, weight: '700' }), ...PSKIVA_PLATE });
 const lines = (f, list, color = 0xd8d8d0, y = CURB + 0.042) => quads(f.F.use('marking'), color, list.map(([x, z, w, d]) => [f.wx(x, z), f.wz(x, z), w, d, f.yaw]), y);
 // Bays along local x: count n starting at x0, width bw, centre z, depth d; returns bay centres.
 function bayRow(f, x0, n, bw, z, d) {
@@ -195,10 +197,16 @@ export function centrumBlock(bf, r) {
     if (r() < 0.4) bf.car(pickR(CARS, r), sb[k], 24.5, 0, { color: pickR(CAR_COLS, r) }); else if (r() < 0.4) slush(bf, sb[k], 24.0, 1.8, 3.2, 0, k + 40);
   }
   snowFringe(bf.F, bf.wx(-31, 30.9), bf.wz(-31, 30.9), bf.wx(31, 30.9), bf.wz(31, 30.9), -1, CURB + 0.03, 71, { reach: 0.55 });
-  // Loading zone: the two westmost bays of the north row.
+  // Loading zone: the two westmost bays of the north row (6-18: the patrol writes up a car there at
+  // any hour of the game's day, and so does the lapplisa).
   for (const k of [0, 1]) bf.decal(decal('last'), nb[k], 12.6, 2.2, 0.7, Math.PI / 2);
-  bf.post(-28.4, 10.6, 0, [{ f: textFace('LASTZON\n6–10', 0.6, 0.42, { bg: '#f4f2ea', fg: '#1a1a1a', ppm: 260, scale: 0.75, weight: '700' }), w: 0.6, h: 0.42 }], { top: 2.3 });
-  bf.post(31.1, 15.0, Math.PI / 2, [{ f: picto('p'), w: 0.6, h: 0.6 }, { f: textFace('2 tim\n8–18', 0.6, 0.3, { ppm: 260, scale: 0.72 }), w: 0.6, h: 0.3 }]);
+  bf.post(-28.4, 10.6, 0, [{ f: textFace('LASTZON\n6–18', 0.6, 0.42, { bg: '#f4f2ea', fg: '#1a1a1a', ppm: 260, scale: 0.75, weight: '700' }), w: 0.6, h: 0.42 }], { top: 2.3 });
+  bf.post(31.1, 15.0, Math.PI / 2, [{ f: picto('p'), w: 0.6, h: 0.6 }, { f: textFace('2 tim\n8–18', 0.6, 0.3, { ppm: 260, scale: 0.72 }), w: 0.6, h: 0.3 }, pskivaFace()]);
+  // The supermarket's car park: a p-skiva, two hours 8-18 (game/pskiva.js); the loading zone's bays not
+  // without a permit.
+  parkingLot('centrum', { name: 'Centrum, Livs parkering', sign: 'P 2 tim 8–18 · p-skiva', rule: { disc: 120, hours: [8, 18] }, signAt: [bf.wx(31.1, 15.0), bf.wz(31.1, 15.0), bf.yaw + Math.PI / 2] });
+  nb.forEach((x, k) => { if (k !== 10) bf.bay(x, 13.0, Math.PI, 'centrum', k < 2 ? { rule: { permit: 'lastzon', hours: [6, 18] } } : {}); });
+  sb.forEach((x, k) => { if (k !== 10) bf.bay(x, 24.5, 0, 'centrum'); });
   bf.post(16, 9.6, 0, [{ f: textFace('Räddningsväg', 0.6, 0.18, { bg: '#f4f2ea', fg: '#b01e1e', border: '#b01e1e', ppm: 260, scale: 0.72 }), w: 0.6, h: 0.18 }], { top: 2.0 });
   for (const x of [-15, 5, 25]) bf.lamp(x, 29.5, Math.PI, 6.4);
   snowPile(bf.S, bf.wx(29.3, 29.0), bf.wz(29.3, 29.0), 2.0, 1.3);
@@ -343,7 +351,13 @@ export function hospitalBlock(bf, r) {
   bf.prop('meter', -30.2, 4.0, Math.PI / 2);
   bf.prop('meter', 30.2, 8.2, -Math.PI / 2);
   bf.prop('meter', -10, 30.4, Math.PI);
-  bf.post(4.6, 30.8, 0, [{ f: picto('p'), w: 0.6, h: 0.6 }, { f: textFace('Avgift\nvardagar 8–18', 0.6, 0.34, { ppm: 260, scale: 0.75 }), w: 0.6, h: 0.34 }, { f: textFace('Betala i automaten', 0.6, 0.16, { ppm: 260, scale: 0.7 }), w: 0.6, h: 0.16 }]);
+  // Visitors' parking: three hours with a p-skiva 8-18, longer at the meters (game/pskiva.js); the two
+  // wide bays by the entrance for the disabled.
+  bf.post(4.6, 30.8, 0, [{ f: picto('p'), w: 0.6, h: 0.6 }, { f: textFace('3 tim\n8–18', 0.6, 0.3, { ppm: 260, scale: 0.72 }), w: 0.6, h: 0.3 }, pskivaFace(), { f: textFace('Längre: betala\ni automaten', 0.6, 0.24, { ppm: 260, scale: 0.7 }), w: 0.6, h: 0.24 }]);
+  parkingLot('sjukhuset', { name: 'Sjukhusets besöksparkering', sign: 'P 3 tim 8–18 · p-skiva', rule: { disc: 180, hours: [8, 18] }, signAt: [bf.wx(4.6, 30.8), bf.wz(4.6, 30.8), bf.yaw] });
+  r1.forEach((x, k) => bf.bay(x, 2.5, Math.PI, 'sjukhuset', { w: k < 3 ? 3.6 : 2.6, rule: k < 2 ? { permit: 'handikapp' } : null }));
+  r2.forEach((x, k) => { if (k !== 10) bf.bay(x, 14.0, 0, 'sjukhuset'); });
+  r3.forEach((x, k) => { if (k !== 10) bf.bay(x, 19.0, Math.PI, 'sjukhuset'); });
   for (const x of [-20, 0, 20]) bf.lamp(x, 30.6, Math.PI, 6.4);
   for (const [x, z] of [[-27, 28], [27, 28], [26, -6], [28, -2]]) bf.tree(x, z, R(0.9, 1.1, r), 'birch', r);
   bf.prop('bench', 14, -9.8, 0); bf.prop('papperskorg', 12.5, -9.8, 0);
@@ -800,7 +814,10 @@ export function preschoolBlock(bf0, r) {
   KEEP(bf, 12, -33, 9);
   const bays = bayRow(bf, -1.5, 10, 2.7, -27.5, 5);
   bays.forEach((x, k) => { if (r() < 0.2) bf.car(pickR(CARS, r), x, -27.8, Math.PI, { color: pickR(CAR_COLS, r) }); });
-  bf.post(-2.6, -24.6, Math.PI, [{ f: picto('p'), w: 0.56, h: 0.56 }, { f: textFace('Hämtning/lämning\nmax 10 min', 0.56, 0.3, { ppm: 280, scale: 0.72 }), w: 0.56, h: 0.3 }], { top: 2.4 });
+  bf.post(-2.6, -24.6, Math.PI, [{ f: picto('p'), w: 0.56, h: 0.56 }, { f: textFace('Hämtning/lämning\nmax 10 min', 0.56, 0.3, { ppm: 280, scale: 0.72 }), w: 0.56, h: 0.3 }, { ...pskivaFace(), w: 0.56, h: 0.16 }], { top: 2.4 });
+  // (ten minutes with a p-skiva, at any hour: game/pskiva.js)
+  parkingLot('forskolan', { name: 'Förskolan Solrosen', sign: 'P 10 min · p-skiva', rule: { disc: 10, hours: [0, 24] }, signAt: [bf.wx(-2.6, -24.6), bf.wz(-2.6, -24.6), bf.yaw + Math.PI] });
+  bays.forEach((x) => bf.bay(x, -27.65, Math.PI, 'forskolan'));
   V(bf, 8, -21.6, Math.PI / 2, 'firelane', 'preschool');
   const vs = bf.sub(16, -18.5, 0);
   vs.use('wood').box(0x7a2a1f, 0, CURB, 1.6, 8, 2.3, 0.12).box(0x7a2a1f, -4, CURB, 0, 0.12, 2.3, 3.3).box(0x7a2a1f, 4, CURB, 0, 0.12, 2.3, 3.3);
@@ -926,8 +943,11 @@ export function kommunBlock(bf0, r) {
     KEEP(bf, sx * 21.5, -33, 4.5);
     const bays = bayRow(bf, sx > 0 ? 12.5 : -30.5, 6, 2.8, -18.0, 5);
     bays.forEach((x) => { if (r() < 0.25) bf.car(pickR(CARS, r), x, -18.0, 0, { color: pickR(CAR_COLS, r) }); });
+    // (two hours with a p-skiva 8-18: game/pskiva.js)
+    parkingLot('kommunhuset', { name: 'Kommunhusets besöksparkering', sign: 'P 2 tim 8–18 · p-skiva', rule: { disc: 120, hours: [8, 18] }, signAt: [bf.wx(-29, -30.6), bf.wz(-29, -30.6), bf.yaw + Math.PI] });
+    bays.forEach((x) => bf.bay(x, -18.0, 0, 'kommunhuset', { w: 2.8 }));
   }
-  bf.post(-29, -30.6, Math.PI, [{ f: picto('p'), w: 0.56, h: 0.56 }, { f: textFace('Besöksparkering', 0.56, 0.18, { ppm: 280, scale: 0.72 }), w: 0.56, h: 0.18 }], { top: 2.4 });
+  bf.post(-29, -30.6, Math.PI, [{ f: picto('p'), w: 0.56, h: 0.56 }, { f: textFace('Besöksparkering\n2 tim 8–18', 0.56, 0.3, { ppm: 280, scale: 0.72 }), w: 0.56, h: 0.3 }, { ...pskivaFace(), w: 0.56, h: 0.16 }], { top: 2.6 });
   V(bf, 0, -19.5, Math.PI / 2 + 0.1, 'firelane', 'kommun');
   for (let k = 0; k < 3; k++) LIT(bf, R(-28, 28, r), R(-28, -20, r));
 }

@@ -30,6 +30,7 @@ import { Horn } from './game/horn.js';
 import { Hoppbacke } from './game/hoppbacke.js';
 import { Cold } from './game/cold.js';
 import { RuneFate, KILL as RUNE_KILL } from './game/rune.js';
+import { Parking } from './game/pskiva.js';
 import * as stages from './game/stages.js';
 import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
@@ -124,6 +125,9 @@ class Game {
     this.jumpAsk = -9;    // when jump was last pressed (this.time) and not yet acted on
     this.freezeCar = false;
     this.inDialog = false;
+    // Something in Ove's hands that takes the keys (game/pskiva.js): 'pskiva' (the disc), 'lapp' (a
+    // parking ticket), else null.
+    this.overlay = null;
     this.talker = null;
     this.input = input;
     // Ove's collection, in the order found (Sets: an emblem's note goes with its place in the order)
@@ -237,6 +241,10 @@ class Game {
     this.missions.gating = !TEST || params.has('gate');
     // The cold beyond the town, Ove freezing to death out there and waking up at home (game/cold.js).
     this.cold = new Cold(this);
+    // The car parks' bays, the p-skiva and the lapplisa (game/pskiva.js, feature p-skiva): in tests the
+    // attendant stays at home unless &lapp.
+    this.parking = new Parking(this, { wardens: !TEST || params.has('lapp') });
+    window.__parking = this.parking;
     // The voices (voice.js): clips for the lines that have one, turns for everybody.
     voice.init();
     voice.inCar = () => !!this.playerCar;
@@ -1418,7 +1426,7 @@ class Game {
     this.time += dt;
     this.tickClock(dt);
     if (this.hooks.length) for (const h of this.hooks.slice()) h(dt);
-    this.handleOneShots();
+    this.handleOneShots(dt);
     this.horn.update(dt);
     this.hopp.update(dt);
     this.acc += dt;
@@ -1441,6 +1449,7 @@ class Game {
       this.tickGarage(dt);
       this.interrupts.update(dt);
       this.patrol.update(dt);
+      this.parking.update(dt);
     }
     this.tickPickups(dt);
     const f = this.focus();
@@ -1476,8 +1485,10 @@ class Game {
     return this.interrupts.prompt();
   }
 
-  handleOneShots() {
+  handleOneShots(dt = 0) {
     if (input.pressed('mute')) { audio.setMuted(!audio.muted); hud.toast(audio.muted ? 'Ljudet av' : 'Ljudet på'); }
+    // The p-skiva or a parking ticket in his hands: its own keys, nothing else (game/pskiva.js).
+    if (this.overlay) { this.parking.overlay(dt); return; }
     if (input.pressed('map')) { this.bigMap = !this.bigMap; hud.toggleBigMap(this.bigMap, this); }
     if (input.pressed('pause') && !TEST) { this.pause(true); return; }
     const p = this.player;
@@ -1486,6 +1497,8 @@ class Game {
     if (input.pressed('reset')) { this.resetToRoad(); return; }
     const sp = this.stagePrompt();
     if (this.playerCar) {
+      // G (the pad's d-pad up): the p-skiva, in a bay that wants one
+      if (input.pressed('pskiva') && this.parking.openDisc()) return;
       if (input.pressed('interact') && !sp?.takesE) this.exitCar();
       return;
     }
@@ -1524,6 +1537,7 @@ class Game {
     if (it.type === 'talk') this.missions.begin();
     else if (it.type === 'chat') this.chat(it.who);
     else if (it.type === 'car') this.enterCar(it.car);
+    else if (it.type === 'ticket') this.parking.take(it.car);
     else if (it.type === 'garage') this.useGarage();
   }
 
@@ -1653,6 +1667,8 @@ class Game {
     // when nothing else is in reach and he isn't turned away from it.
     const gr = this.garageReach();
     if (gr && (gr.facing > 0.5 || (!best && gr.facing > -0.2 && gr.d < 1.1))) return { type: 'garage', open: !this.garage.isOpen };
+    // A parking ticket under its wiper: E takes that first, there is no getting in before (pskiva.js).
+    if (best && this.parking?.ticketOn(best.car)) return { type: 'ticket', car: best.car };
     if (best) return best;
     let nb = null, nd = 2.6;
     for (const k in this.npcs) {
@@ -1874,11 +1890,11 @@ class Game {
     const p = this.player;
     if (this.playerCar) {
       const c = this.playerCar.ctrl;
-      if (this.inDialog || this.freezeCar || this.failWait) { c.throttle = 0; c.brake = 1; c.steer = 0; c.handbrake = true; }
+      if (this.inDialog || this.freezeCar || this.failWait || this.overlay) { c.throttle = 0; c.brake = 1; c.steer = 0; c.handbrake = true; }
       else { c.throttle = input.throttle(); c.brake = input.brake(); c.steer = input.steer(); c.handbrake = input.down('handbrake'); }
       c.park = false;
     } else if (p.state === 'normal') {
-      if (this.inDialog || this.failWait) { p.wishX = p.wishZ = 0; }
+      if (this.inDialog || this.failWait || this.overlay) { p.wishX = p.wishZ = 0; }
       else if (this.doorOp?.walk) { p.wishX = this.doorOp.wx; p.wishZ = this.doorOp.wz; p.anim.sprint = false; }
       else {
         const mx = input.moveX() || 0, my = input.moveY() || 0;
@@ -2467,7 +2483,7 @@ class Game {
     let it = null;
     if (!this.failWait) {
       let prompt = '', hold = null;
-      if (!this.inDialog && (this.playerCar || this.player.state === 'normal')) {
+      if (!this.inDialog && !this.overlay && (this.playerCar || this.player.state === 'normal')) {
         const parts = this._parts ||= [];
         parts.length = 0;
         const sp = this.stagePrompt();
@@ -2478,9 +2494,13 @@ class Game {
           it = this.nearestInteractable();
           if (it?.type === 'talk') parts.push(`<b>E</b> Prata med ${it.who.def.name}`);
           else if (it?.type === 'car') parts.push(it.car.driverBust ? '<b>E</b> Låna bilen' : '<b>E</b> Kliv in');
+          else if (it?.type === 'ticket') parts.push('<b>E</b> Ta lappen');
           else if (it?.type === 'chat') parts.push(`<b>E</b> Småprata med ${it.who.def.name}`);
           else if (it?.type === 'garage') parts.push(`<b>E</b> ${it.open ? 'Öppna' : 'Stäng'} garageporten`);
         }
+        // Stopped in a bay of a car park: the p-skiva (G), or what the bay is (game/pskiva.js).
+        const kp = this.playerCar ? this.parking.prompt() : null;
+        if (kp) parts.push(kp);
         // Driving up to the shut garage door (or out at it from inside): it doesn't open by itself.
         if (this.playerCar && this.garageAhead(this.playerCar)) parts.push('Garageporten är stängd · kliv ur (<b>E</b>) och öppna den');
         // Ove driving inside the car-free area: what it costs, for as long as he is in there (one

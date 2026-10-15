@@ -990,6 +990,8 @@ function handles(g, P, z, y, o = {}) {
   for (const sx of [1, -1]) for (const zz of [].concat(z)) g.use(o.surf ?? 'plastic').box(o.color ?? BLACK, sx * (f.sideX(zz, y) + 0.008), y, zz, 0.02, 0.035, 0.16);
 }
 function wipers(g, P, z, n = 2) {
+  // (where they lie: a parking ticket goes under the driver's one, game/pskiva.js)
+  P.wiperZ = z; P.wiperN = n;
   if (P.lod) return;
   const f = P._fn, y = f.topY(z, 0.2) + 0.02;
   g.use('plastic');

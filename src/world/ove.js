@@ -11,7 +11,7 @@
 
 import { PRIM, GeoBuilder } from '../gfx.js';
 import { CURB, carFreeZones, landmarks } from './layout.js';
-import { C, rnd, R, win, door, lampBox, limb, wrapYaw, canopy, glow } from './kit.js';
+import { C, rnd, R, win, door, lampBox, limb, wrapYaw, canopy, glow, parkingLot } from './kit.js';
 import { radhusArea, garageInterior, UW, D } from './rowhouse.js';
 import { picto, textFace } from './signs.js';
 import { violationSpots, parkedCars, doors, interiors } from './data.js';
@@ -106,6 +106,12 @@ export function oveBlock(bf) {
     bf.mark('adrianBay', b.lx, b.lz, b.ly, { w: 2.5, l: 5.0 });
     bf.post(b.lx, -31.08, 0, [{ f: textFace('Reserverad', 0.46, 0.15, { ppm: 300, scale: 0.72, bg: '#f4f2ea', fg: '#1e3a6a', border: '#1e3a6a' }), w: 0.46, h: 0.15 }], { top: 1.05 });
   }
+  // Ove's own lot is free to him (he lives here; his Saab stands in front of his garage), but the
+  // handicap bay and the reserved ones are not: the association has an agreement with P-Ordning AB
+  // (Anders signed it). Feature p-skiva, game/pskiva.js.
+  parkingLot('ove', { name: 'Radhusområdet, boendeparkeringen', sign: 'Endast boende och gäster', rule: null });
+  for (const b of area.bays) if (b.kind === 'handicap' || b.kind === 'reserved') bf.bay(b.lx, b.lz, b.ly, 'ove', { w: b.w, l: 5.2, rule: { permit: b.kind === 'handicap' ? 'handikapp' : 'reserverad' } });
+  { const b = bays[2]; bf.bay(b.lx, b.lz, b.ly, 'ove', { l: 4.9, rule: { permit: 'reserverad' } }); }
   // Name plates on the mailbox stands (6 boxes each, the stands face the aisle).
   const names = [['Ove', 'Parvaneh &\nPatrick', 'Rune &\nAnita', 'Jimmy', 'Anders', 'Lindqvist'], ['Berg', 'Nilsson', 'Holm', 'Ek', 'Sjöberg', 'Dahl']];
   [-1.3, 1.3].forEach((mx, q) => names[q].forEach((n, k) => bf.sign(textFace(n, 0.3, 0.07, { bg: '#f4f2ea', fg: '#1a1a1a', ppm: 700, weight: '600', scale: n.includes('\n') ? 0.86 : 0.7 }), mx - 0.95 + k * 0.38, CURB + 1.13, -28.2 + 0.222, 0.3, 0.07, 0)));

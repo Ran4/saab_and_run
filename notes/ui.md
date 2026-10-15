@@ -512,3 +512,21 @@ Round 1:
 - Rune dead: `showBanner('RUNE ÄR DÖD', cause, 'bad', 0, 'Avbrott')` held, the prompt "E Försök igen ·
   Q Ge upp" (interruptions.js `updateRetry`, like missions' updateFailed; main.js `failWait` keeps
   updateHud off the prompt). Toast class `cold` for the errand's start ("Rune har bara sin filt...").
+
+## The p-skiva and the parking ticket (feature p-skiva, 2026-10-15)
+
+- **game/pskivaui.js** (`pskivaUI`, DOM + inline SVG in #hud, no state, no sound): `#pskiva` = the disc
+  (viewBox 882 × 1200 measured off features/implemented/pskiva.avif: the card path with its thumb
+  notch, the window a ring sector r 160-338 ±46° round C (441, 382), the dial group `.ps-dial` turned
+  `rotate(steps × 15°)` about C by CSS (`transform-box: view-box`, a 0.22 s overshoot), numbers upright
+  towards C, Barlow Condensed 700) beside `.ps-side` (the sign, the clock in the instrument green, the
+  rule, the keys; under the disc when the window is taller than wide). `showDisc / turn / clock /
+  hideDisc(laid)`. `#plapp` = the ticket (`.pl-slip`, thermal paper with torn edges, monospace values;
+  `showTicket / stamp(kr) / markWrong(field) / hideTicket`; the red ring and FEL! sit in `.pl-rows`, so a
+  row's offsetTop places them). `#hud.held` while either is up: the minimap, speedometer, objective,
+  meter and the side panels fade to 0.16. `logo()`: P-Ordning AB's mark (the call card's and the
+  toasts' portrait, `hud.portraits.kundtjanst`; the P in the upper middle the round crops show).
+- `hud.incomingCall(who, name, sub, { out })`: "Ove ringer", class `out` (the handset doesn't shake).
+- `#prompt .pr-dim` (a quieter part of the prompt line).
+- Controls table (index.html, cloned into the pause menu): a row for G. `uipause` and `titlecheck`
+  pass with it.

@@ -80,6 +80,13 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   and a pose); `snubblalook` (film strips, `FILM=dir` keeps the frames); `snubbladbg` (`DBG=`
   RAG.dbg's switches)); run `snubbla hoppaur` after touching ragdoll.js, downPose, the jump's
   landing, exitCar or Ove's fling.
+  pskiva.mjs (the p-skiva and the lapplisa, features/implemented/p-skiva.md: `pskiva` = real keys, the
+  Saab driven into a bay at the Livs, G / Q / E / F in the disc, a ticket under the wiper, Ove sees it,
+  E takes it (not the car), 300 kr paid, a ticket written wrong and the call to P-Ordning AB that gets
+  them back, her own rounds (not while Ove is near); `pskivarules` = every rule with her round called by
+  hand (`parking.check`); `pskivalook` = the disc at four times and window sizes, the tickets, the
+  envelope on every car type, the signs; `pskivavoice` = the call with the clips); run `pskiva
+  pskivarules` after touching game/pskiva.js, the car parks' bays or signs, or the HUD's call card.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -106,9 +113,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
   take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 30 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
-  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (586 lines, 17 843 chars on
-  2026-10-15 with Ove's small-talk answers; with the pool and the children's voices 1 448 lines,
-  1 447 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (606 lines, 18 657 chars on
+  2026-10-15 with the p-skiva's lines; with the pool and the children's voices 1 468 lines,
+  1 467 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
   retry: < 5 % cut off, no two voices at once; `TO=7` all seven days; `LUFTSKIP=s`: the
   reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line; a
@@ -248,6 +255,17 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   people walk on snow, ruts where wheels roll on it (`surfaceAt` 'snow', not ice), drawn
   with the snow surface's own shader plus a relief; ring buffers (Ove's and his car's apart), cleared
   at the dawn (`missions.updateGate`), not saved. On snow the ruts replace `fx.skid`. `&notracks` off.
+- **P-skiva and the lapplisa** (`game.parking`, game/pskiva.js + pskivaui.js; features/implemented/
+  p-skiva.md): the car parks' marked bays and their signs' rules (world/data.js `parkingLots` /
+  `parkingBays`, `Frame.bay`: 2 h with a p-skiva 8-18 at the Livs, 3 h at the hospital, 10 min at the
+  preschool, 2 h at Kommunhuset; residents' bays elsewhere, handicap, loading zone and reserved bays
+  need a permit; Ove's own lot is free to him). His car stopped in a bay is a parking (`parking.recs`);
+  G in a p-skiva bay is the disc minigame (`g.overlay = 'pskiva'`: it owns the keys in handleOneShots,
+  the car brakes), the Swedish rule (the next whole or half hour). While he is away an unseen attendant
+  checks (`PSK`; `?test` only with `&lapp`; `parking.check(car, o)` by hand) and leaves a ticket under the
+  wiper: E takes it (`g.overlay = 'lapp'`, nearestInteractable 'ticket'; no getting in before), 300 kr
+  paid at once; one in five is written wrong and Ove phones P-Ordning AB (`interrupts.outCall`,
+  role `kundtjanst`), who pay it back. Not saved.
 - Save: `localStorage['saab-and-run-v1']` (kr, day, clock, collectibles, patrol incl. `reda`, `garage`
   0 = Ove's garage door shut, `rune` 0 = Rune dead), every field sanitised on load. Settings separately in
   `saab-and-run-settings` (`music`, `sound`, `quality`, `voice`, `voiceLevel`).

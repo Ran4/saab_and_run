@@ -46,6 +46,8 @@
 //   FLEE_LINES, CAUGHT_LINES, PATROL   the patrol (smitare, the Ordning meter's events)
 //   HONK_*, SAAB_GREET, ANDERS_LAW, RUNE_HORN, ANITA_RUNE, OVE_HONK   the horn (horn.js)
 //   COMING, CAT_COMES, CHASER_GAVE_UP   stages.js
+//   PSKIVA           the parking ticket (game/pskiva.js): Ove sees it, pays it, finds it wrong and
+//                    phones P-Ordning AB ('kundtjanst', their customer service: the call in order)
 //   WIDOW            Anita once Rune is dead (game/rune.js): small talk, sobs, horn, the radio
 //   RUNE_DIES        Ove, as Rune dies on the errand
 //
@@ -56,7 +58,7 @@
 //   allLines()       [[who, text, part], ...]: every line the code can say, deduplicated on who +
 //                    text (the first one wins). part: 'day1' .. 'day7' (all of STORY), then
 //                    'chatterFirst', 'chatter', 'chatterAfter', 'errands', 'calls' (ANSWER, DONE),
-//                    'reactions' (Ove's own), 'waking', 'patrol', 'peds', 'horn', 'stages', 'widow',
+//                    'reactions' (Ove's own), 'waking', 'pskiva', 'patrol', 'peds', 'horn', 'stages', 'widow',
 //                    'chatterReply' (CHATTER_REPLY's new lines, CHATTER_ENOUGH). A CALL's reply is
 //                    its own ['ove', reply, part]. The fallbacks (ERRAND_BUSY, CHATTER_FALLBACK,
 //                    HONK_PASSENGER_ANY) are in it only for a speaker who can get to them (nobody
@@ -625,6 +627,33 @@ export const WAKE = [
   'Sonja sa alltid att jag skulle ta halsduken. Fyrtio år, och hon har fortfarande rätt.',
 ];
 
+// The p-skiva and the lapplisa (game/pskiva.js, features/implemented/p-skiva.md). Ove sees a ticket
+// under his wiper (seen), takes it and pays (paid: it was right), or finds what the parking attendant
+// got wrong (wrong, by the field) and phones the company, P-Ordning AB: `call`, in order ('kundtjanst'
+// is their customer service, a role of its own). The p-skiva laid in the window: GARAGE_DOOR's "Så.".
+export const PSKIVA = {
+  seen: ['Vad är det där på rutan?', 'En lapp. På min bil.', 'Nej. Nej, nej, nej.', 'Lapplisan. Självklart.'],
+  paid: ['Trehundra kronor. För att stå still.', 'Rätt ska vara rätt. Även för mig.', 'Sonja hade skrattat åt det här.'],
+  wrong: {
+    plate: 'Det där är inte ens rätt registreringsnummer!',
+    makeSaab: 'Volvo?! Det är en Saab!',
+    make: 'Fel bilmärke! Ser hon inte vad det är för bil?',
+    disc: 'Den stod inte alls på det! Kan hon inte läsa en p-skiva?',
+    time: 'Då hade jag inte ens parkerat här!',
+    place: 'Där har jag aldrig stått!',
+  },
+  call: [
+    ['kundtjanst', 'P-Ordning, kundtjänst. Vad kan jag hjälpa dig med?'],
+    ['ove', 'Ni har satt en lapp på min bil. Och den är fel.'],
+    ['kundtjanst', 'Vill du bestrida avgiften kan du göra det skriftligen inom tre veckor...'],
+    ['ove', 'Jag bestrider ingenting. Jag rättar er. Ni heter P-Ordning och har ingen ordning alls.'],
+    ['kundtjanst', '...Jag ser det. Kontrollanten har skrivit fel. Jag makulerar avgiften.'],
+    ['ove', 'Och mina trehundra kronor?'],
+    ['kundtjanst', 'Pengarna kommer tillbaka. Ha en fortsatt fin dag.'],
+    ['ove', 'Hmpf.'],
+  ],
+};
+
 // ---------------------------------------------------------------------------------------------
 // People (main.js; PANIC: peds.js). Children and the neighbours are never knocked over.
 
@@ -842,6 +871,8 @@ export function allLines() {
   pool('ove', [...ANSWER, ...DONE], 'calls');
   pool('ove', [...OVE_REPLY, ...Object.values(TYRE).flat(), ...Object.values(SLID).flat(), ...Object.values(OVE_HOPP), ...Object.values(GARAGE_DOOR).flat(), ...OVE_START, ...Object.values(OVE_STUMBLE).flat()], 'reactions');
   pool('ove', WAKE, 'waking');
+  pool('ove', [...PSKIVA.seen, ...PSKIVA.paid, ...Object.values(PSKIVA.wrong)], 'pskiva');
+  for (const l of PSKIVA.call) add(l[0], l[1], 'pskiva');
   pool('driver', [...FLEE_LINES, ...CAUGHT_LINES], 'patrol');
   for (const l of Object.values(PATROL)) add(l[0], l[1], 'patrol');
   pool('ped', [...OUCH, ...GETUP, ...CARJACK, ...KICKED], 'peds');

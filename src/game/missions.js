@@ -595,8 +595,10 @@ export class MissionRunner {
     this.gateOpen = true;
     const def = this.current;
     g.setClock(...DAY_START);
-    // A new morning: yesterday's tracks in the snow are gone (game/tracks.js),
+    // A new morning: yesterday's tracks in the snow are gone (game/tracks.js), a new date for the
+    // parked cars' p-skivor (game/pskiva.js),
     g.tracks?.clear();
+    g.parking?.dawn();
     // everyone where they spend the day (whoever is elsewhere is gone at once), and
     // the Saab back at home (unless Ove is in it or standing by it).
     g.placeNpcs?.(true);
@@ -748,7 +750,7 @@ export class MissionRunner {
 
   // Can the running mission be given up right now (hold Q, or the pause menu)? Not in the middle
   // of a scene (a mid-mission conversation, the flowers, a cut to black).
-  get canGiveUp() { return this.state === 'running' && !!this.stage && !this.g.inDialog; }
+  get canGiveUp() { return this.state === 'running' && !!this.stage && !this.g.inDialog && !this.g.overlay; }
 
   // Holding Q (the key) for GIVE_UP.hold s gives the running mission up: abort(), the giver waits.
   updateGiveUp(dt) {

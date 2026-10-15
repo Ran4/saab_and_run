@@ -3,11 +3,11 @@
 
 import { THREE, PRIM, mat } from '../gfx.js';
 import { CURB } from './layout.js';
-import { C, WALLS, DOORS, rnd, R, pickR, TAU, win, winLite, door, canopy, lampBox, hedge, quads, snowBank, snowPile, shrub, limb, snowGuard, roofLadder, ventStack, downpipe, hash, glow } from './kit.js';
+import { C, WALLS, DOORS, rnd, R, pickR, TAU, parkingLot, win, winLite, door, canopy, lampBox, hedge, quads, snowBank, snowPile, shrub, limb, snowGuard, roofLadder, ventStack, downpipe, hash, glow } from './kit.js';
 export { winLite };
 import { radhusArea } from './rowhouse.js';
 import { textFace, picto, decal } from './signs.js';
-import { violationSpots, keepClear, litterSpots } from './data.js';
+import { violationSpots, keepClear, litterSpots, roadNames } from './data.js';
 
 export const jit = (c, a, r = rnd) => {
   const f = 1 + (r() - 0.5) * 2 * a;
@@ -432,6 +432,9 @@ export function apartmentsBlock(bf, r, o = {}) {
   for (let k = 0; k < 20; k++) if (r() < 0.08) bf.car(pickR(CARS, r), -28 + (k + 0.5) * 2.7, 28.4, 0, { color: pickR(CAR_COLS, r) });
   snowPile(bf.S, bf.wx(-29.5, 20), bf.wz(-29.5, 20), 2.0, 1.2);
   bf.post(31.2, 17.4, Math.PI / 2, [{ f: picto('p'), w: 0.6, h: 0.6 }, { f: textFace('Boende med\ntillstånd', 0.6, 0.3, { ppm: 260, scale: 0.72 }), w: 0.6, h: 0.3 }]);
+  // (residents with a permit only: Ove has none here, game/pskiva.js)
+  const lot = parkingLot(`boende:${Math.round(bf.ox)},${Math.round(bf.oz)}`, { name: `Boendeparkering, ${roadNames.at(bf.wx(33, 21), bf.wz(33, 21))}`, sign: 'Boende med tillstånd', rule: { permit: 'boende' } });
+  for (let k = 0; k < 20; k++) bf.bay(-28 + (k + 0.5) * 2.7, 28.5, 0, lot.id);
   bf.lamp(-12, 18.0, 0, 6.0); bf.lamp(14, 18.0, 0, 6.0);
   // Soprum corner.
   const sp = bf.sub(26, -4.5, -Math.PI / 2);
@@ -455,6 +458,11 @@ export function radhusBlock(bf, r, yaw = 0, o = {}) {
   const area = radhusArea(f, { r, lite: true, litter: 2, walls, storeys: st, roofs: [pickR(['tile', 'metalroof'], r), 'tile', pickR(['tile', 'metalroof'], r), 'tile'], advent: 0.25 });
   // Residents' cars in the lot.
   for (const b of area.bays) if (r() < (b.row === 'north' ? 0.16 : 0.1)) f.car(pickR(CARS, r), b.lx, b.lz, b.ly, { color: pickR(CAR_COLS, r) });
+  // Its lot is for the residents (a permit), the reserved bay and the handicap bay too; the four guest
+  // bays are free (feature p-skiva, game/pskiva.js). The sign at the entrance says so.
+  f.post(-31.2, -27.0, -Math.PI / 2, [{ f: picto('p'), w: 0.64, h: 0.64 }, { f: textFace('Boende med\ntillstånd', 0.64, 0.3, { ppm: 260, scale: 0.72 }), w: 0.64, h: 0.3 }]);
+  const lot = parkingLot(`boende:${Math.round(f.ox)},${Math.round(f.oz)}`, { name: `Boendeparkering, ${roadNames.at(f.wx(-33, -22.75), f.wz(-33, -22.75))}`, sign: 'Boende med tillstånd', rule: { permit: 'boende' }, signAt: [f.wx(-31.2, -27.0), f.wz(-31.2, -27.0), f.yaw - Math.PI / 2] });
+  for (const b of area.bays) f.bay(b.lx, b.lz, b.ly, lot.id, { w: b.w ?? 2.7, l: b.row === 'south' ? 5.2 : 4.9, rule: b.kind === 'guest' ? false : b.kind === 'handicap' ? { permit: 'handikapp' } : b.kind === 'reserved' ? { permit: 'reserverad' } : null });
   if (o.spots) {
     violationSpots.push({ x: f.wx(14, 3.8), z: f.wz(14, 3.8), yaw: f.yaw + Math.PI / 2, kind: 'carfree', where: 'radhus' });
     violationSpots.push({ x: f.wx(-6.8, -21.6), z: f.wz(-6.8, -21.6), yaw: f.yaw - Math.PI / 2, kind: 'garbage', where: 'radhus' });

@@ -1004,3 +1004,43 @@ script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
   'car' 'hit', lines he already has: no new clips) 4 times in 5, not in a dialogue.
 - `teleport` ends a ragdoll (on his feet there): the warps, `resetToRoad`, the cold's waking.
 - Tests: scenarios/snubbla.mjs `snubbla hoppaur snubblaperf snubblalook snubbladbg`.
+
+## The p-skiva and the lapplisa (feature p-skiva, features/implemented/p-skiva.md)
+
+- **game/pskiva.js** `Parking` (`game.parking`, `window.__parking`; constructed after the cold with
+  `{ wardens: !TEST || &lapp }`; `update(dt)` with the patrol, inside `!cold.busy`): `recs` = car ->
+  parking `{ car, bay, rule, lot, arrive, next, discSet, ticket, mesh, awayT, readOnce }`. The player's
+  car slower than `PSK.slow` in a bay with a rule (`bayAt`: a 24 m grid of `parkingBays`, the car's
+  centre in the bay with slack, its heading within ~33° either way) begins one (`arrive` = the minute);
+  leaving the bay ends it (not with a ticket on it). Every 0.25 s: a record whose car is disposed / dead
+  / out of its bay is dropped; `round(r)` = the attendant (due at `r.next`, Ove > `PSK.away` m and not in
+  the car for `PSK.awaySecs` s); `spot()` (Ove sees a ticket within `PSK.seen` m on foot); `phone()`
+  (a wrong ticket's call once the phone is free). Absolute time = `day * 1440 + clockMin`; `dawn()`
+  (missions.updateGate) adds a day.
+- **The rule**: `offence(r, t)`: permit (within its hours) -> its kind; disc: outside its hours
+  nothing; no disc in the window -> `nodisc`; the disc (`car.pskiva = { dial: 0..719, on }`, its 12-hour
+  dial read nearest the arrival, `discAt`) later than `ceil30(t)` -> `ahead`; regulated minutes from it
+  (`regMin`: only inside the hours, over nights too) over the limit -> `overtime`. `check(car, o)` runs a
+  round now (tests: `o.err` a mistake of hers or `null`, `o.misread`). `issue` builds the ticket
+  `{ no, t, arrive, why, what, plate, make, place, bay, disc, fine, err, warden, day, saab }`; 20 %
+  (`PSK.wrong`) get `mistake(tk, kind)`: plate (a look-alike character), make (Saab <-> Volvo), time
+  (before the arrival), place (another p-skiva lot), disc (two hours early or before it would run out);
+  a right disc read wrong at a parking's first round 5 % (`PSK.misread`, always an error).
+- **The envelope**: `attach(r)` adds a small realMesh (plastic + painted, no snow, no AO) to `car.tilt`,
+  on the glass above the driver's wiper (carmodels.js `P.wiperZ`, `P._fn.topY`); without a loft profile
+  (the tractor) on the bonnet where a ray from above meets the body.
+- **main.js**: `g.overlay` ('pskiva' | 'lapp' | null): `handleOneShots(dt)` hands the keys to
+  `parking.overlay(dt)` and returns (before pause, so Esc is the disc's); `fixedStep` brakes the car /
+  stops Ove; `updateHud` shows no prompt; `missions.canGiveUp` is false. In a car `input.pressed('pskiva')`
+  (G, pad 12) -> `parking.openDisc()` (only stopped in a p-skiva bay). `nearestInteractable` returns
+  `{ type: 'ticket', car }` for a car with a ticket (no 'car' for it: E takes the ticket, `parking.take`);
+  the prompt "E Ta lappen". `parking.prompt()` joins the prompt line in a car. Seated in a ticketed car
+  any other way (a scene, the race's grid), he takes it as soon as the car stands and the missions are
+  idle (`update`); till then it rides along.
+- **interruptions.js** `outCall(who, name, lines, sub)`: Ove phones somebody (the card "Ove ringer",
+  `hud.incomingCall(..., { out: true })`, the 425 Hz ringback twice, then `phoneLine` in turn); `abort()`
+  (a story day) leaves it, `hangUp()` (radio calls only) too, `force()` cuts it (resolves false).
+  `EXTRA` names for `nameOf` ('kundtjanst': P-Ordning AB). The refund is on its promise.
+- **input.js**: `KEYS.pskiva` ['KeyG'], `PAD.pskiva` [12] (d-pad up), `padPressed(b)` / `padDown(b)`
+  (the disc's own pad buttons).
+- Tests: scenarios/pskiva.mjs `pskiva pskivarules pskivalook pskivavoice`.

@@ -29,11 +29,12 @@ const KEYS = {
   giveUp: ['KeyQ'],
   // the title screen's "Spela" / "Fortsätt" (main.js titleKeys; never the mouse)
   begin: ['Enter', 'NumpadEnter', 'Space', 'KeyE'],
+  pskiva: ['KeyG'],
 };
 // Standard gamepad layout: A jump / handbrake, B report (hold) and give up (after a failed mission),
 // X kick, Y interact, LB or L3 brisk walk (L3 is the horn in a car, as is RB), R3 look back, Back
 // map, Start pause; on the title A, Y or Start begin.
-const PAD = { jump: [0], handbrake: [0], report: [1], giveUp: [1], sprint: [4, 10], attack: [2], interact: [3], horn: [10, 5], pause: [9], map: [8], skip: [0, 3], lookBack: [11], begin: [0, 3, 9] };
+const PAD = { jump: [0], handbrake: [0], report: [1], giveUp: [1], sprint: [4, 10], attack: [2], interact: [3], horn: [10, 5], pause: [9], map: [8], skip: [0, 3], lookBack: [11], begin: [0, 3, 9], pskiva: [12] };
 const finite = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const dz = (a) => { a = finite(a); return Math.abs(a) < 0.15 ? 0 : a < -1 ? -1 : a > 1 ? 1 : a; };
 
@@ -122,6 +123,9 @@ export const input = {
   // The same, from the keyboard (and mouse) only, or from the pad only.
   keyPressedAction(action) { return !!KEYS[action]?.some((k) => pressed.has(k)); },
   padPressedAction(action) { return !!PAD[action]?.some((b) => padNow[b] > 0.5 && !(padPrev[b] > 0.5)); },
+  // One pad button by its standard-mapping index (game/pskiva.js: the disc's own keys).
+  padPressed(b) { return padNow[b] > 0.5 && !(padPrev[b] > 0.5); },
+  padDown(b) { return padNow[b] > 0.5; },
   // Movement axes: x = right, y = forward.
   moveX() { return clamp1((down.has('KeyD') || down.has('ArrowRight') ? 1 : 0) - (down.has('KeyA') || down.has('ArrowLeft') ? 1 : 0) + padAxes[0]); },
   moveY() { return clamp1((down.has('KeyW') || down.has('ArrowUp') ? 1 : 0) - (down.has('KeyS') || down.has('ArrowDown') ? 1 : 0) - padAxes[1]); },

@@ -7,11 +7,15 @@ import { CURB, landmarks } from './layout.js';
 import { box, circle, ramp } from './collision.js';
 import { placeProp } from './props.js';
 import { addSign, addDecal, addCard, addQuad, addGrid, twigFace, PICTO_SHAPE } from './signs.js';
-import { parkedCars, lamps, camBlocks } from './data.js';
+import { parkedCars, lamps, camBlocks, parkingLots, parkingBays } from './data.js';
 import { addGround, addGroundCircle } from './surface.js';
 import { mulberry32, clamp } from '../util.js';
 
 export const TAU = Math.PI * 2;
+// A car park's rule and name (data.js parkingLots; its bays: Frame.bay). The first call makes it.
+export function parkingLot(id, o) { return (parkingLots[id] ||= { id, ...o }); }
+// The plate under a P sign for a p-skiva car park (feature p-skiva).
+export const PSKIVA_PLATE = { w: 0.6, h: 0.17 };
 export const wrapYaw = (a) => { a = (a + Math.PI) % TAU; if (a < 0) a += TAU; return a - Math.PI; };
 export const rnd = mulberry32(19581109);
 export const R = (a, b, r = rnd) => a + (b - a) * r();
@@ -87,6 +91,13 @@ export class Frame {
   prop(type, lx, lz, ly = 0) { placeProp(type, this.wx(lx, lz), this.wz(lx, lz), this.yaw + ly); return this; }
   mark(name, lx, lz, ly = 0, extra = null) { landmarks[name] = { x: this.wx(lx, lz), z: this.wz(lx, lz), yaw: wrapYaw(this.yaw + ly), ...(extra || {}) }; return landmarks[name]; }
   car(type, lx, lz, ly, extra = {}) { parkedCars.push({ type, x: this.wx(lx, lz), z: this.wz(lx, lz), yaw: this.yaw + ly, ...extra }); return this; }
+  // A marked parking bay of lot `lot` (data.js parkingBays: game/pskiva.js), centred at (lx, lz), a car
+  // in it heading ly; o: { w, l, rule } (rule: this bay's own, e.g. the handicap bay of a p-skiva lot).
+  bay(lx, lz, ly, lot, o = {}) {
+    const n = (parkingLots[lot].count = (parkingLots[lot].count || 0) + 1);
+    parkingBays.push({ x: this.wx(lx, lz), z: this.wz(lx, lz), yaw: wrapYaw(this.yaw + ly), w: o.w ?? 2.7, l: o.l ?? 5, lot, rule: o.rule ?? null, n });
+    return this;
+  }
   // A printed face (signs.js) on a wall or plate: centred at (lx, y, lz), facing local yaw ly.
   sign(face, lx, y, lz, w, h, ly = 0) { addSign(face, this.wx(lx, lz), y, this.wz(lx, lz), w, h, this.yaw + ly); return this; }
   decal(face, lx, lz, w, d, ly = 0, y = CURB + 0.045) { addDecal(face, this.wx(lx, lz), y, this.wz(lx, lz), w, d, this.yaw + ly); return this; }

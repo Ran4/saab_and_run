@@ -19,12 +19,12 @@ import { buildStreets, BUS_STOPS } from './streets.js';
 import { buildOutskirts } from './outskirts.js';
 import { finalizeSigns } from './signs.js';
 import { JUMP_HILLS } from './snowhill.js';
-import { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, mapLabels, shared, camBlocks, roadNames, interiors } from './data.js';
+import { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, mapLabels, shared, camBlocks, roadNames, interiors, parkingLots, parkingBays } from './data.js';
 import { surfaceAt } from './surface.js';
 import { fx } from '../game/fx.js';
 import { mulberry32 } from '../util.js';
 
-export { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, carFreeZones, isCarFree, mapLabels, surfaceAt, camBlocks, roadNames, interiors };
+export { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, carFreeZones, isCarFree, mapLabels, surfaceAt, camBlocks, roadNames, interiors, parkingLots, parkingBays };
 
 // Blocks right around Ove's that get a few extra violation spots of their own.
 const NEAR_SPOTS = new Set(['2,3', '3,4', '3,2', '1,3']);

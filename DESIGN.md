@@ -225,6 +225,7 @@ photograph's with its picture.
 | J / klick | sparka (däck) | |
 | T / H (pad L3 / RB) | | tuta (4.7) |
 | B | | titta bakåt |
+| G (gamepad d-pad upp) | | p-skivan, stående i en p-ruta (4.11) |
 | M / N / R | karta / ljud / tillbaka till vägen | |
 | Esc / P (gamepad Start) | paus och fortsätt (pausmenyn släpper musen) | |
 | Q (gamepad B) | ge upp efter ett misslyckat uppdrag; håll Q för att avbryta ett pågående | |
@@ -333,6 +334,21 @@ fill in with blown snow (`fx.blowAmount`: ~40 s at its height). API: `tracks.ini
 `tracks.update(game, dt)` (main.js, after `syncAll`), `tracks.clear()`, `tracks.on` (`&notracks`: none
 made, the skid decal on snow back), for tests `tracks.stats()`, `feetList(ring)`, `rutList(ring)`,
 `meshes()`, `debugFill(x, z, r)`; `window.__tracks`. Rendering: 10.5.
+
+### 4.11 The p-skiva and the lapplisa (`src/game/pskiva.js`, `src/game/pskivaui.js`, feature p-skiva)
+The car parks' marked bays carry the rules on their signs (§6 world: `parkingLots`, `parkingBays`): two
+hours with a p-skiva 8–18 at the Livs in centrum and at Kommunhuset, three at the hospital, ten minutes
+at the preschool; the other areas' residents' bays, the handicap, loading-zone and reserved bays need a
+permit Ove hasn't got; his own lot is free to him. Stopped in a p-skiva bay, **G** takes out the disc:
+the whole disc on the screen, **Q / E** turn it half an hour a step, **F** lays it in the window (**G**
+puts it back). The Swedish rule: the arrival rounded up to the next whole or half hour (16:31 -> 17:00).
+While Ove is away from the car (> 35 m for 10 s) an unseen attendant of P-Ordning AB comes by now and
+then and writes a kontrollavgift for no disc, a disc set ahead, too long (counted within the sign's
+hours, over nights too) or no permit: a yellow envelope under the driver's wiper. Ove sees it (a line);
+**E** takes it (not before can he get in), the ticket fills the screen and is paid at once: 300 kr. One
+ticket in five has something written wrong (the plate, the make, the time, the place, the disc; and now
+and then a right disc read wrong): Ove circles it in red and phones the company, who cancel it and pay
+him back. Nothing of it is saved. Details: features/implemented/p-skiva.md.
 
 ## 5. Story — seven days (`src/game/missions.js`)
 

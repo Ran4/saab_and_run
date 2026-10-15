@@ -993,3 +993,24 @@ Moved for it: the two pulkas (to the foot), the emblem on the hill (now on the t
 
 **`mound()`** (places.js: the preschool's sledding mound, still round) keeps its cap and gets a
 collider of the same shape (`domeHill`) instead of the stepped circles.
+
+## Car parks: bays and rules (feature p-skiva, 2026-10-15)
+
+`data.js` `parkingLots[id] = { id, name, sign, rule, signAt: [x, z, yaw], count }` and `parkingBays =
+[{ x, z, yaw, w, l, lot, rule, n }]` (`kit.js` `parkingLot(id, o)` makes a lot once, `Frame.bay(lx, lz,
+ly, lot, { w, l, rule })` a bay; `rule` false = free, null = the lot's). game/pskiva.js reads them.
+- `centrum` (places.js centrumBlock): 38 bays, `{ disc: 120, hours: [8, 18] }`; nb[0], nb[1] the loading
+  zone `{ permit: 'lastzon', hours: [6, 18] }`. The P post got a third plate "P-skiva"; LASTZON 6–10 is
+  now 6–18 (the patrol's 'loading' spots are violations all day).
+- `sjukhuset` (hospitalBlock): 52 bays, `{ disc: 180 }`; r1[0], r1[1] handicap. The post by the north
+  entrance: P · "3 tim 8–18" · "P-skiva" · "Längre: betala i automaten" (was "Avgift vardagar 8–18 ·
+  Betala i automaten"); the meters stay.
+- `forskolan` (preschoolBlock): 10 bays, `{ disc: 10, hours: [0, 24] }`; its post got "P-skiva".
+- `kommunhuset` (kommunBlock): 12 bays, `{ disc: 120 }`; "Besöksparkering\n2 tim 8–18" + "P-skiva", the
+  post's top 2.6.
+- `boende:<ox>,<oz>`: each apartments block's lot (20 bays) and each generic radhus area's (radhusBlock:
+  the 20 north bays and the reserved / 4 guest / handicap bays; guests free), `{ permit: 'boende' }`. The
+  generic radhus areas got Ove's lot's P post at their entrance (-31.2, -27.0): "Boende med tillstånd".
+- `ove` (ove.js): `rule: null` (free to Ove); only the handicap bay, Anders' reserved bay and Adrian's
+  bay are registered (permits).
+- `carmodels.js` `wipers()` keeps `P.wiperZ` / `P.wiperN` (the ticket goes under the driver's blade).

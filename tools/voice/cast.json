@@ -672,6 +672,14 @@
         }
       ]
     },
+    "kundtjanst": {
+      "voice_id": "ycdKCM2Fj0Us7dTwCGoM",
+      "name": "Lisa - Friendly Customer Service Agent",
+      "source": "library",
+      "extra": true,
+      "note": "P-Ordning AB:s kundtjänst i telefon (feature p-skiva, game/pskiva.js): Ove ringer och klagar på en felskriven parkeringsbot. Samma röst som Nasanin, men obearbetad (Nasanins är höjd till ett treårings, shift): här låter den som det den är gjord för. extra: inte en av grannarna ('cast').",
+      "design": "A Swedish woman in her late 20s from Stockholm, customer service on the phone at a parking company: friendly, scripted and unflappable, a little tired. Natural, close conversational recording."
+    },
     "ped_kid_f_1": {
       "voice_id": "cLAH1kXlkAivJHxCW601",
       "name": "Olivia - Bright, Youthful and Engaging",

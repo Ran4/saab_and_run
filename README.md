@@ -52,6 +52,7 @@ vad det valde, "Auto (Hög)" eller "Auto (Låg)". Valet sparas.
 | J / klick | sparka (på däcket) | |
 | T / H | | tuta (folk märker det, se nedan) |
 | B | | titta bakåt (bra när man backar med släp) |
+| G | | ställ in p-skivan (stående i en p-ruta, se nedan) |
 | M | stor karta | stor karta |
 | N | ljud av/på | ljud av/på |
 | R | fast? tillbaka till vägen | fast? tillbaka till vägen |
@@ -142,6 +143,16 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   svara inte i telefon mitt i.
 - **Smitare.** Ibland sitter föraren kvar i bilen och gasar iväg när Ove börjar skriva. Ta en bil,
   knuffa till smitaren eller håll dig tätt bakom tills den ger upp: **TAGEN!** Tappar du den: **SMET!**
+- **P-skivan och lapplisan.** Parkeringarna har regler, och det står på skyltarna: två timmar med
+  p-skiva 8–18 vid Livs i centrum och vid Kommunhuset, tre vid sjukhuset, tio minuter vid förskolan.
+  Står bilen still i en sådan ruta tar **G** fram p-skivan: **Q** och **E** vrider den en halvtimme
+  åt gången och **F** lägger den i rutan (**G** lägger tillbaka den). Svenska regler: ankomsttiden
+  avrundad uppåt till närmast följande hel- eller halvtimme (16:31 blir 17:00). Medan Ove är borta
+  från bilen går lapplisan sin runda, och saknas skivan, är den framställd, har bilen stått för länge
+  eller står den på en plats Ove inte har tillstånd för (lastzon, handikapplats, de andra områdenas
+  boendeparkering, reserverade platser) sitter det en lapp under torkarbladet. **E** tar den (först
+  då går det att kliva in), och den betalas på en gång: 300 kr. Var femte lapp har lapplisan skrivit
+  fel på. Då ringer Ove till P-Ordning AB, och det slutar med att de betalar tillbaka.
 - **Ordning i området.** Mätaren uppe till höger sjunker med varje felparkering som står kvar, och
   med allt Ove själv ställer till med: kör inom området (−1 Ordning i sekunden, det står nere i
   mitten så länge bilen är där), har sönder saker, kör på folk. Går den till noll blir det **KAOS I
@@ -244,6 +255,8 @@ src/game/missions.js       de sju dagarna och uppdragskörningen
 src/game/luftning.js       dag 3:s scen: Ove luftar elementet hemma hos Anita och Rune (och katten tittar in)
 src/game/cold.js           kylan utanför stan: köldmätaren, frosten, huttrandet, snöyran, döden av frost
 src/game/waking.js         Ove vaknar i sin säng efter att ha frusit ihjäl (scenen och de fem replikerna)
+src/game/pskiva.js         p-skivan och lapplisan: parkeringarnas regler, rundorna, lappen på bilen, samtalet till P-Ordning AB
+src/game/pskivaui.js       p-skivan i helskärm (ritad efter features/implemented/pskiva.avif) och kontrollavgiften
 src/game/hud.js            HUD, karta, dialog, porträtt, anteckningsbok
 src/game/camera.js, fx.js, markers.js   kameran, partiklar, markeringar
 tools/voice/               rösterna: voice.mjs (generering, kontroll), cast.json (rollerna), lines.json (regi),
@@ -287,6 +300,7 @@ PORT=8791 node tools/shot.mjs runeroll runekick runecar runecold runewidow   # R
 QUERY='&runedead' PORT=8791 node tools/shot.mjs story      # berättelsen med Rune död
 PORT=8791 node tools/shot.mjs snubbla hoppaur snubblaperf # snubbla vid landningen, hoppa ur bilen i 15-90 km/h, påkörd (riktiga tangenter): aldrig under marken, upp igen; kostnaden (snubblalook: filmremsor)
 PORT=8791 node tools/shot.mjs traktor seatlegs             # snöröjningstraktorn med riktiga tangenter: in, ut ur rutan, 40 km/h, gångvägen, plogen, ut (traktorlook, traktorplog: bilder)
+PORT=8791 node tools/shot.mjs pskiva pskivarules           # p-skivan med riktiga tangenter, lappen, samtalet till P-Ordning AB; alla regler (pskivalook: bilder, pskivavoice: rösterna)
 ```
 
 I testerna (`?test=1`) är rösterna avstängda, så de går lika fort som förut; `&voice` slår på dem.

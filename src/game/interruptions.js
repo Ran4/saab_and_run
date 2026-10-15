@@ -5,6 +5,8 @@
 // API:
 //   interrupts.update(dt)                main.js, every frame
 //   interrupts.radioOnly(who, text)      a short call for flavour (missions use it; no errand)
+//   interrupts.outCall(who, name, lines, sub)   Ove phones somebody (game/pskiva.js: P-Ordning AB
+//                                        about a ticket written wrong): [[who, text]...] in turn
 //   interrupts.force(id, { quick })      start errand `id` now (quick: skip the phone call)
 //   interrupts.abort()                   drop the current errand (a mission started: no blame; the
 //                                        neighbour says it's fine on the radio once the intro is over)
@@ -112,7 +114,9 @@ export const TEMPLATES = [
   },
 ];
 
-const nameOf = (who) => CHARS[who]?.name || who;
+// (somebody on the phone who is nobody in the town: P-Ordning AB's customer service, game/pskiva.js)
+const EXTRA = { kundtjanst: 'P-Ordning AB' };
+const nameOf = (who) => CHARS[who]?.name || EXTRA[who] || who;
 // How long a line of a call takes: the voice's clip (or its guess), else the old reading time.
 const lineSecs = (who, s) => voice.secs(who, s, 1.3 + s.length * 0.045) + (voice.enabled ? 0.35 : 0);
 
@@ -244,6 +248,24 @@ export class Interruptions {
     });
   }
 
+  // Ove phones somebody himself (feature p-skiva: P-Ordning AB about a ticket written wrong): the card
+  // says "Ove ringer", the Swedish ringback tone twice (425 Hz), then the lines in turn ([who, text];
+  // Ove's dry, with a bubble over him). It is his own call: no mission stage hangs it up and a story
+  // day doesn't cut it off (force() does: then it resolves false). Resolves true when it has ended.
+  outCall(who, name, lines, sub = '') {
+    return new Promise((resolve) => {
+      if (this.call) { resolve(false); return; }
+      hud.incomingCall(who, name, sub, { out: true });
+      const script = [];
+      let t = 0.4;
+      for (let k = 0; k < 2; k++) { script.push([t, () => audio.tone(425, 1.0, 'sine', 0.045)]); t += 2.2; }
+      script.push([t - 0.6, () => { hud.answerCall(); this.onPhone = true; }]);
+      for (const [w, text] of lines) { script.push([t, () => this.phoneLine(w, text, w === 'ove' ? 2.4 : 0)]); t += lineSecs(w, text); }
+      script.push([t, () => { hud.endCall(); this.onPhone = false; this.call = null; resolve(true); }]);
+      this.call = { tpl: null, t: 0, script, k: 0, out: true, resolve };
+    });
+  }
+
   // A mission stage is over (Ove has arrived): a flavour call still ringing or talking is cut off,
   // so an "INTE NU!" never turns up at the next stage.
   hangUp() {
@@ -259,7 +281,7 @@ export class Interruptions {
 
   force(id, opts = {}) {
     if (this.active || this.retry) this.abort();
-    if (this.call) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; }
+    if (this.call) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call.resolve?.(false); this.call = null; }
     const tpl = TEMPLATES.find((t) => t.id === id) || TEMPLATES[0];
     if (opts.quick) { this.g.patrol.cancelWriting('telefonen ringde'); this.lastId = tpl.id; this.start(tpl); }
     else this.ring(tpl.id);
@@ -380,7 +402,7 @@ export class Interruptions {
   // drops it without a word.)
   abort() {
     if (this.retry) this.giveUp();
-    if (this.call && !this.call.radio) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; this.nextT = Math.max(this.nextT, 45); }
+    if (this.call && !this.call.radio && !this.call.out) { this.silence(this.call); audio.ring(false); hud.endCall(); this.onPhone = false; this.call = null; this.nextT = Math.max(this.nextT, 45); }
     if (this.active) {
       const tpl = this.active.tpl;
       this.finish();

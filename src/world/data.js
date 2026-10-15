@@ -25,6 +25,15 @@ export const camBlocks = [];
 // frame (ox, oz, yaw), the unit's a0 and floor y0, and its kitchen window's pane (pane: the builder,
 // paneMesh: the mesh town.js makes of it, hidden while the camera is inside).
 export const interiors = {};
+// Parking (feature p-skiva, game/pskiva.js): the marked bays of the town's car parks and the rules
+// on their signs. parkingLots[id] = { id, name (the ticket's Plats), sign (short, the prompt line),
+// rule, signAt: [x, z, yaw] (its P sign, facing yaw: tests look at it) }; parkingBays = [{ x, z, yaw, w, l, lot, rule, n }] (yaw = a correctly parked car's heading,
+// either way round; rule = this bay's own, over the lot's; n = its number in the lot, from 1).
+// Rules: { disc: minutes, hours: [h0, h1] } a p-skiva and at most that long between h0 and h1
+// (free outside them); { permit: 'boende' | 'handikapp' | 'lastzon' | 'reserverad', hours? } not
+// without a permit (Ove has none, anywhere); null: free (the bays of Ove's own area, guest bays).
+export const parkingLots = {};
+export const parkingBays = [];
 // Street names (the same lists patrol.js uses for the notebook's Plats): roads along z (north-south)
 // at x = rc(i) -> ns[i]; roads along x at z = rc(j) -> ew[j]. at(x, z): the nearest road's name.
 export const roadNames = {
