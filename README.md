@@ -120,6 +120,13 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   tvärbromsa och den åker fram över rutan, sväng skarpt och den glider av åt sidan. Ett hopp i
   hoppbacken eller en smäll mot en parkerad bil skakar loss mycket; bakluckan, i lä bakom taket,
   behåller sin snö längst. Snöklumparna ligger kvar en stund på vägen.
+- **Snöröjningstraktorn.** Föreningens orange traktor står med plogbladet ut mot gången på en
+  plats längst in på boendeparkeringen, i änden av garagelängan, och Ove har förstås nyckel: kliv
+  in med **E** som i en bil. Den går i högst 40 km/h, kommer långsamt upp i fart men vänder tvärt,
+  har fyrhjulsdrift och klackdäck som biter i snön, en egen dieselmotor och en platt liten tuta, och
+  det gula ljuset på taket blinkar när motorn går. Den får köra på de bilfria gångvägarna (det
+  kostar ingen Ordning: den röjer ju snö), och kör du genom snön kastar plogbladet upp den åt höger.
+  Det finns bara en plats i hytten, så ingen kan åka med.
 - **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket
@@ -199,7 +206,8 @@ src/world/                 stadsplan och vägnät (layout), kollision, kvarteren
                            uppvaknandet); utanför stan: terrängen att gå på, skogsgatorna, granarna
                            och stenblocken (outskirts); snöhögar att köra och gå på, hoppbacken i
                            parken (snowhill)
-src/actors/car.js          bilarna: fysik, lampor, registreringsskyltar (carmodels.js: modellerna)
+src/actors/car.js          bilarna: fysik, lampor, registreringsskyltar (carmodels.js: modellerna, också
+                           snöröjningstraktorn och plogbladets snö)
 src/actors/carsnow.js      snön på de parkerade bilarna: flak som lossnar och yr av när någon kör
                            iväg, snörök i fartvinden, vindrutetorkarna
 src/actors/trailer.js      släpkärran
@@ -256,6 +264,7 @@ PORT=8791 node tools/shot.mjs snohog snohogsim             # hoppbacken: sex hop
 PORT=8791 node tools/shot.mjs snohogwalk snohogsound       # Ove går över hoppbacken; hoppets ljud offline
 PORT=8791 node tools/shot.mjs runeroll runekick runecar runecold runewidow   # Runes ärende: släppa och sparka rullstolen, påkörd, ihjälfrusen, Anita utan honom (runelook: närbilder)
 QUERY='&runedead' PORT=8791 node tools/shot.mjs story      # berättelsen med Rune död
+PORT=8791 node tools/shot.mjs traktor seatlegs             # snöröjningstraktorn med riktiga tangenter: in, ut ur rutan, 40 km/h, gångvägen, plogen, ut (traktorlook, traktorplog: bilder)
 ```
 
 I testerna (`?test=1`) är rösterna avstängda, så de går lika fort som förut; `&voice` slår på dem.

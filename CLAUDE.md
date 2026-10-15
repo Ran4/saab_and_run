@@ -29,8 +29,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   touching the pause menu or its rows), render.mjs `rperf rload rprog rgpu rautosim`, cars.mjs
   (round 2: `wheelfaces trailersleep`; the slides: `handling drift driftshot speedslide`), people.mjs
   (round 2: `pplanim pplcine`; `seatlegs`: nothing of anyone seated in a car below the cushion in
-  sight, every car model, the lower legs back on getting out: run it after touching seating, the
-  seated pose or a car's seats), world.mjs (round 2: `wsame wcalls wvram wprops`), cold.mjs (the cold
+  sight, every car model (the snow tractor's cab keeps the lower legs: nothing below its floor), the
+  lower legs back on getting out: run it after touching seating, the seated pose or a car's seats),
+  world.mjs (round 2: `wsame wcalls wvram wprops`), cold.mjs (the cold
   beyond the town, features/implemented/avgrunden.md: `coldwalk colddrive coldback` with real keys,
   `coldrate coldmission coldwall coldbed coldbedskip`, `coldlook coldsound coldperf` (an A/B of draw
   calls and triangles with the cars and people hidden; copy cold.mjs into an old checkout), `coldwind`
@@ -51,7 +52,11 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `bilsnohopp` = a snowy car over the hoppbacke; `bilsnoperf` = its cost, no shader compiled;
   `bilsnodrive bilsnolook bilsnopass` = screenshots: the chase camera, close-ups with the wipers, the
   roadside; `TYPE=` a model); run `bilsnosim bilsnochecks bilsnoperf` after touching carsnow.js, the
-  snow caps or the cars' materials.
+  snow caps or the cars' materials. traktor.mjs (the association's snow tractor, a drivable car type
+  `tractor`, features/implemented/snotraktor.md: `traktor` = real keys, 16 checks: E in (one seat),
+  out of its bay and the lot, the 40 km/h cap, the car-free walkway without Ordning lost, the blade's
+  spray on snow, horn, beacon, E out; `traktorlook` close-ups and the LOD; `traktorplog` the spray);
+  run `traktor seatlegs` after touching the tractor, the wheels, seating or the lot.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has

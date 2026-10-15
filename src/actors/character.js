@@ -282,6 +282,7 @@ export class Character {
     a.downLeft = this.state === 'down' ? this.timer : 0;
     a.seated = this.state === 'seated';
     a.driving = a.seated && !!this.car && this.car.driver === this;
+    a.legRoom = a.seated && !!this.car?.model?.legRoom;
     a.jumpWind = this.windT >= 0 ? Math.min(1, this.windT / this.windDur) : 0;
     a.jumping = this.jumping && this.state === 'normal';
     a.landT = this.state === 'normal' ? this.landT : 9;
@@ -292,7 +293,7 @@ export class Character {
     this.lodEvery = k;
     this.lodAcc += dt;
     // (into or out of a seat: posed at once, the lower legs fold away or come back with it)
-    const posed = k === 1 || ++this.lodN >= k || (!!this.model.shins && this.model.shinsIn !== a.seated);
+    const posed = k === 1 || ++this.lodN >= k || (!!this.model.shins && this.model.shinsIn !== (a.seated && !a.legRoom));
     if (posed) { animateCharacter(this.model, a, this.lodAcc); this.lodAcc = 0; this.lodN = 0; }
     const r = this.root;
     if (this.state === 'seated') { r._skipFrom = null; return; }

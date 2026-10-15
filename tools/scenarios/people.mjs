@@ -10,7 +10,8 @@
 // pplanim:     the animation level of detail A/B (character.js ANIM_LOD) with its checks.
 // pplcine:     a dialogue shot keeps its speakers and near extras at level 0 (the mid LOD's check).
 // seatlegs:    every car model with people seated in it, low views: nothing of them below the cushion
-//              in sight (the folded lower legs), and the legs back on getting out.
+//              in sight (the folded lower legs; in the snow tractor's cab, below its floor), and the
+//              legs back on getting out.
 export default ({ page, ev, shot, frames, fps }) => {
   // Freeze the camera rig and aim the camera (world coordinates); hide the HUD.
   const camAt = (at, look, fov = 35) => ev(([at, look, fov]) => {
@@ -438,6 +439,8 @@ export default ({ page, ev, shot, frames, fps }) => {
         { type: 'van', fp: 'parvaneh' },
         { type: 'bus', fp: 'parvaneh' },
         { type: 'garbage', fp: 'parvaneh' },
+        // (the snow tractor: one seat, a cab with a floor - the lower legs stay, nothing below the floor)
+        { type: 'tractor', drv: 'ove' },
         { type: 'saab900', drv: 'ove', fp: 'parvaneh' },
       ];
       const fails = [];
@@ -496,14 +499,14 @@ export default ({ page, ev, shot, frames, fps }) => {
             if (P.skinned) m.skeleton.update();
             const G = P.skinned ? gone(m) : null, si = m.geometry.attributes.skinIndex, sw = m.geometry.attributes.skinWeight;
             let minY = 1e9;
-            const low = [];
+            const low = [], lim = car.model.legRoom ? car.model.floor : car.model.seat[1];
             for (let i = 0; i < pos.count; i++) {
               if (G) { let w = 0; for (let k = 0; k < 4; k++) if (G[si.getComponent(i, k)]) w += sw.getComponent(i, k); if (w > 0.999) continue; }
               if (P.skinned) m.getVertexPosition(i, v); else v.fromBufferAttribute(pos, i);
               v.applyMatrix4(m.matrixWorld);
               l.copy(v).applyMatrix4(inv);
               minY = Math.min(minY, l.y);
-              if (l.y < car.model.seat[1] - 0.005) low.push(v.clone());
+              if (l.y < lim - 0.005) low.push(v.clone());
             }
             const vis = {};
             for (const c of cams) {
@@ -518,7 +521,7 @@ export default ({ page, ev, shot, frames, fps }) => {
               }
               vis[c.name] = n;
             }
-            res.push({ who: P.who, below: +(minY - car.model.seat[1]).toFixed(2), low: low.length, vis });
+            res.push({ who: P.who, below: +(minY - lim).toFixed(2), low: low.length, vis });
           }
           return res;
         }, cams);

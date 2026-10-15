@@ -58,7 +58,7 @@ const MAPC = {
 };
 
 // Friendly car names for the speedometer badge.
-const CAR_NAMES = { saab: 'Saab 900', patrickCar: 'Patricks bil', runeVolvo: 'Runes Volvo', andersAudi: 'Anders Audi', vitskjortaSkoda: 'Kommunens Škoda', skoda: 'Kommunens Škoda' };
+const CAR_NAMES = { saab: 'Saab 900', patrickCar: 'Patricks bil', runeVolvo: 'Runes Volvo', andersAudi: 'Anders Audi', vitskjortaSkoda: 'Kommunens Škoda', skoda: 'Kommunens Škoda', tractor: 'Föreningens traktor' };
 // The new car specs already have Swedish names ('Volvo 240', 'Skåpbil'); the old English ones are
 // translated, and the ones with no sensible Swedish name are not shown at all.
 const SPEC_SV = { 'Family Wagon': 'Kombi', Wagon: 'Kombi', Hatchback: 'Halvkombi', Sedan: 'Sedan', Van: 'Skåpbil', Pickup: 'Pickup', Hearse: 'Likbil', 'School Bus': 'Buss', Bus: 'Buss', 'Ice Cream Truck': 'Glassbil', Taxi: 'Taxi', Truck: 'Lastbil', 'Hormone Rocket': '' };

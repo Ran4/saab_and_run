@@ -247,6 +247,16 @@ function buildTyres(s) {
 // Gear model: top speed fraction reached at ~6000 rpm in each gear.
 const GEAR_TOP = [0, 0.24, 0.43, 0.63, 0.83, 1.08];
 const TOP_SPEED = 38; // m/s (~137 km/h), the Saab's arcade top speed
+// How an engine sounds, by the car's model (audio.engine's kind): `top` m/s = the speed the gears
+// spread over, rpm from `rpm0` (idle) by `span` per gear to `rpmMax`; in first gear at a crawl
+// `idle1` + load x `rev1`; `lope` scales the idle's lumpiness, `nbp` the rush's band (Hz, + f x 3.2),
+// `noise` its level, `turbo` the whistle, `vol` the whole. The Saab's four is the default; the
+// snow tractor (feature snotraktor) a slow-revving diesel: 750-2500 rpm, a lumpy idle, more clatter
+// higher up the band, no turbo.
+const ENGINES = {
+  default: { top: TOP_SPEED, rpm0: 800, span: 5400, rpmMax: 6400, idle1: 820, rev1: 2900, lope: 1, nbp: 240, noise: 1, turbo: 1, vol: 1 },
+  tractor: { top: 11.5, rpm0: 750, span: 1750, rpmMax: 2600, idle1: 760, rev1: 900, lope: 1.6, nbp: 900, noise: 1.6, turbo: 0, vol: 1.15 },
+};
 
 // ---------------------------------------------------------------------------------------------
 // Small building blocks for one-shot sounds.
@@ -475,8 +485,9 @@ export const audio = {
   // on: engine running; revs/load from the car (old car.js: revs = 0.85 * |v| / maxSpeed + 0.2 *
   // throttle, load = throttle); optional speed (m/s, signed) gives proper gearing and tyre noise;
   // optional surface 'snow' | 'asphalt' picks the rolling sound.
-  engine(on, revs = 0, load = 0, speed = null, surface = 'asphalt') {
+  engine(on, revs = 0, load = 0, speed = null, surface = 'asphalt', kind = null) {
     if (!S) return;
+    const D = ENGINES[kind] || ENGINES.default;
     const e = S.eng, ty = S.tyre, t = ctx.currentTime;
     const dt = clamp(t - e.last, 0, 0.1);
     e.last = t;
@@ -502,10 +513,10 @@ export const audio = {
         for (let k = 0; k < 6; k++) { e.stam.gain.setValueAtTime(0.05, t + k * 0.105); e.stam.gain.setValueAtTime(0.018, t + k * 0.105 + 0.06); }
         e.stam.gain.setTargetAtTime(0, t + 0.62, 0.03);
         e.rpm = 250;
-      } else e.rpm = Math.max(e.rpm, 800);
+      } else e.rpm = Math.max(e.rpm, D.rpm0);
     }
     load = clamp(load || 0, 0, 1);
-    let sf = speed != null ? Math.abs(speed) / TOP_SPEED : clamp((revs - (load > 0.05 ? 0.2 : 0)) / 0.85, 0, 1.2);
+    let sf = speed != null ? Math.abs(speed) / D.top : clamp((revs - (load > 0.05 ? 0.2 : 0)) / 0.85, 0, 1.2);
     // Gear changes with hysteresis; a short dip in load while the clutch is out.
     e.shiftT -= dt;
     if (e.shiftT <= 0) {
@@ -514,33 +525,33 @@ export const audio = {
       else if (e.gear > 1 && sf < GEAR_TOP[e.gear - 1] * 0.4) { e.gear--; e.shiftT = 0.16; }
     }
     this.gear = e.gear;
-    let target = 800 + (sf / GEAR_TOP[e.gear]) * 5400;
-    if (e.gear === 1 && sf < 0.09) target = Math.max(target, 820 + load * 2900);
+    let target = D.rpm0 + (sf / GEAR_TOP[e.gear]) * D.span;
+    if (e.gear === 1 && sf < 0.09) target = Math.max(target, D.idle1 + load * D.rev1);
     const sinceStart = t - e.startT;
     if (sinceStart < 0.65) target = 250;
     else if (sinceStart < 1.4) target = Math.max(target, 1500 - (sinceStart - 0.65) * 900);
-    target = clamp(target, 0, 6400);
+    target = clamp(target, 0, D.rpmMax);
     const k = 1 - Math.exp(-dt / (e.shiftT > 0.1 ? 0.06 : 0.11));
     e.rpm += (target - e.rpm) * k;
     const clutch = e.shiftT > 0.08 ? 0.25 : 1;
     const ld = load * clutch;
     const f = Math.max(6, e.rpm / 30);
-    const rn = clamp((e.rpm - 800) / 5400, 0, 1);
+    const rn = clamp((e.rpm - D.rpm0) / D.span, 0, 1);
     e.o1.frequency.setTargetAtTime(f, t, 0.025);
     e.o2.frequency.setTargetAtTime(f / 2, t, 0.025);
     e.o3.frequency.setTargetAtTime(f * 2, t, 0.025);
     e.lfo.frequency.setTargetAtTime(Math.max(2, f / 4), t, 0.05);
-    e.lfoG.gain.setTargetAtTime(0.13 - rn * 0.09, t, 0.1);
+    e.lfoG.gain.setTargetAtTime((0.13 - rn * 0.09) * D.lope, t, 0.1);
     // Full throttle: more growl, not more fizz (the load term used to open the low-pass to ~2.8 kHz
     // and drive the shaper hard: a buzzy ~1.5 kHz centroid ~8-11 dB over the music for a whole chase).
     e.drive.gain.setTargetAtTime(0.8 + ld * 1.0, t, 0.05);
     e.lp.frequency.setTargetAtTime(240 + f * 4.5 + ld * 800, t, 0.04);
-    e.nbp.frequency.setTargetAtTime(240 + f * 3.2, t, 0.05);
-    e.ng.gain.setTargetAtTime(0.03 + ld * 0.16 + rn * 0.05, t, 0.05);
-    const vol = sinceStart < 0.65 ? 0.025 : 0.022 + ld * 0.03 + rn * 0.022;
+    e.nbp.frequency.setTargetAtTime(D.nbp + f * 3.2, t, 0.05);
+    e.ng.gain.setTargetAtTime((0.03 + ld * 0.16 + rn * 0.05) * D.noise, t, 0.05);
+    const vol = (sinceStart < 0.65 ? 0.025 : 0.022 + ld * 0.03 + rn * 0.022) * D.vol;
     e.out.gain.setTargetAtTime(vol, t, 0.06);
     // Turbo: spools with load at revs, blows off when the throttle snaps shut.
-    e.boost += ((ld > 0.5 ? rn : 0) - e.boost) * (1 - Math.exp(-dt / 0.6));
+    e.boost += ((ld > 0.5 ? rn * D.turbo : 0) - e.boost) * (1 - Math.exp(-dt / 0.6));
     e.tw.frequency.setTargetAtTime(1800 + e.boost * 3200, t, 0.08);
     e.twg.gain.setTargetAtTime(e.boost * 0.006, t, 0.08);
     if (e.lastLoad > 0.7 && load < 0.15 && e.boost > 0.35) {
@@ -549,7 +560,7 @@ export const audio = {
     }
     e.lastLoad = load;
     // Tyres rolling.
-    const v = speed != null ? Math.abs(speed) : sf * TOP_SPEED;
+    const v = speed != null ? Math.abs(speed) : sf * D.top;
     const roll = clamp(v / 30, 0, 1.3);
     const snow = surface === 'snow', air = surface === 'air';   // ('air': off the hoppbacke, the tyres are silent)
     ty.roadLp.frequency.setTargetAtTime(220 + v * 28, t, 0.1);
@@ -1103,6 +1114,8 @@ export const HORNS = {
   van: { f: [349, 415], bp: 1700 },
   bus: { f: [185, 233], bp: 900, q: 0.7, lp: 2600, rise: 0.09 },
   garbage: { f: [147, 185], bp: 800, q: 0.7, lp: 2200, rise: 0.1 },
+  // the snow tractor: one flat, nasal tone (two a hair apart, beating)
+  tractor: { f: [311, 314], bp: 1500, q: 1.3, lp: 3200 },
   default: { f: [405, 498], bp: 2100 },
 };
 

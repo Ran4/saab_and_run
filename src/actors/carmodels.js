@@ -1003,11 +1003,15 @@ function wipers(g, P, z, n = 2) {
 // Wheels: unit geometry (tyre radius 1, width 1 along x, outer face at +x). car.js scales each
 // instance by (width, r, r) and turns the right-hand ones round.
 
-const WHEEL_STYLES = ['saab3', 'alloy5', 'alloy7', 'sport', 'steel', 'van', 'truck', 'lod'];
+const WHEEL_STYLES = ['saab3', 'alloy5', 'alloy7', 'sport', 'steel', 'van', 'truck', 'tractor', 'lod'];
 const wheelCache = new Map();
 export function wheelGeometry(style) {
   if (wheelCache.has(style)) return wheelCache.get(style);
   const g = new GeoBuilder();
+  if (style === 'tractor') {
+    wheelCache.set(style, tractorWheel(g));
+    return wheelCache.get(style);
+  }
   const rr = style === 'sport' ? 0.72 : style === 'alloy5' ? 0.66 : 0.6; // rim radius / tyre radius
   // tyre: a lathe round the x axis. three's LatheGeometry faces outwards only when the profile's
   // height (here the wheel's x, after rotateZ: + = the outer face) ascends along the list: listed
@@ -1106,6 +1110,42 @@ export function wheelGeometry(style) {
   const geo = g.build();
   wheelCache.set(style, geo);
   return geo;
+}
+// The snow tractor's wheels (feature snotraktor): a square-shouldered carcass under chevron lugs (a
+// bar either side of the centre line, raked, the two rows staggered), on an orange pressed-steel rim:
+// a dished disc with a raised hub and wheel nuts. Unit size like the others (radius 1 to the lug
+// tops, the tread 1 wide); the car scales each axle's pair (car.js writeWheels: the big rear wheels
+// and the small front ones share it).
+function tractorWheel(g) {
+  const prof = [[0.58, -0.44], [0.76, -0.5], [0.85, -0.48], [0.88, -0.42], [0.88, 0.42], [0.85, 0.48], [0.76, 0.5], [0.58, 0.44], [0.54, 0.36]];
+  const lathe = new THREE.LatheGeometry(prof.map(([r, x]) => new THREE.Vector2(r, x)), 24);
+  lathe.rotateZ(-Math.PI / 2);
+  g.use('rubber').add(lathe, 0x1b1b1d);
+  // the lugs: boxes standing on the carcass (x along the axle, y out from it, z along the tread),
+  // turned about their own radial axis into the chevron, then round the axle
+  const n = 20, m = new THREE.Matrix4(), rx = new THREE.Matrix4(), ry = new THREE.Matrix4(), sc = new THREE.Matrix4();
+  for (let k = 0; k < n; k++) for (const s of [1, -1]) {
+    const a = ((k + (s > 0 ? 0 : 0.5)) / n) * Math.PI * 2;
+    rx.makeRotationX(a); ry.makeRotationY(s * 0.5); sc.makeScale(0.48, 0.13, 0.15);
+    m.makeTranslation(0, 0, 0).multiply(rx).multiply(new THREE.Matrix4().makeTranslation(s * 0.23, 0.935, 0)).multiply(ry).multiply(sc);
+    g.add(PRIM.box(), 0x19191b, m);
+  }
+  // inner disc so nothing shows through, then the rim: an orange dish from the bead to a raised hub
+  g.use('plastic').add(PRIM.cyl(16), 0x0c0c0d, mat(-0.1, 0, 0, 0, 0, Math.PI / 2, 1.1, 0.04, 1.1));
+  const ring = (surf, col, r0, r1, x0, x1, seg = 22) => {
+    const l = new THREE.LatheGeometry([new THREE.Vector2(r0, x0), new THREE.Vector2(r1, x1)], seg);
+    l.rotateZ(-Math.PI / 2);
+    g.use(surf).add(l, col);
+  };
+  const OR = 0xc85e1c;
+  ring('painted', OR, 0.6, 0.55, 0.4, 0.36);        // the rim's lip
+  ring('painted', 0xb4521a, 0.55, 0.42, 0.36, 0.2);  // the dish going in
+  ring('painted', OR, 0.42, 0.24, 0.2, 0.22);
+  ring('painted', OR, 0.24, 0.2, 0.22, 0.32);        // the hub standing out
+  ring('metal', 0x5a5c5e, 0.2, 0.001, 0.32, 0.36, 12);
+  g.use('chrome');
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; g.cyl(0x9a9ea2, 0.33, Math.cos(a) * 0.14, Math.sin(a) * 0.14, 0.02, 0.05, 6, 0, 0, Math.PI / 2); }
+  return g.build();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2064,6 +2104,220 @@ function garbageDetails(P, g, M, L, G) {
   };
 }
 
+// ---- Snöröjningstraktor (feature snotraktor): the housing association's compact tractor, which
+// stood in the lot's eastmost bay as static scenery (world/ove.js) until Ove could drive it. Not a
+// lofted body: boxes, arcs and cylinders round a frame whose origin is the rear axle (TR.z0 puts
+// the middle of the machine at the car's origin). Big lugged rear wheels under flat-topped
+// mudguards the cab stands on, small front wheels under a long bonnet (grille, headlamps, louvres,
+// an exhaust stack and a pre-cleaner on it), a glazed cab of four posts - clear glass all round, a
+// floor, a sprung seat, a steering column and wheel, a dash - with an amber beacon, work lamps and
+// mirrors; in front a curved mouldboard angled to throw the snow to the right, on a push frame with
+// rams, a rubber cutting edge and marker sticks; behind a sand spreader on the three-point linkage,
+// the LGF triangle (a slow vehicle) and the plate. One seat, and room for the driver's feet (the cab
+// has a floor, unlike the car shells): `seats: 1`, `legRoom`, `floor` (main.js, models.js).
+// Orange is 'painted' (no clear coat: the car paint's mirror coat washed it out to peach). Four
+// surfaces (metal, painted, plastic, fabric), as few draw calls as a car.
+const TR = { z0: -0.8, wb: 1.8, rr: 0.58, rw: 0.34, rx: 0.64, fr: 0.37, fw: 0.24, fx: 0.56, floor: 0.74, seatY: 1.2, seatZ: -0.3, roof: 2.29 };
+function tractorP() {
+  const Z = TR.z0;
+  return {
+    key: 'tractor', custom: true, len: 4.5, wid: 1.8, height: 2.38, wb: TR.wb,
+    z0: Z - 1.46, z1: Z + 3.04, axles: [Z, Z + TR.wb], wr: TR.rr, ww: TR.rw, wx: TR.rx, wheel: 'tractor',
+    // per axle (rear, front): tyre radius, tread width, half track (carModel's wheel list)
+    axleR: [TR.rr, TR.fr], axleW: [TR.rw, TR.fw], axleX: [TR.rx, TR.fx],
+    arch: { r: 0.66, y: TR.rr }, sill: 0.35,
+  };
+}
+function tractorDetails(P, g, M, L, G) {
+  const Z = TR.z0, lod = P.lod;
+  const OR = 0xc24e14, DK = 0x1e1f21, GR = 0x2a2c2e;
+  // boxes standing on y0 (B) or centred (C), cylinders (CY: along y, turned by rx/rz), all in the
+  // tractor's frame (z from the rear axle)
+  const B = (c, x, y0, z, w, h, d, ry = 0) => g.box(c, x, y0 + h / 2, z + Z, w, h, d, ry);
+  const C = (c, x, y, z, w, h, d, ry = 0, rx = 0, rz = 0) => g.box(c, x, y, z + Z, w, h, d, ry, rx, rz);
+  const CY = (c, x, y, z, r, h, n = 12, rx = 0, ry = 0, rz = 0) => g.cyl(c, x, y, z + Z, r, h, lod ? Math.min(n, 8) : n, rx, ry, rz);
+  const up = new THREE.Vector3(0, 1, 0), dir = new THREE.Vector3(), q = new THREE.Quaternion();
+  const bar = (a, b, r, c, n = 6) => {
+    dir.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    const len = dir.length();
+    q.setFromUnitVectors(up, dir.normalize());
+    g.add(PRIM.cyl(lod ? 4 : n), c, new THREE.Matrix4().compose(new THREE.Vector3((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2 + Z), q, new THREE.Vector3(r * 2, len, r * 2)));
+  };
+  const GLASS = (x, y, z, w, h, d) => {
+    if (lod) g.use('plastic').box(FRIT, x, y, z + Z, w, h, d);
+    else G.box('glass', null, x, y, z + Z, w, h, d);
+  };
+  // ----- chassis and axles: the transmission under the cab, the engine sump under the bonnet, the
+  // rear axle housings out to the wheels, the front axle beam on its pivot
+  g.use('metal');
+  B(DK, 0, 0.3, 0.9, 0.46, 0.34, 2.3);
+  C(DK, 0, 0.56, 0, 0.44, 0.36, 0.44);
+  CY(DK, 0, TR.rr, 0, 0.09, TR.rx * 2 - TR.rw, 10, 0, 0, Math.PI / 2);
+  CY(DK, 0, TR.fr, TR.wb, 0.055, TR.fx * 2 - TR.fw, 8, 0, 0, Math.PI / 2);
+  C(DK, 0, TR.fr + 0.04, TR.wb, 0.22, 0.16, 0.3);
+  // ----- the bonnet: a long box with a slightly falling top, the grille, side louvres, headlamps
+  g.use('painted');
+  B(OR, 0, 0.62, 1.41, 0.64, 0.5, 1.58);
+  C(OR, 0, 1.15, 1.41, 0.62, 0.07, 1.6, 0, 0.05);
+  C(OR, 0, 1.12, 2.2, 0.62, 0.05, 0.05);                                             // the nose's edge
+  g.use('plastic');
+  B(GR, 0, 0.66, 2.205, 0.54, 0.42, 0.02);                                           // grille
+  if (!lod) {
+    for (let k = 0; k < 7; k++) B(0x3a3c3e, 0, 0.69 + k * 0.055, 2.218, 0.52, 0.018, 0.012);
+    for (const sx of [1, -1]) for (let k = 0; k < 5; k++) B(GR, sx * 0.322, 0.8 + k * 0.06, 1.75, 0.012, 0.022, 0.55);
+  }
+  for (const sx of [1, -1]) B(0x16171a, sx * 0.21, 0.96, 2.2, 0.17, 0.11, 0.03);       // headlamp surrounds
+  L.lamp('head', 0.21, 1.015, 2.218 + Z, 0.14, 0.08, 0.02);
+  // front ballast weight / bumper, the blade's mounting plate
+  g.use('metal');
+  B(DK, 0, 0.36, 2.3, 0.74, 0.3, 0.16);
+  // exhaust stack (right) with its rain cap, the air pre-cleaner (left) on the bonnet
+  CY(0x5a5c5e, -0.22, 1.72, 0.9, 0.04, 1.1, 10);
+  if (!lod) {
+    C(GR, -0.22, 2.29, 0.92, 0.09, 0.012, 0.11, 0, 0.35);
+    CY(0x4a4c4e, -0.22, 1.5, 0.9, 0.055, 0.32, 10);                                  // the silencer's guard
+  }
+  g.use('plastic');
+  CY(0x141516, 0.2, 1.36, 0.95, 0.065, 0.36, 10);
+  if (!lod) CY(0x2a2c2e, 0.2, 1.56, 0.95, 0.075, 0.05, 10);
+  // ----- mudguards over the rear wheels: flat tops the cab stands on, rounded front and rear edges,
+  // raked aprons falling towards the axle's height; inside the cab, the wheel housings
+  g.use('painted');
+  for (const sx of [1, -1]) {
+    const x = sx * (TR.rx + 0.01), w = 0.42;
+    B(OR, x, 1.2, 0, w, 0.04, 1.3);
+    for (const e of [1, -1]) {
+      C(OR, x, 1.165, e * 0.675, w, 0.04, 0.09, 0, e * 0.75);
+      C(OR, x, 0.97, e * 0.72, w, 0.38, 0.035, 0, -e * 0.22);
+    }
+    // the rear lamps and indicators on the mudguards' rear edges (below)
+  }
+  g.use('metal');
+  for (const sx of [1, -1]) B(DK, sx * 0.455, TR.floor, 0, 0.03, 1.2 - TR.floor, 1.26);
+  // ----- the cab: floor, rear wall, dash, four posts, frame rails, roof, glass all round
+  B(DK, 0, TR.floor - 0.04, -0.01, 0.88, 0.04, 1.24);
+  g.use('painted');
+  B(DK, 0, TR.floor, -0.62, 0.9, 1.24 - TR.floor, 0.04);                            // rear wall under the glass
+  B(GR, 0, TR.floor, 0.58, 0.88, 1.24 - TR.floor, 0.05);                            // front wall (the bulkhead)
+  for (const [sx, z] of [[1, -0.61], [-1, -0.61], [1, 0.61], [-1, 0.61]]) B(DK, sx * 0.61, 1.2, z, 0.06, TR.roof - 1.2, 0.06);
+  for (const sx of [1, -1]) { B(DK, sx * 0.61, TR.roof - 0.05, 0, 0.05, 0.05, 1.22); B(DK, sx * 0.61, 1.22, 0, 0.05, 0.05, 1.22); }
+  for (const z of [-0.61, 0.61]) { B(DK, 0, TR.roof - 0.05, z, 1.22, 0.05, 0.05); B(DK, 0, 1.22, z, 1.22, 0.05, 0.05); }
+  B(OR, 0, TR.roof, 0, 1.36, 0.07, 1.44);
+  C(OR, 0, TR.roof + 0.085, 0, 1.22, 0.035, 1.3);
+  if (!lod) g.use('fabric').box(0xc8c6c0, 0, TR.roof - 0.012, Z, 1.18, 0.02, 1.18);  // headliner
+  const gy0 = 1.25, gy1 = TR.roof - 0.05, gh = gy1 - gy0, gc = (gy0 + gy1) / 2;
+  GLASS(0, gc, 0.613, 1.16, gh, 0.012);
+  GLASS(0, gc, -0.613, 1.16, gh, 0.012);
+  for (const sx of [1, -1]) GLASS(sx * 0.613, gc, 0, 0.012, gh, 1.16);
+  if (!lod) {
+    // the door (left, the driver's way in): its frame, hinges on the front post, the handle, the step
+    g.use('painted');
+    for (const y of [1.25, 1.72]) B(DK, 0.625, y, 0, 0.02, 0.03, 1.14);
+    B(DK, 0.625, 1.25, -0.56, 0.02, gh, 0.03);
+    for (const y of [1.45, 2.0]) B(DK, 0.635, y, 0.58, 0.03, 0.08, 0.04);
+    g.use('metal').box(0x9a9da0, 0.645, 1.6, -0.48 + Z, 0.02, 0.03, 0.12);
+    B(DK, 0.7, 0.42, 0.78, 0.26, 0.03, 0.2);                                          // the step
+    bar([0.6, 0.44, 0.7], [0.62, 0.9, 0.66], 0.015, DK, 4);
+    // inside: the bulkhead's top as the dash, an instrument pod, the steering column and wheel, the
+    // pedals, the sprung seat on its column (cushion top = the seat point, like interior())
+    g.use('fabric');
+    B(0x1c1d1f, 0, 1.24, 0.5, 0.86, 0.08, 0.2);
+    B(0x161718, 0, 1.32, 0.48, 0.3, 0.12, 0.12);
+    const wz = TR.seatZ + 0.5, wy = TR.seatY + 0.5;
+    bar([0, 1.3, 0.5], [0, wy - 0.03, wz + 0.05], 0.03, 0x1a1a1c);
+    g.add(PRIM.torus(), 0x1a1a1c, mat(0, wy, wz + Z, -0.95, 0, 0, 0.4, 0.4, 0.5));
+    for (const sx of [0.16, -0.16]) C(0x2a2b2c, sx, TR.floor + 0.08, 0.45, 0.08, 0.03, 0.12, 0, -0.6);
+    g.use('metal');
+    B(DK, 0, TR.floor, TR.seatZ - 0.02, 0.18, TR.seatY - 0.14 - TR.floor, 0.18);
+    g.use('fabric');
+    B(0x26282a, 0, TR.seatY - 0.14, TR.seatZ + 0.12, 0.48, 0.14, 0.46);
+    C(0x26282a, 0, TR.seatY + 0.3, TR.seatZ - 0.12, 0.46, 0.58, 0.11, 0, -0.14);
+    for (const sx of [1, -1]) C(0x26282a, sx * 0.27, TR.seatY + 0.08, TR.seatZ + 0.05, 0.05, 0.05, 0.36);   // armrests
+  }
+  // mirrors on arms off the front posts
+  for (const sx of [1, -1]) {
+    if (!lod) bar([sx * 0.62, 1.98, 0.6], [sx * 0.86, 2.02, 0.64], 0.012, DK, 4);
+    g.use('plastic').box(0x161718, sx * 0.88, 1.9, 0.64 + Z, 0.04, 0.26, 0.17);
+    if (!lod) g.use('metal').box(0x8a9096, sx * 0.88, 1.9, 0.553 + Z, 0.03, 0.22, 0.005);
+  }
+  // ----- the roof: the amber beacon (right, rear), work lamps facing forward
+  g.use('plastic');
+  CY(0x1a1a1c, -0.45, TR.roof + 0.12, -0.45, 0.09, 0.04, 12);
+  L.lamp('beacon', -0.45, TR.roof + 0.22, -0.45 + Z, 0.15, 0.15, 0.17, { round: true, rx: -Math.PI / 2, omni: true, up: true, seg: 16, mirror: false });
+  for (const sx of [1, -1]) { g.use('plastic').box(0x1a1a1c, sx * 0.5, TR.roof + 0.04, 0.72 + Z, 0.16, 0.1, 0.07); }
+  L.lamp('head', 0.5, TR.roof + 0.04, 0.76 + Z, 0.13, 0.07, 0.01);
+  L.lamp('ind', 0.66, TR.roof + 0.02, 0.7 + Z, 0.05, 0.04, 0.04, { clear: true });
+  // rear lamps on the mudguards' rear aprons: tail / brake, indicator, a reversing lamp
+  for (const sx of [1, -1]) g.use('plastic').box(0x141414, sx * 0.72, 1.06, -0.705 + Z, 0.2, 0.14, 0.03, 0, 0.22);
+  L.lamp('tail', 0.68, 1.06, -0.725 + Z, 0.09, 0.09, 0.02, { rx: 0.22 });
+  L.lamp('ind', 0.78, 1.06, -0.725 + Z, 0.07, 0.09, 0.02, { rx: 0.22 });
+  L.lamp('rev', -0.6, 1.06, -0.74 + Z, 0.06, 0.06, 0.02, { mirror: false, rx: 0.22 });
+  // ----- behind: the three-point linkage and the sand spreader (a hopper over a spinner disc), its
+  // back with the LGF triangle and the plate
+  for (const sx of [1, -1]) bar([sx * 0.3, 0.45, -0.3], [sx * 0.32, 0.52, -0.95], 0.03, DK);
+  bar([0, 0.98, -0.62], [0, 0.95, -0.95], 0.03, DK);
+  g.use('painted');
+  C(0x5e6366, 0, 1.0, -1.18, 0.95, 0.52, 0.56);
+  C(0x55595c, 0, 0.64, -1.18, 0.62, 0.2, 0.36);
+  if (!lod) {
+    C(0x3a3e40, 0, 1.27, -1.18, 0.97, 0.03, 0.58);                                   // the lid's rim
+    g.use('painted').box(0xdfe3e6, 0, 1.265, -1.18 + Z, 0.86, 0.035, 0.48);         // snow on the lid
+  }
+  g.use('metal');
+  CY(0x6a6c6e, 0, 0.5, -1.18, 0.22, 0.03, 12);
+  if (!lod) for (let k = 0; k < 4; k++) C(0x6a6c6e, 0, 0.53, -1.18, 0.4, 0.04, 0.02, (k * Math.PI) / 4);
+  // the LGF sign (långsamtgående fordon): a fluorescent orange-red triangle with a red border
+  const tz = -1.465 + Z, tri = (s, c, r, y, dz) => {
+    const A = [0, y + r, tz - dz], Bv = [-r * 0.866, y - r / 2, tz - dz], Cv = [r * 0.866, y - r / 2, tz - dz];
+    M.ftri(s, c, A, Cv, Bv);
+  };
+  tri('painted', 0xa01410, 0.18, 1.07, 0.004);
+  tri('painted', 0xff5a1e, 0.13, 1.07, 0.008);
+  // ----- the plough: a curved mouldboard (slats round a concave profile) angled 0.28 rad (its left
+  // end ahead: the snow goes off its right end, towards the verge), the cutting edge, end plates,
+  // ribs and the pivot behind it, marker sticks at its ends; the push frame and the rams from the
+  // front axle
+  const by = 0.04, bz = 2.68, ang = -0.28, ca = Math.cos(ang), sa = Math.sin(ang);
+  // a point of the blade's own frame (x along it, z out of its face) to the tractor frame
+  const bp = (x, y, z) => [x * ca + z * sa, y, bz - x * sa + z * ca];
+  const prof = [[0.12, 0.06], [0.03, 0.17], [-0.03, 0.3], [-0.05, 0.44], [-0.03, 0.57], [0.03, 0.67], [0.1, 0.72]];
+  g.use('painted');
+  for (let i = 0; i < prof.length - 1; i++) {
+    if (lod && i % 2) continue;
+    const [z0, y0] = prof[i], [z1, y1] = prof[lod ? Math.min(prof.length - 1, i + 2) : i + 1], len = Math.hypot(z1 - z0, y1 - y0);
+    const p = bp(0, by + (y0 + y1) / 2, (z0 + z1) / 2);
+    C(OR, p[0], p[1], p[2], 1.86, len + 0.012, 0.03, ang, Math.atan2(z1 - z0, y1 - y0));
+  }
+  g.use('plastic');
+  { const p = bp(0, by + 0.0, 0.14); C(0x141414, p[0], p[1], p[2], 1.84, 0.1, 0.035, ang); }   // the rubber edge
+  // the steel wear edge bolted along the foot of the mouldboard
+  if (!lod) { g.use('metal'); const p = bp(0, by + 0.1, 0.12); C(0x4a4c4e, p[0], p[1], p[2], 1.86, 0.08, 0.03, ang, 0.5); }
+  g.use('metal');
+  for (const s of [-0.95, 0.95]) { const p = bp(s, by + 0.36, 0.02); C(DK, p[0], p[1], p[2], 0.03, 0.66, 0.34, ang); }
+  if (!lod) {
+    for (const s of [-0.6, 0, 0.6]) { const p = bp(s, by + 0.38, -0.12); C(DK, p[0], p[1], p[2], 0.06, 0.62, 0.05, ang, -0.08); }
+    for (const y of [0.2, 0.55]) { const p = bp(0, by + y, -0.19); C(DK, p[0], p[1], p[2], 1.6, 0.08, 0.06, ang); }
+  }
+  C(DK, 0, by + 0.28, bz - 0.36, 0.34, 0.16, 0.36);                                  // the pivot
+  for (const s of [-0.93, 0.93]) {
+    const p = bp(s, 0, -0.14);
+    CY(0xe86a10, p[0], by + 1.05, p[2], 0.012, 0.9, 6);
+    if (!lod) CY(0x1a1a1a, p[0], by + 1.58, p[2], 0.013, 0.16, 6);
+  }
+  for (const sx of [1, -1]) bar([sx * 0.22, 0.32, TR.wb - 0.2], [sx * 0.14, 0.32, bz - 0.42], 0.045, DK);
+  if (!lod) for (const sx of [1, -1]) {
+    bar([sx * 0.25, 0.55, 2.3], [sx * 0.3, 0.42, 2.42], 0.035, GR);
+    const e = bp(sx * 0.55, by + 0.3, -0.18);
+    bar([sx * 0.3, 0.42, 2.42], e, 0.018, 0xc8cacc);
+  }
+  return {
+    plates: [{ side: 'rear', pos: [0, 0.86, -1.465 + Z - 0.012] }],
+    badges: [],
+    seat: [0, TR.seatY, TR.seatZ + Z], exhaust: [-0.22, 2.3, 0.9 + Z], hitch: -1.5 + Z,
+    seats: 1, legRoom: true, floor: TR.floor, beacon: true, blade: { x: bp(-0.95, 0, 0.1)[0], z: bp(-0.95, 0, 0.1)[2] + Z, side: -1 },
+  };
+}
+
 const TYPES = {
   saab900: { P: saab900, details: saabDetails },
   volvo240: { P: volvo240, details: volvo240Details },
@@ -2077,6 +2331,7 @@ const TYPES = {
   van: { P: van, details: vanDetails },
   bus: { P: bus, details: busDetails },
   garbage: { P: garbageCab, details: garbageDetails },
+  tractor: { P: tractorP, details: tractorDetails },
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -2087,7 +2342,8 @@ const LOD_SURF = { chrome: 'plastic', metal: 'plastic', fabric: 'plastic', rubbe
 function buildVariant(T, lod) {
   const P = T.P();
   P.lod = lod;
-  const { M, G } = buildLoftBody(P);
+  // (a custom body - the tractor - is built by its details alone, no loft)
+  const { M, G } = P.custom ? { M: new Mesher(), G: new Mesher() } : buildLoftBody(P);
   const g = new GeoBuilder();
   const L = new LightBuilder();
   const info = T.details(P, g, M, L, G);
@@ -2150,7 +2406,9 @@ export function carModel(type) {
   const wheels = [];
   const axles = [...P.axles, ...(info.extraAxles || [])];
   const front = Math.max(...axles);
-  for (const a of axles) for (const sx of [1, -1]) wheels.push({ x: sx * P.wx, z: a, front: a === front, side: sx });
+  // (P.axleR / axleW / axleX: per axle radius, tread width and half track - the tractor's big rear
+  // and small front wheels; car.js writeWheels scales each wheel by its own)
+  axles.forEach((a, i) => { for (const sx of [1, -1]) wheels.push({ x: sx * (P.axleX?.[i] ?? P.wx), z: a, front: a === front, side: sx, r: P.axleR?.[i] ?? P.wr, ww: P.axleW?.[i] ?? P.ww }); });
   const out = {
     type, P, body, glass, lights, glows, lod: lo.body, wheels, wheelStyle: P.wheel, wr: P.wr, ww: P.ww,
     len: P.len, wid: P.wid, height: P.height, wb: P.wb ?? Math.abs(P.axles[1] - P.axles[0]), ...info,

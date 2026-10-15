@@ -476,9 +476,10 @@ export class Patrol {
     if (g.interrupts?.active || g.interrupts?.call) k *= DRAIN_ERRAND;
     if (g.time - this.lastKaos < 60) k *= 0.5;
     this.addOrdning(-k * w * dt);
-    // Ove himself driving inside the car-free area.
+    // Ove himself driving inside the car-free area (not in the association's snow tractor: it clears
+    // the walkways, CAR_TYPES.tractor.service).
     const pc = g.playerCar;
-    if (pc && pc.speed > 0.6 && isCarFree(pc.x, pc.z)) {
+    if (pc && !pc.spec.service && pc.speed > 0.6 && isCarFree(pc.x, pc.z)) {
       this.addOrdning(-1 * dt);
       if (g.time - this.carFreeShoutT > 60) {
         this.carFreeShoutT = g.time;

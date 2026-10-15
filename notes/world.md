@@ -338,8 +338,9 @@ framings (`cam.frame`) there; prints where the boom ended, shots `wcam_*.png`.
   and the planters have granris sprigs. Preschool fence is see-through welded mesh. Lamellhus have no
   ground-floor doors on the back; balconies have sheet-metal fronts with rails. Pond and forest
   rocks are rounded boulders.
-- **Ove's area**: spawn landmark `oveStart`; 13 residents' cars + the association's snow tractor in
-  the lot, a sandlåda, a kicksled; named mailboxes. Cues per house: Ove — square hedge, swept path,
+- **Ove's area**: spawn landmark `oveStart`; 12 residents' cars + the association's snow tractor in
+  the lot (a drivable car since feature snotraktor: `parkedCars` 'tractor', nose out in the last north
+  bay at the aisle's dead end, the bay beside it free), a sandlåda, a kicksled; named mailboxes. Cues per house: Ove — square hedge, swept path,
   home-made PARKERING FÖRBJUDEN board on his shed, thermometer, broom; Parvaneh — lit window star,
   snow racer, toys, snowman, moving boxes; Jimmy — coloured light strings on the shed and round the
   door; Anders — anthracite door, glass canopy, glowing LED number, dark stone paving, patio heater.
@@ -527,12 +528,13 @@ Files: places.js, ove.js, kit.js, signs.js, props.js, town.js; tools/scenarios/w
   the evergreen body's ends hardly round off any more and it is lighter (it shows only on top).
   Sparse sprays over the dark body had mip-mapped into black-and-white dither at 5-15 m.
   Bare hedges: a haze of fine twigs and more stems in `hedgeside`, a lighter core (`HEDGE_BARE`).
-- **The snow tractor** (ove.js `tractor`): a compact tractor with a front plough — lugged tyres on
-  orange rims, mudguards, a bonnet with grille, louvres and headlights, a cab of four posts with
-  see-through glass (`shared.glassG`), seat, steering wheel and dash inside, an amber beacon and
-  work lights on the roof, an exhaust stack with a rain cap, mirrors, a step, tail lights; a curved
-  six-slat mouldboard angled 0.32 rad on a push frame with hydraulic rams, a rubber cutting edge,
-  end plates, ribs, orange marker sticks; a sand spreader on the rear linkage (snow in it).
+- **The snow tractor**: was static scenery here (ove.js `tractor()`, merged into the block with a
+  'vehicle' solid); since feature snotraktor (2026-10-15) it is a car Ove can drive, built in
+  actors/carmodels.js (`tractorDetails`, after this one's design: lugged tyres on orange rims,
+  mudguards, a bonnet with grille, louvres and headlamps, a glazed cab with seat, wheel and dash, the
+  beacon and work lamps, exhaust stack, mirrors, step, the curved mouldboard on its push frame with
+  rams, marker sticks, the sand spreader) and placed by `bf.car('tractor', ..., { name: 'tractor' })`
+  (notes/cars.md, *The snow tractor*).
 - **Spruces**: a new `sprucefrond` conifer face (a branch seen from above: axis, forward-angled side
   shoots, needles, light new growth, snow lumps on v 2-3) laid on every branch of every spruce (lite
   too); the tier mass is slimmer (near 0.44 R at a tier's foot, lite 0.66 R), darker (a shadowed

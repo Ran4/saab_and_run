@@ -523,7 +523,8 @@ a `GarageDoor` from `garagedoor.js` whose mesh town.js adds after the static wor
 `CAR_TYPES` keys: `saab900` (Ove's Saab 900 classic hatchback, the hero car), `volvo240`
 (boxy saloon/estate), `volvo740`, `audi` (A6-ish saloon, Anders), `bmw` (saloon), `skoda`
 (Octavia-ish estate, white for Vita skjortan), `golf` (VW-ish hatch), `kombi` (generic estate),
-`taxi`, `van` (delivery van), `bus` (red city bus), `garbage` (sopbil). Old keys (`sedan`,
+`taxi`, `van` (delivery van), `bus` (red city bus), `garbage` (sopbil), `tractor` (the housing
+association's snow tractor in Ove's lot, drivable: one seat, 40 km/h, plough blade; notes/cars.md). Old keys (`sedan`,
 `hatch`, `wagon`, `pickup`, `hearse`, `muscle`, `icecream`) stay as aliases so nothing breaks.
 Spec fields unchanged (`len, wid, bodyH, cabinH, wheelR, maxSpeed, accel, grip, steer, mass, hp,
 tall`). Every `Car` gets:

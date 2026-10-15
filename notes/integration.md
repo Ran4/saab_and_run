@@ -30,7 +30,8 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   was 0.022 and a half); +7 report, +12 TAGEN,
   +10 / −10 errand done / failed, −12 a pedestrian hit by Ove's car, −3 a neighbour or child shoved
   by it, −2…−4 and 5-20 kr per prop Ove breaks
-  (car or kick), −1/s driving inside a car-free zone (Anders shouts, once a minute), −8 for "lånar"
+  (car or kick), −1/s driving inside a car-free zone (Anders shouts, once a minute; not in the snow
+  tractor, `spec.service`: it clears the walkways), −8 for "lånar"
   a car with a driver, −8 and up to 100 kr självrisk for wrecking someone's car. At 0: **KAOS I
   OMRÅDET** (−50 kr, back to 35, Anders calls a föreningsmöte); at 100: **ORDNING OCH REDA** (+100 kr,
   once per free-roam stretch, i.e. until a mission ends). The KAOS banner leaves out the kronor when
@@ -353,7 +354,16 @@ were sent home in plain view); `placeNpcs` and `syncAll` use Ove's car when he d
 retried 45 s or more later (B already keeps calls 14 m from the giver and 40 s after a mission).
 
 **HUD.** Car-free chip in the prompt line while Ove's car is in the car-free area in free roam
-("Bilfritt område · −1 Ordning/s · Kliv ur och gå", `.pr-warn`). Neighbours' name tags only within
+("Bilfritt område · −1 Ordning/s · Kliv ur och gå", `.pr-warn`; in the snow tractor a plain
+"Snöröjning · traktorn får köra på gångvägarna" instead).
+
+**The snow tractor** (feature snotraktor; notes/cars.md has the car): a named parked car
+(`named.tractor`, home = its bay: a wreck is replaced there like any named car's, one left beyond
+`BOUND` goes home). One seat (`freeSeat` returns null for `model.seats === 1`: companions don't board,
+errands that need someone along say "Det finns ingen plats i bilen."). The first time Ove gets in each
+session a toast says whose it is ("Föreningens snöröjningstraktor. Ove har nyckel, förstås. Den får
+köra på gångvägarna."). A mission that wants the Saab (`getInCar({ car: 'saab' })`) says "Fel bil." in
+it, as in any other car. Neighbours' name tags only within
 5 m, or for the one an E would greet and the day's giver within 12 m; identical overlapping tags merge
 ("2 × Bil i bilfritt område", hud.js). The cat by Ove's door is hidden during Sara's 'katten' errand.
 

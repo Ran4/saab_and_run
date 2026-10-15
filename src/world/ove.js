@@ -14,7 +14,7 @@ import { CURB, carFreeZones, landmarks } from './layout.js';
 import { C, rnd, R, win, door, lampBox, limb, wrapYaw, canopy, glow } from './kit.js';
 import { radhusArea, garageInterior, UW, D } from './rowhouse.js';
 import { picto, textFace } from './signs.js';
-import { violationSpots, parkedCars, shared, doors, interiors } from './data.js';
+import { violationSpots, parkedCars, doors, interiors } from './data.js';
 import { GarageDoor } from './garagedoor.js';
 import { mulberry32 } from '../util.js';
 
@@ -87,13 +87,16 @@ export function oveBlock(bf) {
   bf.car('volvo240', 3.5 + 3.05 * 3.5, -23.2, 0, { name: 'runeVolvo', color: 0x7a1e1e });
   bf.car('audi', -29.2, -16.9, 0, { name: 'andersAudi', color: 0xd8d8d4 });
   // Residents' cars in the north bays (a couple of gaps; the eastmost bay holds the association's
-  // snow tractor).
+  // snow tractor, which Ove can drive: a car of its own, actors/carmodels.js tractor, feature
+  // snotraktor). It stands nose out, ready to go, its spreader 0.25 m short of the kerb, and the bay
+  // beside it is kept free: the aisle's dead end has a big plowed pile, and between that and a
+  // parked car it could not have been turned out of the bay.
   const bays = area.bays.filter((b) => b.row === 'north');
-  const taken = [0, 1, 3, 4, 5, 7, 9, 12, 13, 14, 16, 17, 18];
-  const types = ['skoda', 'volvo740', 'golf', 'kombi', 'audi', 'volvo240', 'golf', 'bmw', 'skoda', 'kombi', 'volvo740', 'van', 'golf'];
-  const cols = [0x4a5a6a, 0x8a8e92, 0x2a3a4a, 0x6a2a22, 0x1e1e20, 0xd8d6d0, 0x3a4a3a, 0x5a3a2a, 0x1e1e20, 0x7a7466, 0x4a5a6a, 0xe8e8e4, 0xa8a49a];
+  const taken = [0, 1, 3, 4, 5, 7, 9, 12, 13, 14, 16, 17];
+  const types = ['skoda', 'volvo740', 'golf', 'kombi', 'audi', 'volvo240', 'golf', 'bmw', 'skoda', 'kombi', 'volvo740', 'van'];
+  const cols = [0x4a5a6a, 0x8a8e92, 0x2a3a4a, 0x6a2a22, 0x1e1e20, 0xd8d6d0, 0x3a4a3a, 0x5a3a2a, 0x1e1e20, 0x7a7466, 0x4a5a6a, 0xe8e8e4];
   taken.forEach((i, n) => { const b = bays[i]; if (b) bf.car(types[n], b.lx, b.lz, b.ly, { color: cols[n] }); });
-  { const b = bays[bays.length - 1]; tractor(bf.sub(b.lx, b.lz + 0.2, Math.PI)); }
+  { const b = bays[bays.length - 1]; bf.car('tractor', b.lx, b.lz + 0.15, b.ly - Math.PI, { name: 'tractor' }); }
   // Adrian's bay (round 5): a free north bay near adrianSpot that stays empty (no parked car: the
   // story parks Adrian's newly bought Saab here after day 5), with a small "Reserverad" plate at its
   // head, behind the low kerb (clear of a parked car's nose).
@@ -276,116 +279,6 @@ function decorate(key, u, r) {
     f.use('light', { snow: 0 });
     for (const a of [0.4, 2.0, 3.6, 5.0]) f.box(glow(0xf8f4ff, 1.5), X(a), CURB + 0.33, -2.45, 0.08, 0.04, 0.08);
   }
-}
-
-// The association's snow tractor (round 5: was a box): a compact tractor (snöröjningstraktor) with
-// a glazed cab and a front plough blade, parked nose to the kerb. Orange bodywork, a black chassis
-// and cab frame, lugged tyres on orange rims, mudguards over the big rear wheels, a bonnet with a
-// grille and headlights, a seat and a steering wheel behind see-through glass, an amber beacon and
-// work lights on the roof, an exhaust stack, mirrors, a step; in front a curved mouldboard angled
-// to throw the snow aside, on a push frame with hydraulic rams, a rubber cutting edge, skid plates
-// and orange marker sticks; behind, a sand spreader on the linkage. Frame at the rear axle's
-// middle-ish, nose towards local +z. Static; a solid you cannot drive through.
-function tractor(f) {
-  // (painted, not clear-coated car paint: the mirror coat washed the orange out to peach in the sun)
-  const body = 0xc24e14, dark = 0x1e1f21, Y = CURB, G = f.S;
-  const P = (lx, y, lz) => { const [x, z] = f.W(lx, lz); return [x, y, z]; };
-  const bar = (a, b, r, col, n = 6) => limb(G, ...P(...a), ...P(...b), r, r, col, n);
-  // ----- wheels: lugged tyres (a staggered ring of tread blocks), orange rims, hubs
-  const wheel = (sx, z, rad, wid) => {
-    f.use('rubber').cyl(0x1a1a1c, sx, Y + rad, z, rad * 0.93, wid, 20, 0, Math.PI / 2);
-    const nl = Math.round(rad * 34);
-    for (let q = 0; q < nl; q++) {
-      const a = (q / nl) * Math.PI * 2, s2 = q % 2 ? 1 : -1;
-      f.boxC(0x1a1a1c, sx + s2 * wid * 0.17, Y + rad + Math.sin(a) * rad * 0.94, z + Math.cos(a) * rad * 0.94, wid * 0.6, rad * 0.11, rad * 0.16, 0, Math.PI / 2 - a, 0);
-    }
-    const out = Math.sign(sx);
-    f.use('painted').cyl(0xc85e1c, sx, Y + rad, z, rad * 0.56, wid + 0.014, 16, 0, Math.PI / 2);
-    f.use('metal').cyl(0x6a6c6e, sx + out * wid * 0.47, Y + rad, z, rad * 0.16, 0.06, 10, 0, Math.PI / 2);
-    for (let q = 0; q < 6; q++) { const a = q * Math.PI / 3; f.cyl(0x8a8c8e, sx + out * wid * 0.5, Y + rad + Math.sin(a) * rad * 0.1, z + Math.cos(a) * rad * 0.1, 0.012, 0.03, 6, 0, Math.PI / 2); }
-  };
-  for (const sx of [-0.66, 0.66]) { wheel(sx, -0.45, 0.5, 0.3); wheel(sx * 0.86, 1.2, 0.31, 0.2); }
-  // mudguards over the rear wheels: an arc of plates, and the fender tops the cab stands on
-  f.use('painted');
-  for (const sx of [-0.66, 0.66]) {
-    for (let q = 0; q < 5; q++) {
-      const a = 0.25 + (q / 4) * (Math.PI - 0.5), rr = 0.6;
-      f.boxC(body, sx, Y + 0.5 + Math.sin(a) * rr, -0.45 + Math.cos(a) * rr, 0.36, 0.025, 0.42, 0, Math.PI / 2 - a, 0);
-    }
-  }
-  // ----- chassis, front axle, bonnet with grille and headlights
-  f.use('metal', { snow: 0.3 }).box(dark, 0, Y + 0.3, 0.55, 0.46, 0.36, 2.0);
-  f.cyl(dark, 0, Y + 0.31, 1.2, 0.05, 1.0, 8, 0, Math.PI / 2);
-  f.use('painted').box(body, 0, Y + 0.62, 0.95, 0.66, 0.5, 1.1);
-  f.boxC(body, 0, Y + 1.13, 0.9, 0.6, 0.05, 1.0, 0, -0.06);                          // bonnet top, sloping forward
-  f.use('painted').box(0x2a2c2e, 0, Y + 0.66, 1.505, 0.56, 0.42, 0.03);              // grille
-  f.use('painted');
-  for (let q = 0; q < 6; q++) f.box(0x3a3c3e, 0, Y + 0.7 + q * 0.065, 1.522, 0.54, 0.018, 0.012);
-  for (const sx of [-0.335, 0.335]) for (let q = 0; q < 4; q++) f.box(0x2a2c2e, sx, Y + 0.8 + q * 0.07, 0.75, 0.012, 0.025, 0.5);   // side louvres
-  f.use('lamp');
-  for (const sx of [-0.2, 0.2]) f.box(0xe8e8e0, sx, Y + 0.98, 1.47, 0.14, 0.07, 0.04);
-  // ----- cab: floor, posts, roof, glass, door frame, seat, wheel, dash
-  f.use('metal', { snow: 0 }).box(dark, 0, Y + 0.76, -0.35, 1.2, 0.06, 1.35);
-  f.use('painted');
-  for (const [sx, z] of [[-0.58, -0.98], [0.58, -0.98], [-0.58, 0.28], [0.58, 0.28]]) f.box(dark, sx, Y + 0.8, z, 0.06, 1.26, 0.06);
-  for (const sx of [-0.58, 0.58]) { f.box(dark, sx, Y + 1.36, -0.35, 0.04, 0.04, 1.22); f.box(dark, sx, Y + 0.8, -0.35, 0.05, 0.08, 1.22); }
-  f.box(dark, 0, Y + 2.0, 0.28, 1.2, 0.06, 0.06).box(dark, 0, Y + 2.0, -0.98, 1.2, 0.06, 0.06);
-  f.use('painted').box(body, 0, Y + 2.06, -0.35, 1.34, 0.08, 1.5);
-  f.use('painted').box(0xd8d6d0, 0, Y + 2.0, -0.35, 1.22, 0.02, 1.36);              // headliner
-  const gl = shared.glassG;
-  f.box(null, 0, Y + 0.88, 0.285, 1.1, 1.12, 0.012, 0, gl).box(null, 0, Y + 0.9, -0.985, 1.1, 1.08, 0.012, 0, gl);
-  for (const sx of [-0.585, 0.585]) f.box(null, sx, Y + 0.86, -0.35, 0.012, 1.14, 1.22, 0, gl);
-  f.use('metal').box(0x9a9da0, -0.6, Y + 1.25, -0.1, 0.02, 0.03, 0.14);               // door handle
-  f.use('fabric', { snow: 0 }).box(0x26282a, 0, Y + 0.95, -0.6, 0.48, 0.12, 0.46).boxC(0x26282a, 0, Y + 1.3, -0.82, 0.46, 0.55, 0.1, 0, -0.15);
-  f.use('painted', { snow: 0 }).box(0x2a2c2e, 0, Y + 0.82, 0.12, 0.7, 0.42, 0.16);   // dash / console
-  bar([0, Y + 1.2, 0.1], [0, Y + 1.42, -0.12], 0.025, 0x2a2c2e);
-  f.use('rubber').add(PRIM.torus(), 0x1e1e1e, 0, Y + 1.44, -0.14, 0, 0.36, 0.36, 0.36, -1.0, 0);
-  // ----- roof: amber beacon, work lights; exhaust stack; mirrors; step; tail lights
-  f.use('painted').cyl(0x2a2c2e, 0.42, Y + 2.13, -0.85, 0.08, 0.04, 12);
-  f.use('light', { snow: 0 }).cyl(0xff9a1a, 0.42, Y + 2.21, -0.85, 0.065, 0.13, 12);
-  f.use('lamp').sphere(0xffb040, 0.42, Y + 2.28, -0.85, 0.06, 0.035, 0.06);
-  for (const sx of [-0.5, 0.5]) { f.use('painted').box(0x2a2c2e, sx, Y + 2.12, 0.36, 0.16, 0.1, 0.06); f.use('lamp').box(0xf0f0e8, sx, Y + 2.12, 0.395, 0.13, 0.07, 0.01); }
-  f.use('metal').cyl(0x5a5c5e, 0.36, Y + 1.66, 0.4, 0.038, 1.1, 10);
-  f.use('painted').boxC(0x2a2c2e, 0.36, Y + 2.24, 0.42, 0.09, 0.012, 0.11, 0, 0.35);  // rain cap
-  for (const sx of [-1, 1]) { bar([sx * 0.6, Y + 1.7, 0.27], [sx * 0.86, Y + 1.78, 0.3], 0.012, dark, 4); f.use('painted').box(0x1a1a1a, sx * 0.88, Y + 1.66, 0.3, 0.04, 0.24, 0.16); }
-  f.use('metal').box(dark, -0.64, Y + 0.4, -0.05, 0.22, 0.03, 0.3);                 // step
-  f.use('lamp');
-  for (const sx of [-0.62, 0.62]) f.box(0xb01818, sx, Y + 1.05, -1.06, 0.1, 0.06, 0.02);
-  // ----- rear: three-point linkage and a sand spreader (a tapered hopper over a spinner disc)
-  bar([-0.3, Y + 0.45, -0.75], [-0.32, Y + 0.5, -1.3], 0.03, dark);
-  bar([0.3, Y + 0.45, -0.75], [0.32, Y + 0.5, -1.3], 0.03, dark);
-  bar([0, Y + 0.95, -0.95], [0, Y + 0.9, -1.25], 0.03, dark);
-  f.use('plastic').boxC(0x3a3e40, 0, Y + 0.98, -1.5, 0.95, 0.42, 0.6, 0, 0);
-  f.use('plastic').boxC(0x3a3e40, 0, Y + 0.68, -1.5, 0.6, 0.22, 0.38, 0, 0);
-  f.use('metal').cyl(0x6a6c6e, 0, Y + 0.48, -1.5, 0.22, 0.03, 12);
-  f.use('snow').box(0xe8ebee, 0, Y + 1.2, -1.5, 0.88, 0.04, 0.54);                 // snow in the hopper's lid
-  // ----- the plough: a curved mouldboard (six slats round a concave profile), angled 0.32 rad
-  const bl = f.sub(0, 2.02, 0.32);
-  const prof = [[0.12, 0.06], [0.03, 0.17], [-0.03, 0.3], [-0.05, 0.44], [-0.03, 0.57], [0.03, 0.67], [0.1, 0.72]];
-  bl.use('painted');
-  for (let i = 0; i < prof.length - 1; i++) {
-    const [z0, y0] = prof[i], [z1, y1] = prof[i + 1], L = Math.hypot(z1 - z0, y1 - y0);
-    bl.boxC(body, 0, Y + (y0 + y1) / 2, (z0 + z1) / 2, 1.9, L + 0.012, 0.03, 0, Math.atan2(z1 - z0, y1 - y0), 0);
-  }
-  bl.use('rubber').box(0x141414, 0, Y + 0.0, 0.13, 1.88, 0.1, 0.035);               // cutting edge
-  bl.use('metal');
-  for (const sx of [-0.96, 0.96]) bl.box(dark, sx, Y + 0.02, 0.0, 0.03, 0.66, 0.36);    // skid / end plates
-  for (const sx of [-0.6, 0, 0.6]) bl.boxC(dark, sx, Y + 0.38, -0.12, 0.06, 0.62, 0.05, 0, -0.08, 0);   // ribs
-  bl.box(dark, 0, Y + 0.2, -0.2, 1.6, 0.08, 0.06).box(dark, 0, Y + 0.55, -0.18, 1.6, 0.08, 0.06);
-  bl.box(dark, 0, Y + 0.28, -0.42, 0.34, 0.16, 0.42);                                   // pivot
-  // marker sticks (plogpinnar) at the blade's ends: orange with a black top band
-  for (const sx of [-0.92, 0.92]) {
-    bl.use('painted').cyl(0xe86a10, sx, Y + 1.05, -0.14, 0.012, 0.9, 6);
-    bl.use('painted').cyl(0x1a1a1a, sx, Y + 1.58, -0.14, 0.013, 0.16, 6);
-  }
-  // push frame and rams, from the front axle to the pivot
-  const pv = (lx, y, lz) => { const [x, z] = bl.W(lx, lz); return [x, y, z]; };
-  for (const sx of [-0.22, 0.22]) limb(G, ...P(sx, Y + 0.3, 1.0), ...pv(sx * 0.6, Y + 0.3, -0.5), 0.045, 0.045, dark, 6);
-  for (const sx of [-0.25, 0.25]) {
-    limb(G, ...P(sx, Y + 0.55, 1.45), ...P(sx + Math.sign(sx) * 0.05, Y + 0.4, 1.68), 0.035, 0.035, 0x2a2c2e, 6);
-    limb(G, ...P(sx + Math.sign(sx) * 0.05, Y + 0.4, 1.68), ...pv(sx * 2.2, Y + 0.3, -0.18), 0.018, 0.018, 0xc8cacc, 6);
-  }
-  f.solid(0, 0.35, 2.0, 3.8, 99, 'vehicle');
 }
 
 // A Christmas lawn reindeer (a wire frame with a string of small bulbs along it), drawn as an outline

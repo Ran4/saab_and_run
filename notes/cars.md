@@ -27,7 +27,8 @@ are below.
 `bmw` (BMW 5-serie, E34), `skoda` (Škoda Octavia kombi), `golf` (Volkswagen Golf, mk6-ish 5-door),
 `kombi` (late-90s estate, V70-like), `taxi` (the kombi with a lit TAXI roof sign), `van` (Skåpbil),
 `bus` (Stadsbuss, red low-floor, doors on the kerb side), `garbage` (Sopbil, cab-over, compactor
-body + rear-loader tailgate, 3 axles). Old keys are aliases (same spec object): `sedan→volvo240`,
+body + rear-loader tailgate, 3 axles), `tractor` (Snöröjningstraktor: the housing association's snow
+tractor, one of a kind, named `'tractor'`, never traffic; see *The snow tractor* at the end). Old keys are aliases (same spec object): `sedan→volvo240`,
 `hatch→golf`, `wagon→kombi`, `pickup→van`, `hearse→skoda`, `muscle→bmw`, `icecream→van`
 (`CAR_ALIASES`). `car.type` is the key you passed (may be an alias), `car.kind` the real model key.
 
@@ -101,6 +102,9 @@ default by name and state: Ove's `saab` 0.35, `andersAudi` 0.3, `adrianSaab` 0.5
 - `carGlassMaterial(clear)` (exported) is the see-through car glass (`clear`: the bus's and the
   sopbil's windscreens and the bus doors - glass geometry groups in the `'glass'` surface).
 - `carWheelMaterials(geo)` (exported, handed to carmodels' wheel pools): the wheels' own copies.
+- `car.wheels[i]` carry their own `r` (radius) and `ww` (tread width) from the model (every car's are
+  the model's `wr` / `ww`; the tractor's front pair is smaller): `writeWheels` scales each by its own
+  and spins it by `wheelSpin x wr / r`.
 - `carMaterials(geo, grime)` (exported, round 3): the car shading for any car-like GeoBuilder
   geometry (the trailer uses it). `GRIME_LV`, `grimeLevel(a)` exported too.
 - `car.beacon` channel: the sopbil's amber roof beacons flash (two flashes per turn) while its
@@ -792,3 +796,52 @@ runs its engine, `stepSnow` makes its `CarSnow`:
   the step + the lumps' tick 0.09-0.11 ms a frame; the whole frame loop 7.2-7.8 ms vs 7.2-7.5 ms over
   4 pairs of runs (0-0.5 ms more: the puffs and lumps drawn; the run-to-run noise is ±0.3 ms); no
   program compiled. Tests: tools/scenarios/bilsno.mjs (CLAUDE.md lists them).
+
+## The snow tractor (feature snotraktor, 2026-10-15)
+
+features/implemented/snotraktor.md has the why. Until then the association's tractor in the lot's
+last north bay (at the aisle's dead end, by the end of the garage row; ove.js calls it the eastmost) was static scenery (world/ove.js `tractor()`, merged into the block, a 2 x 3.8 m
+'vehicle' solid); now it is a `Car` like any other: `CAR_TYPES.tractor`, a parked named car (`name:
+'tractor'`, plate `BRF 076` from main.js `FIXED_PLATES`, `NEAT` grime 0.6), nose out, the bay beside it
+kept free (between the aisle's big plowed pile and a parked car it could not be turned out).
+- **Model** (carmodels.js `tractorP` / `tractorDetails`, `TR` holds the measures): not a loft. A type
+  with `P.custom` is built by its details alone (buildVariant gives it empty `M` / `G` meshers). Boxes,
+  arcs and cylinders round the rear axle (`TR.z0` -0.8 puts the machine's middle at the origin), 4.5 x
+  1.8 x 2.38 m (the beacon to ~2.58), wb 1.8: big rear wheels (r 0.58) under flat-topped mudguards
+  the cab stands on, small front ones (r 0.37), a long bonnet (grille, two headlamps, louvres, exhaust
+  stack, pre-cleaner), a glazed cab (clear `'glass'` all round, four posts, frame rails, a floor at
+  `TR.floor` 0.74, a sprung seat with the cushion at 1.2, column and wheel at the busts' hands, pedals,
+  a dash, a door frame and handle, a step, mirrors on arms), on the roof the amber beacon (`beacon`
+  channel, flashing while the engine runs: `model.beacon`, like the sopbil) and two work lamps (head
+  channel); the curved mouldboard angled -0.28 rad (the left end ahead: the snow goes off the right),
+  a rubber edge and a steel wear strip, end plates, ribs, the pivot, marker sticks, the push frame and
+  rams; behind, the three-point linkage and a grey sand spreader with the LGF triangle (långsamtgående
+  fordon: a slow vehicle) and the rear plate (no front plate: a tractor has none). Orange is
+  'painted' (no clear coat). Four body surfaces (metal, painted, plastic, fabric) + glass + lamps +
+  plate: 7 draw calls near, like a car; 2.4k triangles near, 1.2k far (the LOD: no interior, the
+  glass as `FRIT` plastic, instanced like any far car).
+- **Wheels**: `P.axleR / axleW / axleX` (per axle radius, tread width, half track) -> each entry of
+  `model.wheels` has its `r` and `ww`. Style `'tractor'` (`tractorWheel`): a square-shouldered carcass
+  under 2 x 20 chevron lugs (raked 0.5 rad, the rows staggered), an orange pressed-steel rim (painted)
+  with a raised hub and six nuts. No wheel wells (the arches are open).
+- **Info fields** for the rest of the game: `seats: 1` (main.js `freeSeat` returns null: nobody rides
+  along, "Det finns ingen plats i bilen."), `legRoom` + `floor` (a seat with a floor under the feet:
+  the lower legs stay, models.js `st.legRoom`), `beacon`, `blade` ({ x, z, side }: the blade's trailing
+  end and the side it throws to).
+- **Spec**: maxSpeed 8.9 (x PLAYER.speed = 40 km/h, a traktor b), accel 3.0 (0-30 km/h in ~4 s; ~37
+  km/h after 80 m from a slow start), brake 7, grip 8.6, steer 0.62 (a turning circle of ~2.5 m
+  radius), mass 2600, hp 220 (sturdy), tall, revMax 3.2, `drive: 'awd'`; **`snowGrip`** [0.9, 0.85,
+  0.95] = [lateral grip, braking, traction] off the asphalt (everyone else `SNOW_GRIP` [0.62, 0.6,
+  0.72], unchanged: the lugged tyres bite in snow); **`service`** = may drive on the car-free walkways
+  (patrol.js: no −1 Ordning/s, no shout; the prompt says "Snöröjning · traktorn får köra på
+  gångvägarna").
+- **The blade's spray** (car.js `sync`, `model.blade`): moving forwards above 1 m/s within 60 m of the
+  camera, with snow under the blade's trailing end (`fx.surfaceAt`), every 0.04 s 2-4 `fx.blown`
+  streaks thrown off that end, out (3.4 + 0.6 v m/s) and up, with ~45 % of the tractor's speed, plus a
+  little `fx.powder`; on the plowed asphalt above 3 m/s a little powder every 0.3-0.6 s. Big
+  `fx.powder` puffs alone read as smoke round the wheels.
+- **Sound**: audio.js `ENGINES.tractor` (`audio.engine(..., kind)`: main.js passes `car.kind`): a
+  slow-revving diesel (750-2500 rpm over 11.5 m/s, a lumpier idle, more clatter, no turbo); `HORNS.tractor`
+  a flat nasal 311/314 Hz.
+- Tests: tools/scenarios/traktor.mjs (`traktor` = real keys, 16 checks; `traktorlook`, `traktorplog`)
+  and `seatlegs` (people.mjs: the tractor with Ove, nothing of him below the floor in sight).

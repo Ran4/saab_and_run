@@ -99,7 +99,7 @@ const PHOTO_NOTES = [
 ];
 // Ove's Saab always wears the same plate (the player looks at it all game). Valid Swedish format:
 // no I, Q, V, Å, Ä, Ö, and no O last.
-const FIXED_PLATES = { saab: 'SAB 900' };
+const FIXED_PLATES = { saab: 'SAB 900', tractor: 'BRF 076' };
 // The title shot (Game.titlePose): the Saab rolled out of its bay, Ove beside it.
 const TITLE_POSE = { out: 4.1, turn: 0, ove: [1.5, 0.9, 0.15], look: -0.6, arc: { th0: 0.70, th1: 0.52, d0: 7.6, d1: 6.6, off: 2.3 } };
 const TRAFFIC = ['volvo240', 'volvo740', 'volvo740', 'golf', 'golf', 'kombi', 'kombi', 'skoda', 'bmw', 'audi', 'saab900', 'taxi', 'van', 'volvo240', 'kombi', 'bus', 'garbage'];
@@ -561,8 +561,10 @@ class Game {
     if (x !== undefined) ch.teleport(x, z, car ? car.yaw : ch.yaw);
   }
 
-  // The first free passenger seat: front passenger, then the back seat.
+  // The first free passenger seat: front passenger, then the back seat (the snow tractor has only
+  // the driver's: model.seats).
   freeSeat(car) {
+    if (car.model.seats === 1) return null;
     const used = new Set(car.passengers.map((p) => p.seatSide));
     for (const s of car.model.rear ? [-1, -2, 2] : [-1]) if (!used.has(s)) return s;
     return null;
@@ -641,6 +643,8 @@ class Game {
     audio.door();
     // The first time behind a wheel (each session): the horn, and that it is more than a sound.
     if (!TEST && !this.toldHorn) { this.toldHorn = true; setTimeout(() => { if (this.playerCar && !this.inDialog) hud.toast('<b>T</b> tutar. Folk märker det.'); }, 2600); }
+    // The association's snow tractor (feature snotraktor): the first time this session, whose it is.
+    if (car.kind === 'tractor' && !this.toldTractor) { this.toldTractor = true; hud.toast('Föreningens snöröjningstraktor. Ove har nyckel, förstås. Den får köra på gångvägarna.'); }
     // Whoever is with Ove gets in too.
     for (const [ch] of this.companions) if (!ch.car && dist(ch.x, ch.z, car.x, car.z) < 10) this.boardCompanion(ch, car);
   }
@@ -2330,7 +2334,8 @@ class Game {
         // Ove driving inside the car-free area: what it costs, for as long as he is in there (one
         // Anders shout a minute was all the feedback, and the meter fell 53 -> 16 in three minutes).
         const pc = this.playerCar;
-        if (pc && this.patrol.passive && isCarFree(pc.x, pc.z)) parts.push('<span class="pr-warn">Bilfritt område · −1 Ordning/s · Kliv ur och gå</span>');
+        // (the snow tractor may: it clears the walkways)
+        if (pc && this.patrol.passive && isCarFree(pc.x, pc.z)) parts.push(pc.spec.service ? 'Snöröjning · traktorn får köra på gångvägarna' : '<span class="pr-warn">Bilfritt område · −1 Ordning/s · Kliv ur och gå</span>');
         prompt = parts.join('<span class="pr-sep"> &nbsp;·&nbsp; </span>');
       }
       hud.setPrompt(prompt, hold);
@@ -2395,7 +2400,7 @@ class Game {
       // (in the air off the snow hill the wheels spin free: the engine revs up on the throttle, the
       // tyres are silent)
       const fl = c.flight ? 1 + 0.45 * c.ctrl.throttle : 1;
-      audio.engine(true, c.revs, c.ctrl.throttle, Math.abs(c.forwardSpeed) * fl, c.flight ? 'air' : c.onSnow ? 'snow' : 'asphalt');
+      audio.engine(true, c.revs, c.ctrl.throttle, Math.abs(c.forwardSpeed) * fl, c.flight ? 'air' : c.onSnow ? 'snow' : 'asphalt', c.kind);
       audio.skid(c.air ? 0 : c.skidAmt, c.onSnow ? 'snow' : 'asphalt');
       audio.horn(this.horn.down, c.kind);
       // (no tracks drawn on the snow hill: they lie flat at the ground's height)

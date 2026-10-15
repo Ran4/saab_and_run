@@ -30,6 +30,12 @@ export const CAR_TYPES = {
   van: S({ name: 'Skåpbil', model: 'van', maxSpeed: 27, accel: 4.0, brake: 7.5, grip: 8.2, steer: 0.52, mass: 2300, hp: 150, tall: true, color: 0xd0d0cc, solid: true, drive: 'rwd' }),
   bus: S({ name: 'Stadsbuss', model: 'bus', maxSpeed: 20, accel: 2.2, brake: 6.0, grip: 7.6, steer: 0.5, mass: 11000, hp: 400, tall: true, color: 0x861410, solid: true, drive: 'rwd' }),
   garbage: S({ name: 'Sopbil', model: 'garbage', maxSpeed: 19, accel: 2.0, brake: 6.0, grip: 7.4, steer: 0.48, mass: 15000, hp: 400, tall: true, color: 0xd2d2cc, solid: true, drive: 'rwd' }),
+  // The housing association's snow tractor (feature snotraktor): 40 km/h at most for the player (a
+  // traktor b: 8.9 x PLAYER.speed), slow to get going, a tight turning circle on a short wheelbase,
+  // four-wheel drive on lugged tyres that bite in snow (`snowGrip`: [lateral grip, braking, traction]
+  // off the asphalt; everyone else [0.62, 0.6, 0.72]), sturdy (hp). `service`: may drive on the
+  // car-free walkways (it clears them: no Ordning lost there, patrol.js).
+  tractor: S({ name: 'Snöröjningstraktor', model: 'tractor', maxSpeed: 8.9, accel: 3.0, brake: 7.0, grip: 8.6, steer: 0.62, mass: 2600, hp: 220, tall: true, revMax: 3.2, drive: 'awd', color: 0xc24e14, snowGrip: [0.9, 0.85, 0.95], service: true }),
 };
 // Old keys from the cel-shaded game keep working.
 export const CAR_ALIASES = { sedan: 'volvo240', hatch: 'golf', wagon: 'kombi', pickup: 'van', hearse: 'skoda', muscle: 'bmw', icecream: 'van' };
@@ -39,6 +45,9 @@ for (const [k, v] of Object.entries(CAR_ALIASES)) CAR_TYPES[k] = CAR_TYPES[v];
 // tops out at revMax (4.5 m/s, 16 km/h).
 export const PLAYER = { speed: 1.25, accel: 0.88, brake: 1.15, aLat: 9.5 };
 const AI_ACCEL = 1.15; // AI drivers are not shy with the pedal
+// Off the asphalt (snow: sidewalks, lawns, the car-free paths): [lateral grip, braking, traction] x;
+// a type's `snowGrip` overrides it (the tractor's lugged tyres).
+const SNOW_GRIP = [0.62, 0.6, 0.72];
 // Snow hills (feature snöhög, world/snowhill.js: collision.js HILL floors). On one the car follows the
 // surface and feels its slope (`slope` m/s², gravity along it: a hill slows the climb, a stopped car
 // rolls back unless held), until the surface falls away faster than a thrown stone would (the
@@ -92,7 +101,7 @@ const smooth01 = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const COLORS = [0x8f9397, 0x9da1a4, 0xcfcfcb, 0x1a1b1d, 0x55595d, 0x3c4045, 0x1f2c48, 0x5b1a1e, 0x253a2c, 0xb6a98e, 0x6e8294, 0x8c9093, 0x2f3d55, 0x7a1c18, 0x424f3e];
 const SOLID = [0xd0d0cc, 0xc4c0b4, 0x9a1c18, 0x1f2a44, 0x2a4a34, 0xc8b48a, 0x1a1a1a, 0x6c7a82, 0xb33a1a];
 const SOLID_TYPES = new Set(['bus', 'garbage']);
-const NEAT = { saab: 0.35, andersAudi: 0.3, adrianSaab: 0.5 };
+const NEAT = { saab: 0.35, andersAudi: 0.3, adrianSaab: 0.5, tractor: 0.6 };
 const TAXI = [0x18191b, 0x18191b, 0xcfcfcb, 0x8f9397, 0x3c4045];
 
 // Car materials. The lofted bodies have real curved panels, so the paint's fake curvature
@@ -825,9 +834,10 @@ export class Car {
     const player = !!(game && game.playerCar === this);
     // Ground: plowed asphalt, or snow (sidewalks, lawns, the car-free paths) with less grip.
     this.onSnow = FX.surfaceAt ? FX.surfaceAt(this.x, this.z) === 'snow' : !isRoad(this.x, this.z);
-    const gLat = this.onSnow ? 0.62 : 1, gLong = this.onSnow ? 0.6 : 1;
+    const sn = s.snowGrip || SNOW_GRIP;
+    const gLat = this.onSnow ? sn[0] : 1, gLong = this.onSnow ? sn[1] : 1;
     const maxSpeed = s.maxSpeed * (player ? PLAYER.speed : 1);
-    const accel = s.accel * (player ? PLAYER.accel : AI_ACCEL) * (this.onSnow ? 0.72 : 1);
+    const accel = s.accel * (player ? PLAYER.accel : AI_ACCEL) * (this.onSnow ? sn[2] : 1);
     const brakeA = s.brake * (player ? PLAYER.brake : 1) * gLong;
     this.skidAmt = 0;
     this.braking = 0;
@@ -1231,7 +1241,7 @@ export class Car {
     ch[CH.sign] = this.running ? 1.6 : 0.15;
     // the sopbil's amber beacons turn while it works (engine running): two flashes per turn
     const bt = (t * 1.6 + this.id * 0.37) % 1;
-    ch[CH.beacon] = this.running && this.kind === 'garbage' && !this.dead ? (bt < 0.12 || (bt > 0.5 && bt < 0.62) ? 1.3 : 0.08) : 0;
+    ch[CH.beacon] = this.running && (this.kind === 'garbage' || this.model.beacon) && !this.dead ? (bt < 0.12 || (bt > 0.5 && bt < 0.62) ? 1.3 : 0.08) : 0;
     if (this.glow) this.glow.visible = brake || L || R || ch[CH.rev] > 0 || ch[CH.beacon] > 0.5;
   }
 
@@ -1294,6 +1304,32 @@ export class Car {
         }
       }
     }
+    // The snow tractor's blade (feature snotraktor): pushed through snow it throws a spray off its
+    // trailing end (model.blade: the right end, towards the verge), more and further the faster it
+    // goes; on the plowed asphalt a little slush now and then. Near the camera only.
+    const bl = this.model.blade;
+    if (bl && camera && !this.dead && !this.air && dt > 0) {
+      const vf = this.vx * fx + this.vz * fz, px = this.x + fz * bl.x + fx * bl.z, pz = this.z - fx * bl.x + fz * bl.z;
+      const dx = px - camera.position.x, dz = pz - camera.position.z;
+      if (vf > 1 && dx * dx + dz * dz < 60 * 60) {
+        const snow = FX.surfaceAt ? FX.surfaceAt(px, pz) === 'snow' : !isRoad(px, pz);
+        if (snow || vf > 3) {
+          this._plowT = (this._plowT ?? 0) - dt;
+          if (this._plowT <= 0) {
+            this._plowT = snow ? 0.04 : 0.3 + Math.random() * 0.3;
+            // (sx, sz: the side it goes off, side x the car's left.) It leaves the blade's end with
+            // some of the tractor's speed and is thrown out and up: fine streaks (a few big puffs
+            // read as smoke round the wheels) and a little powder where it lands.
+            const out = (snow ? 3.4 : 1.2) + vf * 0.6, sx = fz * bl.side, sz = -fx * bl.side, up = (snow ? 1.9 : 0.8) + vf * 0.25;
+            if (snow) for (let k = Math.round(2 + vf * 0.3); k > 0; k--) {
+              const o = out * (0.6 + Math.random() * 0.6);
+              FX.blown(px - fx * Math.random() * 0.3, this.y + 0.3 + Math.random() * 0.4, pz - fz * Math.random() * 0.3, this.vx * 0.45 + sx * o, up * (0.6 + Math.random() * 0.7), this.vz * 0.45 + sz * o, 0.9);
+            }
+            FX.powder(px + sx * 0.4, this.y + 0.3, pz + sz * 0.4, this.vx * 0.3 + sx * out * 0.5, up * 0.5, this.vz * 0.3 + sz * out * 0.5, snow ? 2 : 2, 0.55);
+          }
+        }
+      }
+    }
     this._quiet = this.asleep && !this.running && !this.hazard && !this.indicator;
   }
 
@@ -1353,12 +1389,14 @@ export class Car {
   // Called by the wheel system before rendering: one matrix per wheel (on the ground, following
   // the road's slope, steering, rolling; not the body's roll).
   writeWheels(sink) {
-    const m = this.model, r = m.wr;
+    const m = this.model;
     _m4.compose(_v.set(this.x, this.y, this.z), _q.setFromEuler(_e.set(this.groundPitch, this.yaw, this.groundRoll, 'YXZ')), _s.set(1, 1, 1));
     for (const w of this.wheels) {
-      const spin = w.side > 0 ? this.wheelSpin : -this.wheelSpin;
+      // (each wheel its own size: the tractor's small front wheels turn faster than its big rear ones)
+      const r = w.r ?? m.wr, sp = this.wheelSpin * (m.wr / r);
+      const spin = w.side > 0 ? sp : -sp;
       _e.set(spin, w.steer + (w.side > 0 ? 0 : Math.PI), 0, 'YXZ');
-      _m4b.compose(_v.set(w.x, r, w.z), _q.setFromEuler(_e), _s.set(m.ww, r, r));
+      _m4b.compose(_v.set(w.x, r, w.z), _q.setFromEuler(_e), _s.set(w.ww ?? m.ww, r, r));
       _m4b.premultiply(_m4);
       sink.put(this.lod ? 'lod' : m.wheelStyle, _m4b, this.dead, this.grime);
     }

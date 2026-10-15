@@ -338,14 +338,17 @@ New:
   when started after > 2.5 s off, a quiet turbo whistle and a blow-off when the throttle snaps
   shut at boost, tyre rolling noise. Pass **`speed` (m/s)** for real gearing and **`surface`
   ('snow' | 'asphalt')** for the rolling sound; without them the gear is derived from `revs`
-  (old car.js formula). `audio.gear` = current fake gear (read-only).
+  (old car.js formula). `audio.gear` = current fake gear (read-only). A sixth argument, **`kind`**
+  (the car's model; main.js passes `car.kind`), picks a profile from `ENGINES` (feature snotraktor):
+  the default is the Saab's four (unchanged); `tractor` a slow-revving diesel (750-2500 rpm, the gears
+  spread over 11.5 m/s, a lumpier idle, more clatter higher in the band, no turbo, a little louder).
 - `audio.skid(amount, surface?)` — 'asphalt' (default) a quiet wobbling squeal, **'snow' a
   granular snow crunch**.
 - `audio.horn(on, kind = 'saab900')` — the player's car's horn while held: two sawtooth tones through
   a brassy shaper and a band, **per make** (feature tuta_med_bilen, exported `HORNS` by `car.kind`:
   the Saab 405/498 Hz, Volvo 240 352/440 'mööp', Golf 523/529 peep, Audi 440/554, BMW 415/523, Škoda
-  466/494 sour, bus 185/233 and sopbil 147/185 air horns with a slow rise; unknown kinds get the
-  Saab's). `audio.honk(vol = 1, dur = 0.3, kind = 'default', delay = 0)` — a short honk from another
+  466/494 sour, bus 185/233 and sopbil 147/185 air horns with a slow rise, the snow tractor a flat
+  nasal 311/314; unknown kinds get the Saab's). `audio.honk(vol = 1, dur = 0.3, kind = 'default', delay = 0)` — a short honk from another
   car (scale `vol` by distance; `delay` s for a double toot).
 - `audio.yelp(pitch, k)` (feature tuta_med_bilen) — a fright: a sharp intake of breath and a short
   rising 'ah!' through `vocal` (pitch: the CHARS voice; k: loudness by distance). `audio.hiss(k)` — a
