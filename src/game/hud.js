@@ -839,6 +839,11 @@ export const hud = {
     const now = performance.now();
     const v = _v;
     const W = window.innerWidth, H = window.innerHeight;
+    // Bubbles that would cover each other (small talk: Ove answering the neighbour beside him) are
+    // stacked: the newest stays by its speaker, an older one moves up above it. (placed: x0, x1, y0, y1
+    // of those placed so far, newest first)
+    const placed = (this._bubPlaced ||= []);
+    placed.length = 0;
     for (let k = list.length - 1; k >= 0; k--) {
       const it = list[k];
       if (now > it.until && !(it.u && (it.u.state === 'queued' || it.u.state === 'playing'))) { it.b.remove(); list.splice(k, 1); continue; }
@@ -854,7 +859,15 @@ export const hud = {
       if (!it.w) { const r = it.b.getBoundingClientRect(); it.w = r.width / u; it.h = r.height / u; }
       const ax = (v.x * 0.5 + 0.5) * Wu, ay = (-v.y * 0.5 + 0.5) * Hu;
       const x = it.w + 16 < Wu ? clamp(ax, it.w / 2 + 8, Wu - it.w / 2 - 8) : Wu / 2;
-      const y = clamp(ay, it.h + 70, Hu - 8);
+      let y = clamp(ay, it.h + 70, Hu - 8);
+      for (let moved = true, n = 0; moved && n < 8; n++) {
+        moved = false;
+        for (let j = 0; j < placed.length; j += 4) {
+          if (x - it.w / 2 < placed[j + 1] && x + it.w / 2 > placed[j] && y - it.h < placed[j + 3] && y > placed[j + 2]) { y = placed[j + 2] - 6; moved = true; }
+        }
+      }
+      y = Math.max(y, it.h + 8);
+      placed.push(x - it.w / 2, x + it.w / 2, y - it.h, y);
       const tail = clamp(ax - x, -it.w / 2 + 12, it.w / 2 - 12);
       if (tail !== it.tail) { it.tail = tail; it.b.style.setProperty('--tail-dx', `${tail.toFixed(1)}px`); }
       it.b.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;

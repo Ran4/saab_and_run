@@ -147,6 +147,12 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   han blir kallare för varje minut (fem minuter, och mycket fortare ute bortom skogen), och en bil
   i full fart tar livet av honom. Försök igen med **E**, eller ge upp med **Q**: då förblir han död,
   och Anita är förkrossad resten av spelet.
+- **Småprat.** Gå fram till en granne och tryck **E**: grannen säger något och Ove svarar på just
+  det (Sara får "Nej." på sin snögubbe, och längre fram i veckan något annat). Ibland fortsätter
+  det en replik eller två, och ibland svarar Ove bara med huvudet: en nick åt Rune, en långsam
+  huvudskakning åt Vita skjortan. Grannarna säger inte samma sak två gånger i rad. Fjärde gången
+  inom en minut har Ove fått nog ("Nu har vi pratat.") och låter den grannen vara i 20 sekunder.
+  Börjar en granne prata själv när Ove står nära händer det att han svarar.
 - **Till fots** går Ove, går raskt och sparkar på däck. Han har åsikter om de flesta bilmärken.
 - **Utanför stan.** Det finns inga osynliga väggar längre. Bortom den yttre ringvägen tar skogen vid,
   och fyra skogsgator (snöiga gluggar rakt ut genom skogen, en åt varje håll) leder ut på kullarna.
@@ -259,6 +265,7 @@ PORT=8791 node tools/shot.mjs giveup uiabort uitoasts      # ge upp med Q, pausm
 PORT=8791 node tools/shot.mjs uipause                      # pausmenyn i 15 fönsterstorlekar: anteckningsboken lika hög som menyn, inget utanför
 PORT=8791 node tools/shot.mjs horn                         # tutan med riktiga T-tryck: 19 kontroller (hornlook: närbilder, WHO=adult|kid|old|patrick)
 PORT=8791 node tools/shot.mjs luft luftskip luftcam luftsound   # dag 3:s scen i köket: en bild per ögonblick, att hoppa över den, kameran hos Anita/Rune, ljudnivåerna
+PORT=8791 node tools/shot.mjs smaprat smapratvoice         # småprat med riktiga E-tryck: svaren, fortsättningarna, nicken, "Nu har vi pratat.", med rösterna
 PORT=8791 node tools/shot.mjs voice vcut vpool             # rösterna: turordning, läppar, duckning; dag 1-4 i mänsklig takt (TO=7: alla sju); statisternas röster
 PORT=8791 node tools/shot.mjs coldwalk colddrive coldback  # kylan med riktiga tangenter: ut till fots och med Saaben (takten mätt på vägen), och in igen när Ove tänker på Sonja
 PORT=8791 node tools/shot.mjs coldrate coldmission coldwall coldbed coldbedskip   # 112 s vid kanten, ett uppdrag som misslyckas, väggen för alla andra, sängscenen

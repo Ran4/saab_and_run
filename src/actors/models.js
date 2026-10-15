@@ -3780,6 +3780,21 @@ export function animateCharacter(m, st, dt) {
   if (wShiver > 0.25 && !st.talk) P[B.jaw * 3] = Math.max(P[B.jaw * 3], 0.016 * wShiver * (0.5 + 0.5 * Math.sin(t * 46)));
   // look
   P[B.neck * 3 + 1] += (st.look || 0) * (1 - wDown);
+  // a nod or a slow shake of the head (st.gesture 'nod' | 'shake' from st.gestureAt = st.t: Ove's
+  // silent answers to small talk, main.js chat)
+  if (st.gesture && wDown < 0.05 && wFlung < 0.05) {
+    const u = t - (st.gestureAt ?? -9);
+    if (st.gesture === 'nod' && u >= 0 && u < 0.8) {
+      // down in 0.16 s, a beat there, back up slowly
+      const k = u < 0.16 ? sstep(0, 0.16, u) : 1 - sstep(0.26, 0.8, u);
+      P[B.neck * 3] += 0.22 * k; P[B.head * 3] += 0.14 * k;
+    } else if (st.gesture === 'shake' && u >= 0 && u < 2) {
+      // two slow turns each way, the head a little bowed
+      const k = sstep(0, 0.25, u) * (1 - sstep(1.45, 2, u));
+      P[B.neck * 3 + 1] += 0.3 * k * Math.sin(u * TAU / 0.8); P[B.head * 3 + 1] += 0.1 * k * Math.sin(u * TAU / 0.8 - 0.4);
+      P[B.neck * 3] += 0.08 * k;
+    }
+  }
   // apply
   const bones = m.bones;
   for (let b = 0; b < NB; b++) bones[b].rotation.set(P[b * 3], P[b * 3 + 1], P[b * 3 + 2]);

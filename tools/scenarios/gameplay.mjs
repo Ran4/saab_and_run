@@ -1197,10 +1197,19 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
     },
 
     // Small talk by day: nothing thanks Ove early, no cat before day 4, Adrian's car-buying lines
-    // retired after day 5, no "god morgon"; the 'katten' errand only from day 4.
+    // retired after day 5, no "god morgon"; the 'katten' errand only from day 4. Ove's answers
+    // (features/implemented/smaprat.md): every line that can be said has one whose tag holds that day
+    // (so the spare grunts are never used), the same patterns hold for the answers and the exchanges
+    // that go on (by who says them), and he thaws: Sara's snowman, Parvaneh's dinner and saffransris,
+    // Anita's "Rune sov dåligt".
     async smalltalk() {
-      const r = await ev(() => {
-        const g = __game, m = g.missions, out = {};
+      const r = await ev(async () => {
+        const S = await import('./src/game/script.js');
+        const g = __game, m = g.missions, out = {}, noAnswer = {};
+        // the answers (and the lines after them) to a line whose tags hold now: [[who, text], ...]
+        const answers = (k, line) => (S.CHATTER_REPLY[k]?.[line] || []).filter((a) => typeof a === 'string' || !a[1] || S.whenOk(a[1], m)).map((a) => (typeof a === 'string' ? [['ove', a]] : [['ove', a[0]], ...(a[2] || [])]));
+        // (day 1's outro again: "what did you eat yesterday" is true on any day)
+        const anyDay = new Set(['Vad åt du i går då?']);
         // [pattern, from, to (missions.index; to exclusive), keys (all if absent), gate (true: only with
         // the next day dawned, false: only the evening before, undefined: either)]
         const NEW = ['parvaneh', 'patrick', 'sara', 'nasanin'];
@@ -1220,20 +1229,49 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
             m.index = day; m.gateOpen = gate;
             const seen = new Set();
             for (const k of Object.keys(g.npcs)) for (let i = 0; i < 300; i++) for (const l of g.chatterFor(k)) seen.add(`${k}: ${l}`);
-            const hits = [];
+            // (Anita once Rune is dead: her grief's lines)
+            g.runeDead = true;
+            for (const l of g.chatterFor('anita')) seen.add(`anita: ${l}`);
+            g.runeDead = false;
+            const hits = [], said = new Set(seen);
             for (const l of seen) {
+              const k = l.split(':')[0], text = l.slice(k.length + 2), a = answers(k, text);
+              if (!a.length) (noAnswer[`${day}${gate ? '' : ' (evening)'}`] ||= []).push(l);
+              for (const lines of a) for (const [who, t] of lines) if (t && !anyDay.has(t)) said.add(`${who}: ${t}`);
+            }
+            for (const l of said) {
               const k = l.split(':')[0], text = l.slice(k.length + 2);
               for (const [re, from, to, keys, gt] of bad) if (re.test(text) && day >= from && day < to && (!keys || keys.includes(k)) && (gt === undefined || gt === gate)) hits.push(l);
             }
             if (hits.length) out[`${day}${gate ? '' : ' (evening)'}`] = hits;
           }
         }
+        // Ove thawing: the answers (g.chatReply, picked at random: 60 tries) by days done
+        const thaw = {}, THAW = [
+          ['sara', 'Ove! Kom och bygg snögubbe!', (d) => (d < 4 ? ['Nej.'] : d < 6 ? ['Sen.'] : ['...En liten då.'])],
+          ['parvaneh', 'Flickorna vill att du kommer på middag. Jag med.', (d) => (d < 5 ? ['Jag äter klockan fem.'] : ['...Vad blir det?'])],
+          ['parvaneh', 'Hej Ove! Vill du ha lite saffransris? Jag har gjort för mycket.', (d) => (d < 5 ? ['Jag har mat.', 'Lådan står diskad på trappan.'] : ['Jag har mat.', '...Ställ det på bänken.'])],
+          ['anita', 'Rune sov dåligt i natt.', (d) => (d < 3 ? ['Det är för kallt hos er. Det är elementen.'] : ['Mm.'])],
+        ];
+        for (const [k, line, want] of THAW) {
+          const row = [];
+          for (let day = 0; day <= 7; day++) {
+            m.index = day; m.gateOpen = true;
+            const got = new Set();
+            for (let i = 0; i < 60; i++) got.add(g.chatReply(k, line).text);
+            const ok = JSON.stringify([...got].sort()) === JSON.stringify(want(day).slice().sort());
+            row.push(`${day}: ${[...got].sort().join(' / ')}${ok ? '' : ' (WRONG)'}`);
+          }
+          thaw[`${k}: ${line}`] = row;
+        }
         m.index = 0; m.gateOpen = gate0;
         const day0 = {};
         for (const k of NEW) day0[k] = g.chatterFor(k).slice();
-        return { hits: out, day0 };
+        return { hits: out, day0, noAnswer, thaw };
       });
       console.log('[t] smalltalk forbidden lines', JSON.stringify(r.hits), verdict('smalltalk', !Object.keys(r.hits).length));
+      console.log('[t] smalltalk lines without an answer that day', JSON.stringify(r.noAnswer), verdict('smalltalk answers', !Object.keys(r.noAnswer).length));
+      for (const [l, row] of Object.entries(r.thaw)) console.log('[t] smalltalk thaw', l, '|', row.join(' | '), verdict(`smalltalk thaw ${l}`, !row.some((x) => x.includes('WRONG'))));
       console.log('[t] smalltalk day 0', JSON.stringify(r.day0));
       // Every errand's availability by day (missions.index 0..7): the day gates (DESIGN 4.3)
       const k = await ev(async () => {

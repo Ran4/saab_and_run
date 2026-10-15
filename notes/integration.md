@@ -52,7 +52,7 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
 - **Neighbours** at their homes (`HOMES` in main.js): Parvaneh, Patrick, Sara and Nasanin by
   parvanehHouse; Jimmy; Adrian at adrianSpot; Anita with Rune (wheelchair) at runeHouse; Anders;
   Vita skjortan outside Kommunhuset. They turn to Ove, greet him one at a time (CHATTER), E =
-  "Småprata med X" (a line and an Ove grunt), name tags within 9 m, teal dots on the minimap. The
+  "Småprata med X" (a line and Ove's answer to it: see *Small talk answered* at the end), name tags within 9 m, teal dots on the minimap. The
   current mission giver stands at the mission's spot with the amber marker and waves.
 - **On foot**: walk 3.2, spring (run, Shift) 5.5, pushing Rune 3.0 (3.6 with Shift), one jump (apex
   0.55 m, no double jump; half a second's wind-up standing, the grunt at the push, a press never
@@ -913,3 +913,37 @@ script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
 - Tests: scenarios/rune.mjs `runeroll runekick runecar runecold runewidow` (+ `runelook`: close-ups,
   no checks); `?runedead` (tests) starts with him dead: `QUERY='&runedead' node tools/shot.mjs story`.
   gameplay.mjs `errands` takes hold with E.
+
+## Small talk answered (feature smaprat, features/implemented/smaprat.md)
+
+- **The answers** are data: script.js `CHATTER_REPLY[who][line]` = a pool of answers, each `text`,
+  `[text, tag]` or `[text, tag | null, [LINE...]]` (the exchange goes on, in turn), `''` = Ove says
+  nothing. Every line of `CHATTER`, `CHATTER_FIRST`, `CHATTER_AFTER` and `WIDOW.chatter` has one; some
+  thaw with the days (Sara's snowman Nej. / Sen. / ...En liten då.; Parvaneh's dinner and saffransris;
+  Anita's "Rune sov dåligt" sets up day 3 until it). `CHATTER_ENOUGH` ("Nu har vi pratat."),
+  `CHATTER_SPARE` (OVE_REPLY without the rising "Jaha.": a line with no answer, i.e. only
+  `CHATTER_FALLBACK` from anyone but Anita). `OVE_REPLY` itself is unchanged (luftning.js and
+  hoppbacke.js pick from it by position).
+- **main.js**: `pickChatter(n)` = the neighbour's line, not among the last ⌊k/2⌋ said of the k they
+  may say now (`n.chatSaid`) and never the last one (else one from both lists: `chatterFor(key, true)`).
+  `chatReply(key, line)` = `{ text, then }`. `chat(n)` (E) starts `game.chatX = { n, u, steps, i, due,
+  ms, self }`; `tickChat()` (every frame, after `slideTalk`) says the next step once the last has been
+  said: with the voices 0.45 s after its clip (none if it was dropped or cut > 0.25 s), without them 2 s
+  after the neighbour's line, then 1.6 s a line. It breaks off (`chatX = null`) when Ove is > 6 m off,
+  in a car, not `normal`, a dialogue is up, `missions.state` changed, the neighbour is not `normal`, or
+  `cold.busy`. A silence is `oveGesture(CHAT_SILENT[key])` (Rune a nod, Vita skjortan a shake, Anita in
+  grief a nod, Parvaneh's "Andas." nothing); `CHAT_GESTURE` nods / shakes with a few short answers.
+- **Enough**: E counts per neighbour (`n.chatEs`, 60 s); the fourth: they say nothing, Ove says
+  `CHATTER_ENOUGH`, `n.chatLock` = 20 s: `nearestInteractable` skips them (no E prompt) and their own
+  small talk is hushed. It also skips the neighbour `chatX` is talking with (the prompt is back when the
+  exchange is over).
+- **Their own small talk** (syncAll) goes through `pickChatter` too, is hushed while `chatX` runs, and
+  is answered 35 % of the time when Ove is within 4 m on foot, `normal`, no dialogue: a one-step
+  `chatX` (`self`: no turning to them, no exchange after it, a silence is nothing).
+- **Bubbles** stack (hud.js `tickBubbles`): the answer stays by Ove, the line it answers moves up.
+- Tests: scenarios/smaprat.mjs `smaprat` (real E presses: every neighbour out on days 0/2/4/6, the
+  exchanges, the silences and their gestures, "Nu har vi pratat." and 20 s without them, 40 E on Rune,
+  their own small talk answered at 3 m and never at 5 m, broken off by walking off / the Saab;
+  close-ups) and `smapratvoice` (&voice: clips, none cut, never two voices at once, each line ≥ 0.4 s
+  after the last); gameplay.mjs `smalltalk` (every line has an answer each day, the forbidden lines
+  checked on the answers too, the thaw by day).

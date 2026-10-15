@@ -252,7 +252,10 @@ Prompt / toasts / banners / misc
   the HUD cards, the objective too since round 2b, fade out), `hud.curtain(on, caption)` (the cut to
   black; round 2b: sets `#hud.curtain`, the whole HUD fades out with the picture, the caption, a
   banner and the dialogue stay),
-  `hud.say(target, text, secs)` + `hud.tickBubbles()` (speech bubbles).
+  `hud.say(target, text, secs)` + `hud.tickBubbles()` (speech bubbles). Bubbles that would cover
+  each other on screen are stacked (feature smaprat: Ove answering the neighbour beside him): the
+  newest stays by its speaker, an older one moves up above it (newest first, at most 8 passes, never
+  above the screen's top).
 - `hud.runDialog(lines, game)` — unchanged contract (`game.charDef`, `setTalker`, `onFrame`,
   `offFrame`, `input.pressed('skip')`, `autoDialog`). The voice is one `audio.talk(voice)` per
   **word** (at a word start, at most one per 0.22 s): a soft murmur under the text, not a blip per

@@ -59,7 +59,13 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `tractor`, features/implemented/snotraktor.md: `traktor` = real keys, 16 checks: E in (one seat),
   out of its bay and the lot, the 40 km/h cap, the car-free walkway without Ordning lost, the blade's
   spray on snow, horn, beacon, E out; `traktorlook` close-ups and the LOD; `traktorplog` the spray);
-  run `traktor seatlegs` after touching the tractor, the wheels, seating or the lot.
+  run `traktor seatlegs` after touching the tractor, the wheels, seating or the lot. smaprat.mjs
+  (Ove answers small talk, features/implemented/smaprat.md: `smaprat` = real E presses at every
+  neighbour out on days 0/2/4/6, the exchanges that go on, the silences (a nod, a shake), "Nu har vi
+  pratat." and 20 s without them, 40 E on Rune, their own small talk answered, broken off; close-ups
+  `smaprat_*.png`; `smapratvoice` = the same with the clips: none cut, never two voices at once);
+  run `smaprat smalltalk` after touching small talk, `CHATTER*` or the bubbles, `smapratvoice` after
+  touching the voices' turns.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -86,9 +92,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
   take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 30 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
-  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (522 lines, 16 665 chars on
-  2026-10-14 with Anita's grief; with the pool and the children's voices 1 384 lines, 1 383 clips on
-  2026-10-15). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (586 lines, 17 843 chars on
+  2026-10-15 with Ove's small-talk answers; with the pool and the children's voices 1 448 lines,
+  1 447 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
   retry: < 5 % cut off, no two voices at once; `TO=7` all seven days; `LUFTSKIP=s`: the
   reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line; a
@@ -201,6 +207,12 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   horn (audio.js `HORNS`), smitare are spooked or pressed, needless honking costs Ordning. People's
   reactions run through `horn.drive(ch, dt, ped)` (called first by `Ped.update` and `stepNpcs`);
   `horn.last` is the latest honk (a pickup comes out to the car); `horn.rand` / `horn.stats` for tests.
+- **Small talk** (main.js `chat` / `tickChat`, script.js `CHATTER_REPLY`; features/implemented/smaprat.md):
+  E at a neighbour = their line (`pickChatter`: not one said lately), Ove's answer to that line (some
+  thaw with the days) and the exchange if it goes on (`game.chatX`: the next line 0.45 s after a clip;
+  broken off by walking off, a car, a dialogue, a day); a silence is a nod or a shake (`anim.gesture`);
+  the fourth E in a minute is "Nu har vi pratat." and 20 s without them; their own small talk is
+  answered 35 % of the time within 4 m. Overlapping bubbles stack (hud.js). notes/integration.md.
 - **Voices** (`voice.js`): `game.say` / `radio` / `shout`, the dialogue box and the phone calls go
   through `voice.play(who, text, { slot, mode, ... })`: two slots ('main', 'bubble'), a queue (a
   dialogue line breaks in; radio waits up to 6 s, a bubble 2.5 s; the same speaker waits for

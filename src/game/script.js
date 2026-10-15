@@ -38,6 +38,8 @@
 //   ANSWER, DONE     Ove picks up the phone / has done an errand
 //   CHATTER[who]     small talk (POOL of text | WHEN)   CHATTER_FIRST[who]  before day 1's scene
 //   CHATTER_AFTER[who] = [days done, POOL, replace]     CHATTER_FALLBACK  when nothing else fits
+//   CHATTER_REPLY[who][line]   Ove's answer to each line of small talk (and the exchanges that go on)
+//   CHATTER_ENOUGH, CHATTER_SPARE   the fourth chat in a minute; an answer to a line with none
 //   OVE_REPLY, TYRE, SLID, OVE_HOPP, GARAGE_DOOR, OVE_START    Ove's own reactions
 //   OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID, PANIC   people hit, kicked,
 //                    shoved, carjacked, nearly run over
@@ -54,7 +56,8 @@
 //   allLines()       [[who, text, part], ...]: every line the code can say, deduplicated on who +
 //                    text (the first one wins). part: 'day1' .. 'day7' (all of STORY), then
 //                    'chatterFirst', 'chatter', 'chatterAfter', 'errands', 'calls' (ANSWER, DONE),
-//                    'reactions' (Ove's own), 'patrol', 'peds', 'horn', 'stages', 'widow'. A CALL's reply is
+//                    'reactions' (Ove's own), 'waking', 'patrol', 'peds', 'horn', 'stages', 'widow',
+//                    'chatterReply' (CHATTER_REPLY's new lines, CHATTER_ENOUGH). A CALL's reply is
 //                    its own ['ove', reply, part]. The fallbacks (ERRAND_BUSY, CHATTER_FALLBACK,
 //                    HONK_PASSENGER_ANY) are in it only for a speaker who can get to them (nobody
 //                    today). Keep it complete: a new table goes in here too.
@@ -440,10 +443,134 @@ export const CHATTER_AFTER = {
 // When none of a neighbour's lines fit (never today: each has a line in CHATTER without a tag).
 export const CHATTER_FALLBACK = 'Hej, Ove.';
 
+// Ove's answer to small talk (main.js chat; features/implemented/smaprat.md): CHATTER_REPLY[who][line]
+// = POOL of ANSWERs, one picked among those whose tag holds. ANSWER = text | [text, tag] |
+// [text, tag | null, [LINE, ...]]: with LINEs the exchange goes on, in turn. '' = Ove says nothing
+// (main.js: Rune gets a nod, Vita skjortan a shake of the head, Anita in her grief a nod). Every line
+// in CHATTER, CHATTER_FIRST, CHATTER_AFTER and WIDOW.chatter has one (the smalltalk scenario checks),
+// and some change with the days as Ove thaws (the tags count days done, as above).
+export const CHATTER_REPLY = {
+  parvaneh: {
+    'Hej! Vi har precis flyttat in.': ['Det har jag sett.'],
+    // (day 1's intro: "Tjugo minuter. Jag har tagit tid.")
+    'Han har backat i en kvart nu. Minst.': ['Sjutton minuter.'],
+    // (she is talking to Patrick)
+    'Patrick, älskling. Andas.': [''],
+    // (the first plays day 1's outro again)
+    'Hej Ove! Vill du ha lite saffransris? Jag har gjort för mycket.': [
+      ['Jag har mat.', null, [['parvaneh', 'Vad åt du i går då?'], ['ove', '...Mat.']]],
+      ['Lådan står diskad på trappan.', 'before5'], ['...Ställ det på bänken.', 'after5']],
+    'Ove, du ser nästan glad ut i dag.': ['Det gör jag inte.'],
+    'Patrick har klättrat upp på en stege igen. Titta inte.': ['Är det min stege?'],
+    'Flickorna vill att du kommer på middag. Jag med.': [['Jag äter klockan fem.', 'before5'], ['...Vad blir det?', 'after5']],
+    'Första körlektionen på måndag, Ove! Jag har redan köpt en övningskörningsskylt.': ['Manuell växellåda. Inget fusk.'],
+    'Patrick försöker knyta skorna med en hand. Det är bättre än tv.': ['Kardborreband.'],
+    'Tack för hjälpen med släpet. Igen.': ['Hmpf. Ni är skyldiga mig en brevlåda.'],
+  },
+  patrick: {
+    'Jag har köpt en bok om att backa med släp. Den har bilder.': ['Läs den.'],
+    'Vänster... nej. Höger. Eller?': ['Vänster.'],
+    'Hur svårt kan det vara att backa ett släp?': ['Tydligen väldigt svårt.'],
+    // (the questioning "Jaha.", for once in its place)
+    'Hej Ove! Jag skulle bara... nej, det var inget.': ['Jaha.'],
+    'Släpet står helt rakt. Jag har tagit en bild på det.': ['Det står fyra centimeter snett.'],
+    'Jag är IT-konsult. Jag kan starta om saker. Det är ungefär allt.': ['Det har jag märkt.'],
+    'Har du en insexnyckel? Jag ska bara montera en garderob. Tror jag.': [['Vilken storlek?', null, [['patrick', 'Det finns... storlekar?']]]],
+    'Armen kliar under gipset. Hela tiden.': ['Rör den inte.'],
+    'Parvaneh säger att jag inte får gå upp på stegar mer. Någonsin.': ['Klok kvinna.'],
+    'Tack för att du körde Parvaneh. Jag var... upptagen.': ['Du låg i snön.'],
+  },
+  sara: {
+    'Hej! Vi har flyttat hit!': ['Jaså.'],
+    'Pappa kan inte backa.': ['Nej.'],
+    'Vem är du?': ['Ove.'],
+    // (all week: no, later, at last a small one)
+    'Ove! Kom och bygg snögubbe!': [['Nej.', 'before4'], ['Sen.', 'after4 before6'], ['...En liten då.', 'after6']],
+    'Varför är du alltid så arg?': ['Jag är inte arg.'],
+    'Mamma säger att du är snäll inuti.': ['Mamma pratar för mycket.'],
+    'Pappa kan inte bygga snögubbar. De ramlar.': ['Ingen grund. Det är alltid grunden.'],
+    'Katten tycker om dig.': ['Katten tycker om mat.'],
+    'Får jag klappa katten?': ['Fråga katten.'],
+  },
+  nasanin: {
+    'Hej!': ['Hej.'],
+    'Snö!': ['Ja. Det är snö.'],
+    'Släpet!': ['Det står snett.'],
+    'Ove! Ove! Ove!': ['Ja?'],
+    'Snögubbe!': ['Nej.'],
+    'Ove, titta!': ['Jag tittar.'],
+    'Katten!': ['Ja. Katten.'],
+    'Kissen!': ['Den heter inte Kissen.'],
+  },
+  jimmy: {
+    'Tjena Ove! Har du ätit?': ['Klockan tolv. Som vanligt.'],
+    'Ove! Mannen själv!': ['Vem annars?'],
+    'Jag kör nyttigt nu. Typ.': ['Typ.'],
+    'Fint väder, va?': ['Nej.'],
+    'Hur mår katten? Har den fått ett namn än?': ['Den heter Katten.'],
+    'Jag köpte kattmat. Jag köpte för mycket kattmat.': ['Det märks. På katten.'],
+  },
+  adrian: {
+    'Ove, vad tycker du om Audi?': ['Plast och elektronik.'],
+    'Jag ska köpa bil snart. Vad köper man?': ['Saab.'],
+    'Kan du lära mig byta däck någon gång?': ['Det får vi se.'],
+    'Saaben startade på första försöket i morse!': ['Det är en Saab.'],
+    'Jag har kollat trösklarna. Två gånger.': ['Kolla dem en gång till.'],
+    'Jag bytte däck själv i går! Nästan.': ['Nästan är inte bytt.'],
+  },
+  anita: {
+    'Hej, Ove.': ['Hej, Anita.'],
+    // (until day 3 it sets up the radiators)
+    'Rune sov dåligt i natt.': [['Det är för kallt hos er. Det är elementen.', 'before3'], ['Mm.', 'after3']],
+    'Klä dig varmt, Ove. Det är kallt i dag.': ['Jag har jacka.'],
+    'Han frågar efter dig ibland. På sitt sätt.': ['...Hälsa honom.'],
+    // (day 3's outro: "Jag skriver det på en lapp åt er.")
+    'Det är så varmt hos oss nu, Ove.': ['Har ni lappen kvar?'],
+    'Rune sa ”Saab” igen i morse. Bara så där.': ['Han vet.'],
+    'Tack för i går, Ove.': ['Det var ingenting.'],
+    // her grief (WIDOW.chatter)
+    'Det är så tyst hemma nu, Ove.': [''],
+    'Jag dukade för två i morse. Av gammal vana.': ['Jag dukade för två i ett år. Efter Sonja.'],
+    'Hans filt ligger kvar på stolen. Jag kan inte flytta den.': ['Låt den ligga.'],
+    'Jag skulle inte ha hängt tvätt den dagen.': ['Det var inte ditt fel, Anita.'],
+    'Han sa ditt namn ibland. Visste du det?': ['...Nej. Det visste jag inte.'],
+  },
+  rune: {
+    '...': [''],
+    'Hm.': ['Hm.'],
+    '...Ove.': ['Rune.'],
+    'Volvo.': ['Saab.'],
+    // (day 3's outro)
+    '...Saab.': ['Ja, Rune. Saab.'],
+  },
+  anders: {
+    'Ove! Har du sett min nya Audi?': ['Nej.'],
+    'Föreningen har nya regler, Ove. Jag mejlar.': ['Jag har ingen mejl.'],
+    'Morsning, Ove. Fint väder för en promenad.': ['Det är ingen promenad. Det är en inspektion.'],
+    'Vi borde ha en bom vid infarten, tycker du inte?': ['Det har jag sagt i tjugo år.'],
+    'Audin var på service. Det var inget fel på den. Alls.': ['Säkert inte.'],
+    'Två Saabar i föreningen nu. Fantastiskt.': ['Det är en början.'],
+  },
+  vitskjorta: {
+    'Vi har papper på allt.': ['Jag också. I pärmar.'],
+    'Det här är en kommunal angelägenhet.': ['Det här är föreningens mark.'],
+    // (Ove looks at him and slowly shakes his head)
+    'Ha en bra dag. Tills vidare.': [''],
+    'Vi ses, Ove. Vi har tid.': ['Jag är pensionär. Jag har mer tid än ni.'],
+    'Underskriften är på väg. Den är på väg.': ['Jag väntar.'],
+  },
+};
+// The fourth time in a minute Ove is talked to by the same neighbour (they say nothing; he does).
+export const CHATTER_ENOUGH = 'Nu har vi pratat.';
+// Ove's answer to a line with none in CHATTER_REPLY (CHATTER_FALLBACK from anyone but Anita): OVE_REPLY
+// without its rising, curious "Jaha.".
+export const CHATTER_SPARE = ['Hmpf.', 'Mm.', 'Jaså.', 'Nej.', 'Det får vi se.'];
+
 // ---------------------------------------------------------------------------------------------
 // Ove's own reactions (main.js; OVE_START: patrol.js).
 
-// His grunt after a neighbour's small talk.
+// His grunts (luftning.js and hoppbacke.js pick from it by position: keep the order). Small talk has its
+// own answers now (CHATTER_REPLY).
 export const OVE_REPLY = ['Hmpf.', 'Jaha.', 'Mm.', 'Jaså.', 'Nej.', 'Det får vi se.'];
 // What Ove thinks of a car, by make (TYRE[c.kind]; Rune's own Volvo by its name). One opinion per make:
 // there is no Japanese car in the area, and "Typiskt" is used enough elsewhere.
@@ -734,5 +861,18 @@ export function allLines() {
   add(RUNE_DIES[0], RUNE_DIES[1], 'widow');
   pool('anita', [...WIDOW.chatter, ...WIDOW.sobs, ...WIDOW.honk], 'widow');
   add(WIDOW.reda[0], WIDOW.reda[1], 'widow');
+  // (last: a reply that is already said elsewhere keeps its part)
+  for (const who in CHATTER_REPLY) {
+    for (const answers of Object.values(CHATTER_REPLY[who])) {
+      for (const a of answers) {
+        const [t, tag, then] = typeof a === 'string' ? [a] : a;
+        if (tag) whenOk(tag, { index: 0, gateOpen: true });
+        if (t) add('ove', t, 'chatterReply');
+        for (const l of then || []) add(l[0], l[1], 'chatterReply');
+      }
+    }
+  }
+  add('ove', CHATTER_ENOUGH, 'chatterReply');
+  pool('ove', CHATTER_SPARE, 'chatterReply');
   return out;
 }

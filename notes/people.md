@@ -878,3 +878,9 @@ game/rune.js. New `anim` flags, all in animateCharacter's order after the shiver
   across the brow, palm to the face), the left forearm across her waist; `sob` (0..1, 1 while she
   says a sob) heaves the chest and spine at ~1.2 Hz. Off while talking (unless sobbing), on the phone
   or waving; lids 0.55 shut. Look-dev: scenarios/rune.mjs `runelook` (rune_look_*.png).
+- `anim.gesture` (`'nod'` | `'shake'`) from `anim.gestureAt` (= `anim.t` when it starts; main.js
+  `oveGesture`, feature smaprat: Ove's silent answers to small talk, and with "Nej." / "Mm." / "Ja?" /
+  "Hej."): after `st.look`, not while down or flung. Nod: neck +0.22, head +0.14 rad, down in 0.16 s,
+  back up by 0.8 s. Shake: neck yaw ±0.3 (head ±0.1, a little behind) at 0.8 s a turn, in and out
+  over 2 s, the neck bowed 0.08. Close-ups: scenarios/smaprat.mjs `smaprat` (smaprat_nod*.png,
+  smaprat_shake*.png).

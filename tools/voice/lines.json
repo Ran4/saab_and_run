@@ -31,6 +31,11 @@
   "Kiss, kiss... Hmpf.": {
    "retake": 2,
    "auto": true
+  },
+  "Typ.": {
+   "retake": 1,
+   "tts": "[deadpan] Typ.",
+   "note": "smaprat: take 0 mättes som stigande (116 -> 256 Hz), men det höga var p:ets utandning, inte rösten; omtagen torrt ([deadpan]) ändå. Tonen faller 112 -> 80 Hz."
   }
  },
  "anders": {

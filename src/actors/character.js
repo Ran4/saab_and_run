@@ -89,6 +89,7 @@ export class Character {
       shiver: 0,                                       // the cold (game/cold.js): 0..1
       slump: false, coast: false,                      // dead in his wheelchair; rolling free (game/rune.js)
       grief: false, sob: 0,                            // Anita without Rune: a hand to her face, sobbing 0..1
+      gesture: null, gestureAt: -9,                    // a nod / a shake of the head from t = gestureAt (main.js chat)
     };
     this.car = null;
     this.topple = 0; this.toppleW = 0;

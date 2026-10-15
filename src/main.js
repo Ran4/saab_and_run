@@ -35,11 +35,16 @@ import { Bang, Beacon, GuideArrow } from './game/markers.js';
 import { clamp, dist, yawTo, pick, dampAngle, angleDiff } from './util.js';
 import { HANDLE as DOOR_HANDLE } from './world/garagedoor.js';
 import {
-  CHATTER, CHATTER_FIRST, CHATTER_AFTER, CHATTER_FALLBACK, whenOk, OVE_REPLY, SLID, TYRE, GARAGE_DOOR, WIDOW,
+  CHATTER, CHATTER_FIRST, CHATTER_AFTER, CHATTER_FALLBACK, CHATTER_REPLY, CHATTER_ENOUGH, CHATTER_SPARE, whenOk, SLID, TYRE,
+  GARAGE_DOOR, WIDOW,
   OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID,
 } from './game/script.js';
 
 const STEP = 1 / 60;
+// Ove's head with his small talk (chat, features/implemented/smaprat.md): his silence by whom he isn't
+// answering (Parvaneh's "Andas." is for Patrick: nothing), and a few short answers.
+const CHAT_SILENT = { rune: 'nod', vitskjorta: 'shake', anita: 'nod' };
+const CHAT_GESTURE = { 'Nej.': 'shake', 'Mm.': 'nod', 'Ja?': 'nod', 'Hej.': 'nod', 'Hej, Anita.': 'nod' };
 // At most two fixed steps per frame: a slow frame is caught up once, never with a burst of four that
 // makes the next frame slower still (on a laptop update grew 2.5 -> 4.6 -> 9.8 ms that way).
 const MAX_STEPS = 2;
@@ -1403,6 +1408,7 @@ class Game {
     this.updateHud(dt);
     this.updateAudio(dt);
     this.slideTalk(dt);
+    this.tickChat();
     this.recycleTraffic(dt);
     this.saveT = (this.saveT || 0) + dt;
     if (this.saveT > 30) { this.saveT = 0; this.save(); }
@@ -1469,35 +1475,106 @@ class Game {
     else if (it.type === 'garage') this.useGarage();
   }
 
-  // The lines a neighbour may say now (see CHATTER, CHATTER_FIRST, CHATTER_AFTER).
-  chatterFor(key) {
+  // The lines a neighbour may say now (see CHATTER, CHATTER_FIRST, CHATTER_AFTER): from the day in
+  // CHATTER_AFTER on, its lines 60 % of the time; both: everything they may say now, from either list.
+  // (A reused array: read it at once.)
+  chatterFor(key, both = false) {
     const m = this.missions;
     // (Anita once Rune is dead: game/rune.js)
     if (key === 'anita' && this.runeDead) return WIDOW.chatter;
     if (m.index === 0 && CHATTER_FIRST[key]) return CHATTER_FIRST[key];
-    const later = CHATTER_AFTER[key];
-    const list = later && m.index >= later[0] && (later[2] || Math.random() < 0.6) ? later[1] : CHATTER[key];
+    const later = CHATTER_AFTER[key], base = CHATTER[key] || [];
+    const lists = !(later && m.index >= later[0]) ? [base] : later[2] ? [later[1]] : both ? [later[1], base] : [Math.random() < 0.6 ? later[1] : base];
     const out = (this._chatter ||= []);
     out.length = 0;
-    for (const l of list || []) if (typeof l === 'string') out.push(l); else if (whenOk(l[1], m)) out.push(l[0]);
-    if (!out.length && list !== CHATTER[key]) for (const l of CHATTER[key] || []) if (typeof l === 'string' || whenOk(l[1], m)) out.push(typeof l === 'string' ? l : l[0]);
+    for (const list of lists) for (const l of list) if (typeof l === 'string') out.push(l); else if (whenOk(l[1], m)) out.push(l[0]);
+    if (!out.length && !lists.includes(base)) for (const l of base) if (typeof l === 'string' || whenOk(l[1], m)) out.push(typeof l === 'string' ? l : l[0]);
     if (!out.length) out.push(CHATTER_FALLBACK);
     return out;
   }
 
-  // Small talk with a neighbour: a line from them, a grunt from Ove.
+  // A neighbour's next line, one they haven't said lately (n.chatSaid, the latest last): not among the
+  // last ⌊k/2⌋ said of the k they may say now, and never the one they said last time (when the 60 %
+  // list has nothing else, one from the other: Rune's only later line is "...Saab.").
+  pickChatter(n) {
+    const said = (n.chatSaid ||= []), last = said[said.length - 1];
+    const list = this.chatterFor(n.key), k = Math.floor(list.length / 2), recent = k ? said.slice(-k) : [];
+    let ok = list.filter((l) => l !== last && !recent.includes(l));
+    if (!ok.length) ok = this.chatterFor(n.key, true).filter((l) => l !== last);
+    const line = ok.length ? pick(ok) : last;
+    said.push(line);
+    if (said.length > 8) said.shift();
+    return line;
+  }
+
+  // Ove's answer to a neighbour's line (script.js CHATTER_REPLY): { text ('' = he says nothing), then:
+  // [LINE...] the exchange going on, or null }. A line with no answer gets a grunt (CHATTER_SPARE).
+  chatReply(key, line) {
+    const m = this.missions;
+    const ok = (CHATTER_REPLY[key]?.[line] || []).filter((a) => typeof a === 'string' || !a[1] || whenOk(a[1], m));
+    if (!ok.length) return { text: pick(CHATTER_SPARE), then: null };
+    const a = pick(ok);
+    return typeof a === 'string' ? { text: a, then: null } : { text: a[0], then: a[2] || null };
+  }
+
+  // Small talk with a neighbour (E; features/implemented/smaprat.md): a line from them, Ove's answer to
+  // it, and the rest of the exchange if it goes on (tickChat). The fourth time within a minute they
+  // say nothing and Ove has had enough: then they are left alone for 20 s (no E, none of their own
+  // small talk).
   chat(n) {
     if ((n.chatCD || 0) > this.time) return;
     n.chatCD = this.time + 3;
     n.yaw = yawTo(this.player.x - n.x, this.player.z - n.z);
     this.player.yaw = yawTo(n.x - this.player.x, n.z - this.player.z);
-    const line = pick(this.chatterFor(n.key));
-    const u = this.say(n, line, 2.8);
-    const reply = () => { if (!this.playerCar && !this.inDialog) { const r = pick(OVE_REPLY); this.say(this.player, r, 1.6); this.murmur(CHARS.ove.voice); } };
-    // (Ove grunts his answer once they have said their piece; without the voices, after 2 s)
-    if (u) u.ended.then(() => { if (u.state === 'done') setTimeout(reply, 450); });
-    else { for (let k = 0; k < 3; k++) setTimeout(() => audio.talk(n.def.voice || 300), k * 230); setTimeout(reply, 2000); }
     n.chatT = 12 + Math.random() * 8;
+    this.chatX = null;
+    const es = (n.chatEs ||= []);
+    while (es.length && es[0] < this.time - 60) es.shift();
+    if (es.length >= 3) {
+      es.length = 0;
+      n.chatLock = this.time + 20;
+      this.say(this.player, CHATTER_ENOUGH, 1.8);
+      this.murmur(CHARS.ove.voice);
+      return;
+    }
+    es.push(this.time);
+    const line = this.pickChatter(n), u = this.say(n, line, 2.8);
+    if (!u) for (let k = 0; k < 3; k++) setTimeout(() => audio.talk(n.def.voice || 300), k * 230);
+    const r = this.chatReply(n.key, line);
+    this.chatX = { n, u, steps: [['ove', r.text], ...(r.then || [])], i: 0, due: u ? 0 : this.time + 2, ms: this.missions.state, self: false };
+  }
+
+  // Small talk going on (chat, or a neighbour's own that Ove answers): the next line once the last has
+  // been said. With the voices 0.45 s after its clip (and none if it was cut off or dropped), without
+  // them 2 s after the neighbour's line and 1.6 s after each one after that. It breaks off when Ove
+  // walks off (6 m), gets into a car or is knocked over, a dialogue or a day begins, the neighbour is
+  // taken up with something else, or the cold has him. A silence is a nod or a shake of the head.
+  tickChat() {
+    const x = this.chatX;
+    if (!x) return;
+    const n = x.n, p = this.player;
+    if (this.playerCar || p.state !== 'normal' || this.inDialog || this.missions.state !== x.ms || n.state !== 'normal' || this.cold.busy || dist(n.x, n.z, p.x, p.z) > 6) { this.chatX = null; return; }
+    if (x.u) {
+      if (x.u.state === 'queued' || x.u.state === 'playing') return;
+      if (x.u.state === 'dropped' || x.u.rec.cut > 0.25) { this.chatX = null; return; }
+      x.u = null;
+      x.due = this.time + 0.45;
+    }
+    if (this.time < x.due) return;
+    if (x.i >= x.steps.length) { this.chatX = null; return; }
+    const [who, text] = x.steps[x.i++];
+    if (!text) { if (!x.self) this.oveGesture(CHAT_SILENT[n.key]); this.chatX = null; return; }
+    const ove = who === 'ove', ch = ove ? p : this.npc(who) || n;
+    x.u = this.say(ch, text, ove ? 1.6 : 2.8);
+    if (ove) { this.murmur(CHARS.ove.voice); this.oveGesture(CHAT_GESTURE[text]); }
+    else if (!x.u) for (let k = 0; k < 3; k++) setTimeout(() => audio.talk(ch.def.voice || 300), k * 230);
+    x.due = this.time + 1.6;
+  }
+  // A nod or a shake of Ove's head (models.js st.gesture).
+  oveGesture(kind) {
+    if (!kind) return;
+    const a = this.player.anim;
+    a.gesture = kind; a.gestureAt = a.t;
   }
 
   nearestInteractable() {
@@ -1529,6 +1606,8 @@ class Game {
     for (const k in this.npcs) {
       const n = this.npcs[k];
       if (n.car || n.state !== 'normal' || this.companions.has(n)) continue;
+      // (not while they are talking with Ove, nor for 20 s after he has had enough: chat)
+      if (this.chatX?.n === n || (n.chatLock || 0) > this.time) continue;
       const d = dist(n.x, n.z, p.x, p.z);
       if (d < nd) { nd = d; nb = { type: 'chat', who: n }; }
     }
@@ -2091,8 +2170,19 @@ class Game {
           // One neighbour at a time: nobody talks over anybody else.
           // Not within 6 m of the day's giver either (the intro would cut it off), and not over anybody.
           const gv = this.missions.offered && this.npc(this.missions.offered.giver);
-          const hush = (gv && dist(gv.x, gv.z, p.x, p.z) < 6) || !voice.quiet();
-          if (n.chatT <= 0 && this.time > (this.chatGlobalT || 0) && !hush) { n.chatT = 16 + Math.random() * 10; this.chatGlobalT = this.time + 4.5; const u = this.say(n, pick(this.chatterFor(k)), 2.8); if (u) this.chatGlobalT = Math.max(this.chatGlobalT, this.time + u.dur + 1); }
+          // Nor while Ove is talking with somebody, nor for 20 s after he has had enough of them (chat).
+          const hush = (gv && dist(gv.x, gv.z, p.x, p.z) < 6) || !voice.quiet() || !!this.chatX || (n.chatLock || 0) > this.time;
+          if (n.chatT <= 0 && this.time > (this.chatGlobalT || 0) && !hush) {
+            n.chatT = 16 + Math.random() * 10; this.chatGlobalT = this.time + 4.5;
+            const line = this.pickChatter(n), u = this.say(n, line, 2.8);
+            if (u) this.chatGlobalT = Math.max(this.chatGlobalT, this.time + u.dur + 1);
+            // Now and then Ove, close by on foot, answers as he would to E (but not turning to them, and
+            // no more after that); a silence is nothing at all.
+            if (near < 4 && p.state === 'normal' && !this.inDialog && Math.random() < 0.35) {
+              const r = this.chatReply(k, line);
+              if (r.text) this.chatX = { n, u, steps: [['ove', r.text]], i: 0, due: u ? 0 : this.time + 2, ms: this.missions.state, self: true };
+            }
+          }
         } else if (near > 14) n.chatT = undefined;
       }
       n.sync(dt);

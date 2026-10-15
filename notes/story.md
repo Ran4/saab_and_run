@@ -436,9 +436,8 @@ beats in `T` (s from the press):
   radiator (each knock drives it in 6 cm), a palm on its top, the key pinched (its turn rolls the
   palm), the cup round its side. Rune's doze and jerk and Anita's lean and nod are added to their
   bones after `animateCharacter`. The cat is `buildCat()`, sitting, its head turned after `animate`.
-- **Said**: only Ove's two grunts, his small-talk replies from script.js `OVE_REPLY` ("Mm.",
-  "Hmpf."), already voiced: `g.say` on a point over his head (a bubble; the murmur with the voices
-  off). Nothing new for the voice tool.
+- **Said**: only Ove's two grunts from script.js `OVE_REPLY` ("Mm.", "Hmpf."), already voiced:
+  `g.say` on a point over his head (a bubble; the murmur with the voices off). Nothing new for the voice tool.
 - **Sounds** (`RADIATOR`, made with `audio.synth`): knock (hollow steel), thud (full), gurgle,
   key (tick, squeak, tick), hiss (`stop()`-able: a fluttering band of noise and a thin whistle
   that sags with the pressure), sputter, drip (pitch by the water level), spurt, Rune's snort.

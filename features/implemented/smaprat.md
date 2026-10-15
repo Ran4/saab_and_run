@@ -1,6 +1,94 @@
 # Småprat: Ove svarar på det grannen faktiskt säger
 
-> **Status: förslag (2026-10-14).** Inget är byggt.
+> **Status: byggt (2026-10-15).** Avsnittet *Hur det blev* nedan säger vad som gjordes och vad som
+> skiljer sig från förslaget. Resten är förslaget som det skrevs, med svaren i tabellerna.
+
+## Hur det blev
+
+Allt i förslaget är byggt: ett svar på varje replik (`CHATTER_REPLY` i `script.js`), upptiningen,
+fortsättningarna, tystnaderna med nick och huvudskakning, minnet av vad grannen sagt, "Nu har vi
+pratat." med 20 s utan grannen, och svar när grannen börjar själv. Skillnader och tillägg:
+
+- **Anitas sorg.** `WIDOW.chatter` (Anita när Rune är död, från roligare_runeuppdrag) kom till efter
+  att förslaget skrevs. Hennes fem repliker fick också svar, så att reserven aldrig används:
+  - "Det är så tyst hemma nu, Ove." → *(tystnad, en nick)*
+  - "Jag dukade för två i morse. Av gammal vana." → "Jag dukade för två i ett år. Efter Sonja."
+  - "Hans filt ligger kvar på stolen. Jag kan inte flytta den." → "Låt den ligga."
+  - "Jag skulle inte ha hängt tvätt den dagen." → "Det var inte ditt fel, Anita."
+  - "Han sa ditt namn ibland. Visste du det?" → "...Nej. Det visste jag inte."
+- **Röster:** 64 nya klipp (63 Ove, 1 Patrick), 1 178 tecken, inte 60. Alla blev godkända i första
+  tagningen. "Typ." togs om (`lines.json`: `[deadpan] Typ.`, 14 credits), så det kostade 1 192
+  credits totalt. Manuset är nu 586 repliker och 17 843 tecken; med poolen 1 448 repliker och
+  1 447 klipp.
+- **Tonhöjden** mättes på alla svar (Praat; första och sista 30 % av de tonande ramarna, och kurvan
+  ram för ram):
+  - Frågorna stiger, som de ska: "Ja?" (+8 halvtoner), "...Vad blir det?", "Vilken storlek?" och
+    Patricks "Jaha." (+10).
+  - "Det står snett." och "Ja. Det är snö." såg ut att stiga (+4), men kurvan visar en topp på sista
+    ordet som faller tillbaka. De slutar lågt och fick stå kvar.
+  - "Typ." såg ut att stiga till falsett (116 → 256 Hz). Det höga var p:ets utandning, inte rösten:
+    dess "tonhöjd" följde mätarens tak (270 Hz med 300, 450 Hz med 500). Den togs om ändå, och den
+    nya tagningen faller 112 → 80 Hz.
+  - Taligenkänningen hörde "Sen." som "Senator" (0,97 s, fallande) och Oves "Hm." som "Mm.". Båda
+    står på granskningslistan (`make voice-review`). Någon behöver lyssna på dem.
+- **`OVE_REPLY` är orörd.** `luftning.js` och `hoppbacke.js` plockar ur den efter position.
+  Reserven är en egen lista, `CHATTER_SPARE`, som är `OVE_REPLY` utan "Jaha.". Delen
+  `'chatterReply'` ligger sist i `allLines()`, så repliker som redan fanns behåller sin gamla del.
+- **Gesterna** sitter i `models.js`: `st.gesture` ('nod' | 'shake') från `st.gestureAt`, lagt
+  ovanpå `st.look`. Nicken går ner på 0,16 s och är uppe igen efter 0,8 s. Huvudskakningen tar 2 s,
+  två långsamma vändor med huvudet lite böjt. Vem som får vilken gest står i `main.js`:
+  - tystnad (`CHAT_SILENT`): Rune och Anita i sorg en nick, Vita skjortan en huvudskakning,
+    Parvaneh ingenting
+  - det valfria (`CHAT_GESTURE`): "Nej." ger en huvudskakning; "Mm.", "Ja?", "Hej." och "Hej,
+    Anita." ger en nick
+- **E-prompten** försvinner också medan ett utbyte med grannen pågår, inte bara under de 20
+  sekunderna. Den kommer tillbaka när utbytet är slut.
+- **Räkningen:** det fjärde E:t inom 60 s nollställer räkningen. Efter de 20 sekunderna blir det
+  alltså tre vanliga samtal innan nästa "Nu har vi pratat.".
+- **Kedjan** bryts också om Ove inte står upp (omkullkörd). "Ett uppdrag börjar" betyder att
+  `missions.state` har ändrats sedan utbytet började. Grannarnas eget prat väntar medan ett utbyte
+  pågår (`game.chatX`).
+- **Svar när grannen börjar själv** kräver också att Ove står upp (`normal`).
+- **Pratbubblorna staplas** (`hud.js tickBubbles`). Det var inte med i förslaget. Utan röster kommer
+  svaret efter 2 s medan grannens bubbla står i 2,8 s, och Oves bubbla täckte grannens repliker när
+  de stod bredvid varandra. Nu ligger den nyaste bubblan kvar vid den som talar, och en äldre som
+  skulle överlappa flyttas upp ovanför.
+- **`smalltalk`:** mönstret `/i går/` gäller inte "Vad åt du i går då?". Det är dag 1:s outro igen,
+  och frågan stämmer vilken dag som helst. Mönstren gäller svaren efter vem som säger dem, så att
+  Oves "Ove." till Saras "Vem är du?" dag 0 inte fastnar på "de nya grannarna nämner inte Ove".
+
+**Verifiera:**
+
+```
+PORT=88xx node tools/shot.mjs smaprat smalltalk   # riktiga E-tryck och svaren per dag (no errors)
+PORT=88xx node tools/shot.mjs smapratvoice        # med rösterna: inga avklippta, aldrig två samtidigt
+make voice-check
+```
+
+`smaprat` kör flera kontroller och sparar närbilder:
+
+- dag 0, 2, 4 och 6: alla grannar som är ute
+- de två fortsättningarna
+- de tre tystnaderna med sina gester
+- fyra E på Anita: "Nu har vi pratat.", ingen E-prompt och inget eget prat på 20 s, prompten tillbaka
+  efter 21 s
+- 40 E på Rune dag 0 och dag 4: aldrig samma två gånger i rad, och dag 0 inte heller bland de två
+  senaste
+- grannens eget prat: Ove svarade 9 av 30 gånger på 3 m och aldrig på 5 m, utan att vända sig
+- avbrutet när Ove går därifrån och när han sätter sig i Saaben
+- närbilder `smaprat_nod*.png`, `smaprat_shake*.png` och `smaprat_chat.png`
+
+Parvaneh står inom 3,4 m från dagens uppdragsgivare dag 0 och 6, så E där är dagens dialog, och
+scenariot hoppar över henne de dagarna (det var så redan förut).
+
+`smapratvoice` mätte 23 repliker i 7 utbyten:
+
+- varje svar började 0,46–0,48 s efter föregående klipp
+- inga repliker klipptes av
+- två röster hördes aldrig samtidigt
+
+`story` slutar med `#7 idle` och `no errors`. `voice`, `uicheck`, `talk`, `runewidow`, `barnroster`
+och `pplanim` ger `no errors`.
 
 ## Problemet
 
