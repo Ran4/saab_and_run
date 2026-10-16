@@ -28,14 +28,17 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
 - **Ordning** (0-100, starts 50): drains 0.014/s per open violation (one > 150 m from Ove counts a
   quarter; ×0.4 while an avbrott or a call is on; ×0.5 for a minute after KAOS; phase 4 round 2 - it
   was 0.022 and a half); +7 report, +12 TAGEN,
-  +10 / −10 errand done / failed, −12 a pedestrian hit by Ove's car, −3 a neighbour or child shoved
-  by it, −2…−4 and 5-20 kr per prop Ove breaks
+  +10 / −10 errand done / failed, +1 every second pantburk (main.js `collectCan`: an even count of
+  cans ever picked up, `g.cans`, saved as `pant`), −12 a pedestrian hit by Ove's car, −3 a neighbour
+  or child shoved by it, −2…−4 and 25 + 15 per prop coin kr (25-205) per prop Ove breaks
   (car or kick), −1/s driving inside a car-free zone (Anders shouts, once a minute; not in the snow
   tractor, `spec.service`: it clears the walkways), −8 for "lånar"
-  a car with a driver, −8 and up to 100 kr självrisk for wrecking someone's car. At 0: **KAOS I
-  OMRÅDET** (−50 kr, back to 35, Anders calls a föreningsmöte); at 100: **ORDNING OCH REDA** (+100 kr,
+  a car with a driver, −8 and up to 500 kr självrisk for wrecking someone's car. At 0: **KAOS I
+  OMRÅDET** (−250 kr, back to 35, Anders calls a föreningsmöte); at 100: **ORDNING OCH REDA** (+100 kr,
   once per free-roam stretch, i.e. until a mission ends). The KAOS banner leaves out the kronor when
-  Ove had less than 5.
+  Ove had less than 5. (The fines are five times the first ones since burkar_och_straff, and day
+  7's STOPPAD costs 100 kr: Ove has nothing to buy, so a fine has to be felt. Each takes at most
+  what he has. Scenarios `burkar` and `straff`, tools/scenarios/burkar.mjs.)
 - **Avbrott**: a neighbour calls ~90 s into a new game (~45 s into a continued one), then 70-110 s
   after each errand (day gates: element after day 3, forskolan and nyckeln after day 1, katten after
   day 4): the old
@@ -63,7 +66,7 @@ Bigmouth story with the Shame calls removed — **3b rewrites it** on top of `st
   per kick), a person (they object; nobody is knocked over by Ove's boot). Footsteps from the walk
   cycle (`audio.step` with the world's `surfaceAt`). Poses: `carry` with the cat (at
   `carryPoint`), `work` (+ `workKind`) while holding E in a job, `push` with Rune, `write`, `phone`.
-- **Pickups**: pantburkar at `litterSpots` (1 kr, collected on foot within 1.25 m or by car within
+- **Pickups**: pantburkar at `litterSpots` (1 kr, every second one +1 Ordning, collected on foot within 1.25 m or by car within
   1.8 m, back after 4-7 min out of sight), 7 Saab-emblem and 7 of Sonja's photographs at
   `collectibleSpots` (a faint shaft of light; each plays a note/memory in Ove's handwriting; all
   emblems +150 kr). Saved in `localStorage['saab-and-run-v1']` with kr, mission index and the patrol

@@ -156,7 +156,8 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
 - **Ordning i området.** Mätaren uppe till höger sjunker med varje felparkering som står kvar, och
   med allt Ove själv ställer till med: kör inom området (−1 Ordning i sekunden, det står nere i
   mitten så länge bilen är där), har sönder saker, kör på folk. Går den till noll blir det **KAOS I
-  OMRÅDET** och extra föreningsmöte. Fyller du den: **ORDNING OCH REDA**, +100 kr.
+  OMRÅDET**, extra föreningsmöte och 250 kr ur Oves plånbok. Fyller du den: **ORDNING OCH REDA**,
+  +100 kr. Varannan pantburk Ove plockar upp ger +1 Ordning.
 - **Avbrott.** Telefonen ringer. Anita, Parvaneh, Jimmy, Adrian, Patrick... Det klickar i
   elementet, någon har låst sig ute, katten har rymt, Rune har rullat iväg. Hjälp till innan
   tålamodet tar slut. Den som följer med Ove går i hans spår. De nya grannarna ringer först när de
@@ -189,7 +190,9 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   och en granne som följde med har gått hem. Saaben (eller grannens bil) står hemma igen; en lånad bil
   får stå kvar där ute. Mellanslag hoppar fram när skylten syns, och över scenen i sängen.
 - **Kronor och samlarsaker.** Pantburkar (1 kr), belöningar, sju Saab-emblem och sju av Sonjas
-  fotografier gömda i stan. Allt Ove har sönder betalar han själv. Det han hittat finns under
+  fotografier gömda i stan. Allt Ove har sönder betalar han själv, och det kostar: 25-205 kr för en
+  sak, upp till 500 kr i självrisk för en kvaddad bil, 100 kr varje gång Vita skjortan stoppar honom.
+  Det han hittat finns under
   **Samlingen** i pausmenyn: fotografierna (vart och ett en egen bild), emblemen, vad Ove tänker om
   dem, var de låg, en ledtråd till dem han inte hittat än, och hur många burkar han pantat.
 - Spelet sparas automatiskt i webbläsaren (efter varje anmälan, ärende, samlarsak och dag, och var

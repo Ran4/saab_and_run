@@ -714,7 +714,7 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.showBanner('2', '', 'count', 3000); });
       await frames(20);
       await shot('ui_count');
-      await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.showBanner('KAOS I OMRÅDET', 'Anders kallar till extra föreningsmöte · −50 kr', 'chaos', 3000); });
+      await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.showBanner('KAOS I OMRÅDET', 'Anders kallar till extra föreningsmöte · −250 kr', 'chaos', 3000); });
       await frames(25);
       await shot('ui_kaos');
       // A call: the ringing card, then the phone toasts with portraits.
@@ -1582,7 +1582,7 @@ export default ({ page, ev, shot, frames, sleep, hold, tap, until, warp, L, stan
       await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.showBanner('Dag 3', 'Onsdagsmorgon', 'mission', 0, 'Ny dag'); });
       await sleep(900);
       await shot('p4_banner_day');
-      await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.hideBanner(); hud.showBanner('KAOS I OMRÅDET', 'Anders kallar till extra föreningsmöte · −50 kr', 'chaos', 0); });
+      await ev(async () => { const { hud } = await import('./src/game/hud.js'); hud.hideBanner(); hud.showBanner('KAOS I OMRÅDET', 'Anders kallar till extra föreningsmöte · −250 kr', 'chaos', 0); });
       await sleep(900);
       await shot('p4_banner_chaos');
       await ev(async () => {

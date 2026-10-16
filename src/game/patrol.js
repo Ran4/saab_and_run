@@ -444,7 +444,7 @@ export class Patrol {
     else if ((this.atBottom || this.ordning <= 0) && g.time - this.lastKaos > 5) {
       this.atBottom = false;
       this.lastKaos = g.time;
-      const lost = Math.min(g.coins, 50);
+      const lost = Math.min(g.coins, 250);
       g.addCoins(-lost);
       this.ordning = 35;
       // (A broke Ove's "−1 kr" isn't worth a mention.)

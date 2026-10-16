@@ -85,7 +85,7 @@ export const getInCar = (o = {}) => ({
 // radioEvery = 7 (+0..2) s; never over a phone call), calls: [[who, text, oveReply], ...]
 // (neighbours phoning in on the way: the ring, the call card, Ove's reply; callFirst = 5 s,
 // callEvery = 11 s; a call still going when Ove arrives is cut off), chaser: { type, color, name,
-// who, cruise, catchFails, catchText, stun = 2.5, kr = 20, stopText, lines, at (a place: it waits
+// who, cruise, catchFails, catchText, stun = 2.5, kr = 100, stopText, lines, at (a place: it waits
 // parked there), car ((g, m) => an existing mission car to use, e.g. parked there since the day
 // began), wait (s it stays parked; wake = it starts at once when Ove comes this close), goLine
 // (its driver's radio line when it sets off), rubber (d => factor on its cruising speed; default
@@ -267,7 +267,7 @@ export const goto = (o) => ({
     // Stopped: Ove is held up for a moment (and it costs), then the Škoda backs off and comes again.
     this.stunT = C.stun ?? 2.5;
     if (g.playerCar) g.freezeCar = true;
-    const kr = Math.min(g.coins, C.kr ?? 20);
+    const kr = Math.min(g.coins, C.kr ?? 100);
     if (kr) g.addCoins(-kr);
     hud.showBanner('STOPPAD', `${C.bannerText || 'Vita skjortan vill se papper'}${kr ? ` · −${kr} kr` : ''}`, 'bad', 1900);
     audio.honk(0.8, 0.35);

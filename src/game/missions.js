@@ -510,7 +510,7 @@ export const MISSIONS = [
       () => goto({
         to: HOSP_DROP, via: HOSP_VIA, radius: 9, timer: 120, inCar: true, with: ['parvaneh'], text: 'Kör Parvaneh till sjukhuset! Skaka av dig Škodan', failText: 'För sent. Barnet föddes i Saaben. Ove kommer aldrig att prata om det.',
         chaser: {
-          type: 'skoda', who: 'vitskjorta', cruise: 24, stun: 2.5, kr: 20, car: (g, m) => m.data.skoda, at: SKODA_WAIT, wait: 2.5, wake: 14,
+          type: 'skoda', who: 'vitskjorta', cruise: 24, stun: 2.5, kr: 100, car: (g, m) => m.data.skoda, at: SKODA_WAIT, wait: 2.5, wake: 14,
           goLine: D7.chaserGo[1],
           bannerText: 'Vita skjortan vill ha en underskrift', stopText: 'Vita skjortan håller upp ett papper mot rutan...', lines: D7.chaserStop.map((l) => l[1]),
         },

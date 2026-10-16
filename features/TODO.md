@@ -8,6 +8,7 @@ features/bussen_ar_inte_en_bil.md
 features/nya_satt_att_interagera_med_omgivningen.md
 
 # Färdiga features
+features/implemented/burkar_och_straff.md
 features/implemented/p-skiva.md
 features/implemented/snubbla_vid_hopp.md
 features/implemented/snöspår.md

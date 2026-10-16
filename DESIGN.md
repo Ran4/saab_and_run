@@ -23,7 +23,7 @@ Reversal of Hit & Run, point by point:
 |---|---|
 | You cause chaos; the Hit & Run meter fills; cops chase and ram you. | *Others* cause disorder (felparkeringar); the **Ordning** meter drains; *you* chase and ram the ones who flee (**smitare**). |
 | Cops "bust" you and you pay coins. | You "ta" (catch) the smitare by ramming/staying on their bumper; they pull over and get **anmälda**. |
-| Smash stuff for coins. | Ove picks up other people's litter (**pantburkar**, 1 kr each). Breaking things costs Ordning and kronor — Ove pays for himself. |
+| Smash stuff for coins. | Ove picks up other people's litter (**pantburkar**, 1 kr each; every second one +1 Ordning). Breaking things costs Ordning and kronor — Ove pays for himself. |
 | Collect cards/wasps. | 7 **Saab-emblem** and 7 **Sonjas fotografier** hidden around town. |
 | Missions from Simpsons characters. | 7 days ("dagar") of story missions from the neighbours, plus constant random **avbrott** (interruptions) in free roam. |
 
@@ -128,10 +128,11 @@ more than 150 m from Ove counts a quarter; ×0.4 while an avbrott or call is act
 KAOS (0.08 was tried first: it emptied the meter in 78 s whatever Ove did; 0.022 with far ones at half
 kept a normal player at 6-55. About one report a minute holds the meter now, two a minute fill it).
 +7 per report, +12 per caught smitare, +10 per completed avbrott, −10 per failed avbrott,
++1 per second pantburk (every even count of cans picked up, ever: features/implemented/burkar_och_straff.md),
 −12 per pedestrian hit, −3 when Ove's car shoves a neighbour or child aside, −2…−4 per broken prop, −1/s while Ove himself drives a car inside the
 car-free zone (Anders shouts "Ove! Det är förbjudet att köra bil inom området!" — once per
 minute — and as long as Ove's car is in there the prompt line says so: "Bilfritt område · −1
-Ordning/s · Kliv ur och gå"). At 0: **KAOS I OMRÅDET** — Anders calls an extra föreningsmöte, −50 kr
+Ordning/s · Kliv ur och gå"). At 0: **KAOS I OMRÅDET** — Anders calls an extra föreningsmöte, −250 kr
 (amounts under 5 kr are not shown), meter resets to 35. Reaching 100: **ORDNING OCH REDA**, +100 kr
 (once per free-roam stretch; saved, so a reload with a full meter doesn't pay it again). While a story
 mission runs the meter stops at 1 (KAOS would only wait for the outro), and both events wait 12 s
@@ -203,7 +204,10 @@ it ("Porten!"). In a car in front of the shut door: "Garageporten är stängd ·
 den". Open at the start; saved (`garage`: 0 = shut).
 
 ### 4.5 Money & collectibles
-`kr` (kronor) replaces coins: pantburkar (cans) lying around (1 kr), rewards. 7 Saab-emblem and
+`kr` (kronor) replaces coins: pantburkar (cans) lying around (1 kr; every second can picked up is
+also +1 Ordning), rewards. There is nothing to buy: kronor only go on fines, five times the first
+amounts since burkar_och_straff (a broken prop 25 + 15 per prop coin, a wrecked car with a driver up
+to 500 kr självrisk, KAOS −250 kr, STOPPAD −100 kr; the p-skiva's ticket 300 kr). 7 Saab-emblem and
 7 Sonjas fotografier (each found plays a short memory toast, e.g. "Sonja, 1984. Tåget till
 Göteborg. Hon skrattade åt honom hela vägen."). All reachable without double jumps.
 **Samlingen** (pause menu, features/implemented/se_pa_trinkets.md): a dark photo-album page in the
@@ -409,7 +413,7 @@ neighbours in the scene), `away` (neighbours who are elsewhere that day: hidden 
 Stage kinds (`src/game/stages.js`): `getInCar`, `goto` (+ `calls`, `radio`, `with`, `via` (guide
 points: the Akut driveway), timer, and a `chaser`: a car hunting Ove like the Hit & Run cops; it
 can wait parked first; its cruise has a rubber band (×1.3 beyond 80 m); contact for ~1.2 s within
-6.5 m = **STOPPAD**, the car held 2.5 s and −20 kr, the chaser backs off a few seconds (3 s longer
+6.5 m = **STOPPAD**, the car held 2.5 s and −100 kr, the chaser backs off a few seconds (3 s longer
 after each stop; after three stops in one drive he gives up: "Jag skickar ett brev, Ove!
 Rekommenderat!"); `catchFails`
 / the def's `bustFails` turn contact into a fail instead), `pickup` (+ `walk`: they walk there),

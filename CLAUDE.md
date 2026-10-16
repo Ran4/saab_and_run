@@ -87,6 +87,11 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   hand (`parking.check`); `pskivalook` = the disc at four times and window sizes, the tickets, the
   envelope on every car type, the signs; `pskivavoice` = the call with the clips); run `pskiva
   pskivarules` after touching game/pskiva.js, the car parks' bays or signs, or the HUD's call card.
+  burkar.mjs (cans and fines, features/implemented/burkar_och_straff.md: `burkar` = cans walked over
+  with W, +1 kr each and +1 Ordning on every even count, the count kept over a reload, a can that
+  fills the meter; `straff` = props kicked with J (25 + 15 per prop coin), a car with a driver rammed
+  to a wreck (500 kr), KAOS (−250 kr), day 7's STOPPAD (−100 kr), each at most what Ove has); run
+  them after touching the cans, the fines or the Ordning meter's events.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has

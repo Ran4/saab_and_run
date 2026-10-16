@@ -966,7 +966,8 @@ class Game {
     const byOve = this._breaker === 'kick' || (this._breaker && this._breaker === this.playerCar);
     if (!byOve) return;
     this.patrol.addOrdning(-(2 + Math.min(2, p.def.shame || 0)));
-    const kr = Math.min(this.coins, 5 + Math.round((p.def.coins || 2) * 3));
+    // (25-205 kr: five times what it was, features/implemented/burkar_och_straff.md)
+    const kr = Math.min(this.coins, 25 + Math.round((p.def.coins || 2) * 15));
     if (kr > 0) { this.addCoins(-kr); this.penaltyKr += kr; this.penaltyT = 1.2; }
   }
 
@@ -1005,7 +1006,7 @@ class Game {
       // Somebody's car, wrecked by Ove: that costs.
       if (this.playerCar && !car.violation?.fleeing && !car.isTarget && !car.isChaser && dist(car.x, car.z, this.playerCar.x, this.playerCar.z) < 12) {
         this.patrol.addOrdning(-8);
-        const kr = Math.min(this.coins, 100);
+        const kr = Math.min(this.coins, 500);
         if (kr) { this.addCoins(-kr); hud.toast(`Ove betalar självrisken: ${kr} kr`, 'bad'); }
       }
       car.ai = null;
@@ -1050,6 +1051,8 @@ class Game {
     hud.setCoins(this.coins);
     hud.bumpCoins();
     audio.coin();
+    // Every second can (of all he has ever picked up) tidies the area: +1 Ordning.
+    if (this.cans % 2 === 0) this.patrol.addOrdning(1);
   }
   addCoins(n) { this.coins = Math.max(0, this.coins + n); hud.setCoins(this.coins); if (n > 0) hud.bumpCoins(); }
 
