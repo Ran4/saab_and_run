@@ -87,6 +87,8 @@ export class Ped {
         c.wishX = threat.dx * 5.2; c.wishZ = threat.dz * 5.2;
         c.vx = c.wishX * 0.7; c.vz = c.wishZ * 0.7;
         if (r() < 0.45) game.say(c, pick(PANIC), 1.3);
+        // (the passengers of the bus Ove drives saw it too: game/buss.js)
+        if (threat.car === game.playerCar) game.buss?.onHit(threat.car, 'near');
         return;
       }
     } else {

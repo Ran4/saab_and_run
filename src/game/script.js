@@ -43,6 +43,9 @@
 //   OVE_REPLY, TYRE, SLID, OVE_HOPP, GARAGE_DOOR, OVE_START, OVE_STUMBLE    Ove's own reactions
 //   OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID, PANIC   people hit, kicked,
 //                    shoved, carjacked, nearly run over
+//   CARJACK_BUS, BUS_ABOARD, BUS_HIT, BUS_HIT_OLD, BUS_RIDE, BUS_OLD, BUS_REPLY, OVE_BUS_HIT
+//                    the city bus (game/buss.js): its driver put out, its passengers while Ove
+//                    drives it, and Ove's answers
 //   FLEE_LINES, CAUGHT_LINES, PATROL   the patrol (smitare, the Ordning meter's events)
 //   HONK_*, SAAB_GREET, ANDERS_LAW, RUNE_HORN, ANITA_RUNE, OVE_HONK   the horn (horn.js)
 //   COMING, CAT_COMES, CHASER_GAVE_UP   stages.js
@@ -58,7 +61,7 @@
 //   allLines()       [[who, text, part], ...]: every line the code can say, deduplicated on who +
 //                    text (the first one wins). part: 'day1' .. 'day7' (all of STORY), then
 //                    'chatterFirst', 'chatter', 'chatterAfter', 'errands', 'calls' (ANSWER, DONE),
-//                    'reactions' (Ove's own), 'waking', 'pskiva', 'patrol', 'peds', 'horn', 'stages', 'widow',
+//                    'reactions' (Ove's own), 'waking', 'pskiva', 'patrol', 'peds', 'horn', 'bus', 'stages', 'widow',
 //                    'chatterReply' (CHATTER_REPLY's new lines, CHATTER_ENOUGH). A CALL's reply is
 //                    its own ['ove', reply, part]. The fallbacks (ERRAND_BUSY, CHATTER_FALLBACK,
 //                    HONK_PASSENGER_ANY) are in it only for a speaker who can get to them (nobody
@@ -681,6 +684,48 @@ export const SHOVED_KID = ['Aj!', 'Akta!', 'Ove!', 'Hallå!'];
 export const PANIC = ['Oj!', 'Se upp!', 'Hallå!', 'Sakta ner!', 'Men herregud!', 'Kör som folk!'];
 
 // ---------------------------------------------------------------------------------------------
+// The city bus (game/buss.js, feature bussen_ar_inte_en_bil): its passengers, while Ove drives it.
+// They are grown-ups and teenagers; the lines that are in OUCH, PANIC or HONK_OLD too keep their
+// clips from there.
+
+// The driver of the bus Ove "borrows" (CARJACK, for a bus; a grown-up).
+// @voice driver
+export const CARJACK_BUS = ['Hallå! Min buss!', 'Jag har en tidtabell!'];
+// A passenger, as Ove takes the wheel.
+// @voice ped ped_old
+export const BUS_ABOARD = ['Var är chauffören?', 'Är du vikarie?'];
+// ...as Ove drives into something (any), into a car, knocks someone over (person), as the bus comes
+// down after a jump (flight); someone in the road who got out of its way (near).
+// @voice ped ped_old
+export const BUS_HIT = {
+  any: ['Mitt kaffe!', 'Det är en buss, inte en radiobil!', 'Vem har gett dig körkort?', 'Aj!', 'Är du inte klok?!', 'Kör som folk!', 'Men herregud!', 'Galning!'],
+  car: ['Du körde på en bil!', 'Vad håller du på med?!'],
+  person: ['Du körde på någon!', 'Jag ringer polisen!'],
+  flight: ['Bussar ska inte flyga!', 'Men herregud!'],
+  near: ['Se upp!', 'Sakta ner!'],
+};
+// ...an old one (as well as those).
+// @voice ped_old
+export const BUS_HIT_OLD = ['Min höft!', 'Mitt hjärta!'];
+// Now and then on the way: anyone (the bus's sign says 3 CENTRUM); the old ones (off: the tant who
+// wants to get off, missed: the stop she wanted, gone by).
+// @voice ped ped_old
+export const BUS_RIDE = ['Varför kör vi den här vägen?', 'Det här är inte linje tre.', 'Kan du sätta på värmen?'];
+// @voice ped_old
+export const BUS_OLD = { off: 'Jag ska av här!', missed: 'Du körde förbi min hållplats!', ride: ['Förr hälsade chauffören.'] };
+// Ove's answer to some of it (by their line), and to what he drove into.
+export const BUS_REPLY = {
+  'Var är chauffören?': 'Det är jag nu. Sitt still.',
+  'Är du vikarie?': 'Det är jag nu. Sitt still.',
+  'Jag ska av här!': 'Det här är ingen linjetrafik.',
+  'Du körde förbi min hållplats!': 'Det här är ingen linjetrafik.',
+  'Det här är inte linje tre.': 'Nej. Det här är linje Ove.',
+  'Kan du sätta på värmen?': 'Nej.',
+  'Mitt kaffe!': 'Man dricker inte kaffe på bussen.',
+};
+export const OVE_BUS_HIT = ['Den stod i vägen.'];
+
+// ---------------------------------------------------------------------------------------------
 // The patrol (patrol.js).
 
 // A smitare driving off; a caught one pulling over.
@@ -896,6 +941,10 @@ export function allLines() {
   // (a neighbour riding with Ove who has no list of their own; Rune has RUNE_HORN)
   for (const who in CHATTER) if (who !== 'rune' && !HONK_PASSENGER[who]) pool(who, HONK_PASSENGER_ANY, 'horn');
   pool('ove', Object.values(OVE_HONK).flat(), 'horn');
+  pool('driver', CARJACK_BUS, 'bus');
+  pool('ped', [...BUS_ABOARD, ...Object.values(BUS_HIT).flat(), ...BUS_RIDE], 'bus');
+  pool('ped_old', [...BUS_HIT_OLD, BUS_OLD.off, BUS_OLD.missed, ...BUS_OLD.ride], 'bus');
+  pool('ove', [...Object.values(BUS_REPLY), ...OVE_BUS_HIT], 'bus');
   pool('cast', COMING, 'stages');
   for (const l of [CAT_COMES, CHASER_GAVE_UP]) add(l[0], l[1], 'stages');
   add(RUNE_DIES[0], RUNE_DIES[1], 'widow');

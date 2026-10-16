@@ -16,7 +16,8 @@ import { CarSnow, snowMeshes, snowLayout } from './carsnow.js';
 // (the Saab: 31 m/s x 1.25 = 139 km/h). bodyH is kept so that wheelR * 0.95 + bodyH = seat
 // height (the formula old main.js uses to seat people); use car.seatLocal() instead.
 // drive: the driven wheels ('fwd', 'rwd', 'awd'), which decide what the throttle does to a slide.
-const S = (o) => ({ brake: 8.5, grip: 9.2, steer: 0.56, revMax: 4.5, tall: false, drive: 'fwd', ...o });
+// the: what the HUD calls it (the definite noun: "Låna bussen", "Kliv ur traktorn"; car.the).
+const S = (o) => ({ brake: 8.5, grip: 9.2, steer: 0.56, revMax: 4.5, tall: false, drive: 'fwd', the: 'bilen', ...o });
 export const CAR_TYPES = {
   saab900: S({ name: 'Saab 900', model: 'saab900', maxSpeed: 31, accel: 5.2, grip: 9.6, steer: 0.58, mass: 1250, hp: 110, color: 0x1d2c4a }),
   volvo240: S({ name: 'Volvo 240', model: 'volvo240', maxSpeed: 29, accel: 4.6, grip: 9.0, steer: 0.55, mass: 1330, hp: 125, solid: true, drive: 'rwd' }),
@@ -26,16 +27,16 @@ export const CAR_TYPES = {
   skoda: S({ name: 'Škoda Octavia kombi', model: 'skoda', maxSpeed: 32, accel: 5.4, grip: 9.6, steer: 0.56, mass: 1400, hp: 110, color: 0xd2d2d0, solid: true }),
   golf: S({ name: 'Volkswagen Golf', model: 'golf', maxSpeed: 31, accel: 5.4, grip: 10.0, steer: 0.6, mass: 1200, hp: 100 }),
   kombi: S({ name: 'Kombi', model: 'kombi', maxSpeed: 30, accel: 4.9, grip: 9.2, steer: 0.55, mass: 1450, hp: 110 }),
-  taxi: S({ name: 'Taxi', model: 'taxi', maxSpeed: 32, accel: 5.2, grip: 9.4, steer: 0.56, mass: 1550, hp: 120, color: 0x18191b }),
-  van: S({ name: 'Skåpbil', model: 'van', maxSpeed: 27, accel: 4.0, brake: 7.5, grip: 8.2, steer: 0.52, mass: 2300, hp: 150, tall: true, color: 0xd0d0cc, solid: true, drive: 'rwd' }),
-  bus: S({ name: 'Stadsbuss', model: 'bus', maxSpeed: 20, accel: 2.2, brake: 6.0, grip: 7.6, steer: 0.5, mass: 11000, hp: 400, tall: true, color: 0x861410, solid: true, drive: 'rwd' }),
-  garbage: S({ name: 'Sopbil', model: 'garbage', maxSpeed: 19, accel: 2.0, brake: 6.0, grip: 7.4, steer: 0.48, mass: 15000, hp: 400, tall: true, color: 0xd2d2cc, solid: true, drive: 'rwd' }),
+  taxi: S({ name: 'Taxi', the: 'taxin', model: 'taxi', maxSpeed: 32, accel: 5.2, grip: 9.4, steer: 0.56, mass: 1550, hp: 120, color: 0x18191b }),
+  van: S({ name: 'Skåpbil', the: 'skåpbilen', model: 'van', maxSpeed: 27, accel: 4.0, brake: 7.5, grip: 8.2, steer: 0.52, mass: 2300, hp: 150, tall: true, color: 0xd0d0cc, solid: true, drive: 'rwd' }),
+  bus: S({ name: 'Stadsbuss', the: 'bussen', model: 'bus', maxSpeed: 20, accel: 2.2, brake: 6.0, grip: 7.6, steer: 0.5, mass: 11000, hp: 400, tall: true, color: 0x861410, solid: true, drive: 'rwd' }),
+  garbage: S({ name: 'Sopbil', the: 'sopbilen', model: 'garbage', maxSpeed: 19, accel: 2.0, brake: 6.0, grip: 7.4, steer: 0.48, mass: 15000, hp: 400, tall: true, color: 0xd2d2cc, solid: true, drive: 'rwd' }),
   // The housing association's snow tractor (feature snotraktor): 40 km/h at most for the player (a
   // traktor b: 8.9 x PLAYER.speed), slow to get going, a tight turning circle on a short wheelbase,
   // four-wheel drive on lugged tyres that bite in snow (`snowGrip`: [lateral grip, braking, traction]
   // off the asphalt; everyone else [0.62, 0.6, 0.72]), sturdy (hp). `service`: may drive on the
   // car-free walkways (it clears them: no Ordning lost there, patrol.js).
-  tractor: S({ name: 'Snöröjningstraktor', model: 'tractor', maxSpeed: 8.9, accel: 3.0, brake: 7.0, grip: 8.6, steer: 0.62, mass: 2600, hp: 220, tall: true, revMax: 3.2, drive: 'awd', color: 0xc24e14, snowGrip: [0.9, 0.85, 0.95], service: true }),
+  tractor: S({ name: 'Snöröjningstraktor', the: 'traktorn', model: 'tractor', maxSpeed: 8.9, accel: 3.0, brake: 7.0, grip: 8.6, steer: 0.62, mass: 2600, hp: 220, tall: true, revMax: 3.2, drive: 'awd', color: 0xc24e14, snowGrip: [0.9, 0.85, 0.95], service: true }),
 };
 // Old keys from the cel-shaded game keep working.
 export const CAR_ALIASES = { sedan: 'volvo240', hatch: 'golf', wagon: 'kombi', pickup: 'van', hearse: 'skoda', muscle: 'bmw', icecream: 'van' };
@@ -706,6 +707,7 @@ export class Car {
   get speed() { return Math.hypot(this.vx, this.vz); }
   get forwardSpeed() { return this.vx * Math.sin(this.yaw) + this.vz * Math.cos(this.yaw); }
   get running() { return !this.dead && (this.engineOn ?? !!(this.driver || this.ai || this.driverBust)); }
+  get the() { return this.spec.the; }
 
   updateObb() {
     const o = this.obb;
@@ -1348,8 +1350,10 @@ export class Car {
     }
     // a parked far car's lenses are baked into its LOD body: no lamp mesh (one draw call per far car)
     if (this.lights) this.lights.visible = !this.lod || this.running;
-    // a far car's glass is opaque: whoever sits in it can't be seen (main.js's busts: 2 calls each)
+    // a far car's glass is opaque: whoever sits in it can't be seen (main.js's busts: 2 calls each;
+    // the bus's passengers, game/buss.js: 2 calls for all of them)
     if (this.driverBust?.isObject3D) this.driverBust.visible = !this.lod;
+    if (this.riders?.mesh) this.riders.mesh.visible = !this.lod;
   }
 
   setLod(on) {
@@ -1367,7 +1371,8 @@ export class Car {
   // Release what is this car's own (round 4; main.js's removeCar calls it after taking the car out
   // of the scene): its plate's atlas slot and plate geometry, the plate string, its lamp and glow
   // materials, its trailer's, and the seated bust's geometry (main.js's addBust: people's buildBust
-  // bakes one geometry per bust; its materials are shared). Model geometries, snow caps and the paint
+  // bakes one geometry per bust; its materials are shared), the bus's passengers' merged one
+  // (game/buss.js). Model geometries, snow caps and the paint
   // / surface materials are shared per type and colour and stay. Seated characters are unseated by
   // removeCar and are not touched. A disposed car must not be added to the scene again.
   dispose() {
@@ -1383,6 +1388,7 @@ export class Car {
     this.glow?.material.dispose();
     if (this.snowFx) { this.snowFx.dispose(); this.snowFx = null; freeOwnMats(this.body.userData.baseMaterial); freeOwnMats(this.bodyLod.userData.baseMaterial); }
     if (this.driverBust?.isObject3D) { this.driverBust.traverse((o) => { if (o.isMesh) o.geometry.dispose(); }); this.driverBust = null; }
+    if (this.riders) { this.riders.mesh?.geometry.dispose(); this.riders = null; }
     carsChanged();
   }
 

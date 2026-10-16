@@ -139,5 +139,17 @@
   "Det är så lugnt i området i dag, Ove. Rune hade tyckt om det.": {
    "tts": "[sadly] Det är så lugnt i området i dag, Ove. Rune hade tyckt om det."
   }
+ },
+ "ped_f_old_2": {
+  "Förr hälsade chauffören.": {
+   "retake": 2,
+   "auto": true
+  }
+ },
+ "ped_m_old_1": {
+  "Förr hälsade chauffören.": {
+   "retake": 2,
+   "auto": true
+  }
  }
 }

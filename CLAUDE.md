@@ -100,6 +100,14 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `gungfilm` = film strips of a push, a second push and a fall (the game paused per frame);
   `gunglook` = close-ups of both kinds, still and swinging); run `gunga` after touching
   world/swings.js, game/gunga.js, the playgrounds, the door pose or the ragdoll's tumble.
+  buss.mjs (the city bus's passengers, features/implemented/bussen_ar_inte_en_bil.md: `buss` = real
+  keys, 37 checks: "Låna bussen" (a car's "Låna bilen", the sopbil's "Låna sopbilen"), E in (the
+  driver out, a grown-up: "Hallå! Min buss!"), "where's the driver" in the speaker's own pool voice
+  and Ove's answer, a parked car rammed, a wall, a passer-by knocked over, their remarks, the tant at
+  the Solrosvägen stop driven past and stopped at, nobody getting off, E out and in, the bubble, the
+  baking a frame at a time, a removed and a wrecked bus; `busslook` = close-ups through the windows and
+  inside, the draw calls, the far LOD); run them after touching game/buss.js, the bus model's
+  benches, busts (models.js bakeBust / mergeBusts) or enterCar.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -126,9 +134,9 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   `make voice` (only missing or changed clips cost; one clip per line and voice, retakes on a bad
   take), and `make voice-check` must pass. Never print or grep `.env`. Script budget ≲ 30 000 chars and ≲ 25
   words a line: `node -e "import('./src/game/script.js').then(m => { const l = m.allLines();
-  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (606 lines, 18 657 chars on
-  2026-10-15 with the p-skiva's lines; with the pool and the children's voices 1 468 lines,
-  1 467 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
+  console.log(l.length, l.reduce((s, [, t]) => s + t.length, 0)) })"` (627 lines, 19 118 chars on
+  2026-10-17 with the bus's lines; with the pool and the children's voices 1 629 lines,
+  1 628 clips). `?test=1` turns the voices off (the old murmur, no queue); `&voice` on. Scenarios
   `voice` (made-up manifest: turns, mouths, ducking), `vcut` (days 1-4 at a human pace + a fail and
   retry: < 5 % cut off, no two voices at once; `TO=7` all seven days; `LUFTSKIP=s`: the
   reader skips day 3's radiator scene with Enter s s in), `vstory` (story with the voices), `vpool` (the passers-by's voices: sex, age, the same one each time, a clip for each line; a
@@ -264,6 +272,13 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   the points frozen in a root turned along him, morphed into downPose's first pose and then its
   get-up (`anim.prone`: face down he pushes up on all fours). `teleport` ends one; `onGetUp(ch, why)`
   (script.js `OVE_STUMBLE[why]`: lines he has already).
+- **The bus** (`game.buss`, game/buss.js; features/implemented/bussen_ar_inte_en_bil.md): the traffic
+  bus carries 5-9 passengers (always a tant), busts on the model's `benches` baked one a frame and
+  merged into one mesh (`car.riders`); nobody gets on or off. While Ove drives it they comment on what
+  he hits (main.js onCarImpact / onCharHit / onPropBroken / landings / shoves -> `buss.onHit`), say
+  things now and then, the tant wants off at bus stops ("Jag ska av här!", BUS_* in script.js); Ove
+  answers some (BUS_REPLY). `car.the` is what the HUD calls a vehicle ("Låna bussen", "Kliv ur
+  traktorn."); `say(..., { mode })` sets how a line is heard ('car' a passenger, 'dialog' Ove).
 - **Swings** (`game.gunga`, game/gunga.js; the seats world/swings.js; features/implemented/
   gungorna_saknar_linor.md): every playground seat is a pendulum on ropes / chains (two instanced
   meshes; the frames stay static), stepped from `stepWorld` while it moves. E behind one (`reach()`,

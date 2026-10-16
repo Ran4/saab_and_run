@@ -171,13 +171,13 @@ export const goto = (o) => ({
     this.sub = this.stunT > 0 ? (o.chaser.stopText || 'Vita skjortan vill se dina papper...') : null;
     if (this.sub) return;
     if (o.inCar && !g.playerCar) { this.sub = 'Kliv in i bilen igen!'; return; }
-    if (o.onFoot && g.playerCar) { this.sub = 'Kliv ur bilen.'; return; }
+    if (o.onFoot && g.playerCar) { this.sub = `Kliv ur ${g.playerCar.the}.`; return; }
     for (const k of o.with || []) {
       if (!g.isWithOve(g.npc(k))) { this.sub = `Hämta ${nameOf(g, k)}!`; return; }
     }
     const f = g.focus(), d = this.dest(g);
     if (dist(f.x, f.z, d.x, d.z) < (o.radius || 7)) {
-      if (o.stop && g.playerCar && g.playerCar.speed > 3) { this.sub = 'Stanna bilen.'; return; }
+      if (o.stop && g.playerCar && g.playerCar.speed > 3) { this.sub = `Stanna ${g.playerCar.the}.`; return; }
       return 'done';
     }
   },
@@ -328,7 +328,7 @@ export const holdAt = (o) => ({
   prompt(g) {
     if (this.cutT != null || this.scene) return null;
     if (this.close(g) && !this.notReady(g)) return { text: `<b>E</b> ${o.label}`, hold: o.cut ? null : this.p, takesE: true };
-    if (g.playerCar) { const s = this.spot(), f = g.focus(); if (dist(f.x, f.z, s.x, s.z) < 9) return { text: 'Kliv ur bilen först', takesE: false }; }
+    if (g.playerCar) { const s = this.spot(), f = g.focus(); if (dist(f.x, f.z, s.x, s.z) < 9) return { text: `Kliv ur ${g.playerCar.the} först`, takesE: false }; }
     return null;
   },
   obj() {
@@ -375,7 +375,7 @@ export const holdAt = (o) => ({
       return;
     }
     this.active = close && g.input.down('interact');
-    this.sub = !near && g.playerCar && dist(g.focus().x, g.focus().z, s.x, s.z) < 12 ? 'Kliv ur bilen.' : why && onFoot(g) && dist(g.player.x, g.player.z, s.x, s.z) < 8 ? why : null;
+    this.sub = !near && g.playerCar && dist(g.focus().x, g.focus().z, s.x, s.z) < 12 ? `Kliv ur ${g.playerCar.the}.` : why && onFoot(g) && dist(g.player.x, g.player.z, s.x, s.z) < 8 ? why : null;
     if (this.active) {
       this.p += dt / this.secs;
       const p = g.player;
@@ -433,7 +433,7 @@ export const fetch = (o) => ({
     this.item.tick(g.time);
     const f = g.focus();
     const r = g.playerCar ? 2.8 : 1.4;
-    this.sub = g.playerCar && dist(f.x, f.z, this.item.x, this.item.z) < 10 ? 'Kliv ur bilen.' : null;
+    this.sub = g.playerCar && dist(f.x, f.z, this.item.x, this.item.z) < 10 ? `Kliv ur ${g.playerCar.the}.` : null;
     if (!g.playerCar && dist(f.x, f.z, this.item.x, this.item.z) < r && Math.abs(f.y - this.item.y) < 2.2) {
       this.item.remove();
       audio.pickup();
@@ -505,7 +505,7 @@ export const pickup = (o) => ({
       if (d < reach) {
         if (c.speed > 3) { this.sub = `Stanna så kan ${this.name} kliva in.`; return; }
         if (g.boardCompanion(n, c)) { if (o.hello) g.say(n, o.hello, 2); return 'done'; }
-        this.sub = 'Det finns ingen plats i bilen.';
+        this.sub = `Det finns ingen plats i ${c.the}.`;
       }
     } else {
       if (o.needCar) { this.sub = o.carText || `Hämta en bil först.`; return; }
@@ -535,7 +535,7 @@ export const dropoff = (o) => ({
     if (o.needCar && n.car !== g.playerCar) { this.sub = o.carText || `${n.def.name} ska åka bil.`; return; }
     const d = at(o.at, g), f = g.focus();
     if (dist(f.x, f.z, d.x, d.z) < (o.radius || 8)) {
-      if (g.playerCar && g.playerCar.speed > 3) { this.sub = 'Stanna bilen.'; return; }
+      if (g.playerCar && g.playerCar.speed > 3) { this.sub = `Stanna ${g.playerCar.the}.`; return; }
       g.removeCompanion(n, { walkTo: o.walk ? o.walk(g) : d });
       if (o.bye) g.say(n, o.bye, o.byeSecs ?? 2.2);
       m.data.npcs.delete(n);
@@ -645,7 +645,7 @@ export const escort = (o) => ({
       this.phase = 'bring';
     }
     if (this.phase === 'find') {
-      if (g.playerCar && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 18) this.sub = 'Kliv ur bilen.';
+      if (g.playerCar && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 18) this.sub = `Kliv ur ${g.playerCar.the}.`;
       return;
     }
     if (!o.push && !g.isWithOve(n)) { this.phase = 'find'; return; }
@@ -656,7 +656,7 @@ export const escort = (o) => ({
       this.can = null;
       return 'done';
     }
-    if (o.push && !this.held(g)) this.sub = n.roll ? `${this.name} rullar iväg!` : g.playerCar && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 18 ? 'Kliv ur bilen.' : `Ta tag i ${this.name}s rullstol igen`;
+    if (o.push && !this.held(g)) this.sub = n.roll ? `${this.name} rullar iväg!` : g.playerCar && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 18 ? `Kliv ur ${g.playerCar.the}.` : `Ta tag i ${this.name}s rullstol igen`;
   },
 });
 
@@ -1342,7 +1342,7 @@ export const talk = (o) => ({
       })();
       return;
     }
-    this.sub = g.playerCar ? 'Kliv ur bilen.' : null;
+    this.sub = g.playerCar ? `Kliv ur ${g.playerCar.the}.` : null;
     if (g.playerCar && g.playerCar.speed < 1 && dist(g.playerCar.x, g.playerCar.z, n.x, n.z) < 9) g.exitCar(true);
     if (g.playerCar || p.state !== 'normal' || dist(p.x, p.z, n.x, n.z) > (o.range ?? 4.5)) return;
     // Ove steps up in front of them, on their side of the cars (he used to pop out of the Saab on

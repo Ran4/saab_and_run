@@ -4950,11 +4950,14 @@ function animateLegacy(m, st, dt) {
 // Busts: a cheap static seated driver (no skeleton): the character in the driving pose, baked.
 // Two surfaces (fabric + skin) so traffic costs two draw calls per driver. Origin = seat surface;
 // the hip joints sit 0.12 m above it and 0.12 m forward, like a seated Character.
+// bakeBust(def, pose) is the baked geometry alone (pose: animateCharacter's state on top of the
+// seated one: { driving: false } has the hands in the lap, look turns the head); mergeBusts puts a
+// busload of them in one mesh (the city bus's passengers, game/buss.js).
 
 const BUST_REMAP = { hair: 'fabric', leather: 'fabric', painted: 'fabric', metal: 'fabric', rubber: 'fabric', plastic: 'fabric' };
-export function buildBust(def) {
+export function bakeBust(def, pose = {}) {
   const m = buildCharacter(def, { bust: true, lod: 2, headLod: 1, remap: BUST_REMAP });
-  animateCharacter(m, { t: 0, speed: 0, seated: true, driving: true }, 0);
+  animateCharacter(m, { t: 0, speed: 0, seated: true, driving: true, ...pose }, 0);
   m.root.updateMatrixWorld(true);
   const mesh = m.mesh, skel = mesh.skeleton;
   skel.update();
@@ -4986,14 +4989,59 @@ export function buildBust(def) {
   for (const gr of geo.groups) g.addGroup(gr.start, gr.count, gr.materialIndex);
   g.userData = { surfaces: geo.userData.surfaces };
   g.computeBoundingSphere();
+  geo.dispose();
+  return g;
+}
+export function buildBust(def) {
+  const g = bakeBust(def);
   const root = new THREE.Group();
   const bm = new THREE.Mesh(g, realMaterials(g, { snow: false }));
   bm.castShadow = true; bm.receiveShadow = true;
   root.add(bm);
   root.userData.mouth = null;
   root.userData.def = def;
-  geo.dispose();
   return root;
+}
+// Several baked busts in one mesh: parts [{ geo (bakeBust's), at: [x, y, z] (its seat surface) }].
+// The parts' geometries are disposed (theirs is copied); one group per surface, so a busload costs
+// what one driver does (two draw calls).
+export function mergeBusts(parts) {
+  const surfs = [], n = parts.reduce((s, p) => s + p.geo.attributes.position.count, 0);
+  for (const { geo } of parts) for (const s of geo.userData.surfaces || ['fabric']) if (!surfs.includes(s)) surfs.push(s);
+  const first = parts[0].geo, attrs = {};
+  for (const k of Object.keys(first.attributes)) {
+    const a = first.attributes[k];
+    attrs[k] = new a.array.constructor(n * a.itemSize);
+  }
+  const byS = surfs.map(() => []);
+  let base = 0;
+  for (const { geo, at } of parts) {
+    const c = geo.attributes.position.count;
+    for (const k in attrs) {
+      const a = geo.attributes[k], o = attrs[k];
+      if (!a) continue;
+      o.set(a.array.subarray(0, c * a.itemSize), base * a.itemSize);
+      if (k === 'position') for (let i = base; i < base + c; i++) { o[i * 3] += at[0]; o[i * 3 + 1] += at[1]; o[i * 3 + 2] += at[2]; }
+    }
+    const idx = geo.index.array, gs = geo.userData.surfaces || ['fabric'];
+    for (const gr of geo.groups.length ? geo.groups : [{ start: 0, count: idx.length, materialIndex: 0 }]) {
+      const list = byS[surfs.indexOf(gs[gr.materialIndex])];
+      for (let i = gr.start; i < gr.start + gr.count; i++) list.push(idx[i] + base);
+    }
+    base += c;
+    geo.dispose();
+  }
+  const g = new THREE.BufferGeometry();
+  for (const k in attrs) g.setAttribute(k, new THREE.BufferAttribute(attrs[k], first.attributes[k].itemSize, first.attributes[k].normalized));
+  const index = new Uint32Array(byS.reduce((s, l) => s + l.length, 0));
+  let at = 0;
+  byS.forEach((l, mi) => { index.set(l, at); g.addGroup(at, l.length, mi); at += l.length; });
+  g.setIndex(new THREE.BufferAttribute(index, 1));
+  g.userData = { surfaces: surfs };
+  g.computeBoundingSphere();
+  const mesh = new THREE.Mesh(g, realMaterials(g, { snow: false }));
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  return mesh;
 }
 
 // ---------------------------------------------------------------------------------------------

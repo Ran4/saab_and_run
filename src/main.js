@@ -32,6 +32,7 @@ import { Gungor } from './game/gunga.js';
 import { Cold } from './game/cold.js';
 import { RuneFate, KILL as RUNE_KILL } from './game/rune.js';
 import { Parking } from './game/pskiva.js';
+import { Bussen } from './game/buss.js';
 import * as stages from './game/stages.js';
 import { MissionRunner, MISSIONS, DAYS, DAY_END, flowersOnGrave } from './game/missions.js';
 import { Bang, Beacon, GuideArrow } from './game/markers.js';
@@ -40,7 +41,7 @@ import { HANDLE as DOOR_HANDLE } from './world/garagedoor.js';
 import {
   CHATTER, CHATTER_FIRST, CHATTER_AFTER, CHATTER_FALLBACK, CHATTER_REPLY, CHATTER_ENOUGH, CHATTER_SPARE, whenOk, SLID, TYRE,
   GARAGE_DOOR, WIDOW, OVE_STUMBLE,
-  OUCH, GETUP, CARJACK, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID,
+  OUCH, GETUP, CARJACK, CARJACK_BUS, KICKED, KICKED_NEIGHBOUR, SHOVED, SHOVED_KID,
 } from './game/script.js';
 
 const STEP = 1 / 60;
@@ -201,6 +202,10 @@ class Game {
       this.addCar(car);
       if (pc.name) this.named[pc.name] = car;
     }
+    // The city bus's passengers and what they make of Ove at its wheel (game/buss.js, feature
+    // bussen_ar_inte_en_bil): spawnTrafficCar seats them.
+    this.buss = new Bussen(this);
+    window.__buss = this.buss;
     this.spawnTraffic(22);
     setLoading('Väcker grannarna…');
     await frame();
@@ -496,8 +501,9 @@ class Game {
     return obj;
   }
 
-  spawnTraffic(n) { for (let k = 0; k < n; k++) this.spawnTrafficCar(Math.random, null); }
-  spawnTrafficCar(r = Math.random, awayFrom = null) {
+  // (now: the bus's passengers baked at once - while loading - not one a frame)
+  spawnTraffic(n) { for (let k = 0; k < n; k++) this.spawnTrafficCar(Math.random, null, true); }
+  spawnTrafficCar(r = Math.random, awayFrom = null, now = false) {
     for (let tries = 0; tries < 30; tries++) {
       const a = (r() * (N + 1) * (N + 1)) | 0;
       const nb = neighbors(a);
@@ -514,6 +520,7 @@ class Game {
       car.traffic = true;
       this.addBust(randomPed(r), car);
       car.ai = new AIDriver(car, { mode: 'traffic', cruise: type === 'bus' ? 9 : type === 'garbage' ? 8 : 10 + r() * 4 });
+      if (type === 'bus') this.buss.board(car, r, now);
       return this.addCar(car);
     }
     return null;
@@ -630,7 +637,9 @@ class Game {
     if (car.driverBust) {
       // "Lånar" a car with someone in it: they are not pleased.
       this.dropBust(car);
-      const ped = this.peds.reduce((best, p) => (!best || dist(p.char.x, p.char.z, this.player.x, this.player.z) > dist(best.char.x, best.char.z, this.player.x, this.player.z) ? p : best), null);
+      // (a bus's driver is a grown-up: CARJACK_BUS has no children's voices)
+      const bus = car.kind === 'bus', grown = (p) => !bus || (p.char.def.age ?? 30) >= 19;
+      const ped = this.peds.reduce((best, p) => (!grown(p) ? best : !best || dist(p.char.x, p.char.z, this.player.x, this.player.z) > dist(best.char.x, best.char.z, this.player.x, this.player.z) ? p : best), null);
       if (ped && ped.char.state !== 'seated') {
         // out of the door on the side that faces the nearest sidewalk (the far one if need be: the
         // car mustn't stand between them and where they walk on to)
@@ -641,7 +650,7 @@ class Game {
         ped.idleT = 3;
         // ...and walks on from the nearest sidewalk, not towards its old loop across town
         ped.rehome?.();
-        this.say(ped.char, pick(CARJACK), 2.2);
+        this.say(ped.char, pick(bus ? CARJACK_BUS : CARJACK), 2.2);
       }
       this.patrol.addOrdning(-8);
     }
@@ -660,6 +669,8 @@ class Game {
     if (car.kind === 'tractor' && !this.toldTractor) { this.toldTractor = true; hud.toast('Föreningens snöröjningstraktor. Ove har nyckel, förstås. Den får köra på gångvägarna.'); }
     // Whoever is with Ove gets in too.
     for (const [ch] of this.companions) if (!ch.car && dist(ch.x, ch.z, car.x, car.z) < 10) this.boardCompanion(ch, car);
+    // A bus's passengers: where did the driver go? (game/buss.js)
+    if (car.riders) this.buss.aboard(car);
   }
 
   // (quiet: no door, for an exit nobody sees: the cold's tidying up behind the black)
@@ -873,7 +884,7 @@ class Game {
       const along = dx * vx + dz * vz, lat = dx * -vz + dz * vx;
       if (along > 0 && along < sp * 0.8 + 3 && Math.abs(lat) < 2.4) {
         const s = lat >= 0 ? 1 : -1;
-        return { dx: -vz * s, dz: vx * s };
+        return { dx: -vz * s, dz: vx * s, car: c };
       }
     }
     return null;
@@ -968,6 +979,7 @@ class Game {
     // Ove broke it: Ove pays for it.
     const byOve = this._breaker === 'kick' || (this._breaker && this._breaker === this.playerCar);
     if (!byOve) return;
+    if (this._breaker === this.playerCar) this.buss.onHit(this.playerCar, 'any');
     this.patrol.addOrdning(-(2 + Math.min(2, p.def.shame || 0)));
     // (25-205 kr: five times what it was, features/implemented/burkar_och_straff.md)
     const kr = Math.min(this.coins, 25 + Math.round((p.def.coins || 2) * 15));
@@ -985,24 +997,27 @@ class Game {
     if (involved) this.cam.shake = Math.min(1, this.cam.shake + impact * 0.04);
     this.patrol.onImpact(a, b, impact);
     this.missions.onImpact(a, b, impact);
+    this.buss.onImpact(a, b, impact);
   }
   onCarLanded(car, impact) {
     if (car.flight) return;   // (off the snow hill: onCarFlight has it)
-    if (car === this.playerCar) { audio.thud(); this.cam.shake = Math.min(1, this.cam.shake + impact * 0.03); }
+    if (car === this.playerCar) { audio.thud(); this.cam.shake = Math.min(1, this.cam.shake + impact * 0.03); this.buss.onLanded(car, impact); }
     FX.dust(car.x, car.z, 6);
   }
   onCarTakeoff(car) { this.hopp.takeoff(car); }
-  onCarFlight(car, f) { this.hopp.land(car, f); }
+  onCarFlight(car, f) { this.hopp.land(car, f); this.buss.onFlight(car); }
   onTrailerBounce(tr, impact) { this.hopp.trailerBounce(tr, impact); }
   onCarDestroyed(car) {
     const f = this.focus();
     if (dist(car.x, car.z, f.x, f.z) < 80) audio.crash(1);
+    // (a wrecked bus's passengers are gone from it)
+    this.buss.unboard(car);
     if (car === this.playerCar) {
       const c = car;
       for (const p of car.passengers.slice()) { this.unseat(p); p.fling((Math.random() - 0.5) * 6, 5, (Math.random() - 0.5) * 6); }
       this.exitCar(true);
       this.player.fling(-Math.sin(c.yaw) * 3 + (Math.random() - 0.5) * 4, 6, -Math.cos(c.yaw) * 3);
-      hud.showBanner('KVADDAD', 'Bilen är förstörd', 'bad', 1800);
+      hud.showBanner('KVADDAD', `${c.the[0].toUpperCase()}${c.the.slice(1)} är förstörd`, 'bad', 1800);
     } else {
       for (const p of [car.driver, ...car.passengers]) if (p) { this.unseat(p); p.fling((Math.random() - 0.5) * 6, 5, (Math.random() - 0.5) * 6); }
       this.dropBust(car);
@@ -1020,7 +1035,7 @@ class Game {
     audio.ouch();
     audio.thud();
     if (ch === this.player) { hud.flashColor('rgba(200,70,60,0.3)'); return; }
-    if (car === this.playerCar) this.patrol.addOrdning(-12);
+    if (car === this.playerCar) { this.patrol.addOrdning(-12); this.buss.onHit(car, 'person'); }
     if (Math.random() < 0.85) this.say(ch, pick(OUCH), 1.8);
   }
   // (why: what put a ragdoll down, Ragdoll's `why`: Ove up after a fall of his own says it was nothing)
@@ -1062,13 +1077,14 @@ class Game {
   // A speech bubble, and the line said (voice.js: from where they stand; it waits its turn, up to
   // o.wait s, and the bubble stays up until it has been said). Returns the voice's handle, or null
   // with the voices off (the caller murmurs, as before). o.voice false: the bubble only (the line is
-  // said elsewhere: a phone call's answer); o.who: the voice, if not the target's own.
+  // said elsewhere: a phone call's answer); o.who: the voice, if not the target's own; o.mode: how it
+  // is heard, if not from where they are (voice.js: 'car' a passenger in Ove's car, 'dialog' Ove).
   say(target, text, secs = 2, o = {}) {
     const it = hud.say(target, text, secs);
     if (o.voice === false) return null;
     const ch = target.root ? target : null;
     const u = voice.play(o.who || voice.voiceFor(target), text, {
-      slot: 'bubble', mode: o.shout ? 'shout' : 'world', at: target, ch, wait: o.wait, tag: o.tag,
+      slot: 'bubble', mode: o.mode || (o.shout ? 'shout' : 'world'), at: target, ch, wait: o.wait, tag: o.tag,
       start: (u) => { it.until = Math.max(it.until, performance.now() + (u.dur + 0.4) * 1000); },
     });
     it.u = u;
@@ -1435,6 +1451,7 @@ class Game {
     this.handleOneShots(dt);
     this.horn.update(dt);
     this.hopp.update(dt);
+    this.buss.update(dt);
     this.acc += dt;
     let n = 0;
     while (this.acc >= STEP && n < MAX_STEPS) { this.fixedStep(STEP); this.acc -= STEP; n++; }
@@ -2202,6 +2219,7 @@ class Game {
       audio.thud();
       const kid = ch.def.kind === 'kid' || (ch.def.age ?? 30) < 13;
       if (ch.key !== 'rune') this.say(ch, pick(kid ? SHOVED_KID : SHOVED), 1.8);
+      this.buss.onHit(car, 'near');
     }
   }
 
@@ -2507,7 +2525,7 @@ class Game {
         if (!this.playerCar && !sp?.takesE) {
           it = this.nearestInteractable();
           if (it?.type === 'talk') parts.push(`<b>E</b> Prata med ${it.who.def.name}`);
-          else if (it?.type === 'car') parts.push(it.car.driverBust ? '<b>E</b> Låna bilen' : '<b>E</b> Kliv in');
+          else if (it?.type === 'car') parts.push(it.car.driverBust ? `<b>E</b> Låna ${it.car.the}` : '<b>E</b> Kliv in');
           else if (it?.type === 'ticket') parts.push('<b>E</b> Ta lappen');
           else if (it?.type === 'chat') parts.push(`<b>E</b> Småprata med ${it.who.def.name}`);
           else if (it?.type === 'garage') parts.push(`<b>E</b> ${it.open ? 'Öppna' : 'Stäng'} garageporten`);

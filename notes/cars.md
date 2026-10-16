@@ -76,6 +76,15 @@ default by name and state: Ove's `saab` 0.35, `andersAudi` 0.3, `adrianSaab` 0.5
 - Seats: `car.seatLocal(side, out)` / `car.seatWorld(side, out)` (see MUST above). The point is the
   seat surface = a bust's origin (models.js busts put the hips 0.12 above and 0.12 forward of it).
   The steering wheel sits where the busts' hands are (vans and the sopbil: lower and flatter).
+- The bus's `model.benches` (feature bussen_ar_inte_en_bil): the passengers' seat surfaces, [x, y, z]
+  in the tilt frame, 0.2 m in front of each row of seat backs (a bust's back against it, its knees
+  4 cm short of the next row), x ±0.75, y 1.0; not the first row (behind the driver) nor the two
+  beside the middle door: 18. game/buss.js leaves out the two at the model's `rear` seat (a
+  companion's) and seats 5–9 there (`car.riders`: one merged mesh, hidden with the far LOD like a
+  driver bust, its geometry disposed by `dispose()`).
+- `spec.the` / `car.the`: what the HUD calls it, the definite noun ('bilen'; 'bussen', 'sopbilen',
+  'traktorn', 'taxin', 'skåpbilen'): "E Låna bussen", the stages' "Kliv ur traktorn.", "Stanna
+  bussen.", the KVADDAD banner's "Bussen är förstörd".
 - `car.plate` (unique), `car.setPlate(text)`, `car.platePos('front'|'rear', out)` (world).
 - Lights: low beams + tail lights whenever `car.running && car.headlights`
   (`car.setHeadlights(on)`); brake lights from braking (`ctrl.brake` while rolling, and AI holding

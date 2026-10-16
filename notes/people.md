@@ -331,6 +331,13 @@ The character with a **lod-2 body and a lod-1 head** (`buildCharacter(def, { lod
 rounder heads than round 0) in the driving pose (fingers gripping the wheel), skinning baked into a
 plain `Mesh`, 2 draw calls (`fabric` + `skin`), ~5.6 k triangles, ~3.6–4 ms to build. Origin = seat surface, hips 0.12 above and 0.12
 forward (unchanged placement for `addBust`). No legs below the knee.
+- `bakeBust(def, pose)` is the baked geometry alone (feature bussen_ar_inte_en_bil): `pose` goes on top
+  of the seated state, `{ driving: false }` = hands relaxed in the lap (seatPose's passenger arms),
+  `look` = the head turned (neck yaw `look * 0.5`). ~4–5.7 ms each (7 k triangles with the hands in
+  the lap). `buildBust(def)` = `bakeBust(def)` in a Group, as before.
+- `mergeBusts([{ geo, at: [x, y, z] }])`: several baked busts moved to their seats in **one mesh**, a
+  group per surface (the union of theirs, in order: `skin`, `fabric`), Uint32 index; the parts'
+  geometries are disposed. A busload of 5–9 = 2 draw calls (game/buss.js, the city bus's passengers).
 
 ## The cat — `buildCat()`
 

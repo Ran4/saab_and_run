@@ -1091,3 +1091,39 @@ game does with them is `src/game/gunga.js` (`Gungor`, `game.gunga`, constants `G
   'push', 'hit', 'clank'.
 - `gunga.stats` (`pushes hits falls stops cars`), `gunga.log` (the last 20: ready, push + amp, fall,
   bump). Tests: scenarios/gungor.mjs `gunga gungfilm gunglook`.
+
+## The city bus (feature bussen_ar_inte_en_bil, features/implemented/bussen_ar_inte_en_bil.md)
+
+`src/game/buss.js` (`Bussen`, `game.buss`, `window.__buss`, constants `BUSS`), constructed before
+`spawnTraffic` (it seats the passengers of the one traffic bus).
+- **Aboard**: `spawnTrafficCar` (type 'bus') -> `buss.board(car, r, now)`: 5–9 people on the model's
+  `benches` (notes/cars.md), the first a tant (an old woman, `p.tant`), the rest 13 and over (no
+  children: their kid voices say none of it). `car.riders = { list: [{ def, at, look, old, tant }],
+  mesh, met, wanted, stopped, near }`. Baked one a frame from `buss.update` (`BUSS.bakeMs` 3: each is
+  ~4–5 ms; `spawnTraffic` at load passes `now`: all at once), then merged (models.js `mergeBusts`) into
+  one mesh in `car.tilt` (fixed matrix, castShadow false: the body's shadow covers them). Nobody gets
+  on or off, whoever drives. `unboard(car)` (onCarDestroyed: a wreck's glass is gone) drops them.
+- **Ove takes it**: the prompt is "E Låna bussen" (`car.the`); enterCar puts out a grown-up (19+) as
+  its driver, who says CARJACK_BUS; then `buss.aboard(car)`: the first time, 1.4 s later, one of them
+  says BUS_ABOARD (`R.met`: never again for that bus).
+- **Hits** (`onHit(car, kind, impact)`, only while Ove drives a bus with people in it, not in a
+  dialogue): main.js `onCarImpact` -> `onImpact` ('car' / 'any' for a block, impact ≥ `BUSS.hitMin` 3
+  m/s), `onCharHit` ('person'), `onPropBroken` by his car ('any'), `onCarLanded` > 6 m/s and
+  `onCarFlight` ('flight'), `shoveAside` and peds.js's step aside from his car (`carThreat` now returns
+  `car`) ('near', 40 %). At most every `BUSS.hitGap` (4) s ('person' 1.2 s). BUS_HIT[kind] (car: car +
+  any); an old one 35 % of the time BUS_HIT_OLD (not for a person or 'near'); impact ≥ `BUSS.hard` (9):
+  a second one 0.7 s later; 'car' / 'any': Ove says OVE_BUS_HIT 30 % of the time (nothing to a person).
+- **The ride** (`update`, not in a dialogue, the cold's death or a failed day's screen): every
+  `BUSS.ride` (18–34) s a remark: the tant's "Jag ska av här!" (35 %, at most every 40 s), an old one's
+  BUS_OLD.ride (25 %), else anyone's BUS_RIDE. **Bus stops** (`stops`: streets.js BUS_STOPS' landmarks):
+  coming within `BUSS.stop` (30) m of one at over 2 m/s the tant says "Jag ska av här!" (`R.wanted`);
+  once the bus is `BUSS.past` (45) m from it, if it never stood still (< 0.8 m/s) within 30 m of it,
+  "Du körde förbi min hållplats!" (70 %). She stays aboard either way.
+- **Saying it** (`say(car, p, lines, kind)`): not one of the latest four lines if it can be helped; the
+  bubble over the roof above their seat (an anchor that follows the bus), the voice
+  `voice.poolVoice(p.def)` (sex, age, seed), main.js `say(..., { who, mode: 'car' })` (`o.mode` is new:
+  how it is heard); without voices a murmur at their pitch. BUS_REPLY[line]: Ove answers half the time
+  once it has been said (`u.ended`; voices off: 1.6 s), `mode: 'dialog'`.
+- `buss.stats` (`boarded riders baked lines replies kinds`), `buss.log` (the last 30: t, kind, text, who,
+  tant, old, at), `buss.rand`, `buss.talk(car, kind)` (tests). Tests: scenarios/buss.mjs `buss busslook`.
+

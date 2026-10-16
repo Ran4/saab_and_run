@@ -136,6 +136,13 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   det gula ljuset på taket blinkar när motorn går. Den får köra på de bilfria gångvägarna (det
   kostar ingen Ordning: den röjer ju snö), och kör du genom snön kastar plogbladet upp den åt höger.
   Det finns bara en plats i hytten, så ingen kan åka med.
+- **Bussen.** Stadsbussen (linje 3 mot Centrum) kör runt i stan med fem till nio passagerare, och en
+  av dem är alltid en tant. Står du bredvid den står det **E Låna bussen**. Chauffören kliver ut och
+  är inte glad, men passagerarna sitter kvar: ingen kliver av eller på, vem som än kör. Någon undrar
+  vart chauffören tog vägen. Kör du på något (en bil, en vägg, en lyktstolpe, en fotgängare) eller
+  flyger med bussen från hoppbacken säger de vad de tycker om det, och då och då säger de något ändå.
+  Tanten ska av vid hållplatsen ("Jag ska av här!"), och kör du förbi den utan att stanna får du höra
+  det. Ove svarar ibland.
 - **Patrullen.** Ett halvdussin felparkeringar finns alltid någonstans: bil i bilfritt område, på
   gräsmattan, uppe på trottoaren, på handikapplatsen, framför soprummet, på räddningsvägen... De syns
   som P-förbud på kartan och med en skylt över bilen. Gå fram och håll **F**: Ove skriver i blocket
@@ -261,6 +268,8 @@ src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och ka
 src/game/hoppbacke.js      hoppen från hoppbacken: snöpudret, ljuden, Oves anteckning och rekord, vad alla säger
 src/game/tracks.js         spår i snön: fotspår och hjulspår (bilar, släpkärran, rullstolen), borta en ny dag
 src/game/gunga.js          gungorna: knuffa med E, sitsen som träffar Ove (30 %: omkull), bilen genom gungan
+src/game/buss.js           stadsbussens passagerare: de sitter kvar när Ove lånar bussen och säger vad de
+                           tycker om hans körning (och tanten ska av vid hållplatsen)
 src/game/collection.js     Oves samling: anteckningarna om emblemen, Sonjas sju fotografier (ritade, samma bild i
                            världen och i pausmenyns album) och emblemet som albumet visar det
 src/game/missions.js       de sju dagarna och uppdragskörningen

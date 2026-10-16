@@ -1969,10 +1969,18 @@ function busDetails(P, g, M, L, G) {
   for (let z2 = 3.8; z2 > -5.2; z2 -= 0.85) for (const sx of [1, -1]) g.box(0x2a3448, sx * 0.75, 1.15, z2, 0.85, 0.7, 0.12);
   g.use('plastic');
   for (let z2 = 4.0; z2 > -5; z2 -= 1.7) g.cyl(0xd0c040, 0, 1.9, z2, 0.02, 2.1, 6);
+  // the passengers' places (game/buss.js): the seat surface in front of each seat back (a bust's
+  // back against it, its knees short of the next one), but the first row's (behind the driver) and
+  // the two beside the middle door
+  const benches = [];
+  for (let k = 1; k < 11; k++) {
+    const z2 = 3.8 - k * 0.85;
+    for (const sx of [1, -1]) if (!(sx < 0 && z2 > 0.2 && z2 < 1.45)) benches.push([sx * 0.75, 1.0, z2 + 0.2]);
+  }
   return {
     plates: [{ side: 'front', pos: [0.5, 0.45, P.z1 + 0.088] }, { side: 'rear', pos: [0, 0.46, P.z0 - 0.088] }],
     badges: [{ text: 'LINJE', pos: [0, 2.77, busFaceZ(0, 2.77) + 0.008], w: 1.5, h: 0.2, rx: -0.027, dir: 1 }],
-    seat: [0.8, 1.3, 4.9], rear: [0.75, 1.0, 2.5], exhaust: [0.9, 0.35, -6.0], hitch: -6.1,
+    seat: [0.8, 1.3, 4.9], rear: [0.75, 1.0, 2.5], benches, exhaust: [0.9, 0.35, -6.0], hitch: -6.1,
   };
 }
 
