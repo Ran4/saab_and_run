@@ -1004,7 +1004,7 @@ script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
 - `carsVsPeople` skips a ragdoll in the air or tumbling (`ch.rag && state 'flung'`: the points meet the
   cars themselves); lying still he is shoved like anyone down. `isPerson` etc. unchanged (flung, down).
 - `onGetUp(ch, why)`: Ove up after a fall of his own says one of `OVE_STUMBLE[why]` (script.js: 'stumble'
-  'car' 'hit', lines he already has: no new clips) 4 times in 5, not in a dialogue.
+  'car' 'hit', and 'swing': a swing's seat knocked him over, game/gunga.js; lines he already has: no new clips) 4 times in 5, not in a dialogue.
 - `teleport` ends a ragdoll (on his feet there): the warps, `resetToRoad`, the cold's waking.
 - Tests: scenarios/snubbla.mjs `snubbla hoppaur snubblaperf snubblalook snubbladbg`.
 
@@ -1047,3 +1047,47 @@ script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
 - **input.js**: `KEYS.pskiva` ['KeyG'], `PAD.pskiva` [12] (d-pad up), `padPressed(b)` / `padDown(b)`
   (the disc's own pad buttons).
 - Tests: scenarios/pskiva.mjs `pskiva pskivarules pskivalook pskivavoice`.
+
+## The swings (feature gungorna_saknar_linor, features/implemented/gungorna_saknar_linor.md)
+
+The seats are world/swings.js' pendulums (notes/world.md, *The playgrounds' swings*); everything the
+game does with them is `src/game/gunga.js` (`Gungor`, `game.gunga`, constants `GUNGA`).
+- **Stepping**: `gunga.step(h)` from `stepWorld` (after Ove's own step, before `carsVsPeople`): the
+  seats in `gunga.active` (woken by `wake(s)`: anything that moves one) until they rest; a creak
+  (`audio.swing('creak')`) as one turns at the end of a swing over 0.3 rad, by distance (35 m). Then
+  Ove against the seats within 3 m (`touchOve`), or his car (`touchCar`).
+- **Pushing (E)**: `gunga.reach()` = `{ s, sg, facing, d }` when Ove (on foot, on the ground, not
+  carrying the cat, not pushing Rune, not at the garage door) stands in line with a seat (within its
+  half width + 0.12 m along the beam), 0.3 m to `GUNGA.stand` (1.7) out across it, faces it (> 0.3),
+  the seat's rest 0.15-1.1 m above his soles, and where the seat comes within his reach (at rest: 0.7
+  m; swinging: as far as the lines at his hands' height swing out). `nearestInteractable` returns
+  `{ type: 'swing', ... }` before the neighbours' small talk when he faces it squarely (> 0.7), after
+  them otherwise; nothing at all while a push is going on. Prompt "E Knuffa gungan". `interact` ->
+  `gunga.push(it)` -> `gunga.op` = `{ s, sg (the way he shoves it, in th), phase, lock, uin, wx, wz }`:
+  `ready` (hands held out, at most 2.2 s; walking off ends it), `take` (once the lines at his hands'
+  height (1.12 m) are < 0.7 m ahead and the seat isn't going away: 0.26 s, a still seat he steps in to
+  0.44 m, one coming at him slows into his hands, its speed kept as `uin`), `shove` (the seat gets
+  `hypot(uin, GUNGA.push 1.5 rad/s)` away from him, capped; his hands go with the lines to 0.74 m or
+  0.32 s). While `op.lock` (take, shove) `fixedStep` takes `op.wx/wz` as his wish and `handleOneShots`
+  no jump, kick or E. The pose is the garage door's (`posePlayer('work', 'door')`, `poseReach` =
+  [1.12, ahead, left]: both hands on a bar across in front of him, the lines). Ends in a car, knocked
+  over, off the ground, in a dialogue or a scene, at a failed day, with the cat.
+- **Hits**: a seat overlapping him (along the beam its half width + 0.8 r, across its half depth +
+  0.8 r, its height between his soles + 0.08 and 95 % of his height) whose own speed into him is over
+  `GUNGA.hit` (1.25 m/s), not in his hands, not within 1.2 s of its last hit (`s.cd`): `hit(s, n, vs)`.
+  `GUNGA.fall` (0.3) of the time (`gunga.fallNext` true / false decides the next one for tests,
+  `gunga.rand` the chance) he tumbles (`p.tumble`: the body along the seat's way at 0.4 vs, `trip`
+  against it from the height it hit him, tone 0.3, brace, `why: 'swing'` -> `OVE_STUMBLE.swing` when
+  he is up: lines he has, no new clips) and the seat keeps 35 % of its speed; otherwise he is knocked
+  back 8 cm and given 0.6 vs, the seat bounces back at 30 %, and 30 % of the time he says "Hmpf." or
+  "Jaså.". Slower: the seat is put at his edge (it goes with him as he walks into it, drifting into
+  him it bounces off at 20 %), up to 0.84 L across (~57°: past that he gets by under it); at the
+  seat's side (the overlap along the beam < 8 cm and less than across) it is in his way like a wall.
+- **The car**: the player's car's OBB against a 0.22 m circle at the seat (below the roof): the seat
+  is put outside the body and, if the car comes at it faster than it goes (> 0.2 m/s), leaves at the
+  car's speed + up to 1.5 m/s; a clank (once per 0.5 s a seat). Only `playerCar` (traffic never comes
+  near a playground).
+- **audio.js** `swing(kind, k, chain)`: 'creak' (a chain's shackle squeaks, a rope's thimble creaks),
+  'push', 'hit', 'clank'.
+- `gunga.stats` (`pushes hits falls stops cars`), `gunga.log` (the last 20: ready, push + amp, fall,
+  bump). Tests: scenarios/gungor.mjs `gunga gungfilm gunglook`.

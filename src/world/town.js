@@ -19,12 +19,13 @@ import { buildStreets, BUS_STOPS } from './streets.js';
 import { buildOutskirts } from './outskirts.js';
 import { finalizeSigns } from './signs.js';
 import { JUMP_HILLS } from './snowhill.js';
+import { swings, buildSwings } from './swings.js';
 import { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, mapLabels, shared, camBlocks, roadNames, interiors, parkingLots, parkingBays } from './data.js';
 import { surfaceAt } from './surface.js';
 import { fx } from '../game/fx.js';
 import { mulberry32 } from '../util.js';
 
-export { parkedCars, pedLoops, animated, doors, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, carFreeZones, isCarFree, mapLabels, surfaceAt, camBlocks, roadNames, interiors, parkingLots, parkingBays };
+export { parkedCars, pedLoops, animated, doors, swings, lamps, bouncers, violationSpots, litterSpots, collectibleSpots, carFreeZones, isCarFree, mapLabels, surfaceAt, camBlocks, roadNames, interiors, parkingLots, parkingBays };
 
 // Blocks right around Ove's that get a few extra violation spots of their own.
 const NEAR_SPOTS = new Set(['2,3', '3,4', '3,2', '1,3']);
@@ -183,8 +184,10 @@ function* townSteps(scene) {
   // Everything built here is static: matrices fixed, CPU-side vertex arrays dropped after upload.
   if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('townhash')) townStats.hash = townHash(scene, before);
   for (const m of scene.children) if (!before.has(m)) makeStatic(m);
-  // The doors that move (Ove's garage door) are the only world meshes that are not static.
+  // The doors that move (Ove's garage door) and the swings' seats are the only world meshes that
+  // are not static.
   for (const d of doors) scene.add(d.build());
+  buildSwings(scene);
   uploadGeometry();   // the world's vertex buffers go to the GPU now, not in the first frame
   lap('upload');
   // Start compiling the world's shaders now, in the background, while the cars and people are built.

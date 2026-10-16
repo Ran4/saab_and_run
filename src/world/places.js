@@ -12,6 +12,7 @@ import { violationSpots, keepClear, litterSpots, animated, shared } from './data
 import { addGround } from './surface.js';
 import { mulberry32 } from '../util.js';
 import { jumpHill, domeHill } from './snowhill.js';
+import { swing } from './swings.js';
 
 const V = (f, lx, lz, ly, kind, where) => violationSpots.push({ x: f.wx(lx, lz), z: f.wz(lx, lz), yaw: f.yaw + ly, kind, where });
 const LIT = (f, lx, lz) => litterSpots.push([f.wx(lx, lz), CURB + 0.05, f.wz(lx, lz)]);
@@ -845,7 +846,12 @@ export function preschoolBlock(bf0, r) {
   bf.use('painted');
   for (const s of [-2, 2]) { bf.boxC(0xb84a2a, 18 + s, CURB + 1.1, -0.6, 0.09, 2.3, 0.09, 0, 0.45).boxC(0xb84a2a, 18 + s, CURB + 1.1, 0.6, 0.09, 2.3, 0.09, 0, -0.45); bf.circ(18 + s, -1, 0.08); bf.circ(18 + s, 1, 0.08); }
   bf.boxC(0xb84a2a, 18, CURB + 2.18, 0, 4.3, 0.1, 0.1);
-  for (const s of [-0.9, 0.9]) bf.use('rubber').boxC(0x1e1e1e, 18 + s, CURB + 0.6, 0, 0.45, 0.05, 0.2);
+  // The seats hang on ropes and swing (world/swings.js, game/gunga.js): only the hooks are static.
+  bf.use('metal');
+  for (const s of [-0.9, 0.9]) {
+    for (const e of [-0.2, 0.2]) bf.boxC(0x6e7276, 18 + s + e, CURB + 2.115, 0, 0.04, 0.03, 0.11);
+    swing(bf, 18 + s, 0, { top: CURB + 2.1, seat: CURB + 0.6, kind: 'rope', rope: 0.2 });
+  }
   bf.use('wood').box(0x8a6a4a, 22, CURB + 1.2, 14, 2.0, 0.08, 2.0);
   for (const [sx, sz] of [[-0.95, -0.95], [0.95, -0.95], [-0.95, 0.95], [0.95, 0.95]]) bf.box(0x6a5038, 22 + sx, CURB, 14 + sz, 0.1, 2.4, 0.1);
   bf.use('tile').add(PRIM.prism(), 0x8a2a1f, 22, CURB + 2.4, 14, 0, 2.2, 0.8, 2.2);

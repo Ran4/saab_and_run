@@ -8,6 +8,7 @@ import { C, WALLS, DOORS, rnd, R, pickR, TAU, win as winFull, winLite, door, can
 import { textFace, picto, decal } from './signs.js';
 import { keepClear, litterSpots, parkedCars, shared } from './data.js';
 import { carFreeZones } from './layout.js';
+import { swing } from './swings.js';
 
 const win = winFull;
 export const UW = 5.4;   // unit width
@@ -614,7 +615,12 @@ function playground(f, r) {
   f.use('painted');
   for (const s of [-1.5, 1.5]) { f.boxC(0x2a5a3a, 0.5 + s, CURB + 1.1, -0.55, 0.09, 2.3, 0.09, 0, 0.45); f.boxC(0x2a5a3a, 0.5 + s, CURB + 1.1, 0.55, 0.09, 2.3, 0.09, 0, -0.45); f.circ(0.5 + s, -0.9, 0.08); f.circ(0.5 + s, 0.9, 0.08); }
   f.boxC(0x2a5a3a, 0.5, CURB + 2.18, 0, 3.3, 0.1, 0.1);
-  for (const s of [-0.6, 0.6]) { f.use('metal').boxC(0x9a9da0, 0.5 + s - 0.18, CURB + 1.4, 0, 0.02, 1.5, 0.02).boxC(0x9a9da0, 0.5 + s + 0.18, CURB + 1.4, 0, 0.02, 1.5, 0.02); f.use('rubber').boxC(0x1e1e1e, 0.5 + s, CURB + 0.62, 0, 0.45, 0.05, 0.2); }
+  // The seats hang on chains and swing (world/swings.js, game/gunga.js): only the hooks are static.
+  f.use('metal');
+  for (const s of [-0.6, 0.6]) {
+    for (const e of [-0.18, 0.18]) f.boxC(0x6e7276, 0.5 + s + e, CURB + 2.115, 0, 0.04, 0.03, 0.11);
+    swing(f, 0.5 + s, 0, { top: CURB + 2.1, seat: CURB + 0.62, kind: 'chain', rope: 0.18 });
+  }
   // Climbing frame (a little tower with a slide).
   f.use('wood').box(0x8a6a4a, 4.6, CURB + 1.1, 0.3, 1.6, 0.08, 1.6);
   for (const [sx, sz] of [[-0.75, -0.45], [0.75, -0.45], [-0.75, 1.05], [0.75, 1.05]]) { f.box(0x6a5038, 4.6 + sx, CURB, 0.3 + sz, 0.1, 2.3, 0.1); }

@@ -28,6 +28,7 @@ import { Patrol } from './game/patrol.js';
 import { Interruptions } from './game/interruptions.js';
 import { Horn } from './game/horn.js';
 import { Hoppbacke } from './game/hoppbacke.js';
+import { Gungor } from './game/gunga.js';
 import { Cold } from './game/cold.js';
 import { RuneFate, KILL as RUNE_KILL } from './game/rune.js';
 import { Parking } from './game/pskiva.js';
@@ -232,6 +233,8 @@ class Game {
     // Flights off the snow hill in the park and what everybody makes of them (game/hoppbacke.js,
     // feature snöhög; the flying is car.js HOPP).
     this.hopp = new Hoppbacke(this);
+    // the playgrounds' swings: E pushes one, one swinging into Ove may knock him over (game/gunga.js)
+    this.gunga = new Gungor(this);
     // Rune's wheelchair rolling free, his death on the errand, Anita's grief (game/rune.js).
     this.rune = new RuneFate(this);
     this.interrupts.auto = !TEST || params.has('calls');
@@ -1436,6 +1439,7 @@ class Game {
     let n = 0;
     while (this.acc >= STEP && n < MAX_STEPS) { this.fixedStep(STEP); this.acc -= STEP; n++; }
     if (this.acc >= STEP) this.acc = 0;
+    this.gunga.update(dt);
     this.syncAll(dt, false);
     tracks.update(this, dt);
     const ms = this.missions.state;
@@ -1505,7 +1509,7 @@ class Game {
       if (input.pressed('interact') && !sp?.takesE) this.exitCar();
       return;
     }
-    if (p.state !== 'normal' || this.doorOp?.lock) return;
+    if (p.state !== 'normal' || this.doorOp?.lock || this.gunga.op?.lock) return;
     if (this.time - this.jumpAsk < JUMP_BUFFER && !this.pushedNpc() && p.jump(JUMP_V)) this.jumpAsk = -9;
     if (input.pressed('attack') && this.kickT <= 0 && p.onGround && p.windT < 0 && !this.pushedNpc()) {
       p.anim.kick = 1; this.kickT = 0.5; this.kickHitT = 0.14;
@@ -1542,6 +1546,7 @@ class Game {
     else if (it.type === 'car') this.enterCar(it.car);
     else if (it.type === 'ticket') this.parking.take(it.car);
     else if (it.type === 'garage') this.useGarage();
+    else if (it.type === 'swing') this.gunga.push(it);
   }
 
   // The lines a neighbour may say now (see CHATTER, CHATTER_FIRST, CHATTER_AFTER): from the day in
@@ -1648,8 +1653,9 @@ class Game {
 
   nearestInteractable() {
     const p = this.player;
-    // (nothing else while he is at the garage door: an E after his hands are off it ends that first)
-    if (this.doorOp) return null;
+    // (nothing else while he is at the garage door: an E after his hands are off it ends that first;
+    // nor while he pushes a swing)
+    if (this.doorOp || this.gunga.op) return null;
     if (this.missions.offered) {
       const g = this.npc(this.missions.offered.giver);
       if (g && !g.car && g.state === 'normal' && dist(g.x, g.z, p.x, p.z) < 3.4 && Math.abs(g.y - p.y) < 2) return { type: 'talk', who: g };
@@ -1673,6 +1679,9 @@ class Game {
     // A parking ticket under its wiper: E takes that first, there is no getting in before (pskiva.js).
     if (best && this.parking?.ticketOn(best.car)) return { type: 'ticket', car: best.car };
     if (best) return best;
+    // A swing in front of him (game/gunga.js): before a neighbour if he faces it squarely, else after.
+    const sw = this.gunga.reach();
+    if (sw && sw.facing > 0.7) return { type: 'swing', ...sw };
     let nb = null, nd = 2.6;
     for (const k in this.npcs) {
       const n = this.npcs[k];
@@ -1682,7 +1691,7 @@ class Game {
       const d = dist(n.x, n.z, p.x, p.z);
       if (d < nd) { nd = d; nb = { type: 'chat', who: n }; }
     }
-    return nb;
+    return nb || (sw ? { type: 'swing', ...sw } : null);
   }
 
   // ------------------------------------------------------------------------------------------
@@ -1861,6 +1870,7 @@ class Game {
     this.stepNpcs(h);
     this.keepPeopleInside();
     if (!this.playerCar) this.player.step(h, this);
+    this.gunga.step(h);
     this.carsVsPeople();
   }
 
@@ -1899,6 +1909,7 @@ class Game {
     } else if (p.state === 'normal') {
       if (this.inDialog || this.failWait || this.overlay) { p.wishX = p.wishZ = 0; }
       else if (this.doorOp?.walk) { p.wishX = this.doorOp.wx; p.wishZ = this.doorOp.wz; p.anim.sprint = false; }
+      else if (this.gunga.op?.lock) { p.wishX = this.gunga.op.wx; p.wishZ = this.gunga.op.wz; p.anim.sprint = false; }
       else {
         const mx = input.moveX() || 0, my = input.moveY() || 0;
         const fx = Math.sin(this.cam.yaw), fz = Math.cos(this.cam.yaw);
@@ -2500,6 +2511,7 @@ class Game {
           else if (it?.type === 'ticket') parts.push('<b>E</b> Ta lappen');
           else if (it?.type === 'chat') parts.push(`<b>E</b> Småprata med ${it.who.def.name}`);
           else if (it?.type === 'garage') parts.push(`<b>E</b> ${it.open ? 'Öppna' : 'Stäng'} garageporten`);
+          else if (it?.type === 'swing') parts.push('<b>E</b> Knuffa gungan');
         }
         // Stopped in a bay of a car park: the p-skiva (G), or what the bay is (game/pskiva.js).
         const kp = this.playerCar ? this.parking.prompt() : null;

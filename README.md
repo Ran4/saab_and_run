@@ -174,6 +174,14 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   inom en minut har Ove fått nog ("Nu har vi pratat.") och låter den grannen vara i 20 sekunder.
   Börjar en granne prata själv när Ove står nära händer det att han svarar.
 - **Till fots** går Ove, går raskt och sparkar på däck. Han har åsikter om de flesta bilmärken.
+- **Gungorna.** Lekplatserna (förskolans och den i varje radhusområde, också Oves) har gungor som
+  hänger i rep eller kedjor och gungar på riktigt. Ställ dig bakom en sits, vänd mot den, och tryck
+  **E**: Ove tar tag i kedjorna och knuffar iväg den. Tryck **E** igen när den är på väg tillbaka, så
+  tar han emot den och knuffar en gång till, och den går högre för varje knuff (som högst ungefär 70
+  grader). Står han bara kvar kommer sitsen tillbaka och träffar honom: tre gånger av tio går han
+  omkull som en trasdocka (och säger sedan att det var meningen), annars knuffas han ett steg bakåt.
+  Går han rakt in i en sits som hänger still skjuter han den framför sig, och kör du Saaben genom
+  gungställningen flyger sitsarna.
 - **Utanför stan.** Det finns inga osynliga väggar längre. Bortom den yttre ringvägen tar skogen vid,
   och fyra skogsgator (snöiga gluggar rakt ut genom skogen, en åt varje håll) leder ut på kullarna.
   Där ute finns bara natur: granar i dungar, stenblock och snö. Och kyla. Trettio meter bortom där
@@ -235,7 +243,7 @@ src/world/                 stadsplan och vägnät (layout), kollision, kvarteren
                            (garagedoor), Anitas och Runes kök och Oves sovrum (interior: dag 3:s scen,
                            uppvaknandet); utanför stan: terrängen att gå på, skogsgatorna, granarna
                            och stenblocken (outskirts); snöhögar att köra och gå på, hoppbacken i
-                           parken (snowhill)
+                           parken (snowhill); lekplatsernas gungsitsar som pendlar (swings)
 src/actors/car.js          bilarna: fysik, lampor, registreringsskyltar (carmodels.js: modellerna, också
                            snöröjningstraktorn och plogbladets snö)
 src/actors/carsnow.js      snön på de parkerade bilarna: flak som lossnar och yr av när någon kör
@@ -252,6 +260,7 @@ src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, ante
 src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
 src/game/hoppbacke.js      hoppen från hoppbacken: snöpudret, ljuden, Oves anteckning och rekord, vad alla säger
 src/game/tracks.js         spår i snön: fotspår och hjulspår (bilar, släpkärran, rullstolen), borta en ny dag
+src/game/gunga.js          gungorna: knuffa med E, sitsen som träffar Ove (30 %: omkull), bilen genom gungan
 src/game/collection.js     Oves samling: anteckningarna om emblemen, Sonjas sju fotografier (ritade, samma bild i
                            världen och i pausmenyns album) och emblemet som albumet visar det
 src/game/missions.js       de sju dagarna och uppdragskörningen
@@ -304,6 +313,7 @@ QUERY='&runedead' PORT=8791 node tools/shot.mjs story      # berättelsen med Ru
 PORT=8791 node tools/shot.mjs snubbla hoppaur snubblaperf # snubbla vid landningen, hoppa ur bilen i 15-90 km/h, påkörd (riktiga tangenter): aldrig under marken, upp igen; kostnaden (snubblalook: filmremsor)
 PORT=8791 node tools/shot.mjs traktor seatlegs             # snöröjningstraktorn med riktiga tangenter: in, ut ur rutan, 40 km/h, gångvägen, plogen, ut (traktorlook, traktorplog: bilder)
 PORT=8791 node tools/shot.mjs pskiva pskivarules           # p-skivan med riktiga tangenter, lappen, samtalet till P-Ordning AB; alla regler (pskivalook: bilder, pskivavoice: rösterna)
+PORT=8791 node tools/shot.mjs gunga gungfilm gunglook      # gungorna med riktiga E-tryck: knuffarna, träffarna (omkull/bakåt, 30 %), gå in i en sits, Saaben genom gungan; filmremsor; närbilder
 ```
 
 I testerna (`?test=1`) är rösterna avstängda, så de går lika fort som förut; `&voice` slår på dem.

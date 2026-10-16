@@ -17,6 +17,7 @@ built; DESIGN.md §6 is the contract it implements. Everything is PBR via the §
 | `rowhouse.js` | 1970s radhus: `radhusRow`, `garageRow` (`moving`: the open garage gets door tracks instead of a door tipped up under the ceiling), `garageInterior`, `radhusArea` (whole area: lot, garages, soprum, 4 rows, walkways, bike shed, playground; `movingGarage`) |
 | `ove.js` | Ove's block = `radhusArea` + named units, his garage and its door (`GarageDoor`, into `doors`), signs, landmarks, violation spots |
 | `garagedoor.js` | **(feature oppna_garaget)** `GarageDoor`: Ove's up-and-over garage door, the one world mesh that moves (see *Ove's garage door* below) |
+| `swings.js` | **(feature gungorna_saknar_linor)** the playgrounds' swing seats on their ropes / chains, pendulums (`swing(f, lx, lz, o)`, `swings`, `Swing`, `SWING`, `buildSwings`; see *The playgrounds' swings* below) |
 | `interior.js` | **(feature luftning_borde_vara_en_scen)** `buildKitchen(info)`: Anita and Rune's kitchen, the set of day 3's radiator scene, built inside their real house only while the scene runs (see *Rooms inside the houses* below); **(feature avgrunden)** `buildBedroom(info, { photo, clock })`: Ove's bedroom, where he wakes after freezing to death |
 | `buildings.js` | `gableHouse`, `flatBuilding`, `lamellhus`, `hipGeo`, `flagpole`; blocks `villaBlock`, `apartmentsBlock`, `radhusBlock` |
 | `places.js` | blocks `centrumBlock hospitalBlock churchBlock cemeteryBlock dealerBlock preschoolBlock kommunBlock gasBlock parkBlock fieldBlock forestBlock`, `mound` (sledding hill) |
@@ -42,7 +43,7 @@ appear (solid kinds `building`, `garage`).
 
 ## Exports (`town.js`)
 
-`buildTown(scene)`, `tickTown(t)`, `parkedCars`, `pedLoops`, `animated` (empty), `doors` (Ove's garage door), `lamps`
+`buildTown(scene)`, `tickTown(t)`, `parkedCars`, `pedLoops`, `animated` (empty), `doors` (Ove's garage door), `swings` (the swing seats), `lamps`
 (`{x,z}`), `bouncers` (empty — no trampolines that bounce), `violationSpots`, `litterSpots`,
 `collectibleSpots`, `carFreeZones`, `isCarFree`, `mapLabels` (`[label, landmarkKey]`, Swedish),
 `townStats` (`buildMs, meshes, landmarks, violationSpots, litter, parkedCars`), and (round 3)
@@ -1014,3 +1015,30 @@ ly, lot, { w, l, rule })` a bay; `rule` false = free, null = the lot's). game/ps
 - `ove` (ove.js): `rule: null` (free to Ove); only the handicap bay, Anders' reserved bay and Adrian's
   bay are registered (permits).
 - `carmodels.js` `wipers()` keeps `P.wiperZ` / `P.wiperN` (the ticket goes under the driver's blade).
+
+## The playgrounds' swings (feature gungorna_saknar_linor, 2026-10-17)
+
+The seats used to be static rubber boxes under the beam; the preschool's hung on nothing (feature
+image `features/implemented/gungor.png`), the row-house areas' on thin static chains. Now every seat is a
+`Swing` (world/swings.js) and the frame, the beam and the hooks (small steel plates under the beam,
+static, 'metal') are all that stays in the static batch. 24 seats: the preschool's pair
+(`kind: 'rope'`: braided ropes, L 1.50 m) and a pair in each of the ten `radhusArea`s' playgrounds
+(`kind: 'chain'`: galvanised chains, a black plastic sleeve over their lower 0.55 m, L 1.48 m).
+No `rnd` is drawn for any of it.
+
+- **Built** by `preschoolBlock` and rowhouse.js `playground` with `swing(f, lx, lz, { top, seat, kind,
+  rope })` where the seat was (top = the hooks' height, the beam's underside: CURB + 2.1; seat = the
+  seat's middle: CURB + 0.6 / 0.62; rope = the lines' distance from the middle, 0.2 / 0.18).
+  `buildSwings(scene)` (town.js, after `makeStatic`, beside the doors) makes one `InstancedMesh` per
+  kind of seat (2: 'swings:rope:…', 'swings:chain:…'; 'fabric' or 'metal' plus 'rubber', no snow):
+  4 draws a pass whatever is in view, its bounding sphere the whole town's.
+- **A seat**: `x, z` the hooks' middle, `y` their height, `L` to the seat's middle, `ax, az` along
+  the beam, `ox, oz` across it, `hw` 0.225 / `hd` 0.085 (the sling's half width / depth), `th` (rad, +
+  towards `ox, oz`), `w` (rad/s), `moving`. `local(x, z)` → [along, across]; getters `so` / `sy` (the
+  seat's middle across / up), `svo` / `svy` (its velocity), `amplitude()`, `cap()` (never past
+  `SWING.max` 1.25 rad: the speed cut to what reaches it), `step(h)` (gravity, `SWING.damp` 0.075/s
+  + `drag` 0.05·|w|: an empty seat's swing halves in ~18 s; at rest below 0.004 → `moving` false),
+  `set(th, w)`, `place()` (its instance matrix: rotation.x = −th about the hooks). The sling sags 3 cm
+  in the middle (six segments), its ends in clamps where the lines meet it.
+- What moves them is game/gunga.js (notes/integration.md, *The swings*).
+

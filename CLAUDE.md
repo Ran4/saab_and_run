@@ -92,6 +92,14 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   fills the meter; `straff` = props kicked with J (25 + 15 per prop coin), a car with a driver rammed
   to a wreck (500 kr), KAOS (−250 kr), day 7's STOPPAD (−100 kr), each at most what Ove has); run
   them after touching the cans, the fines or the Ordning meter's events.
+  gungor.mjs (the swings, features/implemented/gungorna_saknar_linor.md: `gunga` = real E presses at
+  the swing in Ove's area, 27 checks: the prompt (not turned away, too far or beside it), a push from
+  rest (~34°), three more as it comes back (each higher), never hit while pushing, left alone it hits
+  him (`fallNext` true: a ragdoll, up again; false: a step back, the seat bounces off), 40 hits by
+  chance (~30 % falls), walking into a still seat, at it from the side, the Saab through the pair;
+  `gungfilm` = film strips of a push, a second push and a fall (the game paused per frame);
+  `gunglook` = close-ups of both kinds, still and swinging); run `gunga` after touching
+  world/swings.js, game/gunga.js, the playgrounds, the door pose or the ragdoll's tumble.
 - **`story` plays all seven days via debug warps and must end with `#7 idle` and `no errors`**
   (`FROM=n` starts at day n+1); every outro is checked (each speaker within 4 m of Ove, nothing
   taller than 0.6 m between them), and a HUD watch runs throughout (no offer toast once a day has
@@ -256,6 +264,12 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   the points frozen in a root turned along him, morphed into downPose's first pose and then its
   get-up (`anim.prone`: face down he pushes up on all fours). `teleport` ends one; `onGetUp(ch, why)`
   (script.js `OVE_STUMBLE[why]`: lines he has already).
+- **Swings** (`game.gunga`, game/gunga.js; the seats world/swings.js; features/implemented/
+  gungorna_saknar_linor.md): every playground seat is a pendulum on ropes / chains (two instanced
+  meshes; the frames stay static), stepped from `stepWorld` while it moves. E behind one (`reach()`,
+  `nearestInteractable` 'swing') -> `gunga.op` ready / take / shove (the garage door's pose on the
+  lines; `op.lock` holds him); a seat swinging into him faster than 1.25 m/s knocks him over 30 % of
+  the time (`p.tumble`, `why: 'swing'`; `gunga.fallNext` for tests), else back a step.
 - **Tracks in the snow** (`game.tracks`, tracks.js; features/implemented/snöspår.md): prints where
   people walk on snow, ruts where wheels roll on it (`surfaceAt` 'snow', not ice), drawn
   with the snow surface's own shader plus a relief; ring buffers (Ove's and his car's apart), cleared

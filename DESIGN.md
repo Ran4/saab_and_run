@@ -189,7 +189,7 @@ like Rune (but on his errand that kills him). A knock-down depends only on the c
 walking into a parked car just stops Ove. Pushing Rune: 3.0 m/s (3.6 with Shift). **J/click:
 "sparka på däcket"** — kicking a car's tyre plays a thunk, rocks the car (a parked car asleep is
 woken) and an Ove comment by make ("Bra däck." / "Plast och elektronik." / "Sommardäck. I november."); kicking props still breaks them (−Ordning; one kick breaks the nearest prop only). E: talk / get in & out / hold to
-interact / Ove's garage door. F: hold to write a report.
+interact / Ove's garage door / push a swing. F: hold to write a report.
 
 **Ove's garage door** (`src/world/garagedoor.js`, driven by main.js `useGarage`): a steel
 up-and-over door (vipport) that E opens or shuts from outside or inside, facing it within 1.5 m.
@@ -202,6 +202,13 @@ under it. A collider fills the doorway while it is shut, closing or < 85 % open:
 stay out (or in), and no "Kliv in" reaches a car through it; a car driven into it booms and rattles
 it ("Porten!"). In a car in front of the shut door: "Garageporten är stängd · kliv ur (E) och öppna
 den". Open at the start; saved (`garage`: 0 = shut).
+
+**The swings** (`src/world/swings.js` seats, `src/game/gunga.js`): every playground's seats hang on
+ropes (the preschool) or chains (the row-house areas) and swing as pendulums. E behind a seat,
+facing it: Ove takes the lines and shoves it off (~34° from rest); E again as it comes back and he
+takes it and shoves again, higher each time (at most 72°). Left alone it comes back and hits him: 30 %
+of the time he goes over (a ragdoll, "Det var meningen."), otherwise it knocks him back a step.
+Walking into a still seat pushes it ahead of him; the Saab driven through sends the seats flying.
 
 ### 4.5 Money & collectibles
 `kr` (kronor) replaces coins: pantburkar (cans) lying around (1 kr; every second can picked up is
@@ -532,7 +539,8 @@ mesh is built from the same function (snowhill.js: `jumpHill` for the park's hop
 
 `town.js` must export (in addition to the existing `parkedCars`, `pedLoops`, `animated`,
 `lamps`, `bouncers`, and `doors`: the doors that move, Ove's garage door `name: 'oveGarage'`,
-a `GarageDoor` from `garagedoor.js` whose mesh town.js adds after the static world):
+a `GarageDoor` from `garagedoor.js` whose mesh town.js adds after the static world; `swings`: the
+playgrounds' swing seats, `Swing`s from `swings.js`, two instanced meshes added the same way):
 
 - **landmarks** (via `f.mark`; `{x, z, yaw}` — for people, `yaw` is the direction someone
   standing there faces). Spots must be free ground-level positions, never inside a footprint:

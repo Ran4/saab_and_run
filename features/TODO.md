@@ -1,13 +1,13 @@
 # Gör dessa grejer (flytta filen till features/implemented/ och uppdatera den när du är klar, och
 # flytta den till "färdiga features"-sektionen nedan
 features/fixa_kameran_vid_rorelse.md
-features/gungorna_saknar_linor.md
 features/bussen_ar_inte_en_bil.md
 
 # Vänta med dessa tills spelaren säger till
 features/nya_satt_att_interagera_med_omgivningen.md
 
 # Färdiga features
+features/implemented/gungorna_saknar_linor.md
 features/implemented/burkar_och_straff.md
 features/implemented/p-skiva.md
 features/implemented/snubbla_vid_hopp.md

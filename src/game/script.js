@@ -608,12 +608,13 @@ export const GARAGE_DOOR = {
   hit: ['Porten!', 'Min garageport!', 'Den var stängd, Ove.'],
 };
 // Up again after a fall of his own (main.js onGetUp, feature snubbla_vid_hopp), by what put him down:
-// he tripped landing a jump, jumped out of a moving car, a car knocked him over. Lines he has already
-// (SLID, OVE_REPLY, OVE_START: no new clips).
+// he tripped landing a jump, jumped out of a moving car, a car knocked him over, a swing did
+// (game/gunga.js). Lines he has already (SLID, OVE_REPLY, OVE_START: no new clips).
 export const OVE_STUMBLE = {
   stumble: ['Det där såg ingen.', 'Kommunen har inte sandat här.', 'Det var meningen.', 'Hmpf.'],
   car: ['Det var meningen.', 'Det där såg ingen.', 'Hmpf.'],
   hit: ['Idioter.', 'Hmpf.'],
+  swing: ['Det var meningen.', 'Det där såg ingen.', 'Typiskt.', 'Hmpf.'],
 };
 // Starting to write up a felparkering (on foot).
 export const OVE_START = ['Det står ju på skylten.', 'Idioter.', 'Typiskt.', 'Ingen kan läsa nu för tiden.', 'Hmpf.', 'Jaså. Här ska vi stå, minsann.'];

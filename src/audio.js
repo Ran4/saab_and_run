@@ -770,6 +770,36 @@ export const audio = {
       for (const fr of [520, 1450]) burst(t, 0.12, 0.018 * k, fr, 'bandpass', 14);
     }
   },
+  // The swings (feature gungorna_saknar_linor, game/gunga.js). kind: 'creak' (a seat turning at the
+  // end of its swing: a chain's shackle squeaks on its hook, a rope's thimble creaks), 'push' (hands
+  // taking the lines and shoving: a soft thump, a chain's rattle), 'hit' (the rubber seat into a body:
+  // a dull thwack), 'clank' (a car's bumper into it). k: loudness (by distance and how hard).
+  swing(kind, k = 1, chain = true) {
+    if (!S || !(k > 0.02)) return;
+    const t = now();
+    const rattle = (n, v) => { for (let i = 0; i < n; i++) burst(t + 0.01 + i * rnd(0.018, 0.04), 0.02, v * k, rnd(2600, 4600), 'bandpass', 9); };
+    if (kind === 'creak') {
+      if (chain) {
+        const f = rnd(1350, 1750);
+        osc('sawtooth', f, t, 0.13, 0.006 * k, { to: f * rnd(1.15, 1.3), attack: 0.035 });
+        burst(t, 0.12, 0.02 * k, f * 1.6, 'bandpass', 12, { attack: 0.03 });
+      } else {
+        burst(t, 0.18, 0.05 * k, rnd(320, 460), 'bandpass', 6, { attack: 0.05 });
+        osc('triangle', rnd(150, 190), t, 0.16, 0.014 * k, { to: rnd(120, 140), attack: 0.05 });
+      }
+    } else if (kind === 'push') {
+      burst(t, 0.07, 0.1 * k, 650, 'lowpass', 0.8);
+      if (chain) rattle(4, 0.035);
+    } else if (kind === 'hit') {
+      osc('sine', 150, t, 0.11, 0.28 * k, { to: 82 });
+      burst(t, 0.08, 0.22 * k, 560, 'lowpass', 0.8);
+      if (chain) rattle(6, 0.045);
+    } else if (kind === 'clank') {
+      osc('sine', 120, t, 0.12, 0.2 * k, { to: 70 });
+      burst(t, 0.06, 0.16 * k, 900, 'bandpass', 1.2);
+      rattle(chain ? 8 : 2, 0.05);
+    }
+  },
   pickup() {
     if (!S) return;
     const t = now();
