@@ -30,7 +30,7 @@ import { Horn } from './game/horn.js';
 import { Hoppbacke } from './game/hoppbacke.js';
 import { Gungor } from './game/gunga.js';
 import { Cold } from './game/cold.js';
-import { RuneFate, KILL as RUNE_KILL } from './game/rune.js';
+import { RuneFate } from './game/rune.js';
 import { Parking } from './game/pskiva.js';
 import { Bussen } from './game/buss.js';
 import * as stages from './game/stages.js';
@@ -137,8 +137,7 @@ class Game {
     this.lastFound = null;   // { kind, id }: what the album opens on (not saved)
     this.cans = 0;           // pantburkar picked up, ever (saved: `pant`)
     this.unlocked = new Set();
-    // Rune died on his errand and Ove gave it up (game/rune.js; saved: `rune: 0`). True from the
-    // moment he dies, also while E or Q is still to be chosen.
+    // Rune is dead (game/rune.js; saved at once: `rune: 0`): for good, from the moment he dies.
     this.runeDead = false;
     this.autoDialog = TEST;
     this.companions = new Map();   // Character -> { push, left }
@@ -240,7 +239,8 @@ class Game {
     this.hopp = new Hoppbacke(this);
     // the playgrounds' swings: E pushes one, one swinging into Ove may knock him over (game/gunga.js)
     this.gunga = new Gungor(this);
-    // Rune's wheelchair rolling free, his death on the errand, Anita's grief (game/rune.js).
+    // Rune's wheelchair rolling free, his death (on his errand or anywhere else), Anita's grief
+    // (game/rune.js).
     this.rune = new RuneFate(this);
     this.interrupts.auto = !TEST || params.has('calls');
     window.__patrol = this.patrol;
@@ -861,9 +861,12 @@ class Game {
       if (Math.abs(c.x - cx) > R || Math.abs(c.z - cz) > R || !isPerson(c)) continue;
       test(c.x, c.z, 0.4, false);
     }
+    // (Rune in his wheelchair is not seen: rolled into the traffic, he is run over - game/rune.js,
+    // features/implemented/rune_ar_permadod.md. His body is, like anybody's on the road.)
     for (const k in this.npcs) {
       const c = this.npcs[k];
-      if (c.car || Math.abs(c.x - cx) > R || Math.abs(c.z - cz) > R || !isPerson(c)) continue;
+      if (c.car || Math.abs(c.x - cx) > R || Math.abs(c.z - cz) > R) continue;
+      if (c.wheelchair ? !(c.dead && c.state === 'frozen') : !isPerson(c)) continue;
       test(c.x, c.z, c.r + 0.1, false);
     }
     if (bestD === Infinity) return null;
@@ -1472,6 +1475,7 @@ class Game {
       this.missions.updateFailed(dt);
       this.tickGarage(dt);
       this.interrupts.update(dt);
+      this.rune.update(dt);
       this.patrol.update(dt);
       this.parking.update(dt);
     }
@@ -1499,9 +1503,8 @@ class Game {
     if (this.saveT > 30) { this.saveT = 0; this.save(); }
   }
 
-  // A failed day (missions.js) or errand (interruptions.js retry: Rune's, once he has died) waiting
-  // for E or Q: Ove stands still, his car brakes.
-  get failWait() { return this.missions.state === 'failed' || !!this.interrupts.retry; }
+  // A failed day (missions.js) waiting for E or Q: Ove stands still, his car brakes.
+  get failWait() { return this.missions.state === 'failed'; }
 
   // The prompt-and-E owner of the moment: a mission stage or an errand stage.
   stagePrompt() {
@@ -2114,9 +2117,11 @@ class Game {
   }
 
   // Cars against people. Only a car that itself drives into someone knocks them over (Ove walking
-  // briskly into a parked car just stops; it used to count his own speed and fling him). Children,
-  // Rune and the neighbours are never knocked over, and nobody lying on the road is pushed along in
+  // briskly into a parked car just stops; it used to count his own speed and fling him). Children
+  // and the neighbours are never knocked over, and nobody lying on the road is pushed along in
   // front of a bumper: they are shoved out sideways and the car slows as if it hit something soft.
+  // Rune is killed (game/rune.js: by a car or its trailer, anywhere, at far less than knocks anyone
+  // else over; never on the title).
   carsVsPeople() {
     const hit = _hit;
     const chars = this.allChars(this._chars ||= []);
@@ -2132,6 +2137,7 @@ class Game {
       // (a ragdoll in the air or tumbling meets the cars point by point: actors/ragdoll.js)
       if (ch.state === 'seated' || ch.state === 'hidden' || ch.solid === false || (ch.rag && ch.state === 'flung')) continue;
       const pushed = !!this.companions.get(ch)?.push && !this.playerCar;
+      const rune = ch.wheelchair && this.started && ch.state === 'normal' && !ch.dead && !ch.offstage;
       for (let i = this.firstX(ch.x - R); i < a.length; i++) {
         const car = a[i];
         if (car.x - car.radius > ch.x + 1.5) break;
@@ -2140,9 +2146,8 @@ class Game {
         if (!circleVsObb(ch.x, ch.z, ch.r, car.obb, hit)) continue;
         // How fast the car itself comes at them (the person's own walking doesn't count).
         const carIn = car.vx * hit.nx + car.vz * hit.nz;
-        // Rune on his errand is mortal (game/rune.js): pushed or not, what knocks anyone else over
-        // kills him.
-        if (ch.mortal && !ch.dead && ch.state === 'normal' && carIn > RUNE_KILL.carIn && car.speed > RUNE_KILL.speed) { this.rune.hit(ch, car, hit); continue; }
+        // Rune, pushed or not (game/rune.js).
+        if (rune && this.rune.lethal(ch, car, hit)) { this.rune.hit(ch, car, hit); break; }
         if (ch.state === 'normal' && !ch.invulnerable && !pushed && carIn > 4.5 && car.speed > 3) {
           const sp = car.speed;
           ch.x += hit.nx * hit.depth; ch.z += hit.nz * hit.depth;
@@ -2165,6 +2170,8 @@ class Game {
         const car = trs[i], t = car.trailer, reach = t.len / 2 + 1;
         if (Math.abs(t.x - ch.x) > reach || Math.abs(t.z - ch.z) > reach || ch.y > t.y + 1.0) continue;
         if (!circleVsObb(ch.x, ch.z, ch.r, t.obb, hit)) continue;
+        // (Rune: a trailer backed into him at walking pace kills him too)
+        if (rune && !ch.dead && this.rune.lethal(ch, car, hit)) { this.rune.hit(ch, car, hit); break; }
         const carIn = car.vx * hit.nx + car.vz * hit.nz;
         if (carIn > 1 || ch.state !== 'normal') this.shoveAside(ch, car, hit, carIn, t.obb);
         else {
@@ -2265,7 +2272,7 @@ class Game {
       else if (n.dead) this.rune.bury(n, near);
       // (Rune on his errand doesn't turn his chair to face Ove: he sits as he rolled, so a boot from
       // behind rolls him on forwards - game/rune.js)
-      if (!title && n.state === 'normal' && !comp && !n.walkTo && !this.inDialog && !n.honk && !n.roll && !n.mortal) {
+      if (!title && n.state === 'normal' && !comp && !n.walkTo && !this.inDialog && !n.honk && !n.roll && !n.lost) {
         if (near < 9 && !this.playerCar) n.yaw = dampAngle(n.yaw, yawTo(p.x - n.x, p.z - n.z), 3, dt);
         else if (n.homeYaw !== undefined && n.speed < 0.3) n.yaw = dampAngle(n.yaw, n.homeYaw, 1.5, dt);
         if (near < 7 && !this.playerCar && !running) {

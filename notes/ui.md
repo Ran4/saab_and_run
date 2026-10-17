@@ -509,9 +509,10 @@ Round 1:
   meter's blue-to-white bar (6 px), the note under it in ice blue (Rune är kall om händerna / fryser /
   skakar av köld / är blå om läpparna / somnar; "Här ute fryser Rune fort" beyond COLD); `danger`
   (over 75 %, or out there) pulses the value.
-- Rune dead: `showBanner('RUNE ÄR DÖD', cause, 'bad', 0, 'Avbrott')` held, the prompt "E Försök igen ·
-  Q Ge upp" (interruptions.js `updateRetry`, like missions' updateFailed; main.js `failWait` keeps
-  updateHud off the prompt). Toast class `cold` for the errand's start ("Rune har bara sin filt...").
+- Rune dead (feature rune_ar_permadod: for good, anywhere): `showBanner('RUNE ÄR DÖD', cause, 'bad',
+  4500, kicker)` from game/rune.js `kill` (kicker "Avbrott" on his errand, none elsewhere; no E / Q any
+  more), then the toast "Rune är död. Anita är ensam nu." and Anita's call or cry (`rune.update`).
+  Toast class `cold` for the errand's start ("Rune har bara sin filt...").
 
 ## The p-skiva and the parking ticket (feature p-skiva, 2026-10-15)
 

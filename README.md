@@ -171,9 +171,11 @@ bilder i sekunden går hela spelet lite långsammare: tidsgränserna blir inte k
   har träffat Ove, och en del ärenden dyker upp först senare i veckan.
 - **Rune.** Ta tag i rullstolen med **E** och släpp den med **E**. Släpper du den i farten (Shift)
   rullar han vidare en bra bit, och en spark får den att rulla också. Rune har ingen tidsfrist, men
-  han blir kallare för varje minut (fem minuter, och mycket fortare ute bortom skogen), och en bil
-  i full fart tar livet av honom. Försök igen med **E**, eller ge upp med **Q**: då förblir han död,
-  och Anita är förkrossad resten av spelet.
+  han blir kallare för varje minut (fem minuter, och mycket fortare ute bortom skogen). Och han är
+  skör: en bil som kör på honom tar livet av honom, var och när som helst, även hemma vid dörren
+  (Oves egen bil redan i gångfart, till och med en släpkärra som backas; andras bilar ännu
+  lättare, och trafiken bromsar inte för honom). Död är död: det går inte att försöka igen, och
+  Anita är förkrossad resten av spelet.
 - **Småprat.** Gå fram till en granne och tryck **E**: grannen säger något och Ove svarar på just
   det (Sara får "Nej." på sin snögubbe, och längre fram i veckan något annat). Ibland fortsätter
   det en replik eller två, och ibland svarar Ove bara med huvudet: en nick åt Rune, en långsam
@@ -262,7 +264,7 @@ src/actors/ragdoll.js      Ove som trasdocka: när han snubblar, hoppar ur en bi
 src/actors/pickups.js      pantburkar, emblem, fotografier, saker att hämta
 src/game/patrol.js         felparkeringar, anteckningsblocket, smitare, Ordning-mätaren
 src/game/interruptions.js  avbrotten: samtalen och ärendena
-src/game/rune.js           Runes rullstol som rullar själv, hans död på ärendet, Anitas sorg
+src/game/rune.js           Runes rullstol som rullar själv, hans död (för gott, var som helst), Anitas sorg
 src/game/stages.js         byggstenarna för ärenden och uppdrag (parkera, anteckna, hämta, skjutsa, jaga...)
 src/game/horn.js           tutan: vad folk, bilister, grannarna, smitarna och katten gör när Ove tutar
 src/game/hoppbacke.js      hoppen från hoppbacken: snöpudret, ljuden, Oves anteckning och rekord, vad alla säger
@@ -318,6 +320,7 @@ PORT=8791 node tools/shot.mjs coldwind                     # ingen vind bakom sv
 PORT=8791 node tools/shot.mjs snohog snohogsim             # hoppbacken: sex hopp med riktiga tangenter (bilar, farter, släp; FILM=1), och 64 uträknade
 PORT=8791 node tools/shot.mjs snohogwalk snohogsound       # Ove går över hoppbacken; hoppets ljud offline
 PORT=8791 node tools/shot.mjs runeroll runekick runecar runecold runewidow   # Runes ärende: släppa och sparka rullstolen, påkörd, ihjälfrusen, Anita utan honom (runelook: närbilder)
+PORT=8791 node tools/shot.mjs runetraffic runehome   # Rune död för gott: sparkad ut i trafiken (som inte bromsar), påbackad med släpkärra hemma vid dörren
 QUERY='&runedead' PORT=8791 node tools/shot.mjs story      # berättelsen med Rune död
 PORT=8791 node tools/shot.mjs snubbla hoppaur snubblaperf # snubbla vid landningen, hoppa ur bilen i 15-90 km/h, påkörd (riktiga tangenter): aldrig under marken, upp igen; kostnaden (snubblalook: filmremsor)
 PORT=8791 node tools/shot.mjs traktor seatlegs             # snöröjningstraktorn med riktiga tangenter: in, ut ur rutan, 40 km/h, gångvägen, plogen, ut (traktorlook, traktorplog: bilder)

@@ -34,6 +34,7 @@ import { hud } from './hud.js';
 import { fx as FX } from './fx.js';
 import { COMING, CAT_COMES, CHASER_GAVE_UP } from './script.js';
 import { COLDK, coldRate } from './cold.js';
+import { DEATH } from './rune.js';
 import { dist, yawTo, pick, angleDiff, clamp } from '../util.js';
 
 // A place: a landmark name, a { x, z, yaw } object, or a function (g) => place.
@@ -547,17 +548,16 @@ export const dropoff = (o) => ({
 
 // Find someone and bring them home walking (Rune: Ove pushes the wheelchair). o: { who, at |
 // spawn: 'sidewalk' (somewhere on a sidewalk 45-110 m from `to`), to, push, radius = 3.5,
-// findText, bringText, hello, mortal, cold }.
+// findText, bringText, hello, cold }.
 // push: E takes hold of the wheelchair and E lets go of it again (game/rune.js: let go of in Ove's
 // stride it rolls on a good way; a kick rolls it too); home is home whether he is pushed there or
-// rolls there. mortal (Rune's errand, features/implemented/roligare_runeuppdrag.md): a car at speed
-// kills him (main.js carsVsPeople), and so does the cold: from nothing to dead in `cold` s wherever
-// he is, much quicker out past the forest (RUNE_COLD); the stage then fails with { fail, dead }
-// (interruptions.js: E tries again, Q gives up and he stays dead). obj() has his cold for the panel.
+// rolls there. cold (Rune's errand, features/implemented/roligare_runeuppdrag.md): from nothing to
+// dead in `cold` s wherever he is, much quicker out past the forest (RUNE_COLD); obj() has his cold
+// for the panel. He dies (that, or a car: main.js carsVsPeople, anywhere) for good: the stage fails
+// with { fail, dead } (game/rune.js has said so; features/implemented/rune_ar_permadod.md).
 export const RUNE_COLD = { out: 3.0, temp: [36.6, 27.0] };
 const sstep = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
 const RUNE_NOTES = [[0.2, 'Rune är kall om händerna'], [0.45, 'Rune fryser'], [0.7, 'Rune skakar av köld'], [0.88, 'Rune är blå om läpparna'], [2, 'Rune somnar']];
-const DEATH = { cold: 'Rune frös ihjäl.', coldOut: 'Rune frös ihjäl bortom skogen.', car: 'Rune blev påkörd.', ove: 'Ove körde över Rune.' };
 export const escort = (o) => ({
   kind: 'escort',
   get text() { return this.phase === 'bring' ? (o.bringText || `Följ ${this.name} hem`) : (o.findText || `Hitta ${this.name}`); },
@@ -567,7 +567,6 @@ export const escort = (o) => ({
     m.data.npcs.add(n);
     g.removeCompanion(n);
     if (n.car) g.unseat(n);
-    if (n.dead) g.rune.revive(n);
     n.roll = null;
     n.busy = true; n.walkTo = null; n.walkPath = null;
     const dest = at(o.to, g);
@@ -588,10 +587,11 @@ export const escort = (o) => ({
     n.teleport(s.x, s.z, p.yaw ?? 0);
     this.phase = 'find';
     this.can = null;
-    if (o.mortal) {
+    if (o.cold) {
+      // (lost: he sits as he rolled, never turning his chair to Ove - main.js)
       this.cold = 0; this.out = false;
-      n.mortal = true;
-      m.items.push(() => { n.mortal = false; n.roll = null; n.anim.shiver = 0; n.anim.coast = false; });
+      n.lost = true;
+      m.items.push(() => { n.lost = false; n.roll = null; n.anim.shiver = 0; n.anim.coast = false; });
     }
   },
   held(g) { const n = this.npc; return !!g.companions.get(n)?.push && g.isWithOve(n); },
@@ -606,7 +606,7 @@ export const escort = (o) => ({
     return null;
   },
   obj() {
-    if (!o.mortal) return {};
+    if (!o.cold) return {};
     const v = this.cold, [t0, t1] = RUNE_COLD.temp;
     return { cold: v, temp: t0 + (t1 - t0) * v, note: this.out ? 'Här ute fryser Rune fort' : RUNE_NOTES.find(([k]) => v < k)[1], danger: v > 0.75 || this.out };
   },
@@ -622,10 +622,8 @@ export const escort = (o) => ({
   update(g, m, dt) {
     const n = this.npc;
     this.sub = null;
-    if (o.mortal) {
-      if (!n.dead && o.cold) this.chill(g, n, dt);
-      if (n.dead) { this.can = null; return { fail: DEATH[n.dead.cause] || DEATH.car, dead: true }; }
-    }
+    if (o.cold && !n.dead) this.chill(g, n, dt);
+    if (n.dead) { this.can = null; return { fail: DEATH[n.dead.cause] || DEATH.car, dead: true }; }
     const p = g.player, held = this.held(g);
     const near = !g.playerCar && p.state === 'normal' && !n.car && dist(p.x, p.z, n.x, n.z) < 2.2;
     if (o.push) {

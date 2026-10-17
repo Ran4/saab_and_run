@@ -141,6 +141,13 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
     }
   };
   const failCheck = async () => { if (await ev(() => __game.missions.state === 'failed')) { await log('FAILED', await ev(() => document.querySelector('#banner .banner-sub')?.textContent)); throw new Error('mission failed'); } };
+  // Rune can die anywhere, for good (game/rune.js, features/implemented/rune_ar_permadod.md): no day
+  // may kill him by itself (a scripted car, the day-1 trailer backed by the bot, ...).
+  const runeCheck = async (day) => {
+    const r = await ev(() => { const R = __game.rune, n = __game.npc('rune'); return { deaths: R.deaths, cause: n?.dead?.cause || null, at: n ? [+n.x.toFixed(1), +n.z.toFixed(1)] : null }; });
+    if (r.deaths > 0) await bad(`Rune died on day ${day}`, JSON.stringify(r));
+    await ev(() => { __game.rune.deaths = 0; });
+  };
 
   // Walk up to the day's giver and press E (retrying: the giver may have been re-placed a frame ago).
   const startMission = async () => {
@@ -602,6 +609,7 @@ export default ({ page, ev, shot, frames, sleep, tap, until, L, fresh, errors })
       for (let n = from + 1; n <= +(process.env.TO || 7); n++) {
         await D[n]();
         await failCheck();
+        await runeCheck(n);
       }
       await hudLeaks();
       await log('story finished', await state(), 'kr', await ev(() => __game.coins), 'renderFrame ms', await ev(() => window.__stats().cpuMs));

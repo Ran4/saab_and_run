@@ -1,5 +1,9 @@
 # Roligare Rune-uppdrag
 
+> Ändrat 2026-10-17 av `rune_ar_permadod.md`: döden är för gott direkt (inget "E Försök igen ·
+> Q Ge upp"), och han kan bli påkörd var som helst, när som helst, även utanför ärendet, av mindre
+> än förut (och trafiken bromsar inte för honom). Det som står om E/Q nedan gäller inte längre.
+
 ## Definitionen
 
 Rune-uppdraget där man hämtar honom i rullstol hade kunnat vara roligare.

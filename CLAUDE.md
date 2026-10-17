@@ -44,12 +44,15 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   hoppbacke in the park, features/implemented/snöhög.md: `snohog` = six jumps with real keys, several
   cars and speeds, a trailer, `RUNS=`, `FILM=1` keeps the frames; `snohogsim` = 64 deterministic runs
   over the real hill; `snohogwalk snohogsound`); run `snohogsim snohog` after touching car or trailer
-  physics, collision.js or the hill), rune.mjs (Rune's errand, features/implemented/
-  roligare_runeuppdrag.md: `runeroll runekick` (the wheelchair let go of and kicked, real keys),
-  `runecar runecold` (killed by a car / the cold, E tries again, Q gives up, a reload keeps him dead),
-  `runewidow` (`?runedead`: Anita grieving, no errand of his), `runelook` (close-ups); run them after
-  touching the escort stage, game/rune.js, the errands' retry or Anita, and `QUERY='&runedead' story`
-  after touching days 3, 6 or 7), bilsno.mjs (snow on cars, features/implemented/sno_pa_bilar.md:
+  physics, collision.js or the hill), rune.mjs (Rune's errand and his death for good, features/
+  implemented/roligare_runeuppdrag.md, rune_ar_permadod.md: `runeroll runekick` (the wheelchair let
+  go of and kicked, real keys), `runecar runecold` (killed by a car / the cold: no E / Q, the errand
+  over, saved at once, Anita's call; the cars' thresholds), `runetraffic` (real keys: kicked into the
+  street, a traffic car's own AI doesn't brake and runs him over), `runehome` (real keys: a trailer
+  backed into him at his door, Anita's cry, a reload keeps him dead), `runewidow` (`?runedead`: Anita
+  grieving, no errand of his), `runelook` (close-ups); run them after touching the escort stage,
+  game/rune.js, carsVsPeople, obstacleAhead or Anita, and `QUERY='&runedead' story` after touching
+  days 3, 6 or 7; `story` fails if Rune dies on any day), bilsno.mjs (snow on cars, features/implemented/sno_pa_bilar.md:
   `bilsnosim` = the shedding stepped by hand, every model at 30-90 km/h, a hard stop, a hard turn;
   `bilsnochecks` = a parked car rammed (real keys), a shedding car far away, a car with all of it gone;
   `bilsnohopp` = a snowy car over the hoppbacke; `bilsnoperf` = its cost, no shader compiled;
@@ -236,14 +239,17 @@ map; `notes/*.md` are the per-area notes (world, cars, people, ui, integration =
   he wakes), errands abort, companions go home, a named car goes home; then game/waking.js plays his
   bedroom (world/interior.js `buildBedroom`, the line from script.js `WAKE`) and lets him out at
   his door.
-- **Rune** (`game.rune`, rune.js; features/implemented/roligare_runeuppdrag.md): E takes hold of and
-  lets go of his wheelchair (escort `push`), let go of in a stride or kicked it rolls on (`n.roll`).
-  His errand has no timer but his cold (escort `cold`), and he can die on it (`n.mortal`: a car at
-  speed, the cold): `interrupts.retry` holds RUNE ÄR DÖD with E (`tryAgain`) / Q (`giveUp`), Ove
-  frozen meanwhile (`game.failWait`, like a failed day). `game.runeDead` (set as he dies, saved
-  `rune: 0`): Rune hidden (`npcAway`), the errands needing him gone, Anita grieving (`rune.grief`:
-  `anim.grief`, sobs, script.js `WIDOW`), days 3, 6 and 7 without him (missions.js `widow`,
-  `MissionRunner.scene(def, key)`). `?runedead` (tests) starts so.
+- **Rune** (`game.rune`, rune.js; features/implemented/roligare_runeuppdrag.md, rune_ar_permadod.md):
+  E takes hold of and lets go of his wheelchair (escort `push`), let go of in a stride or kicked it
+  rolls on (`n.roll`). His errand has no timer but his cold (escort `cold`). He dies under any car
+  that hits him, anywhere, any day (main.js carsVsPeople -> `rune.lethal` / `hit`, its trailer too:
+  `KILL`, Ove's at a slow walk, anybody else's at less; `obstacleAhead` doesn't see him alive, so the
+  traffic doesn't brake), and of the cold on his errand. For good at once (`rune.kill`: saved, the
+  banner RUNE ÄR DÖD, the errand failed; no trying again; `rune.update` brings the news: Anita's cry if
+  she saw it, else her call). `game.runeDead` (saved `rune: 0`): Rune hidden (`npcAway`), the errands
+  needing him gone, Anita grieving (`rune.grief`: `anim.grief`, sobs, script.js `WIDOW`), days 3, 6
+  and 7 without him (missions.js `widow`, `MissionRunner.scene(def, key)`). `?runedead` (tests)
+  starts so; `rune.revive` is for tests only.
 - **Horn** (`game.horn`, horn.js): T / H (pad L3 / RB) in a car. People in front leap aside (`anim.fright`,
   then `anim.fist` / `cheer`), neighbours answer in character, drivers honk back with their make's
   horn (audio.js `HORNS`), smitare are spooked or pressed, needless honking costs Ordning. People's

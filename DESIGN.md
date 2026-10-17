@@ -165,9 +165,11 @@ stage kinds as missions):
 6. Anita: Rune har rullat iväg → find Rune (45–80 m away on a sidewalk), push him home (E takes
    hold of the wheelchair and lets go of it: let go of in a stride, or kicked, it rolls on). No
    patience timer: Rune's cold instead (5 minutes from the call, much quicker out past the forest),
-   and he can die (a car at speed, the cold): the errand fails with E (try again) or Q (give up:
-   he stays dead for the rest of the game, Anita grieves, days 3, 6 and 7 go on without him).
-   game/rune.js; features/implemented/roligare_runeuppdrag.md.
+   and he can die of it. He can die under a car anywhere, any day, errand or not (Ove's at a slow
+   walk, a backed trailer too; anybody else's at less; the traffic doesn't brake for him). Death is
+   for good at once (no trying again): the errand (if any) fails, he stays dead for the rest of the
+   game, Anita grieves, days 3, 6 and 7 go on without him. game/rune.js;
+   features/implemented/roligare_runeuppdrag.md, rune_ar_permadod.md.
    Errands 1 and 7 need Rune too (they are not offered once he is dead).
 7. Anita: skotta framför dörren → hold E at three spots by `runeHouse`.
 8. Sara: Oves katt har rymt ("Det är inte min katt.") → short cat chase, carry it to Sara. Only once

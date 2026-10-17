@@ -171,9 +171,9 @@ stop says).
 `interrupts.radioOnly(who, text, reply?)` → Promise (a short call for flavour: ring, one line,
 optional Ove reply; missions 7's "INTE NU!"), `interrupts.force(id, { quick })` (quick = no call),
 `interrupts.abort()`, `interrupts.active { tpl, ctx, stages, i, stage, timer }` (timer null: none,
-`tpl.patience: null`), `.call`, `.onPhone`, `.auto`, `.nextT`, `.done`, `.failed`, `TEMPLATES`,
-`.retry { tpl, t, reason }` (a failed errand waiting for E / Q: `tpl.retry`, Rune's once he has died;
-`tryAgain()`, `giveUp()`, `tpl.onRetry`, `tpl.onGiveUp`).
+`tpl.patience: null`), `.call`, `.onPhone`, `.auto`, `.nextT`, `.done`, `.failed`, `TEMPLATES`. A
+stage's `{ fail, dead }` (Rune died on his errand) just ends the errand: game/rune.js has already
+announced it (feature rune_ar_permadod: the E / Q `retry` of roligare_runeuppdrag is gone).
 
 ## Debug hooks and test URL params
 
@@ -916,6 +916,41 @@ script.js (`WIDOW`, `RUNE_DIES`, the days' `*Widow` lines, `ERRANDS.rune.dead`).
 - Tests: scenarios/rune.mjs `runeroll runekick runecar runecold runewidow` (+ `runelook`: close-ups,
   no checks); `?runedead` (tests) starts with him dead: `QUERY='&runedead' node tools/shot.mjs story`.
   gameplay.mjs `errands` takes hold with E.
+- **Superseded by rune_ar_permadod (below)**: the E / Q after his death, `n.mortal`, the 4.5 / 3 m/s
+  threshold and "only on his errand".
+
+## Feature rune_ar_permadod: Rune dies for good, anywhere (2026-10-17)
+
+features/implemented/rune_ar_permadod.md. game/rune.js, main.js (`carsVsPeople`, `obstacleAhead`,
+`failWait`, `update`), stages.js `escort`, interruptions.js, cold.js, missions.js (`updateGate`).
+- **Anywhere, any day** (not on the title: `game.started`; not `offstage` in a scene; not seated):
+  `carsVsPeople` asks `rune.lethal(n, car, hit)` for every car box and towed trailer that touches him,
+  errand or not, pushed or not. Lethal = the car faster than `KILL.speed` and closing on him (its
+  velocity less his own, along the contact normal: a chair rolled into a passing car's flank counts)
+  faster than `KILL.in`: Ove's car 1.7 / 1.5 m/s (a slow walk: backing Patrick's trailer is 2.2 m/s
+  at most), anybody else's 1.0 / 1.0. Causes `car`, `ove`, `oveBack` (Ove's car reversing: "Ove
+  backade över Rune."), `cold`, `coldOut` (rune.js `DEATH`, the banner's line).
+- **The traffic doesn't brake for him**: `obstacleAhead` skips Rune alive in his chair (every AI
+  driver's "traffic ahead"); his body (`dead`, `frozen`) it sees, like anybody's on the road.
+- **For good at once** (`rune.kill`): `runeDead`, `game.save()`, −10 Ordning, the fail jingle, the
+  banner RUNE ÄR DÖD + cause for 4.5 s (kicker "Avbrott" on his errand, none elsewhere). No E / Q,
+  no `interrupts.retry` (gone, with `tryAgain` / `giveUp` / `tpl.retry` / `onRetry` / `onGiveUp` and
+  `failWait`'s errand half): the escort stage returns `{ fail, dead }` and `interrupts.fail(r, { dead
+  })` only finishes the errand (`failed++`). Then `rune.update(dt)` (main.js, after
+  `interrupts.update`, held while Ove dies of frost) brings the news (`rune.news`): the toast at 2.6 s;
+  Anita, if she was within 25 m of him as he died (`news.seen`: at home by their door) and is about,
+  cries "Rune..." at 2 s (her sobs held off 10 s); if not, her call (`ERRANDS.rune.dead`) once nothing
+  else is said (not in a scene, no call, `voice.quiet()`). `rune.revive` is for tests only.
+- **The body** stays 8 s at least before it goes out of view (`rune.bury`), at once beyond 30 m.
+- Escort: `o.cold` (not `o.mortal`) is the cold and the panel; `n.lost` (was `n.mortal`): on his
+  errand he doesn't turn his chair to face Ove. The escort no longer revives a dead Rune.
+- Tests: scenarios/rune.mjs `runecar` (no E / Q, saved at once, Anita's call, the thresholds: anybody's
+  car at 1.5 m/s kills, Ove's at 1.2 m/s shoves, at 2.2 kills, rolled into a passing car's flank),
+  `runetraffic` (real keys: J kicks him off the pavement into the lane; a traffic car with its own
+  AI, 70 m off, never sees him and hits him at 12 m/s; his body and a passer-by it sees),
+  `runehome` (real keys: a car with a trailer backed at walking pace into him at his door: "Ove
+  backade över Rune.", Anita's cry, no call, a reload keeps him dead), `runecold` (dead for good at
+  once). story.mjs `story` fails if Rune dies on any day (`runeCheck`).
 
 ## Tracks in the snow (feature snöspår, features/implemented/snöspår.md)
 

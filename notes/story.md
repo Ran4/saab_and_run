@@ -472,7 +472,10 @@ state says, never a snapshot).
 
 ## Rune dead (feature roligare_runeuppdrag, 2026-10-14)
 
-Rune can die on his errand, and if Ove gives it up he stays dead (`game.runeDead`, game/rune.js).
+Rune can die on his errand, or under a car anywhere on any day (feature rune_ar_permadod), and then
+he stays dead (`game.runeDead`, game/rune.js; no trying again). A death in the middle of a day
+doesn't fail it: the day goes on, and its outro (chosen as it starts) is the widow's one. `story`
+fails if a day kills him by itself (story.mjs `runeCheck`).
 The days go on without him: `MissionRunner.scene(def, key)` takes the def's `widow` (intro, outro,
 tagline) instead, from script.js's `introWidow` / `outroWidow` / `callsBackWidow`:
 - day 3: Anita alone ("Har du luftat?", "Han tyckte om när du kom ..."); the outro without his

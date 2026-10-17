@@ -109,7 +109,7 @@ export class Cold {
     else {
       // (not while Ove isn't his own: a scene, a cut, a failed mission waiting for E or Q)
       const ms = g.missions.state;
-      const held = g.inDialog || g.freezeCar || ms === 'intro' || ms === 'outro' || ms === 'failed' || !!g.interrupts.retry || p.state === 'hidden';
+      const held = g.inDialog || g.freezeCar || ms === 'intro' || ms === 'outro' || ms === 'failed' || p.state === 'hidden';
       const out = d > COLDK.start;
       if (!held) {
         this.v = clamp(this.v + (out ? rate(d) : -1 / (g.playerCar ? COLDK.thawCar : COLDK.thaw)) * dt, 0, 1);

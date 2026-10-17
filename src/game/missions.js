@@ -589,7 +589,7 @@ export class MissionRunner {
     const g = this.g, G = (this.gate ||= { idle: 0, reports: g.patrol.reports });
     // Never in the middle of an errand, a call, a chase or a conversation (it used to dawn while
     // Ove carried Sara's cat home).
-    if (g.interrupts.active || g.interrupts.call || g.interrupts.retry || g.patrol.pursuit || g.inDialog) return;
+    if (g.interrupts.active || g.interrupts.call || g.patrol.pursuit || g.inDialog) return;
     G.idle += dt;
     if (this.gating && !((g.patrol.reports - G.reports >= GATE.reports && G.idle >= GATE.minSecs) || G.idle >= GATE.secs)) return;
     this.gateOpen = true;

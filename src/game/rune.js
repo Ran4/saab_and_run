@@ -1,21 +1,23 @@
-// Rune's fate (features/implemented/roligare_runeuppdrag.md). The errand "Rune har rullat iväg"
-// (interruptions.js; stages.js escort with `mortal`) is a little sandbox now:
+// Rune's fate (features/implemented/roligare_runeuppdrag.md, rune_ar_permadod.md). The errand "Rune
+// har rullat iväg" (interruptions.js; stages.js escort with `cold`) is a little sandbox:
 //   - his wheelchair rolls on by itself: Ove lets go of it with E (striding, Shift, it rolls a good
 //     way on: ROLL.brisk; walking, hardly at all), or kicks it (ROLL.kick, along its own heading:
 //     wheels don't go sideways); it slows on the snow and stops against whatever it meets;
-//   - on the errand he can die: a car that comes at him at speed (as fast as one that knocks a
-//     passer-by over), or the cold (stages.js: 5 minutes from the call, wherever he is; out past the
-//     forest, COLD, much quicker - an old man sitting still in a blanket);
-//   - dead, he slumps in his chair (a car tips it onto its side and it slides a few metres); the
-//     errand fails with E (try again: he is alive and lost again) or Q (give up: he stays dead);
-//   - from the moment he dies (also while E or Q is still to be chosen, and saved so) game.runeDead:
-//     he is gone (main.js npcAway; his body stays until Ove has gone off), the errands that need or
-//     mention him are no longer offered, and Anita grieves: her small talk (script.js WIDOW), a hand
-//     over her eyes when nobody talks to her, her sobs as Ove goes by (now and then), her horn and
-//     radio lines; the story's days 3, 6 and 7 go on without him (missions.js `widow`).
+//   - he can die, anywhere and any day, errand or not: a car that comes at him faster than a slow
+//     walk (KILL: Ove's own, backing a trailer at walking pace included; anybody else's at less, and
+//     the traffic doesn't brake for him: main.js obstacleAhead), and on the errand the cold
+//     (stages.js: 5 minutes from the call, wherever he is; out past the forest, COLD, much quicker);
+//   - dead, he slumps in his chair (a car tips it onto its side and it slides a few metres), and it
+//     is for good: no trying again. RUNE ÄR DÖD and the cause, saved at once (game.runeDead), the
+//     errand (if he was on it) over; then the news, and Anita: a cry if she saw it, else her call;
+//   - from then on he is gone (main.js npcAway; his body stays until Ove has gone off), the errands
+//     that need or mention him are no longer offered, and Anita grieves: her small talk (script.js
+//     WIDOW), a hand over her eyes when nobody talks to her, her sobs as Ove goes by (now and then),
+//     her horn and radio lines; the story's days 3, 6 and 7 go on without him (missions.js `widow`).
 // game.rune: step(n, h) (main.js stepNpcs: true = it moved him this step), letGo(n), kick(n, fx, fz),
-// hit(n, car, hit) (main.js carsVsPeople), kill(n, cause, car), revive(n), givenUp(), bury(n, near)
-// and grief(n, dt, near) (main.js, the neighbours' frame loop: Rune; Anita).
+// lethal(n, car, hit) and hit(n, car, hit) (main.js carsVsPeople), kill(n, cause, car), update(dt)
+// (main.js: the news after a death), bury(n, near) and grief(n, dt, near) (main.js, the neighbours'
+// frame loop: Rune; Anita); revive(n) for tests only (the game never brings him back).
 
 import { groundAt } from '../world/collision.js';
 import { audio } from '../audio.js';
@@ -29,9 +31,16 @@ import { dist, pick, clamp } from '../util.js';
 // at least `strideMin`, times `brisk`: ~15 m on), walking (times `walk`: under a metre), kicked
 // (`kick` m/s straight from behind, less from the side: ~8 m on), done below `min`.
 export const ROLL = { decel: 0.85, brisk: 1.4, strideMin: 3.2, walk: 0.3, kick: 3.6, min: 0.05 };
-// A car kills him at what knocks a passer-by over (main.js carsVsPeople): coming at him at more than
-// carIn m/s, itself faster than speed m/s.
-export const KILL = { carIn: 4.5, speed: 3 };
+// A car kills him (main.js carsVsPeople): closing on him at more than `in` m/s (the car's speed
+// against him less his own roll: rolled into a car's flank counts too), the car itself faster than
+// `speed` m/s. Ove's at a slow walk (backing Patrick's trailer is 2.2 m/s at most); anybody else's at
+// less (a passer-by is knocked over at 4.5 / 3).
+export const KILL = { ove: { in: 1.7, speed: 1.5 }, other: { in: 1.0, speed: 1.0 } };
+// The banner's line under RUNE ÄR DÖD, by cause.
+export const DEATH = { cold: 'Rune frös ihjäl.', coldOut: 'Rune frös ihjäl bortom skogen.', car: 'Rune blev påkörd.', ove: 'Ove körde över Rune.', oveBack: 'Ove backade över Rune.' };
+// After he has died: the toast at `toast` s, Anita's cry (she saw it: within `seen` m) at `cry` s, or
+// her call from `call` s on (once nobody else is talking).
+const NEWS = { toast: 2.6, cry: 2.0, call: 4.4, seen: 25 };
 // Anita's sobs as Ove goes by: within `near` m, every `every` s or so (the first after `first`).
 const SOB = { near: 14, every: [22, 38], first: [2, 5] };
 const TEST = typeof location !== 'undefined' && new URLSearchParams(location.search).has('test');
@@ -109,10 +118,17 @@ export class RuneFate {
   // ----------------------------------------------------------------------------------------------
   // Death
 
-  // A car at speed (main.js carsVsPeople, only while he is `mortal`: the errand): over he goes.
+  // A car against him (main.js carsVsPeople, its box or its trailer's; `hit` pushes out of it): is
+  // it enough to kill him?
+  lethal(n, car, hit) {
+    const k = car === this.g.playerCar ? KILL.ove : KILL.other;
+    return car.speed > k.speed && (car.vx - n.vx) * hit.nx + (car.vz - n.vz) * hit.nz > k.in;
+  }
+
+  // ...it is: over he goes.
   hit(n, car, hit) {
-    const g = this.g;
-    this.kill(n, car === g.playerCar ? 'ove' : 'car', car);
+    const g = this.g, sp = car.speed;
+    this.kill(n, car === g.playerCar ? (car.forwardSpeed < -0.3 ? 'oveBack' : 'ove') : 'car', car);
     const d = n.dead;
     d.vx = car.vx * 0.7 + hit.nx * 2; d.vz = car.vz * 0.7 + hit.nz * 2;
     // over to the side the blow pushes him to (topple > 0 goes over to his local -x)
@@ -121,12 +137,14 @@ export class RuneFate {
     n.x += hit.nx * hit.depth; n.z += hit.nz * hit.depth;
     car.vx *= 0.88; car.vz *= 0.88;
     const f = g.focus();
-    if (dist(n.x, n.z, f.x, f.z) < 60) { audio.crash(0.45); audio.thud(1); }
+    if (dist(n.x, n.z, f.x, f.z) < 60) { audio.crash(clamp(0.1 + sp * 0.03, 0.15, 0.45)); audio.thud(Math.min(1, 0.5 + sp * 0.08)); }
     FX.dust(n.x, n.z, 6, n.y + 0.3);
     if (car === g.playerCar) g.cam.shake = Math.min(1, g.cam.shake + 0.3);
   }
 
-  // cause: 'cold' | 'coldOut' (beyond the forest) | 'car' | 'ove' (Ove's own car).
+  // cause: 'cold' | 'coldOut' (beyond the forest) | 'car' | 'ove' / 'oveBack' (Ove's own car, backing).
+  // For good: saved at once, the banner, the Ordning a failed errand costs; the errand he was on (if
+  // any) fails by itself (stages.js escort, interruptions.js), and update() brings the news.
   kill(n, cause, car = null) {
     if (n.dead) return;
     const g = this.g;
@@ -140,10 +158,21 @@ export class RuneFate {
     n.honk = null;
     g.runeDead = true;
     this.deaths++;
+    g.save();
+    g.patrol.addOrdning(-10);
+    audio.jingle('fail');
+    // (a failed day's banner, waiting for E or Q, stays: a toast instead)
+    if (g.missions.state === 'failed') hud.toast(`<b>RUNE ÄR DÖD</b> · ${DEATH[cause] || DEATH.car}`, 'bad', 6000);
+    else hud.showBanner('RUNE ÄR DÖD', DEATH[cause] || DEATH.car, 'bad', 4500, g.interrupts.active?.tpl.id === 'rune' ? 'Avbrott' : '');
     if (cause === 'cold' || cause === 'coldOut') g.cold?.sfx?.('freeze');
-    const p = g.player;
+    const p = g.player, a = g.npc('anita');
     if (dist(p.x, p.z, n.x, n.z) < 30) setTimeout(() => { if (g.runeDead && n.dead) g.say(g.player, RUNE_DIES[1], 2); }, 900);
-    if (TEST) console.log('[t] rune: died', cause, 'at', n.x.toFixed(1), n.z.toFixed(1));
+    // (Anita, if she was there to see it: at home by their door, he was killed in front of her)
+    const seen = !!a && a.state === 'normal' && !a.car && !a.offstage && dist(a.x, a.z, n.x, n.z) < NEWS.seen;
+    this.news = { t: 0, seen, toast: false, cried: false };
+    // (her cry first: no sob of grief() before it)
+    if (seen) this.sobT = Math.max(this.sobT, NEWS.cry + 8);
+    if (TEST) console.log('[t] rune: died', cause, 'at', n.x.toFixed(1), n.z.toFixed(1), seen ? '(Anita saw it)' : '');
   }
 
   // The body: tips over (a car), slides to a stop on the snow, stays.
@@ -168,7 +197,7 @@ export class RuneFate {
     n.y = groundAt(n.x, n.z, n.y + 0.4, 0.45);
   }
 
-  // Alive again (the errand tried again: stages.js escort puts him somewhere new).
+  // Alive again: for tests only (one page load, several deaths). The game never calls it.
   revive(n = this.g.npc('rune')) {
     if (!n) return;
     const g = this.g;
@@ -180,23 +209,37 @@ export class RuneFate {
     n.root.rotation.set(0, n.yaw, 0);
     n.root.visible = !n.offstage;
     g.runeDead = false;
+    this.news = null;
     const a = g.npc('anita');
     if (a) Object.assign(a.anim, { grief: false, sob: 0 });
   }
 
-  // Ove gave the errand up after Rune died: so it stays (it was saved so the moment he died).
-  givenUp() {
-    const g = this.g;
-    g.save();
-    hud.toast('<b>Rune</b> är död. Anita är ensam nu.', 'bad', 7000);
-    setTimeout(() => { if (g.runeDead) g.radio('anita', ERRANDS.rune.dead, { must: true, tag: 'widow' }); }, 1800);
-    if (TEST) console.log('[t] rune: given up, dead for good');
+  // main.js, every frame (not while Ove himself freezes to death): the news after he has died. A
+  // toast; Anita, if she saw it, cries out (then grieves as ever); if not, she phones Ove once a call
+  // fits ("De har hittat Rune."): not in a scene, nor over another call or voice.
+  update(dt) {
+    const w = this.news, g = this.g;
+    if (!w) return;
+    w.t += dt;
+    if (!w.toast && w.t > NEWS.toast) { w.toast = true; hud.toast('<b>Rune</b> är död. Anita är ensam nu.', 'bad', 7000); }
+    if (w.seen) {
+      const a = g.npc('anita');
+      if (!w.cried && w.t > NEWS.cry) { w.cried = true; if (a?.state === 'normal') { g.say(a, WIDOW.sobs[0], 2.4); this.sobT = Math.max(this.sobT, 9); } }
+      if (w.toast && w.cried) this.news = null;
+      return;
+    }
+    const ms = g.missions.state;
+    if (w.t < NEWS.call || !w.toast || g.inDialog || ms === 'intro' || ms === 'outro' || g.interrupts.call || !voice.quiet()) return;
+    this.news = null;
+    if (g.runeDead) g.radio('anita', ERRANDS.rune.dead, { must: true, tag: 'widow' });
+    if (TEST) console.log('[t] rune: Anita phones');
   }
 
-  // The body goes once nobody is there to see it (and it is not waiting for E or Q).
+  // The body goes once nobody is there to see it: Ove gone off, or (after a few seconds: time to turn
+  // round and look) out of the picture.
   bury(n, near) {
-    if (!n.dead || n.state !== 'frozen' || this.g.interrupts.retry) return;
-    if (near > 30 || (near > 8 && !this.g.onScreen(n.x, n.y + 0.8, n.z))) { n.state = 'hidden'; n.root.visible = false; }
+    if (!n.dead || n.state !== 'frozen') return;
+    if (near > 30 || (near > 8 && n.dead.t > 8 && !this.g.onScreen(n.x, n.y + 0.8, n.z))) { n.state = 'hidden'; n.root.visible = false; }
   }
 
   // ----------------------------------------------------------------------------------------------
